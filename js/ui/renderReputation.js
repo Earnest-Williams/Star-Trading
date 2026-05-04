@@ -1,10 +1,10 @@
 import { state } from "../state.js";
-import { FACTIONS, FACTION_RELATIONS, MAJOR_FACTIONS, BALANCE, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE } from "../constants.js";
+import { FACTIONS, FACTION_RELATIONS, MAJOR_FACTIONS, BALANCE, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import {
     ensureFactionState, getKnownFactionIds, getFactionRep, getPrivateFactionRep, getFactionTrust, getFactionHeat,
-    getFactionLeverage, getFactionFavors, getFactionLabel, getGuildTier, GUILD_TIER_NAMES,
+    getFactionLeverage, getFactionFavors, getFactionLabel, getGuildTier,
     getKnownContacts, getContactScore
 } from "../core/factions.js";
 import { renderCaptainsTab } from "./renderCaptains.js";

@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { SAVE_KEY, SAVE_VERSION, COMMODITIES, FACTION_RELATIONS } from '../constants.js';
+import { SAVE_KEY, SAVE_VERSION, COMMODITIES, FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
@@ -10,6 +10,7 @@ import { createContactState } from './factions.js';
 import { makeStock } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
 import { log } from '../utils.js';
+import { updateUI } from '../events.js';
 
 function createPlayer() {
     return {
@@ -86,14 +87,13 @@ export function loadGame() {
         state.currentScreen = "sector";
         log("Game loaded.");
         Notifications.show("Game loaded", 2);
-        import('../ui/ui.js').then(m => m.updateUI());
+        updateUI();
     } catch (err) {
         log("Could not load save data. The saved JSON appears to be invalid.");
     }
 }
 
 export function normaliseLoadedGame() {
-    const { BALANCE } = (function() { return { BALANCE: window._BALANCE }; })();
     if (!state.player.time) state.player.time = { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 };
     if (!state.player.ship) state.player.ship = createPlayer().ship;
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
@@ -116,7 +116,7 @@ export function normaliseLoadedGame() {
         if (sector.asteroids && typeof sector.asteroids.maxOre !== "number") sector.asteroids.maxOre = Math.max(sector.asteroids.ore, 2500);
     });
     Object.values(state.ports).forEach(port => {
-        if (!port.factionId) { const { PORT_TYPES } = require('../constants.js'); port.factionId = PORT_TYPES[port.typeKey].factionId; }
+        if (!port.factionId) port.factionId = PORT_TYPES[port.typeKey].factionId;
         if (!port.publicFactionId) port.publicFactionId = port.factionId;
         if (typeof port.hiddenFactionId === "undefined") port.hiddenFactionId = null;
     });

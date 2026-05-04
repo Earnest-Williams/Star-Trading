@@ -1,8 +1,8 @@
 import { state } from "../state.js";
-import { FACTIONS, BALANCE, COMMODITIES, GUILD_FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
+import { FACTIONS, BALANCE, COMMODITIES, GUILD_FACTIONS, PORT_TYPES, PLANET_TYPES, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed, getFreeHolds } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
-import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getPrivateFactionRep, getFactionHeat, getFactionTrust, getFactionFavors, getFactionLeverage, getFactionBarPercent, getFactionLabel, getGuildTier, GUILD_TIER_NAMES } from "../core/factions.js";
+import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getPrivateFactionRep, getFactionHeat, getFactionTrust, getFactionFavors, getFactionLeverage, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
 import { showScreen, setReputationTab } from "./ui.js";
 
 export function getPriorityItems() {
