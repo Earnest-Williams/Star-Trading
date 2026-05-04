@@ -1,6 +1,6 @@
 # Star-Trading
 
-Star-Trading is currently a single-file browser prototype in `/home/runner/work/Star-Trading/Star-Trading/index.html`.
+Star-Trading is currently a single-file browser prototype in `index.html`.
 
 ## What the app contains right now
 
@@ -28,4 +28,4 @@ In short, the project looks aimed at becoming a systemic “political economy in
 
 ## Running it
 
-There is no build step at the moment. Open `/home/runner/work/Star-Trading/Star-Trading/index.html` in a browser to play the prototype.
+There is no build step at the moment. Open `index.html` in a browser to play the prototype.
