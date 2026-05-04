@@ -1,6 +1,3 @@
-Here's the complete updated file:
-
-Copy
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1250,7 +1247,6 @@ Copy
             if (!universe[a].warps.includes(b)) universe[a].warps.push(b);
             if (!universe[b].warps.includes(a)) universe[b].warps.push(a);
         }
-
         function generateUniverse() {
             universe = {}; ports = {}; planets = {}; missions = []; nextMissionId = 1;
             for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) {
@@ -1308,13 +1304,21 @@ Copy
                 if (Math.random() < chance) {
                     const asteroidOre = 2500 + Math.floor(Math.random() * 9000);
                     universe[i].asteroids = {
-                        ore: asteroidOre, maxOre: asteroidOre
-00:41:15
-continue, please
-00:46:17
-, richness: 0.7 + Math.random() * 1.1, hazard: universe[i].region === "Badlands" ? 0.12 + Math.random() * 0.18 : Math.random() * 0.12, surveyed: false }; addSectorInfluence(i, "hc", 5, ""); if (universe[i].region === "Badlands" && Math.random() < 0.4) addSectorInfluence(i, "vc", 5, ""); } } createCaptains(); generateMissionPool(); generateFactionAsks(); }
+                        ore: asteroidOre,
+                        maxOre: asteroidOre,
+                        richness: 0.7 + Math.random() * 1.1,
+                        hazard: universe[i].region === "Badlands" ? 0.12 + Math.random() * 0.18 : Math.random() * 0.12,
+                        surveyed: false
+                    };
+                    addSectorInfluence(i, "hc", 5, "");
+                    if (universe[i].region === "Badlands" && Math.random() < 0.4) addSectorInfluence(i, "vc", 5, "");
+                }
+            }
+            createCaptains();
+            generateMissionPool();
+            generateFactionAsks();
+        }
 
-Copy
     function generateStars() {
         starField = [];
         for (let i = 0; i < 100; i++) {
@@ -2663,7 +2667,6 @@ Copy
     function describeCost(cost) {
         return COMMODITIES.filter(c => (cost[c] || 0) > 0).map(c => `${cost[c]} ${formatCommodity(c)}`).join(", ") || "none";
     }
-
     function fightPirates() {
         const sector = universe[player.currentSector];
         if (sector.pirateThreat <= 0) { log("No pirate threat here."); return; }
@@ -2672,13 +2675,25 @@ Copy
         const threat = sector.pirateThreat;
         const vcSoftening = Math.max(0, getPrivateFactionRep("vc") + getFactionTrust("vc")) / 1000;
         const fighterLoss = Math.min(player.fighters, Math.max(1, Math.floor((3 + Math.random() * (8 + threat * 4)) * (1 - vcSoftening))));
-        const shieldDamage = Math.max(1, Math.floor((10 + Math.random() *
-00:51:20
-please continue
-00:58:37
-(12 + threat * 8)) * (1 - vcSoftening / 2))); const reward = 250 + threat * 350 + Math.floor(Math.random() * 300); player.fighters -= fighterLoss; applyShipDamage(shieldDamage); player.credits += reward; player.reputation += 1; applyPoliticalEffect({ factionId: "sda", publicRep: 3, trust: 1, favors: threat >= 3 ? 1 : 0, sectorId: player.currentSector, influence: 4, reason: "pirate suppression", memoryKey: "reliableJobs" }); addFactionRep("vc", -2, "pirate suppression", "public"); addFactionLeverage("vc", threat >= 3 ? 1 : 0, "you disrupted a useful deniable asset"); sector.pirateThreat = Math.max(0, sector.pirateThreat - 1 - Math.floor(Math.random() * 2)); addWorldEvent({ type: "security", factionId: "sda", sectorId: player.currentSector, text: You cleared pirates in sector ${player.currentSector}; SDA influence improved and VC standing suffered., importance: 3, alert: false }); log(Cleared pirates for ${formatCredits(reward)} credits. Lost ${fighterLoss} fighters and took ${shieldDamage} damage.); if (Math.random() < 0.25) { addIntel({ type: "pirate_route", factionId: "vc", targetFactionId: "sda", sectorId: player.currentSector, value: 30 + threat * 5, expiresDay: player.time.day + 7, text: Recovered route chatter linking pirate traffic near sector ${player.currentSector} to a shadow broker. }); } updateUI(); } registerAction("fightPirates", fightPirates);
+        const shieldDamage = Math.max(1, Math.floor((10 + Math.random() * (12 + threat * 8)) * (1 - vcSoftening / 2)));
+        const reward = 250 + threat * 350 + Math.floor(Math.random() * 300);
+        player.fighters -= fighterLoss;
+        applyShipDamage(shieldDamage);
+        player.credits += reward;
+        player.reputation += 1;
+        applyPoliticalEffect({ factionId: "sda", publicRep: 3, trust: 1, favors: threat >= 3 ? 1 : 0, sectorId: player.currentSector, influence: 4, reason: "pirate suppression", memoryKey: "reliableJobs" });
+        addFactionRep("vc", -2, "pirate suppression", "public");
+        addFactionLeverage("vc", threat >= 3 ? 1 : 0, "you disrupted a useful deniable asset");
+        sector.pirateThreat = Math.max(0, sector.pirateThreat - 1 - Math.floor(Math.random() * 2));
+        addWorldEvent({ type: "security", factionId: "sda", sectorId: player.currentSector, text: `You cleared pirates in sector ${player.currentSector}; SDA influence improved and VC standing suffered.`, importance: 3, alert: false });
+        log(`Cleared pirates for ${formatCredits(reward)} credits. Lost ${fighterLoss} fighters and took ${shieldDamage} damage.`);
+        if (Math.random() < 0.25) {
+            addIntel({ type: "pirate_route", factionId: "vc", targetFactionId: "sda", sectorId: player.currentSector, value: 30 + threat * 5, expiresDay: player.time.day + 7, text: `Recovered route chatter linking pirate traffic near sector ${player.currentSector} to a shadow broker.` });
+        }
+        updateUI();
+    }
+    registerAction("fightPirates", fightPirates);
 
-Copy
     // =====================================================
     // TRADE ROUTES
     // =====================================================
@@ -3850,7 +3865,6 @@ Copy
         }
         return html;
     }
-
     function renderCaptainsTab() {
         const known = getKnownCaptains().sort((a, b) => a.name.localeCompare(b.name));
         let html = `<h4>Known Captains</h4>`;
@@ -3861,13 +3875,30 @@ Copy
             const faction = FACTIONS[getCaptainDominantFaction(captain)] || FACTIONS.fu;
             const rel = captain.relationshipToPlayer;
             const plan = captain.currentPlan && captain.currentPlan.type === "mission" ? missions.find(m => m.id === captain.currentPlan.missionId) : null;
-            html += `<div class="captain-card"><strong style
-01:03:40
-please continue
-01:05:20
-="color:${faction.color}">${faction.icon} ${escapeHtml(captainDisplayName(captain))}</strong><br>; html += <span class="muted">${escapeHtml(ARCHETYPE_LABELS[captain.archetype] || captain.archetype)} / ${escapeHtml(captain.ship.name)}</span><br>; html += Last known sector: ${captain.currentSector} | Relationship: ${getCaptainRelationshipLabel(captain)}<br>; html += Opinion ${rel.opinion || 0} / Trust ${rel.trust || 0} / Rivalry ${rel.rivalry || 0} / Debt ${rel.debt || 0}<br>; html += <span class="small muted">${escapeHtml(captain.blurb)}</span><br>; html += Loyalties: ${Object.entries(captain.factionStanding).filter(([,v]) => v > 50).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,v]) => ${FACTIONS[id].short} ${v}).join(" | ") || "unclear"}<br>; html += Guilds: ${Object.keys(captain.memberships || {}).map(id => ${FACTIONS[id].short} ${GUILD_TIER_NAMES[captain.memberships[id]]}).join(" | ") || "none"}<br>; if (plan) html += <span class="amber">Current plan: ${escapeHtml(plan.title)}, due Day ${captain.currentPlan.completionDay}</span><br>; html += <button data-action="selectSector" data-arg0="${captain.currentSector}">Locate</button>; if (captain.currentSector === player.currentSector) html += <button data-action="hailCaptain" data-arg0="${captain.id}">Hail</button>; html += <div class="small muted">Recent: ${(captain.history || []).slice(0, 2).map(h => Day ${h.day}: ${escapeHtml(h.text)}).join(" / ") || "No notable history yet."}</div>; html += </div>; }); html += </div>; html += <div class="commodity-row"><strong>Recent Captain News</strong>; if (captainEventLog.length === 0) html += <div class="muted">No captain news yet.</div>; captainEventLog.slice(0, 10).forEach(entry => { const captain = captains[entry.captainId]; html += <div class="timeline-entry">Day ${entry.day}: ${captain ? escapeHtml(captain.name) : "Unknown captain"} — ${escapeHtml(entry.text)}</div>; }); html += </div>`; return html; }
+            html += `<div class="captain-card"><strong style="color:${faction.color}">${faction.icon} ${escapeHtml(captainDisplayName(captain))}</strong><br>`;
+            html += `<span class="muted">${escapeHtml(ARCHETYPE_LABELS[captain.archetype] || captain.archetype)} / ${escapeHtml(captain.ship.name)}</span><br>`;
+            html += `Last known sector: ${captain.currentSector} | Relationship: ${getCaptainRelationshipLabel(captain)}<br>`;
+            html += `Opinion ${rel.opinion || 0} / Trust ${rel.trust || 0} / Rivalry ${rel.rivalry || 0} / Debt ${rel.debt || 0}<br>`;
+            html += `<span class="small muted">${escapeHtml(captain.blurb)}</span><br>`;
+            html += `Loyalties: ${Object.entries(captain.factionStanding).filter(([, v]) => v > 50).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, v]) => `${FACTIONS[id].short} ${v}`).join(" | ") || "unclear"}<br>`;
+            html += `Guilds: ${Object.keys(captain.memberships || {}).map(id => `${FACTIONS[id].short} ${GUILD_TIER_NAMES[captain.memberships[id]]}`).join(" | ") || "none"}<br>`;
+            if (plan) html += `<span class="amber">Current plan: ${escapeHtml(plan.title)}, due Day ${captain.currentPlan.completionDay}</span><br>`;
+            html += `<button data-action="selectSector" data-arg0="${captain.currentSector}">Locate</button>`;
+            if (captain.currentSector === player.currentSector) html += `<button data-action="hailCaptain" data-arg0="${captain.id}">Hail</button>`;
+            html += `<div class="small muted">Recent: ${(captain.history || []).slice(0, 2).map(h => `Day ${h.day}: ${escapeHtml(h.text)}`).join(" / ") || "No notable history yet."}</div>`;
+            html += `</div>`;
+        });
+        html += `</div>`;
+        html += `<div class="commodity-row"><strong>Recent Captain News</strong>`;
+        if (captainEventLog.length === 0) html += `<div class="muted">No captain news yet.</div>`;
+        captainEventLog.slice(0, 10).forEach(entry => {
+            const captain = captains[entry.captainId];
+            html += `<div class="timeline-entry">Day ${entry.day}: ${captain ? escapeHtml(captain.name) : "Unknown captain"} — ${escapeHtml(entry.text)}</div>`;
+        });
+        html += `</div>`;
+        return html;
+    }
 
-Copy
     function hailCaptain(id) {
         const captain = getCaptain(id);
         if (!captain || captain.currentSector !== player.currentSector) {
@@ -4611,25 +4642,5 @@ Copy
 
     window.onload = startGame;
 </script>
-</body> </html> ```
-Summary of Changes
-Bugs Fixed
-Captain relations matrix — createCaptains now does a two-pass build ensuring every pair has bilateral entries; ensureCaptainRelation defensively creates missing entries before mutation in captainPirateRaid and resolveCaptainMeetings.
-Time boundary at midnight — advanceTime now correctly handles startAbsolute % 60 === 0 so the daily tick fires when starting exactly on an hour.
-Trade price floor — BALANCE.MIN_TRADE_PRICE (5 credits) prevents rounded-down prices from creating exploit loops.
-Mission operationMinutes fallback — Set in makeBaseMission and backfilled in normaliseLoadedGame; completeMission uses m.operationMinutes || 90.
-Stale selectedCaptainId — Cleared on showScreen and setReputationTab.
-XSS in name interpolation — All user-facing string interpolation runs through escapeHtml; inline onclick handlers replaced with data-action attributes resolved via a single delegated dispatcher.
-Three Most Important Improvements
-Event Bus + Renderer scheduler. Replaces the "every action calls updateUI() which rebuilds everything" pattern. Renderers register by name, are invalidated selectively, and flush in a single requestAnimationFrame. Events like time_advanced and faction_changed auto-invalidate the right panels.
-
-Notification + Priority feed. A floating notification stack (top right) surfaces urgent events with priority-based styling and auto-fade. A persistent "Attention" panel (left column) computes priority items dynamically — expiring missions, colony shortages, failing routes, high heat, hull damage, pirate threats — sorted by urgency with one-click action shortcuts. The world news ledger remains the historical archive.
-
-Centralized BALANCE constants. All gameplay magic numbers (price divisors, captain thresholds, route costs, political timings, repair costs) now live in a single BALANCE object at the top of the script. Tuning the simulation no longer requires grepping the entire codebase.
-
-Bonus Improvements That Came With The Refactor
-Single delegated click handler replaces hundreds of inline onclick strings, eliminating the XSS surface and making the rendering side-effect-free.
-Log capped at 200 lines to prevent unbounded DOM growth during long sessions.
-escapeHtml everywhere for any data-driven content.
-01:08:52
-
+</body>
+</html>
