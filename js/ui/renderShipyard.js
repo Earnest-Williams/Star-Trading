@@ -4,6 +4,7 @@ import { escapeHtml, formatCredits, log } from "../utils.js";
 import { getGuildTier, applyPoliticalEffect, addFactionRep, addFactionHeat, getPrivateFactionRep } from "../core/factions.js";
 import { spendTime } from "../core/time.js";
 import { renderMissionBoard } from "./renderMissions.js";
+import { updateUI } from "../events.js";
 
 export function renderShipyardPanel() {
     const { player } = state;
@@ -39,7 +40,7 @@ export function buyUpgrade(key) {
     if (key === "mining") addFactionRep("miners", 2, "mining upgrade purchase");
     if (key === "cargo" || key === "engine") addFactionRep("traders", 1, "commercial ship upgrade");
     log(`Installed upgrade: ${up.name}.`);
-    import("./ui.js").then(m => m.updateUI());
+    updateUI();
 }
 
 export function repairShip() {
@@ -56,7 +57,7 @@ export function repairShip() {
     player.hull = player.ship.maxHull;
     addFactionRep("sda", 1, "registered repair work");
     log(`Completed repairs for ${formatCredits(cost)} credits.`);
-    import("./ui.js").then(m => m.updateUI());
+    updateUI();
 }
 
 export function buyFighters() {
@@ -71,5 +72,5 @@ export function buyFighters() {
     player.fighters += amount;
     addFactionHeat("sda", amount >= 10 && getPrivateFactionRep("vc") > 50 ? 1 : 0, "notable fighter purchase");
     log(`Bought ${amount} fighters for ${formatCredits(cost)} credits.`);
-    import("./ui.js").then(m => m.updateUI());
+    updateUI();
 }
