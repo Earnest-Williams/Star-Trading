@@ -1,6 +1,54 @@
 # Star-Trading
 
-Star-Trading is currently a single-file browser prototype in `index.html`.
+Star-Trading is a browser-based space trading game structured as a set of ES modules loaded from `index.html`.
+
+## Project structure
+
+```
+index.html          # Shell: HTML, CSS, and <script type="module" src="js/main.js">
+style.css           # Extracted stylesheet (referenced from index.html)
+js/
+  main.js           # Entry point: startGame, daily/hourly tick hooks, EventBus wiring
+  state.js          # Single shared mutable state object
+  events.js         # EventBus, Renderer (dirty-tracking RAF scheduler), updateUI()
+  constants.js      # All game constants: BALANCE, FACTIONS, COMMODITIES, etc.
+  utils.js          # Pure helpers: formatCredits, escapeHtml, log, etc.
+  core/
+    factions.js     # Faction reputation, heat, trust, leverage, guild tiers
+    influence.js    # Sector influence spread, dominance, status labels
+    persistence.js  # localStorage save / load
+    time.js         # advanceTime, spendTime, daily/hourly hook registry
+    universe.js     # Map generation, sector/port/planet factories, createPlayer
+    worldEvents.js  # World event log (addWorldEvent)
+  systems/
+    captains.js     # NPC captain AI, daily/hourly actions, history
+    colonies.js     # Colony production, buildings, policy, shortages
+    combat.js       # Pirate encounters, fighter mechanics
+    guilds.js       # Faction asks, intel selling, guild join/promote
+    market.js       # Trade commodity logic, price calculation
+    mining.js       # Asteroid mining, sector survey
+    missions.js     # Mission generation, accept, complete, expiry
+    politics.js     # Sector politics, faction expansion, front operations
+    tradeRoutes.js  # Logistics routes, captain assignment, daily processing
+    travel.js       # moveTo, travel incidents, restUntilMorning
+  ui/
+    ui.js           # Action registry, screen routing, Renderer registrations
+    notifications.js
+    renderCaptains.js
+    renderColony.js
+    renderHUD.js
+    renderLogistics.js
+    renderMap.js
+    renderMarket.js
+    renderMissions.js
+    renderReputation.js
+    renderSector.js
+    renderShipyard.js
+  new/              # Stub modules for planned features
+    bounties.js
+    contraband.js
+    intel.js
+```
 
 ## What the app contains right now
 
