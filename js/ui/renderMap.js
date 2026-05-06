@@ -5,6 +5,8 @@ import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
 import { getSectorNeighbors } from "../core/navigation.js";
 
+const mapInteractionUnsubscribers = new WeakMap();
+
 export function getMapNodes() {
     const universe = state.universe;
     const nodes = {};
@@ -84,9 +86,12 @@ export function drawMap() {
 
 export function setupMapInteraction() {
     const canvas = document.getElementById("map");
-    if (!canvas || canvas.dataset.bound === "1") return;
-    canvas.dataset.bound = "1";
-    canvas.addEventListener("click", event => {
+    if (!canvas) return () => {};
+
+    const existingUnsubscribe = mapInteractionUnsubscribers.get(canvas);
+    if (existingUnsubscribe) return existingUnsubscribe;
+
+    const handleMapClick = event => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -101,7 +106,18 @@ export function setupMapInteraction() {
             if (distance < closestDistance) { closestDistance = distance; closestId = Number(id); }
         });
         if (closestId && closestDistance <= 24) selectSector(closestId);
-    });
+    };
+
+    canvas.dataset.bound = "1";
+    canvas.addEventListener("click", handleMapClick);
+
+    const unsubscribe = () => {
+        canvas.removeEventListener("click", handleMapClick);
+        delete canvas.dataset.bound;
+        mapInteractionUnsubscribers.delete(canvas);
+    };
+    mapInteractionUnsubscribers.set(canvas, unsubscribe);
+    return unsubscribe;
 }
 
 export function selectSector(sectorId) {

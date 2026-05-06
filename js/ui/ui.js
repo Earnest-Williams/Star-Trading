@@ -158,79 +158,90 @@ injectCaptainUIDeps({ spendTime, addFactionRep });
 // =====================================================
 // REGISTER ACTIONS
 // =====================================================
+let actionsRegistered = false;
 
-// Navigation & travel
-registerAction('moveTo', moveTo);
-registerAction('showScreen', showScreen);
-registerAction('selectSector', id => selectSector(parseInt(id, 10)));
+export function registerUIActions() {
+    if (actionsRegistered) return;
+    actionsRegistered = true;
+    // Navigation & travel
+    registerAction('moveTo', moveTo);
+    registerAction('showScreen', showScreen);
+    registerAction('selectSector', id => selectSector(parseInt(id, 10)));
 
-// Exploration
-registerAction('surveySector', surveySector);
+    // Exploration
+    registerAction('surveySector', surveySector);
 
-// Market
-registerAction('tradeCommodity', tradeCommodity);
+    // Market
+    registerAction('tradeCommodity', tradeCommodity);
 
-// Mining
-registerAction('mineAsteroids', mineAsteroids);
+    // Mining
+    registerAction('mineAsteroids', mineAsteroids);
 
-// Colonies
-registerAction('foundColony', foundColony);
-registerAction('alignColony', alignColony);
-registerAction('setColonyPolicy', setColonyPolicy);
-registerAction('depositToColony', depositToColony);
-registerAction('loadFromColony', loadFromColony);
-registerAction('buildColonyStructure', buildColonyStructure);
+    // Colonies
+    registerAction('foundColony', foundColony);
+    registerAction('alignColony', alignColony);
+    registerAction('setColonyPolicy', setColonyPolicy);
+    registerAction('depositToColony', depositToColony);
+    registerAction('loadFromColony', loadFromColony);
+    registerAction('buildColonyStructure', buildColonyStructure);
 
-// Combat
-registerAction('fightPirates', fightPirates);
+    // Combat
+    registerAction('fightPirates', fightPirates);
 
-// Trade routes
-registerAction('createTradeRoute', createTradeRoute);
-registerAction('toggleTradeRoute', toggleTradeRoute);
-registerAction('closeTradeRoute', closeTradeRoute);
-registerAction('assignCaptainToRoute', assignCaptainToRoute);
-registerAction('unassignRouteEscort', unassignRouteEscort);
+    // Trade routes
+    registerAction('createTradeRoute', createTradeRoute);
+    registerAction('toggleTradeRoute', toggleTradeRoute);
+    registerAction('closeTradeRoute', closeTradeRoute);
+    registerAction('assignCaptainToRoute', assignCaptainToRoute);
+    registerAction('unassignRouteEscort', unassignRouteEscort);
 
-// Time
-registerAction('restUntilMorning', restUntilMorning);
+    // Time
+    registerAction('restUntilMorning', restUntilMorning);
 
-// Shipyard
-registerAction('buyUpgrade', buyUpgrade);
-registerAction('repairShip', repairShip);
-registerAction('buyFighters', buyFighters);
+    // Shipyard
+    registerAction('buyUpgrade', buyUpgrade);
+    registerAction('repairShip', repairShip);
+    registerAction('buyFighters', buyFighters);
 
-// Missions
-registerAction('acceptMission', acceptMission);
-registerAction('completeMission', completeMission);
+    // Missions
+    registerAction('acceptMission', acceptMission);
+    registerAction('completeMission', completeMission);
 
-// Captains
-registerAction('hailCaptain', hailCaptain);
-registerAction('offerHelpToCaptain', offerHelpToCaptain);
-registerAction('tradeRumorsWithCaptain', tradeRumorsWithCaptain);
-registerAction('supportCaptainJob', supportCaptainJob);
-registerAction('buyOffCaptain', buyOffCaptain);
-registerAction('provokeCaptain', provokeCaptain);
+    // Captains
+    registerAction('hailCaptain', hailCaptain);
+    registerAction('offerHelpToCaptain', offerHelpToCaptain);
+    registerAction('tradeRumorsWithCaptain', tradeRumorsWithCaptain);
+    registerAction('supportCaptainJob', supportCaptainJob);
+    registerAction('buyOffCaptain', buyOffCaptain);
+    registerAction('provokeCaptain', provokeCaptain);
 
-// Reputation
-registerAction('setReputationTab', setReputationTab);
+    // Reputation
+    registerAction('setReputationTab', setReputationTab);
 
-// Debug
-registerAction('debugAdvanceHours', hours => {
-    advanceTime(parseInt(hours, 10) * 60, `debug simulation: ${hours} hours`);
-    updateUI();
-});
-registerAction('debugAdvanceDays', days => {
-    advanceTime(parseInt(days, 10) * BALANCE.DAY_MINUTES, `debug simulation: ${days} days`);
-    updateUI();
-});
+    // Debug
+    registerAction('debugAdvanceHours', hours => {
+        advanceTime(parseInt(hours, 10) * 60, `debug simulation: ${hours} hours`);
+        updateUI();
+    });
+    registerAction('debugAdvanceDays', days => {
+        advanceTime(parseInt(days, 10) * BALANCE.DAY_MINUTES, `debug simulation: ${days} days`);
+        updateUI();
+    });
 
-// Factions / guilds / intel
-registerAction('acceptFactionAsk', acceptFactionAsk);
-registerAction('completeFactionAsk', completeFactionAsk);
-registerAction('sellIntel', sellIntel);
-registerAction('joinGuild', joinGuild);
-registerAction('promoteGuild', promoteGuild);
+    // Factions / guilds / intel
+    registerAction('acceptFactionAsk', acceptFactionAsk);
+    registerAction('completeFactionAsk', completeFactionAsk);
+    registerAction('sellIntel', sellIntel);
+    registerAction('joinGuild', joinGuild);
+    registerAction('promoteGuild', promoteGuild);
 
-// Persistence
-registerAction('saveGame', saveGame);
-registerAction('loadGame', loadGame);
+    // Persistence
+    registerAction('saveGame', saveGame);
+    registerAction('loadGame', loadGame);
+}
+
+export function markUIActionsUnregistered() {
+    actionsRegistered = false;
+}
+
+registerUIActions();
