@@ -29,7 +29,7 @@ function cloneSaveValue(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
-function migrateWarpAdjacencyToJumpGates(universe) {
+function migrateLegacyWarpAdjacencyToJumpGates(universe) {
     if (!isObject(universe)) return;
     Object.values(universe).forEach(sector => {
         if (!Array.isArray(sector.jumpGates)) sector.jumpGates = [];
@@ -65,8 +65,10 @@ function normaliseRouteOwnership(data) {
 
 function migrateShipTransitFields(player) {
     if (!player || !player.ship) return;
+    // Legacy save migration: old ship saves stored this as travelMinutesPerWarp.
+    const legacyTransitMinutes = player.ship.travelMinutesPerWarp;
     if (typeof player.ship.travelMinutesPerCorridor !== "number") {
-        player.ship.travelMinutesPerCorridor = typeof player.ship.travelMinutesPerWarp === "number" ? player.ship.travelMinutesPerWarp : 45;
+        player.ship.travelMinutesPerCorridor = typeof legacyTransitMinutes === "number" ? legacyTransitMinutes : 45;
     }
     delete player.ship.travelMinutesPerWarp;
 }
@@ -186,7 +188,7 @@ export function migrateSave(data) {
             }
         }
     }
-    migrateWarpAdjacencyToJumpGates(data.universe);
+    migrateLegacyWarpAdjacencyToJumpGates(data.universe);
     normaliseRouteOwnership(data);
     migrateShipTransitFields(data.player);
     if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };

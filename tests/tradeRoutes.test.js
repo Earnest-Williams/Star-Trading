@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 import { state } from '../js/state.js';
 import {
-    findShortestPath,
+    findShortestCorridorPath,
     getRouteDistance,
     getRouteSetupCost,
     estimateRouteProfit,
@@ -51,26 +51,32 @@ function buildUniverse() {
     state.nextTradeRouteId = 1;
 }
 
-describe('findShortestPath', () => {
+describe('findShortestCorridorPath', () => {
     beforeEach(buildUniverse);
 
-    it('returns [start] when start equals goal', () => {
-        const path = findShortestPath(1, 1);
-        assert.deepEqual(path, [1]);
+    it('returns no corridor segments when start equals goal', () => {
+        const path = findShortestCorridorPath(1, 1);
+        assert.deepEqual(path, []);
     });
 
     it('finds the direct neighbour path', () => {
-        const path = findShortestPath(1, 2);
-        assert.deepEqual(path, [1, 2]);
+        const path = findShortestCorridorPath(1, 2);
+        assert.ok(path);
+        assert.deepEqual(path.map(segment => segment.toSectorId), [2]);
+        assert.equal(path[0].fromSectorId, 1);
+        assert.ok(path[0].gateId);
+        assert.ok(path[0].corridorId);
+        assert.ok(path[0].destinationGateId);
     });
 
     it('finds the two-hop path 1 → 2 → 4', () => {
-        const path = findShortestPath(1, 4);
-        assert.deepEqual(path, [1, 2, 4]);
+        const path = findShortestCorridorPath(1, 4);
+        assert.ok(path);
+        assert.deepEqual(path.map(segment => segment.toSectorId), [2, 4]);
     });
 
     it('returns null for disconnected or missing sectors', () => {
-        assert.equal(findShortestPath(1, 5), null);
+        assert.equal(findShortestCorridorPath(1, 5), null);
     });
 });
 
@@ -169,6 +175,18 @@ describe('explicit trade route execution', () => {
         const route = createCaptainTradeRoute(captain, 1, 4, 'ore');
         assert.equal(route.ownerType, 'captain');
         assert.equal(route.ownerId, 'cap');
+    });
+
+    it('allows player and captain routes on the same commodity flow', () => {
+        state.player.currentSector = 1;
+        state.player.credits = 100000;
+        state.player.ship = { travelMinutesPerCorridor: 45 };
+        createTradeRoute(4, 'ore');
+        const captain = { id: 'cap', name: 'Cap', callsign: 'CAP', ship: { cargoCapacity: 80 }, preferredFaction: 'traders' };
+        const route = createCaptainTradeRoute(captain, 1, 4, 'ore');
+        assert.ok(route);
+        assert.equal(state.tradeRoutes.length, 2);
+        assert.deepEqual(state.tradeRoutes.map(r => r.ownerType).sort(), ['captain', 'player']);
     });
 
     it('explicit route execution changes stock as expected', () => {

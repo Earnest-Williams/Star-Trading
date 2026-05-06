@@ -2,7 +2,7 @@
 
 ## Current shipped boundary
 
-The playable loop remains anchored on legal trade, missions, faction reputation, colonies, captains, and persistent trade routes. Route systems must only operate on real warp connectivity: disconnected endpoints are invalid map data, not a short two-node fallback. Save/load normalization, route creation, and daily route execution should expose those failures instead of hiding them behind fabricated paths.
+The playable loop remains anchored on legal trade, missions, faction reputation, colonies, captains, and persistent trade routes. Route systems must only operate on real jump-gate corridor connectivity: disconnected endpoints are invalid map data, not a short two-node fallback. Save/load normalization, route creation, and daily route execution should expose those failures instead of hiding them behind fabricated paths.
 
 Intel is a canonical core subsystem. All reads, writes, expiry, and sales go through `js/core/intel.js`, while `js/new/intel.js` exists only as a compatibility entry point for older/planned imports. Intel storage remains `state.player.factions.intel` so existing saves and UI continue to work.
 

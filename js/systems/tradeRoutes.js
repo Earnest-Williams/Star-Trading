@@ -1,14 +1,17 @@
 import { state } from '../state.js';
-import { BALANCE, COMMODITIES, PORT_TYPES, FACTIONS } from '../constants.js';
+import { BALANCE, COMMODITIES, PORT_TYPES } from '../constants.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../utils.js';
-import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
+import { addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
-import { getFactionPoliticalPole, addFactionRep, addFactionTrust, applyPoliticalEffect } from '../core/factions.js';
+import { getFactionPoliticalPole, addFactionRep, addFactionTrust } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
 import { nudgeCaptainRelation, getKnownCaptains } from './captains.js';
-import { getPortPrice } from './market.js';
-import { getColonyDailyNeeds } from './colonies.js';
-import { findShortestSectorPath, getSectorPathDistance, getCorridorRiskForPath } from '../core/navigation.js';
+import {
+    findShortestSectorPath,
+    findShortestCorridorPath as findNavigationCorridorPath,
+    getSectorPathDistance,
+    getCorridorRiskForPath
+} from '../core/navigation.js';
 
 export function normaliseTradeRoutes() {
     if (!Array.isArray(state.tradeRoutes)) state.tradeRoutes = [];
@@ -66,12 +69,20 @@ export function getAllLogisticsNodes() {
     return Object.keys(state.universe).map(Number).map(getLogisticsNode).filter(Boolean).sort((a, b) => a.sectorId - b.sectorId);
 }
 
-export function routeExists(originSector, destinationSector, commodity) {
-    return state.tradeRoutes.some(r => r.status !== "closed" && r.originSector === originSector && r.destinationSector === destinationSector && r.commodity === commodity);
+export function routeExists(originSector, destinationSector, commodity, ownerType = "player", ownerId = null) {
+    return state.tradeRoutes.some(r => {
+        const routeOwnerId = typeof r.ownerId === "undefined" ? null : r.ownerId;
+        return r.status !== "closed"
+            && r.originSector === originSector
+            && r.destinationSector === destinationSector
+            && r.commodity === commodity
+            && (r.ownerType || "player") === ownerType
+            && routeOwnerId === ownerId;
+    });
 }
 
-export function findShortestPath(start, goal) {
-    return findShortestSectorPath(start, goal);
+export function findShortestCorridorPath(start, goal) {
+    return findNavigationCorridorPath(start, goal);
 }
 
 export function getRoutePath(route) { return findShortestSectorPath(route.originSector, route.destinationSector); }
@@ -138,7 +149,7 @@ export function createTradeRoute(destinationSector, commodity) {
     if (!origin || !destination) { log("Trade routes need a port or player colony at both ends."); return; }
     if (!findShortestSectorPath(originSector, destinationSector)) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) { log("That route does not have a useful commodity flow."); return; }
-    if (routeExists(originSector, destinationSector, commodity)) { log("That route already exists."); return; }
+    if (routeExists(originSector, destinationSector, commodity, "player", null)) { log("You already operate that route."); return; }
     const cost = getRouteSetupCost(originSector, destinationSector);
     if (cost === null) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
@@ -178,7 +189,7 @@ export function createCaptainTradeRoute(captain, originSector, destinationSector
     if (!captain || !origin || !destination) return null;
     if (!findShortestSectorPath(originSector, destinationSector)) return null;
     if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) return null;
-    if (routeExists(originSector, destinationSector, commodity)) return null;
+    if (routeExists(originSector, destinationSector, commodity, "captain", captain.id)) return null;
     const route = {
         id: state.nextTradeRouteId++,
         name: `${captain.callsign || captain.name} ${formatCommodity(commodity)} ${originSector}->${destinationSector}`,

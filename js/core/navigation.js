@@ -1,39 +1,60 @@
 import { state } from '../state.js';
 import { getDominantInfluence } from './influence.js';
 
-export function getSectorNeighbors(sectorId) {
+export function getOutboundJumpGates(sectorId) {
     const sector = state.universe[sectorId];
     if (!sector || !Array.isArray(sector.jumpGates)) return [];
     return sector.jumpGates
         .filter(gate => gate && gate.status !== "closed" && state.universe[gate.destinationSectorId])
+        .slice()
+        .sort((a, b) => {
+            if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
+            return String(a.id || "").localeCompare(String(b.id || ""));
+        });
+}
+
+export function getSectorNeighbors(sectorId) {
+    return getOutboundJumpGates(sectorId)
         .map(gate => gate.destinationSectorId)
-        .filter((id, index, list) => list.indexOf(id) === index)
-        .sort((a, b) => a - b);
+        .filter((id, index, list) => list.indexOf(id) === index);
 }
 
 export function getDirectCorridor(startSectorId, goalSectorId) {
-    const sector = state.universe[startSectorId];
-    if (!sector || !Array.isArray(sector.jumpGates)) return null;
-    return sector.jumpGates.find(gate => gate.status !== "closed" && gate.destinationSectorId === goalSectorId) || null;
+    return getOutboundJumpGates(startSectorId)
+        .find(gate => gate.destinationSectorId === goalSectorId) || null;
 }
 
-export function findShortestSectorPath(startSectorId, goalSectorId) {
+export function findShortestCorridorPath(startSectorId, goalSectorId) {
     if (!state.universe[startSectorId] || !state.universe[goalSectorId]) return null;
-    if (startSectorId === goalSectorId) return [startSectorId];
-    const queue = [[startSectorId]];
+    if (startSectorId === goalSectorId) return [];
+    const queue = [{ sectorId: startSectorId, segments: [] }];
     const seen = new Set([startSectorId]);
     while (queue.length > 0) {
-        const path = queue.shift();
-        const here = path[path.length - 1];
-        for (const next of getSectorNeighbors(here)) {
+        const current = queue.shift();
+        for (const gate of getOutboundJumpGates(current.sectorId)) {
+            const next = gate.destinationSectorId;
             if (seen.has(next)) continue;
-            const newPath = path.concat([next]);
-            if (next === goalSectorId) return newPath;
+            const segment = {
+                fromSectorId: current.sectorId,
+                gateId: gate.id,
+                corridorId: gate.corridorId,
+                toSectorId: next,
+                destinationGateId: gate.destinationGateId
+            };
+            const segments = current.segments.concat([segment]);
+            if (next === goalSectorId) return segments;
             seen.add(next);
-            queue.push(newPath);
+            queue.push({ sectorId: next, segments });
         }
     }
     return null;
+}
+
+export function findShortestSectorPath(startSectorId, goalSectorId) {
+    const corridorPath = findShortestCorridorPath(startSectorId, goalSectorId);
+    if (!corridorPath) return null;
+    if (corridorPath.length === 0) return [startSectorId];
+    return [startSectorId].concat(corridorPath.map(segment => segment.toSectorId));
 }
 
 export function getSectorPathDistance(startSectorId, goalSectorId) {
