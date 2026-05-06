@@ -313,7 +313,8 @@ export function getInspectionProfile(sectorId = state.player && state.player.cur
     if (manifest.units === 0) {
         return { sectorId, manifest, detectionChance: 0, scannerMitigation: 0, localPressure: 0 };
     }
-    const scannerMitigation = Math.max(0, ((state.player.ship && state.player.ship.scannerLevel) || 1) - 1) * 0.04;
+    const player = getPlayer();
+    const scannerMitigation = Math.max(0, ((player && player.ship && player.ship.scannerLevel) || 1) - 1) * 0.04;
     const forgedMitigation = Math.min(0.12, (manifest.totalsByType.forged_manifests || 0) * CONTRABAND_TYPES.forged_manifests.inspectionMitigation);
     const sdaHeatPressure = getFactionHeat(INSPECTOR_FACTION_ID) * 0.0025;
     const sdaInfluencePressure = sectorInfluence(sectorId, INSPECTOR_FACTION_ID) * 0.0015;
