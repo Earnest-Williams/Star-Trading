@@ -115,8 +115,9 @@ export function ensureContrabandHold() {
         const definition = contrabandDefinition(item.type);
         const amount = normaliseAmount(item.amount);
         if (!definition || amount <= 0) return;
-        const acquiredSector = Number.isFinite(Number(item.acquiredSector))
-            ? Number(item.acquiredSector)
+        const parsedSector = Number.parseInt(item.acquiredSector, 10);
+        const acquiredSector = (Number.isInteger(parsedSector) && parsedSector > 0)
+            ? parsedSector
             : player.currentSector;
         const key = `${item.type}:${acquiredSector}`;
         const existing = merged.get(key);
