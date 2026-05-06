@@ -10,10 +10,11 @@ import { handleActionClick, markUIActionsUnregistered, registerUIActions } from 
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
 import { initSessionRng } from './utils.js';
-import { createCaptains } from './systems/captains.js';
+import { createCaptains, normaliseCaptains } from './systems/captains.js';
 import { generateMissionPool } from './systems/missions.js';
 import { executeAction, resetActions } from './core/commands.js';
 import { registerSimulationTickHooks } from './core/worldTick.js';
+import { normaliseTradeRoutes } from './systems/tradeRoutes.js';
 
 // =====================================================
 // APP BOOTSTRAP
@@ -68,6 +69,8 @@ export const App = (() => {
         generateStars();
         generateUniverse();
         createCaptains();
+        normaliseCaptains();
+        normaliseTradeRoutes();
         generateMissionPool();
         generateFactionAsks();
         state.selectedSectorId = state.player.currentSector;

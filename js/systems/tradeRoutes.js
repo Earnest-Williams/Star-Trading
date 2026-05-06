@@ -13,29 +13,86 @@ import {
     getCorridorRiskForPath
 } from '../core/navigation.js';
 
+function nextTradeRouteId() {
+    const routeId = state.nextTradeRouteId;
+    state.nextTradeRouteId += 1;
+    return routeId;
+}
+
+export function hydrateTradeRoute(partial, context = {}) {
+    const ownerType = partial.ownerType || context.ownerType || "player";
+    const ownerId = typeof partial.ownerId === "undefined"
+        ? (ownerType === "player" ? null : context.ownerId)
+        : partial.ownerId;
+    const originSector = Number(partial.originSector);
+    const destinationSector = Number(partial.destinationSector);
+    const commodity = partial.commodity || context.commodity || "ore";
+    const route = {
+        ...partial,
+        id: typeof partial.id === "number" ? partial.id : nextTradeRouteId(),
+        name: partial.name || `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
+        originSector,
+        destinationSector,
+        commodity,
+        amount: typeof partial.amount === "number" ? partial.amount : BALANCE.TRADE_ROUTE_BASE_AMOUNT,
+        intervalDays: typeof partial.intervalDays === "number" ? partial.intervalDays : BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
+        nextRunDay: typeof partial.nextRunDay === "number" ? partial.nextRunDay : state.player.time.day + 1,
+        factionId: partial.factionId || context.factionId || "traders",
+        ownerType,
+        ownerId,
+        operatorType: partial.operatorType || context.operatorType || ownerType,
+        createdBy: partial.createdBy || context.createdBy || ownerType,
+        escortCaptainId: typeof partial.escortCaptainId === "undefined" ? null : partial.escortCaptainId,
+        status: partial.status || "active",
+        runs: typeof partial.runs === "number" ? partial.runs : 0,
+        failures: typeof partial.failures === "number" ? partial.failures : 0,
+        starvedDays: typeof partial.starvedDays === "number" ? partial.starvedDays : 0,
+        profit: typeof partial.profit === "number" ? partial.profit : 0,
+        heat: typeof partial.heat === "number" ? partial.heat : 0,
+        reliability: typeof partial.reliability === "number" ? partial.reliability : 50
+    };
+    if (route.status !== "closed" && !findShortestSectorPath(route.originSector, route.destinationSector)) {
+        route.status = "paused";
+    }
+    return route;
+}
+
+export function createRouteRecord({
+    originSector,
+    destinationSector,
+    commodity,
+    ownerType = "player",
+    ownerId = null,
+    name = null,
+    amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT,
+    intervalDays = BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
+    delayDays = 1,
+    factionId = "traders",
+    operatorType = ownerType,
+    createdBy = ownerType,
+    reliability = 50
+}) {
+    return hydrateTradeRoute({
+        name: name || `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
+        originSector,
+        destinationSector,
+        commodity,
+        amount,
+        intervalDays,
+        nextRunDay: state.player.time.day + delayDays,
+        factionId,
+        ownerType,
+        ownerId,
+        operatorType,
+        createdBy,
+        reliability,
+        status: "active"
+    });
+}
+
 export function normaliseTradeRoutes() {
     if (!Array.isArray(state.tradeRoutes)) state.tradeRoutes = [];
-    state.tradeRoutes.forEach(route => {
-        if (typeof route.id !== "number") route.id = state.nextTradeRouteId++;
-        if (!route.status) route.status = "active";
-        if (typeof route.amount !== "number") route.amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT;
-        if (typeof route.intervalDays !== "number") route.intervalDays = BALANCE.TRADE_ROUTE_INTERVAL_DAYS;
-        if (typeof route.nextRunDay !== "number") route.nextRunDay = state.player.time.day + 1;
-        if (typeof route.runs !== "number") route.runs = 0;
-        if (typeof route.failures !== "number") route.failures = 0;
-        if (typeof route.starvedDays !== "number") route.starvedDays = 0;
-        if (typeof route.profit !== "number") route.profit = 0;
-        if (typeof route.heat !== "number") route.heat = 0;
-        if (typeof route.reliability !== "number") route.reliability = 50;
-        if (!route.ownerType) route.ownerType = "player";
-        if (typeof route.ownerId === "undefined") route.ownerId = route.ownerType === "player" ? null : route.ownerId;
-        if (!route.operatorType) route.operatorType = route.ownerType;
-        if (!route.createdBy) route.createdBy = route.ownerType;
-        if (typeof route.escortCaptainId === "undefined") route.escortCaptainId = null;
-        if (route.status !== "closed" && !findShortestSectorPath(route.originSector, route.destinationSector)) {
-            route.status = "paused";
-        }
-    });
+    state.tradeRoutes = state.tradeRoutes.map(route => hydrateTradeRoute(route));
     state.nextTradeRouteId = Math.max(state.nextTradeRouteId, state.tradeRoutes.reduce((best, r) => Math.max(best, r.id + 1), 1));
 }
 
@@ -141,6 +198,54 @@ export function estimateRouteProfit(originSector, destinationSector, commodity, 
     return Math.max(25, Math.floor(spread * amount * 0.38));
 }
 
+function buildRouteMetrics(origin, destination) {
+    const path = findShortestSectorPath(origin.sectorId, destination.sectorId);
+    if (!path) {
+        return {
+            origin,
+            destination,
+            path: null,
+            distance: null,
+            risk: null,
+            setupCost: null,
+            commodities: []
+        };
+    }
+    const distance = Math.max(1, path.length - 1);
+    const risk = getCorridorRiskForPath(path);
+    const setupCost = BALANCE.TRADE_ROUTE_BASE_COST + distance * 220 + risk * 130;
+    const commodities = COMMODITIES
+        .filter(commodity => origin.sells.includes(commodity) && destination.buys.includes(commodity))
+        .map(commodity => ({
+            commodity,
+            estimatedProfit: estimateRouteProfit(origin.sectorId, destination.sectorId, commodity)
+        }));
+    return { origin, destination, path, distance, risk, setupCost, commodities };
+}
+
+export function buildLogisticsSnapshot(originSector = state.player.currentSector) {
+    const nodes = getAllLogisticsNodes();
+    const bySector = new Map(nodes.map(node => [node.sectorId, node]));
+    const origin = bySector.get(originSector) || null;
+    const candidates = origin
+        ? nodes
+            .filter(node => node.sectorId !== originSector)
+            .map(node => buildRouteMetrics(origin, node))
+            .filter(metric => metric.commodities.length > 0)
+        : [];
+    const activeRoutes = state.tradeRoutes
+        .filter(route => route.status !== "closed")
+        .map(route => {
+            const routeOrigin = bySector.get(route.originSector) || null;
+            const routeDestination = bySector.get(route.destinationSector) || null;
+            const path = findShortestSectorPath(route.originSector, route.destinationSector);
+            const baseRisk = path ? getCorridorRiskForPath(path) : null;
+            const risk = baseRisk === null ? null : baseRisk + Math.max(0, route.heat || 0) / 12;
+            return { route, origin: routeOrigin, destination: routeDestination, path, risk };
+        });
+    return { originSector, origin, nodes, candidates, activeRoutes };
+}
+
 export function createTradeRoute(destinationSector, commodity) {
     destinationSector = parseInt(destinationSector, 10);
     const originSector = state.player.currentSector;
@@ -155,22 +260,13 @@ export function createTradeRoute(destinationSector, commodity) {
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
     if (!spendTime(180)) return;
     state.player.credits -= cost;
-    const route = {
-        id: state.nextTradeRouteId++,
-        name: `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
-        originSector, destinationSector, commodity,
-        amount: BALANCE.TRADE_ROUTE_BASE_AMOUNT,
-        intervalDays: BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
-        nextRunDay: state.player.time.day + 1,
+    const route = createRouteRecord({
+        originSector,
+        destinationSector,
+        commodity,
         factionId: destination.factionId || origin.factionId || "traders",
-        ownerType: "player",
-        ownerId: null,
-        operatorType: "player",
-        createdBy: "player",
-        escortCaptainId: null,
-        status: "active",
-        runs: 0, failures: 0, starvedDays: 0, profit: 0, heat: 0, reliability: 55
-    };
+        reliability: 55
+    });
     state.tradeRoutes.push(route);
     addFactionRep("traders", 3, "opened a persistent route");
     addFactionTrust("traders", 1, "route brokerage");
@@ -190,22 +286,21 @@ export function createCaptainTradeRoute(captain, originSector, destinationSector
     if (!findShortestSectorPath(originSector, destinationSector)) return null;
     if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) return null;
     if (routeExists(originSector, destinationSector, commodity, "captain", captain.id)) return null;
-    const route = {
-        id: state.nextTradeRouteId++,
+    const route = createRouteRecord({
         name: `${captain.callsign || captain.name} ${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
-        originSector, destinationSector, commodity,
+        originSector,
+        destinationSector,
+        commodity,
         amount: options.amount || Math.max(6, Math.floor((captain.ship.cargoCapacity || 60) * 0.18)),
         intervalDays: options.intervalDays || BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
-        nextRunDay: state.player.time.day + (options.delayDays || 1),
+        delayDays: options.delayDays || 1,
         factionId: destination.factionId || origin.factionId || captain.preferredFaction || "traders",
         ownerType: "captain",
         ownerId: captain.id,
         operatorType: "captain",
         createdBy: captain.id,
-        escortCaptainId: null,
-        status: "active",
-        runs: 0, failures: 0, starvedDays: 0, profit: 0, heat: 0, reliability: 52
-    };
+        reliability: 52
+    });
     state.tradeRoutes.push(route);
     return route;
 }

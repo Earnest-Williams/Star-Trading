@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { FACTIONS, ARCHETYPE_LABELS, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, random } from "../utils.js";
-import { getCaptainsInSector, getCaptain, getCaptainDominantFaction, getCaptainRelationshipLabel, captainDisplayName, nudgeCaptainRelation, getKnownCaptains, normaliseCaptains } from "../systems/captains.js";
+import { getCaptainsInSector, getCaptain, getCaptainDominantFaction, getCaptainRelationshipLabel, captainDisplayName, nudgeCaptainRelation, getKnownCaptains } from "../systems/captains.js";
 import { addIntel } from '../core/intel.js';
 import { updateUI } from "./renderer.js";
 import { missionDescription } from "./renderMissions.js";

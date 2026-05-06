@@ -73,17 +73,14 @@ export function normaliseCaptains() {
 }
 
 export function getCaptain(id) {
-    normaliseCaptains();
     return state.captains[id] || null;
 }
 
 export function getKnownCaptains() {
-    normaliseCaptains();
     return Object.values(state.captains).filter(c => c.known || c.currentSector === state.player.currentSector);
 }
 
 export function getCaptainsInSector(sectorId, knownOnly = true) {
-    normaliseCaptains();
     return Object.values(state.captains).filter(c => {
         if (c.status !== "active") return false;
         if (c.currentSector !== sectorId) return false;
