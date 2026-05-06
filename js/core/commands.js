@@ -11,6 +11,17 @@ export function registerAction(name, fn) {
     return true;
 }
 
+export function unregisterAction(name) {
+    if (!name || !Actions[name]) return false;
+    delete Actions[name];
+    return true;
+}
+
+export function resetActions() {
+    Object.keys(Actions).forEach(name => delete Actions[name]);
+    actionObservers.splice(0, actionObservers.length);
+}
+
 export function getAction(name) {
     return Actions[name] || null;
 }

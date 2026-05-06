@@ -6,13 +6,13 @@ import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters } from './core/persistence.js';
 import { setupMapInteraction } from './ui/renderMap.js';
-import { handleActionClick } from './ui/ui.js';
+import { handleActionClick, markUIActionsUnregistered, registerUIActions } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
 import { initSessionRng } from './utils.js';
 import { createCaptains } from './systems/captains.js';
 import { generateMissionPool } from './systems/missions.js';
-import { executeAction } from './core/commands.js';
+import { executeAction, resetActions } from './core/commands.js';
 import { registerSimulationTickHooks } from './core/worldTick.js';
 
 // =====================================================
@@ -24,6 +24,7 @@ export const App = (() => {
     let initialized = false;
     let _unsubs = [];
     let _topbarListeners = [];
+    let _unsubscribeMapInteraction = () => {};
 
     function init() {
         if (initialized) return;
@@ -31,6 +32,7 @@ export const App = (() => {
         initialized = true;
 
         configurePersistence();
+        registerUIActions();
         registerSimulationTickHooks();
         registerRendererSubscriptions();
         startSimulation();
@@ -72,7 +74,7 @@ export const App = (() => {
     }
 
     function bindAppShellDom() {
-        setupMapInteraction();
+        _unsubscribeMapInteraction = setupMapInteraction();
         bindTopbarButtons();
         document.body.addEventListener('click', handleActionClick);
     }
@@ -117,7 +119,11 @@ export const App = (() => {
         EventBus.reset();
         _topbarListeners.forEach(({ el, fn }) => el.removeEventListener('click', fn));
         _topbarListeners = [];
+        _unsubscribeMapInteraction();
+        _unsubscribeMapInteraction = () => {};
         document.body.removeEventListener('click', handleActionClick);
+        resetActions();
+        markUIActionsUnregistered();
         resetState();
         initialized = false;
     }
