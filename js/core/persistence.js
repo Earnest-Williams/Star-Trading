@@ -1,4 +1,4 @@
-import { state } from '../state.js';
+import { createInitialState, state } from '../state.js';
 import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_VERSION, COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
@@ -20,6 +20,71 @@ const defaultPersistenceAdapters = {
 };
 
 let persistenceAdapters = { ...defaultPersistenceAdapters };
+
+function isObject(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneSaveValue(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function deterministicSeedFromPayload(data) {
+    const payload = JSON.stringify(data);
+    let hash = 2166136261;
+    for (let i = 0; i < payload.length; i++) {
+        hash ^= payload.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) || 1;
+}
+
+function replaceStateContents(target) {
+    Object.keys(state).forEach(key => delete state[key]);
+    Object.assign(state, target);
+}
+
+function withStateTarget(target, fn) {
+    const liveSnapshot = { ...state };
+    replaceStateContents(target);
+    try {
+        fn();
+        Object.keys(target).forEach(key => delete target[key]);
+        Object.assign(target, state);
+    } finally {
+        replaceStateContents(liveSnapshot);
+    }
+}
+
+function validateRawSave(data) {
+    return isObject(data)
+        && isObject(data.player)
+        && isObject(data.universe)
+        && isObject(data.ports)
+        && isObject(data.planets);
+}
+
+function buildLoadedState(data) {
+    const loadedState = createInitialState();
+    loadedState.player = data.player;
+    loadedState.universe = data.universe;
+    loadedState.ports = data.ports;
+    loadedState.planets = data.planets;
+    loadedState.missions = Array.isArray(data.missions) ? data.missions : [];
+    loadedState.captains = isObject(data.captains) ? data.captains : {};
+    loadedState.captainEventLog = Array.isArray(data.captainEventLog) ? data.captainEventLog : [];
+    loadedState.nextCaptainEventId = data.nextCaptainEventId || (loadedState.captainEventLog.length + 1);
+    loadedState.worldEvents = Array.isArray(data.worldEvents) ? data.worldEvents : [];
+    loadedState.nextWorldEventId = data.nextWorldEventId || (loadedState.worldEvents.length + 1);
+    loadedState.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
+    loadedState.nextTradeRouteId = data.nextTradeRouteId || (loadedState.tradeRoutes.length + 1);
+    loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
+    loadedState.rng = data.rng || null;
+    normaliseLoadedGame(loadedState);
+    loadedState.selectedSectorId = loadedState.player.currentSector;
+    loadedState.currentScreen = "sector";
+    return loadedState;
+}
 
 function getStorage() {
     if (persistenceAdapters.storage) return persistenceAdapters.storage;
@@ -69,7 +134,7 @@ export function migrateSave(data) {
     // v10: session RNG state added — normaliseLoadedGame restores missing entries
     if (v < 10) {
         if (data.player) {
-            if (!data.player.seed) data.player.seed = Date.now();
+            if (!data.player.seed) data.player.seed = deterministicSeedFromPayload(data);
             if (!data.player.factionRelations) {
                 // Prefer the top-level field from old saves; fall back to defaults
                 data.player.factionRelations = data.factionRelations
@@ -128,42 +193,35 @@ export function loadGame() {
         if (saved) writeLog("Migrating save from legacy key.");
     }
     if (!saved) { writeLog("No saved game found."); return false; }
+
+    let data;
     try {
-        let data = JSON.parse(saved);
-        if (!data || !data.player || !data.universe || !data.ports || !data.planets) {
-            writeLog("Save data is missing required fields.");
-            return false;
-        }
-        data = migrateSave(data);
-        state.player = data.player;
-        state.universe = data.universe;
-        state.ports = data.ports;
-        state.planets = data.planets;
-        state.missions = Array.isArray(data.missions) ? data.missions : [];
-        state.captains = data.captains || {};
-        state.captainEventLog = Array.isArray(data.captainEventLog) ? data.captainEventLog : [];
-        state.nextCaptainEventId = data.nextCaptainEventId || (state.captainEventLog.length + 1);
-        state.worldEvents = Array.isArray(data.worldEvents) ? data.worldEvents : [];
-        state.nextWorldEventId = data.nextWorldEventId || (state.worldEvents.length + 1);
-        state.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
-        state.nextTradeRouteId = data.nextTradeRouteId || (state.tradeRoutes.length + 1);
-        state.nextMissionId = data.nextMissionId || (state.missions.length + 1);
-        state.rng = data.rng || null;
-        normaliseLoadedGame();
+        data = JSON.parse(saved);
+    } catch (err) {
+        writeLog("Could not load save data. The saved JSON appears to be invalid.");
+        return false;
+    }
+    if (!validateRawSave(data)) {
+        writeLog("Save data is missing required fields.");
+        return false;
+    }
+
+    try {
+        const migrated = migrateSave(cloneSaveValue(data));
+        const loadedState = buildLoadedState(migrated);
+        replaceStateContents(loadedState);
         restoreSessionRng(state.rng, state.player.seed);
-        state.selectedSectorId = state.player.currentSector;
-        state.currentScreen = "sector";
         writeLog("Game loaded.");
         notify("Game loaded", 2);
         afterLoad();
         return true;
     } catch (err) {
-        writeLog("Could not load save data. The saved JSON appears to be invalid.");
+        writeLog("Could not load save data. The save failed validation or normalisation.");
         return false;
     }
 }
 
-export function normaliseLoadedGame() {
+function normaliseCurrentLoadedGame() {
     if (!state.player.time) state.player.time = { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 };
     if (!state.player.ship) state.player.ship = createPlayer().ship;
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
@@ -214,4 +272,13 @@ export function normaliseLoadedGame() {
         if (m.status === "available") prepareMissionOpportunity(m);
     });
     clampPlayerState();
+}
+
+
+export function normaliseLoadedGame(target = state) {
+    if (target === state) {
+        normaliseCurrentLoadedGame();
+        return;
+    }
+    withStateTarget(target, normaliseCurrentLoadedGame);
 }
