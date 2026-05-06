@@ -45,7 +45,7 @@ function afterLoad() {
 }
 
 export function setPersistenceAdapters(adapters = {}) {
-    persistenceAdapters = { ...defaultPersistenceAdapters, ...adapters };
+    persistenceAdapters = { ...defaultPersistenceAdapters, ...(adapters || {}) };
 }
 
 export function migrateSave(data) {
