@@ -2,6 +2,7 @@
 // Opinionated underlay for hidden freight: typed cargo, sector sourcing,
 // receiver demand, inspection risk, and delivery settlement.
 
+import { BALANCE } from '../constants.js';
 import { state } from '../state.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import {
@@ -15,40 +16,19 @@ import {
 import { getRouteRiskForSectors } from '../systems/tradeRoutes.js';
 import { clampRange, formatCredits, log, random } from '../utils.js';
 
-export const CONTRABAND_TYPES = Object.freeze({
-    black_market_eq: Object.freeze({
-        id: 'black_market_eq',
-        name: 'Black-Market Equipment',
-        value: 220,
-        heat: 4,
-        bulk: 1,
-        sourceWeight: { industrial: 3, refinery: 2, stardock: 1 },
-        demandWeight: { mining: 2, agricultural: 1, consumer: 2 }
-    }),
-    forged_manifests: Object.freeze({
-        id: 'forged_manifests',
-        name: 'Forged Manifests',
-        value: 140,
-        heat: 2,
-        bulk: 1,
-        inspectionMitigation: 0.03,
-        sourceWeight: { stardock: 3, consumer: 2, refinery: 1 },
-        demandWeight: { industrial: 2, mining: 1, agricultural: 1 }
-    }),
-    restricted_meds: Object.freeze({
-        id: 'restricted_meds',
-        name: 'Restricted Meds',
-        value: 180,
-        heat: 3,
-        bulk: 1,
-        sourceWeight: { agricultural: 2, consumer: 2, stardock: 1 },
-        demandWeight: { mining: 2, refinery: 2, industrial: 1 }
-    })
-});
+export const CONTRABAND_TYPES = Object.freeze(BALANCE.CONTRABAND.TYPES);
 
-const BASE_HIDDEN_HOLD_FRACTION = 0.18;
-const RECEIVER_FACTION_ID = 'vc';
-const INSPECTOR_FACTION_ID = 'sda';
+function contrabandBalance() {
+    return BALANCE.CONTRABAND;
+}
+
+function receiverFactionId() {
+    return contrabandBalance().RECEIVER_FACTION_ID;
+}
+
+function inspectorFactionId() {
+    return contrabandBalance().INSPECTOR_FACTION_ID;
+}
 
 function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -168,9 +148,16 @@ export function getHiddenHoldCapacity() {
         return Math.max(0, Math.floor(player.ship.hiddenHoldCapacity));
     }
     const maxHolds = Math.max(0, Number(player.ship.maxHolds) || 0);
-    const scannerBonus = Math.max(0, (Number(player.ship.scannerLevel) || 1) - 1);
-    const guildBonus = getGuildTier('smugglers') * 2;
-    return Math.max(4, Math.floor(maxHolds * BASE_HIDDEN_HOLD_FRACTION) + scannerBonus + guildBonus);
+    const scannerBonus = Math.max(0, (Number(player.ship.scannerLevel) || 1) - 1)
+        * contrabandBalance().SCANNER_HIDDEN_HOLD_BONUS;
+    const guildBonus = getGuildTier('smugglers')
+        * contrabandBalance().SMUGGLER_TIER_HIDDEN_HOLD_BONUS;
+    return Math.max(
+        contrabandBalance().MIN_HIDDEN_HOLD_CAPACITY,
+        Math.floor(maxHolds * contrabandBalance().BASE_HIDDEN_HOLD_FRACTION)
+            + scannerBonus
+            + guildBonus
+    );
 }
 
 export function getHiddenHoldUsed() {
@@ -191,10 +178,10 @@ function buildTypeAvailability(definition, sectorId, port, sourceScore, demandSc
     const sourceWeight = typeWeightForPort(definition, port, 'source');
     const demandWeight = typeWeightForPort(definition, port, 'demand');
     const sourceQuantity = sourceWeight > 0 && sourceScore > 0
-        ? Math.max(1, Math.floor((sourceScore * sourceWeight) / 18))
+        ? Math.max(1, Math.floor((sourceScore * sourceWeight) / contrabandBalance().SOURCE_QUANTITY_DIVISOR))
         : 0;
     const demandQuantity = demandWeight > 0 && demandScore > 0
-        ? Math.max(1, Math.floor((demandScore * demandWeight) / 16))
+        ? Math.max(1, Math.floor((demandScore * demandWeight) / contrabandBalance().DEMAND_QUANTITY_DIVISOR))
         : 0;
     return {
         type: definition.id,
@@ -212,14 +199,28 @@ function buildTypeAvailability(definition, sectorId, port, sourceScore, demandSc
 export function getContrabandSectorProfile(sectorId = state.player && state.player.currentSector) {
     const numericSectorId = Number(sectorId);
     const port = Number.isFinite(numericSectorId) ? portAt(numericSectorId) : null;
-    const vcInfluence = Number.isFinite(numericSectorId) ? sectorInfluence(numericSectorId, RECEIVER_FACTION_ID) : 0;
-    const sdaInfluence = Number.isFinite(numericSectorId) ? sectorInfluence(numericSectorId, INSPECTOR_FACTION_ID) : 0;
+    const vcInfluence = Number.isFinite(numericSectorId) ? sectorInfluence(numericSectorId, receiverFactionId()) : 0;
+    const sdaInfluence = Number.isFinite(numericSectorId) ? sectorInfluence(numericSectorId, inspectorFactionId()) : 0;
     const pirateThreat = Number.isFinite(numericSectorId) ? sectorPirateThreat(numericSectorId) : 0;
     const region = Number.isFinite(numericSectorId) ? sectorRegion(numericSectorId) : null;
-    const hasCartelReceiver = Boolean(port && port.hiddenFactionId === RECEIVER_FACTION_ID);
-    const badlandsBonus = region === 'Badlands' ? 12 : 0;
-    const sourceScore = Math.max(0, vcInfluence + pirateThreat * 7 + badlandsBonus + (hasCartelReceiver ? 25 : 0) - sdaInfluence * 0.25);
-    const demandScore = Math.max(0, vcInfluence * 0.7 + pirateThreat * 5 + (hasCartelReceiver ? 35 : 0));
+    const hasCartelReceiver = Boolean(port && port.hiddenFactionId === receiverFactionId());
+    const badlandsBonus = region === 'Badlands' ? contrabandBalance().BADLANDS_SOURCE_BONUS : 0;
+    const receiverSourceBonus = hasCartelReceiver ? contrabandBalance().RECEIVER_SOURCE_BONUS : 0;
+    const receiverDemandBonus = hasCartelReceiver ? contrabandBalance().RECEIVER_DEMAND_BONUS : 0;
+    const sourceScore = Math.max(
+        0,
+        vcInfluence
+            + pirateThreat * contrabandBalance().PIRATE_SOURCE_MULT
+            + badlandsBonus
+            + receiverSourceBonus
+            - sdaInfluence * contrabandBalance().SDA_SOURCE_PRESSURE_MULT
+    );
+    const demandScore = Math.max(
+        0,
+        vcInfluence * contrabandBalance().VC_DEMAND_MULT
+            + pirateThreat * contrabandBalance().PIRATE_DEMAND_MULT
+            + receiverDemandBonus
+    );
     const types = listContrabandTypes().map(definition => buildTypeAvailability(definition, numericSectorId, port, sourceScore, demandScore));
     return {
         sectorId: numericSectorId,
@@ -294,15 +295,23 @@ export function acquireContraband(itemType, amount) {
     if (existing) existing.amount += count;
     else hold.push({ type: itemType, amount: count, acquiredSector });
 
-    addFactionRep(RECEIVER_FACTION_ID, Math.max(1, Math.floor(count / 5)), 'contraband pickup', 'private');
-    addFactionTrust(RECEIVER_FACTION_ID, 1, 'accepted hidden cargo');
-    addFactionHeat(INSPECTOR_FACTION_ID, definition.heat, 'contraband pickup');
+    addFactionRep(
+        receiverFactionId(),
+        Math.max(
+            contrabandBalance().PICKUP_MIN_REP,
+            Math.floor(count / contrabandBalance().PICKUP_REP_DIVISOR)
+        ),
+        'contraband pickup',
+        'private'
+    );
+    addFactionTrust(receiverFactionId(), contrabandBalance().PICKUP_TRUST_GAIN, 'accepted hidden cargo');
+    addFactionHeat(inspectorFactionId(), definition.heat, 'contraband pickup');
     addWorldEvent({
         type: 'contraband_acquired',
         sectorId: acquiredSector,
-        factionId: RECEIVER_FACTION_ID,
+        factionId: receiverFactionId(),
         text: `Loaded ${count} ${definition.name} into the hidden hold.`,
-        importance: 2,
+        importance: contrabandBalance().ACQUIRED_EVENT_IMPORTANCE,
         alert: true
     });
     return true;
@@ -315,13 +324,28 @@ export function getInspectionProfile(sectorId = state.player && state.player.cur
         return { sectorId, manifest, detectionChance: 0, scannerMitigation: 0, localPressure: 0 };
     }
     const player = getPlayer();
-    const scannerMitigation = Math.max(0, ((player && player.ship && player.ship.scannerLevel) || 1) - 1) * 0.04;
-    const forgedMitigation = Math.min(0.12, (manifest.totalsByType.forged_manifests || 0) * CONTRABAND_TYPES.forged_manifests.inspectionMitigation);
-    const sdaHeatPressure = getFactionHeat(INSPECTOR_FACTION_ID) * 0.0025;
-    const sdaInfluencePressure = sectorInfluence(sectorId, INSPECTOR_FACTION_ID) * 0.0015;
-    const pirateNoise = sectorPirateThreat(sectorId) * 0.01;
+    const scannerMitigation = Math.max(0, ((player && player.ship && player.ship.scannerLevel) || 1) - 1)
+        * contrabandBalance().INSPECTION_SCANNER_MITIGATION;
+    const forgedMitigation = Math.min(
+        contrabandBalance().INSPECTION_FORGED_MITIGATION_CAP,
+        (manifest.totalsByType.forged_manifests || 0)
+            * CONTRABAND_TYPES.forged_manifests.inspectionMitigation
+    );
+    const sdaHeatPressure = getFactionHeat(inspectorFactionId())
+        * contrabandBalance().INSPECTION_FACTION_HEAT_PRESSURE;
+    const sdaInfluencePressure = sectorInfluence(sectorId, inspectorFactionId())
+        * contrabandBalance().INSPECTION_SDA_INFLUENCE_PRESSURE;
+    const pirateNoise = sectorPirateThreat(sectorId) * contrabandBalance().INSPECTION_PIRATE_NOISE;
     const localPressure = sdaHeatPressure + sdaInfluencePressure - pirateNoise;
-    const detectionChance = Math.min(0.85, Math.max(0.03, 0.08 + manifest.heat * 0.015 + localPressure - scannerMitigation - forgedMitigation));
+    const rawDetectionChance = contrabandBalance().INSPECTION_BASE_CHANCE
+        + manifest.heat * contrabandBalance().INSPECTION_HEAT_MULT
+        + localPressure
+        - scannerMitigation
+        - forgedMitigation;
+    const detectionChance = Math.min(
+        contrabandBalance().INSPECTION_MAX_CHANCE,
+        Math.max(contrabandBalance().INSPECTION_MIN_CHANCE, rawDetectionChance)
+    );
     return {
         sectorId,
         manifest,
@@ -339,14 +363,23 @@ export function runInspectionCheck() {
 
     const confiscated = profile.manifest.units;
     state.player.contrabandHold = [];
-    addFactionHeat(INSPECTOR_FACTION_ID, Math.min(25, 5 + confiscated), 'contraband discovered');
-    addFactionRep(RECEIVER_FACTION_ID, -Math.min(8, confiscated), 'lost a hidden shipment', 'private');
+    addFactionHeat(
+        inspectorFactionId(),
+        Math.min(contrabandBalance().MAX_BUST_HEAT, contrabandBalance().BUST_BASE_HEAT + confiscated),
+        'contraband discovered'
+    );
+    addFactionRep(
+        receiverFactionId(),
+        -Math.min(contrabandBalance().MAX_BUST_REP_LOSS, confiscated),
+        'lost a hidden shipment',
+        'private'
+    );
     addWorldEvent({
         type: 'contraband_bust',
         sectorId: state.player.currentSector,
-        factionId: INSPECTOR_FACTION_ID,
+        factionId: inspectorFactionId(),
         text: `SDA inspectors found and confiscated ${confiscated} contraband units.`,
-        importance: 4,
+        importance: contrabandBalance().BUST_EVENT_IMPORTANCE,
         alert: true
     });
     return true;
@@ -363,7 +396,10 @@ export function canDeliverContraband(sectorId = state.player && state.player.cur
 function routeRiskBonus(originSector, destinationSector) {
     const risk = getRouteRiskForSectors(originSector, destinationSector);
     if (risk === null) return 0;
-    return Math.min(0.5, risk * 0.04);
+    return Math.min(
+        contrabandBalance().ROUTE_RISK_REWARD_CAP,
+        risk * contrabandBalance().ROUTE_RISK_REWARD_MULT
+    );
 }
 
 function calculateDeliveryReward(hold, destinationSector, demandProfile) {
@@ -373,11 +409,19 @@ function calculateDeliveryReward(hold, destinationSector, demandProfile) {
         if (!definition) return;
         const routeBonus = routeRiskBonus(item.acquiredSector || destinationSector, destinationSector);
         const demand = demandProfile.demandedTypes.find(type => type.type === item.type);
-        const demandBonus = demand ? Math.min(0.3, demand.demandQuantity / 80) : 0;
+        const demandBonus = demand
+            ? Math.min(
+                contrabandBalance().DEMAND_REWARD_CAP,
+                demand.demandQuantity / contrabandBalance().DEMAND_REWARD_DIVISOR
+            )
+            : 0;
         reward += item.amount * definition.value * (1 + routeBonus + demandBonus);
     });
-    const relationshipBonus = Math.max(0, getPrivateFactionRep(RECEIVER_FACTION_ID)) / 2500;
-    return Math.floor(reward * (1 + Math.min(0.12, relationshipBonus)));
+    const relationshipBonus = Math.max(0, getPrivateFactionRep(receiverFactionId()))
+        / contrabandBalance().RELATIONSHIP_REWARD_DIVISOR;
+    return Math.floor(
+        reward * (1 + Math.min(contrabandBalance().RELATIONSHIP_REWARD_CAP, relationshipBonus))
+    );
 }
 
 export function deliverContraband(contactId) {
@@ -393,15 +437,31 @@ export function deliverContraband(contactId) {
 
     state.player.credits += reward;
     state.player.contrabandHold = [];
-    addFactionRep(RECEIVER_FACTION_ID, Math.max(2, Math.floor(manifest.units / 3)), 'contraband delivered', 'private');
-    addFactionTrust(RECEIVER_FACTION_ID, 2, 'completed a hidden delivery');
-    addFactionHeat(INSPECTOR_FACTION_ID, Math.min(10, 1 + Math.floor(manifest.units / 4)), 'contraband delivery rumors');
+    addFactionRep(
+        receiverFactionId(),
+        Math.max(
+            contrabandBalance().DELIVERY_MIN_REP,
+            Math.floor(manifest.units / contrabandBalance().DELIVERY_REP_DIVISOR)
+        ),
+        'contraband delivered',
+        'private'
+    );
+    addFactionTrust(receiverFactionId(), contrabandBalance().DELIVERY_TRUST_GAIN, 'completed a hidden delivery');
+    addFactionHeat(
+        inspectorFactionId(),
+        Math.min(
+            contrabandBalance().MAX_DELIVERY_HEAT,
+            contrabandBalance().DELIVERY_BASE_HEAT
+                + Math.floor(manifest.units / contrabandBalance().DELIVERY_HEAT_DIVISOR)
+        ),
+        'contraband delivery rumors'
+    );
     addWorldEvent({
         type: 'contraband_delivered',
         sectorId: state.player.currentSector,
-        factionId: RECEIVER_FACTION_ID,
+        factionId: receiverFactionId(),
         text: `Delivered ${manifest.units} hidden units for ${contactId || 'a Cartel receiver'} and earned ${formatCredits(reward)} credits.`,
-        importance: 3,
+        importance: contrabandBalance().DELIVERED_EVENT_IMPORTANCE,
         alert: true
     });
     return reward;
