@@ -11,6 +11,22 @@ export const BALANCE = {
     TRADE_ROUTE_BASE_COST: 1200,
     TRADE_ROUTE_INTERVAL_DAYS: 1,
     TRADE_ROUTE_BASE_AMOUNT: 12,
+    AMBIENT_TRADE: {
+        MAX_SEARCH_DISTANCE: 5,
+        MAX_DAILY_FILL_SHARE: 0.28,
+        MAX_DAILY_EXPORT_SHARE: 0.18,
+        BASE_FLOW: 22,
+        DISTANCE_PENALTY: 0.45,
+        RISK_PENALTY: 0.28,
+        JITTER: 0.18,
+        MIN_MARGIN: 10
+    },
+    CAPTAIN_ROUTE: {
+        EVALUATION_INTERVAL_DAYS: 3,
+        MIN_MARGIN: 16,
+        MAX_OWNED_ROUTES: 2,
+        BAD_ROUTE_FAILURES: 4
+    },
     FRONT_EXPOSURE_THRESHOLD: 88,
     FACTION_EXPANSION_MIN_INFLUENCE: 68,
     POLITICAL_INTEL_BASE_CHANCE: 0.06,
@@ -39,8 +55,8 @@ export const BALANCE = {
     REPAIR_HULL_COST: 35,
 };
 
-export const SAVE_VERSION = 11;
-export const SAVE_KEY = "starTradingSaveV10";
+export const SAVE_VERSION = 12;
+export const SAVE_KEY = "starTradingSaveV12";
 export const SAVE_KEY_LEGACY = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];
 export const COMMODITY_NAMES = { ore: "Ore", org: "Organics", eq: "Equipment" };
@@ -121,7 +137,7 @@ export const BUILDING_DEFS = {
 
 export const UPGRADE_DEFS = {
     cargo: { name: "Cargo Holds +25", credits: 3000, minutes: 120 },
-    engine: { name: "Engine Tune -5m per warp", credits: 4500, minutes: 180 },
+    engine: { name: "Gate Transit Tune -5m per corridor", credits: 4500, minutes: 180 },
     scanner: { name: "Scanner Level +1", credits: 3500, minutes: 120 },
     mining: { name: "Mining Laser +15 yield", credits: 3800, minutes: 180 },
     shields: { name: "Shield Generator +100 max", credits: 4000, minutes: 180 },

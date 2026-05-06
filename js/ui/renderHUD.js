@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { getSectorNeighbors } from "../core/navigation.js";
 import { FACTIONS, BALANCE, COMMODITIES, GUILD_FACTIONS, PORT_TYPES, PLANET_TYPES, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed, getFreeHolds } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
@@ -172,7 +173,7 @@ export function renderSectorActionMenu() {
     const hasPort = Boolean(ports[player.currentSector]);
     const hasPlanet = Boolean(planets[player.currentSector]);
     let html = `<h4>Available Actions</h4><div class="card-grid">`;
-    html += `<div class="card"><strong>Navigation</strong><br><span class="muted">Choose a linked sector from the right panel or click the map.</span><br>${sector.warps.map(target => `<button data-action="moveTo" data-arg0="${target}">Warp ${target} (${player.ship.travelMinutesPerWarp}m)</button>`).join("")}</div>`;
+    html += `<div class="card"><strong>Navigation</strong><br><span class="muted">Choose a direct jump corridor from the right panel or click the map.</span><br>${getSectorNeighbors(player.currentSector).map(target => `<button data-action="moveTo" data-arg0="${target}">Use Jump Gate ${target} (${player.ship.travelMinutesPerCorridor}m)</button>`).join("")}</div>`;
     html += `<div class="card"><strong>Survey</strong><br>Reveal hidden fronts, precise asteroid data, and better map intel.<br><button data-action="surveySector">Survey Sector (60m)</button></div>`;
     if (hasPort) html += `<div class="card"><strong>Port</strong><br>Trade, missions, and local faction pressure.<br><button data-action="showScreen" data-arg0="market">Open Market</button></div>`;
     if (sector.asteroids) html += `<div class="card"><strong>Asteroids</strong><br>Mine ore and shift industrial influence.<br><button data-action="mineAsteroids">Mine Asteroids (120m)</button></div>`;

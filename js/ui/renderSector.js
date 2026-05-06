@@ -3,6 +3,7 @@ import { FACTIONS, PORT_TYPES, PLANET_TYPES, COMMODITIES } from "../constants.js
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
+import { getSectorNeighbors } from "../core/navigation.js";
 
 export function renderSectorContents() {
     const { player, universe, ports, planets, tradeRoutes } = state;
@@ -13,7 +14,7 @@ export function renderSectorContents() {
     let html = `<div><strong>Region:</strong> ${escapeHtml(sector.region)} | <strong>Status:</strong> ${escapeHtml(getSectorStatusLabel(player.currentSector))}</div>`;
     if (influence) html += `<div><strong>Dominant Influence:</strong> <span style="color:${influence.color}">${influence.icon} ${escapeHtml(influence.name)}</span></div>`;
     html += `<div class="small muted">${getInfluenceSpread(player.currentSector).map(item => `${FACTIONS[item.id].short}:${item.value}`).join(" | ")}</div>`;
-    html += `<div><strong>Warps to:</strong> ${sector.warps.join(", ")}</div>`;
+    html += `<div><strong>Jump Corridors:</strong> ${getSectorNeighbors(player.currentSector).join(", ")}</div>`;
     html += `<div><strong>Survey:</strong> ${sector.surveyed ? "Complete" : "Not surveyed"}</div>`;
     const localRoutes = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === player.currentSector || r.destinationSector === player.currentSector));
     if (localRoutes.length > 0) html += `<div><strong>Routes:</strong> ${localRoutes.map(r => `${escapeHtml(r.name)} (${r.status})`).join(" | ")}</div>`;
@@ -71,8 +72,8 @@ export function renderPlanetSummary(planet) {
 export function renderMenuPanel() {
     const { player, universe, ports, planets } = state;
     const sector = universe[player.currentSector];
-    let html = `<div><strong>Current links</strong></div>`;
-    sector.warps.forEach(target => {
+    let html = `<div><strong>Direct Jump Corridors</strong></div>`;
+    getSectorNeighbors(player.currentSector).forEach(target => {
         const s = universe[target];
         const dominant = FACTIONS[getSectorFactionId(target)];
         html += `<div class="nav-card"><strong>Sector ${target}</strong> <span class="muted">${escapeHtml(s.region)}</span><br>`;
@@ -81,7 +82,7 @@ export function renderMenuPanel() {
         if (planets[target]) html += `Planet `;
         if (s.asteroids) html += `Asteroids `;
         if (s.pirateThreat > 0) html += `<span class="red">Pirates ${s.pirateThreat}</span>`;
-        html += `<br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Warp</button></div>`;
+        html += `<br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`;
     });
     html += `<div class="commodity-row"><strong>Menus</strong><div class="menu-grid">`;
     html += `<button data-action="showScreen" data-arg0="sector">Sector</button>`;
@@ -106,7 +107,7 @@ export function renderMapInspector() {
         return;
     }
     const dominant = FACTIONS[getSectorFactionId(id)];
-    const adjacent = universe[player.currentSector].warps.includes(id);
+    const adjacent = getSectorNeighbors(player.currentSector).includes(id);
     let html = `<strong>Selected Sector ${id}</strong> - ${escapeHtml(sector.name)}<br>`;
     html += `<span class="sector-chip">${escapeHtml(sector.region)}</span><span class="sector-chip">${escapeHtml(getSectorStatusLabel(id))}</span>`;
     if (dominant) html += `<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span>`;
@@ -121,8 +122,8 @@ export function renderMapInspector() {
     html += renderCaptainChipsForSector(id);
     html += `<div class="compact-actions">`;
     if (id === player.currentSector) html += `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
-    else if (adjacent) html += `<button data-action="moveTo" data-arg0="${id}">Warp Here (${player.ship.travelMinutesPerWarp}m)</button>`;
-    else html += `<span class="muted">Not directly adjacent. Warps: ${sector.warps.join(", ")}</span>`;
+    else if (adjacent) html += `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;
+    else html += `<span class="muted">No direct jump corridor. Connected corridors: ${getSectorNeighbors(id).join(", ")}</span>`;
     html += `</div>`;
     el.innerHTML = html;
 }

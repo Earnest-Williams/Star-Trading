@@ -3,7 +3,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { state } from '../js/state.js';
-import { createPlayer } from '../js/core/universe.js';
+import { createPlayer, addJumpGateCorridor } from '../js/core/universe.js';
 import { expireMissions } from '../js/systems/missions.js';
 import { PORT_TYPES, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
@@ -15,13 +15,15 @@ function resetMissionState(dayOverride = 5) {
     state.player.factionRelations = JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS));
     // Minimal universe + ports so expireMissions' pool-refill step can generate missions
     state.universe = {
-        1: { id: 1, name: 'StarDock', region: 'Core', warps: [2], pirateThreat: 0, surveyed: true,
+        1: { id: 1, name: 'StarDock', region: 'Core', jumpGates: [], pirateThreat: 0, surveyed: true,
              influence: { sda: 60, fu: 20, hc: 10, vc: 5 }, front: null },
-        2: { id: 2, name: 'Core Sector 2', region: 'Core', warps: [1, 3], pirateThreat: 0, surveyed: false,
+        2: { id: 2, name: 'Core Sector 2', region: 'Core', jumpGates: [], pirateThreat: 0, surveyed: false,
              influence: { sda: 50, fu: 25, hc: 15, vc: 5 }, front: null },
-        3: { id: 3, name: 'Core Sector 3', region: 'Core', warps: [2], pirateThreat: 0, surveyed: false,
+        3: { id: 3, name: 'Core Sector 3', region: 'Core', jumpGates: [], pirateThreat: 0, surveyed: false,
              influence: { sda: 45, fu: 30, hc: 15, vc: 5 }, front: null },
     };
+    addJumpGateCorridor(1, 2);
+    addJumpGateCorridor(2, 3);
     state.ports = {
         1: { typeKey: 'stardock', factionId: 'sda', publicFactionId: 'sda', hiddenFactionId: null,
              stock: { ore: 3000, org: 2000, eq: 1000 },

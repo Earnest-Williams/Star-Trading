@@ -14,7 +14,8 @@ describe('world tick phase order', () => {
             DAILY_WORLD_TICK_PHASES.map(phase => phase.id),
             [
                 'colony_production',
-                'trade_routes',
+                'explicit_trade_route_runs',
+            'ambient_trade_response',
                 'colony_needs',
                 'port_markets',
                 'sector_threats',

@@ -3,6 +3,7 @@ import { FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
 import { getSectorFactionId } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
+import { getSectorNeighbors } from "../core/navigation.js";
 
 export function getMapNodes() {
     const universe = state.universe;
@@ -35,7 +36,7 @@ export function drawMap() {
     ctx.strokeStyle = "rgba(0, 204, 153, 0.45)";
     ctx.lineWidth = 1;
     ids.forEach(id => {
-        universe[id].warps.forEach(target => {
+        getSectorNeighbors(id).forEach(target => {
             if (id < target && nodes[target]) {
                 ctx.beginPath();
                 ctx.moveTo(nodes[id].x, nodes[id].y);

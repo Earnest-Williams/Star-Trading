@@ -31,7 +31,7 @@ export function buyUpgrade(key) {
     if (!spendTime(up.minutes)) return;
     player.credits -= finalCost;
     if (key === "cargo") player.ship.maxHolds += 25;
-    else if (key === "engine") player.ship.travelMinutesPerWarp = Math.max(15, player.ship.travelMinutesPerWarp - 5);
+    else if (key === "engine") player.ship.travelMinutesPerCorridor = Math.max(15, player.ship.travelMinutesPerCorridor - 5);
     else if (key === "scanner") player.ship.scannerLevel += 1;
     else if (key === "mining") player.ship.miningPower += 15;
     else if (key === "shields") { player.ship.maxShields += 100; player.shields = player.ship.maxShields; }

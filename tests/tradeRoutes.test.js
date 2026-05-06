@@ -10,22 +10,30 @@ import {
     getRouteSetupCost,
     estimateRouteProfit,
     normaliseTradeRoutes,
+    createTradeRoute,
+    createCaptainTradeRoute,
+    runTradeRoute,
+    closeTradeRoute,
 } from '../js/systems/tradeRoutes.js';
 import { BALANCE } from '../js/constants.js';
+import { addJumpGateCorridor } from '../js/core/universe.js';
 
 // Minimal universe: 1 — 2 — 4 (direct path length 3, distance 2)
 //                       \— 3
 function buildUniverse() {
     state.universe = {
-        1: { id: 1, warps: [2, 3], pirateThreat: 0, region: 'Core',
+        1: { id: 1, jumpGates: [], pirateThreat: 0, region: 'Core',
              influence: { sda: 60, fu: 20, hc: 10, vc: 5 } },
-        2: { id: 2, warps: [1, 4], pirateThreat: 0, region: 'Core',
+        2: { id: 2, jumpGates: [], pirateThreat: 0, region: 'Core',
              influence: { sda: 50, fu: 25, hc: 15, vc: 5 } },
-        3: { id: 3, warps: [1],    pirateThreat: 0, region: 'Core',
+        3: { id: 3, jumpGates: [], pirateThreat: 0, region: 'Core',
              influence: { sda: 55, fu: 20, hc: 15, vc: 5 } },
-        4: { id: 4, warps: [2],    pirateThreat: 0, region: 'Core',
+        4: { id: 4, jumpGates: [], pirateThreat: 0, region: 'Core',
              influence: { sda: 40, fu: 30, hc: 20, vc: 5 } },
     };
+    addJumpGateCorridor(1, 2);
+    addJumpGateCorridor(1, 3);
+    addJumpGateCorridor(2, 4);
     // Two compatible ports: sector 1 sells ore, sector 4 buys ore.
     state.ports = {
         1: { typeKey: 'mining',    factionId: 'hc', publicFactionId: 'hc', hiddenFactionId: null,
@@ -125,6 +133,8 @@ describe('normaliseTradeRoutes', () => {
         assert.equal(route.profit, 0);
         assert.equal(route.heat, 0);
         assert.equal(route.escortCaptainId, null);
+        assert.equal(route.ownerType, 'player');
+        assert.equal(route.ownerId, null);
     });
 
     it('does not overwrite existing id', () => {
@@ -134,9 +144,56 @@ describe('normaliseTradeRoutes', () => {
         assert.equal(state.tradeRoutes[0].id, 42);
     });
 
-    it('throws when an active route has no real path', () => {
+    it('pauses when an active route has no real path', () => {
         state.tradeRoutes = [{ id: 42, originSector: 1, destinationSector: 5, commodity: 'ore' }];
         state.nextTradeRouteId = 1;
-        assert.throws(() => normaliseTradeRoutes(), /disconnected/);
+        normaliseTradeRoutes();
+        assert.equal(state.tradeRoutes[0].status, 'paused');
+    });
+});
+
+describe('explicit trade route execution', () => {
+    beforeEach(buildUniverse);
+
+    it('player-created routes are marked player-owned', () => {
+        state.player.currentSector = 1;
+        state.player.credits = 100000;
+        state.player.ship = { travelMinutesPerCorridor: 45 };
+        createTradeRoute(4, 'ore');
+        assert.equal(state.tradeRoutes[0].ownerType, 'player');
+        assert.equal(state.tradeRoutes[0].ownerId, null);
+    });
+
+    it('captain-created routes are marked captain-owned', () => {
+        const captain = { id: 'cap', name: 'Cap', callsign: 'CAP', ship: { cargoCapacity: 80 }, preferredFaction: 'traders' };
+        const route = createCaptainTradeRoute(captain, 1, 4, 'ore');
+        assert.equal(route.ownerType, 'captain');
+        assert.equal(route.ownerId, 'cap');
+    });
+
+    it('explicit route execution changes stock as expected', () => {
+        const route = { id: 1, name: 'Ore line', originSector: 1, destinationSector: 4, commodity: 'ore', amount: 12, ownerType: 'player', ownerId: null, status: 'active', heat: 0, reliability: 50, runs: 0, failures: 0 };
+        state.player.credits = 0;
+        const originBefore = state.ports[1].stock.ore;
+        const destinationBefore = state.ports[4].stock.ore;
+        runTradeRoute(route);
+        assert.equal(state.ports[1].stock.ore, originBefore - 12);
+        assert.equal(state.ports[4].stock.ore, destinationBefore + 12);
+        assert.equal(route.runs, 1);
+    });
+
+    it('closing a route does not mutate corridor infrastructure', () => {
+        state.tradeRoutes = [{ id: 3, originSector: 1, destinationSector: 4, commodity: 'ore', status: 'active' }];
+        const before = JSON.stringify(state.universe);
+        closeTradeRoute(3);
+        assert.equal(JSON.stringify(state.universe), before);
+        assert.equal(state.tradeRoutes[0].status, 'closed');
+    });
+
+    it('removing connectivity pauses affected routes', () => {
+        state.tradeRoutes = [{ id: 9, originSector: 1, destinationSector: 4, commodity: 'ore', status: 'active' }];
+        state.universe[2].jumpGates = [];
+        normaliseTradeRoutes();
+        assert.equal(state.tradeRoutes[0].status, 'paused');
     });
 });

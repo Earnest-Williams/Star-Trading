@@ -37,11 +37,38 @@ export function makePlanet(typeKey) {
     };
 }
 
-export function addWarp(a, b) {
-    if (a === b) return;
-    if (!state.universe[a].warps.includes(b)) state.universe[a].warps.push(b);
-    if (!state.universe[b].warps.includes(a)) state.universe[b].warps.push(a);
+export function addJumpGateCorridor(a, b, options = {}) {
+    if (a === b || !state.universe[a] || !state.universe[b]) return null;
+    if (!Array.isArray(state.universe[a].jumpGates)) state.universe[a].jumpGates = [];
+    if (!Array.isArray(state.universe[b].jumpGates)) state.universe[b].jumpGates = [];
+    const existing = state.universe[a].jumpGates.find(gate => gate.destinationSectorId === b && gate.status !== "closed");
+    if (existing) return existing.corridorId;
+    const corridorId = options.corridorId || `corridor-${Math.min(a, b)}-${Math.max(a, b)}-${state.universe[a].jumpGates.length + state.universe[b].jumpGates.length}`;
+    const gateAId = options.gateAId || `gate-${a}-${corridorId}`;
+    const gateBId = options.gateBId || `gate-${b}-${corridorId}`;
+    state.universe[a].jumpGates.push({
+        id: gateAId,
+        corridorId,
+        destinationSectorId: b,
+        destinationGateId: gateBId,
+        status: options.status || "active",
+        owningFactionId: options.owningFactionId || null,
+        toll: options.toll || 0,
+        stability: typeof options.stability === "number" ? options.stability : 100
+    });
+    state.universe[b].jumpGates.push({
+        id: gateBId,
+        corridorId,
+        destinationSectorId: a,
+        destinationGateId: gateAId,
+        status: options.status || "active",
+        owningFactionId: options.owningFactionId || null,
+        toll: options.toll || 0,
+        stability: typeof options.stability === "number" ? options.stability : 100
+    });
+    return corridorId;
 }
+
 
 export function generateUniverse() {
     initRng(state.player.seed);
@@ -52,15 +79,15 @@ export function generateUniverse() {
         else if (i > 10) region = "Frontier";
         state.universe[i] = {
             id: i, name: i === 1 ? "StarDock" : `${region} Sector ${i}`,
-            region, warps: [], surveyed: i === 1,
+            region, jumpGates: [], surveyed: i === 1,
             pirateThreat: i <= 8 ? 0 : Math.floor(rng() * (region === "Badlands" ? 5 : 3)),
             asteroids: null, influence: createBaseInfluence(region), front: null
         };
     }
-    for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) addWarp(i, i === BALANCE.SECTOR_COUNT ? 1 : i + 1);
+    for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) addJumpGateCorridor(i, i === BALANCE.SECTOR_COUNT ? 1 : i + 1);
     for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) {
         const extraLinks = 1 + Math.floor(rng() * 2);
-        for (let j = 0; j < extraLinks; j++) addWarp(i, 1 + Math.floor(rng() * BALANCE.SECTOR_COUNT));
+        for (let j = 0; j < extraLinks; j++) addJumpGateCorridor(i, 1 + Math.floor(rng() * BALANCE.SECTOR_COUNT));
     }
     state.ports[1] = makePort("stardock");
     state.ports[2] = makePort("mining");
@@ -126,7 +153,7 @@ export function createPlayer() {
         credits: 5000,
         currentSector: 1,
         time: { day: 1, minuteOfDay: BALANCE.DEFAULT_WAKE, wakeMinute: BALANCE.DEFAULT_WAKE, sleepMinute: BALANCE.DEFAULT_SLEEP },
-        ship: { name: "Merchant Cruiser", maxHolds: 75, travelMinutesPerWarp: 45, miningPower: 25, scannerLevel: 1, maxFighters: 2500, maxShields: 400, maxHull: 100 },
+        ship: { name: "Merchant Cruiser", maxHolds: 75, travelMinutesPerCorridor: 45, miningPower: 25, scannerLevel: 1, maxFighters: 2500, maxShields: 400, maxHull: 100 },
         cargo: { ore: 0, org: 0, eq: 0 },
         fighters: 30,
         shields: 400,

@@ -9,6 +9,7 @@ import { Notifications } from '../ui/notifications.js';
 import { prepareMissionOpportunity, activePortSectors, makeBaseMission } from '../systems/missions.js';
 import { generateFactionAsks } from '../systems/guilds.js';
 import { PORT_TYPES } from '../constants.js';
+import { getSectorNeighbors } from '../core/navigation.js';
 
 export function getSectorPoliticalMemory(sector) {
     if (!sector.politicalMemory) {
@@ -166,7 +167,7 @@ export function runFactionExpansion() {
         if (spread.length === 0) return;
         const strongest = spread[0];
         if (strongest.value < BALANCE.FACTION_EXPANSION_MIN_INFLUENCE) return;
-        source.warps.forEach(targetId => {
+        getSectorNeighbors(source.id).forEach(targetId => {
             const target = state.universe[targetId];
             if (!target) return;
             const before = getDominantInfluence(targetId);
@@ -217,7 +218,7 @@ export function maybeGrantPoliticalIntel() {
     ensureFactionState();
     const current = state.universe[state.player.currentSector];
     if (!current) return;
-    const nearby = [state.player.currentSector].concat(current.warps || []);
+    const nearby = [state.player.currentSector].concat(getSectorNeighbors(state.player.currentSector));
     nearby.forEach(sectorId => {
         const sector = state.universe[sectorId];
         if (!sector) return;

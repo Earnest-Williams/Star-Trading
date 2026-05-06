@@ -13,7 +13,7 @@ function minimalSave(version) {
         player: {
             credits: 5000,
             currentSector: 1,
-            ship: { name: 'Test Ship', maxHolds: 75, travelMinutesPerWarp: 45,
+            ship: { name: 'Test Ship', maxHolds: 75, travelMinutesPerCorridor: 45,
                     miningPower: 25, scannerLevel: 1, maxFighters: 2500,
                     maxShields: 400, maxHull: 100 },
             cargo: { ore: 0, org: 0, eq: 0 },
@@ -37,7 +37,8 @@ function minimalSave(version) {
         nextWorldEventId: 1,
         tradeRoutes: [],
         nextTradeRouteId: 1,
-        nextMissionId: 1
+        nextMissionId: 1,
+        ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 }
     };
 }
 
@@ -142,6 +143,51 @@ describe('migrateSave — pre-v10 (seed + factionRelations moved into player)', 
     });
 });
 
+
+describe('migrateSave — pre-v12 jump gate and explicit route migration', () => {
+    it('old save with warps loads into jump-gate corridors', () => {
+        const save = minimalSave(11);
+        save.universe = {
+            1: { id: 1, warps: [2], region: 'Core', pirateThreat: 0 },
+            2: { id: 2, warps: [1], region: 'Core', pirateThreat: 0 }
+        };
+        const result = migrateSave(save);
+        assert.equal(result.universe[1].warps, undefined);
+        assert.equal(result.universe[1].jumpGates[0].destinationSectorId, 2);
+        assert.equal(result.universe[2].jumpGates[0].destinationSectorId, 1);
+        assert.equal(result.universe[1].jumpGates[0].corridorId, result.universe[2].jumpGates[0].corridorId);
+    });
+
+    it('old trade routes become player-owned explicit routes', () => {
+        const save = minimalSave(11);
+        save.tradeRoutes = [{ id: 1, originSector: 1, destinationSector: 2, commodity: 'ore' }];
+        const result = migrateSave(save);
+        assert.equal(result.tradeRoutes[0].ownerType, 'player');
+        assert.equal(result.tradeRoutes[0].ownerId, null);
+        assert.equal(result.tradeRoutes[0].operatorType, 'player');
+    });
+
+    it('old ship travel timing field migrates correctly', () => {
+        const save = minimalSave(11);
+        delete save.player.ship.travelMinutesPerCorridor;
+        save.player.ship.travelMinutesPerWarp = 37;
+        const result = migrateSave(save);
+        assert.equal(result.player.ship.travelMinutesPerCorridor, 37);
+        assert.equal(result.player.ship.travelMinutesPerWarp, undefined);
+    });
+
+    it('repeated migration does not corrupt corridor endpoints', () => {
+        const save = minimalSave(11);
+        save.universe = {
+            1: { id: 1, warps: [2], region: 'Core', pirateThreat: 0 },
+            2: { id: 2, warps: [1], region: 'Core', pirateThreat: 0 }
+        };
+        const once = migrateSave(save);
+        const twice = migrateSave(once);
+        assert.equal(twice.universe[1].jumpGates.length, 1);
+        assert.equal(twice.universe[2].jumpGates.length, 1);
+    });
+});
 
 describe('persistence adapters', () => {
     afterEach(() => {

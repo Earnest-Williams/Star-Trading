@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { getSectorNeighbors } from "../core/navigation.js";
 import { FACTIONS, MAJOR_FACTIONS, BALANCE, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
@@ -90,7 +91,7 @@ function renderAssetsTab() {
     let html = `<h4>Starbases, Ports, and Colonies</h4>`;
     html += `<div class="small muted">Known assets are discovered through travel, survey, ownership, or faction access.</div>`;
     html += `<div class="commodity-row"><strong>Known Starbases & Ports</strong></div><div class="card-grid">`;
-    Object.keys(ports).map(Number).filter(id => id === 1 || id === player.currentSector || universe[id].surveyed || universe[player.currentSector].warps.includes(id)).sort((a, b) => a - b).forEach(id => {
+    Object.keys(ports).map(Number).filter(id => id === 1 || id === player.currentSector || universe[id].surveyed || getSectorNeighbors(player.currentSector).includes(id)).sort((a, b) => a - b).forEach(id => {
         const port = ports[id];
         const type = PORT_TYPES[port.typeKey];
         const faction = FACTIONS[port.factionId];
@@ -100,7 +101,7 @@ function renderAssetsTab() {
         html += `Sells: ${type.sells.map(formatCommodity).join(", ") || "nothing"}<br>Buys: ${type.buys.map(formatCommodity).join(", ") || "nothing"}<br>`;
         if (universe[id].front && universe[id].surveyed) html += `<span class="amber">Suspected front activity.</span><br>`;
         html += `<button data-action="selectSector" data-arg0="${id}">Inspect on Map</button>`;
-        if (universe[player.currentSector].warps.includes(id)) html += `<button data-action="moveTo" data-arg0="${id}">Warp</button>`;
+        if (getSectorNeighbors(player.currentSector).includes(id)) html += `<button data-action="moveTo" data-arg0="${id}">Use Jump Gate</button>`;
         html += `</div>`;
     });
     html += `</div>`;

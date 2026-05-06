@@ -19,6 +19,7 @@ export function createInitialState() {
         reputationTab: "factions",
         selectedCaptainId: null,
         mapNodeCache: {},
+        ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
         rng: null
     };
 }

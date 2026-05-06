@@ -1,21 +1,24 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS } from '../constants.js';
+import { BALANCE } from '../constants.js';
 import { log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
-import { addWorldEvent } from '../core/worldEvents.js';
-import { getPrivateFactionRep, addFactionLeverage, getFactionTrust, applyPoliticalEffect, getPirateIncidentMultiplier } from '../core/factions.js';
+import { getPrivateFactionRep, addFactionLeverage, getPirateIncidentMultiplier } from '../core/factions.js';
 import { spendTime, advanceTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { applyShipDamage } from './combat.js';
+import { canTransitDirectCorridor } from '../core/navigation.js';
 
 export function moveTo(target) {
     target = parseInt(target, 10);
-    const sector = state.universe[state.player.currentSector];
-    if (!sector.warps.includes(target)) { log("No warp to that sector."); return; }
-    if (!spendTime(state.player.ship.travelMinutesPerWarp)) return;
+    if (!canTransitDirectCorridor(state.player.currentSector, target)) {
+        log("No direct jump corridor to that sector.");
+        return;
+    }
+    const transitMinutes = state.player.ship.travelMinutesPerCorridor;
+    if (!spendTime(transitMinutes)) return;
     state.player.currentSector = target;
     state.selectedSectorId = target;
-    log(`Warped to sector ${target}. Travel took ${state.player.ship.travelMinutesPerWarp} minutes.`);
+    log(`Transited to sector ${target} via jump gate corridor. Travel took ${transitMinutes} minutes.`);
     maybeTravelIncident();
 }
 
@@ -29,7 +32,7 @@ export function maybeTravelIncident() {
     if (random() > chance) return;
     const damage = 8 + Math.floor(random() * 15) + sector.pirateThreat * 2;
     applyShipDamage(damage);
-    log(`Pirates harassed your approach. Shields absorbed ${damage} damage.`);
+    log(`Pirates harassed your corridor exit. Shields absorbed ${damage} damage.`);
     Notifications.show(`Pirate attack — ${damage} damage`, 3);
     if (dominant === "vc" && random() < 0.30) addFactionLeverage("vc", 1, "pirate crew recognized your transponder");
 }
