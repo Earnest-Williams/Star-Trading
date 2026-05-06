@@ -7,18 +7,18 @@ Star-Trading is a browser-based space trading game structured as a set of ES mod
 ```
 index.html          # Shell: HTML and <script type="module" src="js/main.js">
 style.css           # Canonical stylesheet (linked from index.html via <link rel="stylesheet">)
-package.json        # type:module + npm scripts (test, dev, lint)
+package.json        # type:module + npm scripts (test, dev, lint) and pinned dev tooling
 .eslintrc.json      # ESLint config (ES2022, browser + node envs)
 js/
   main.js           # Entry point: App.init()/dispose(), daily/hourly tick hooks, EventBus wiring
-  state.js          # Single shared mutable state object
+  state.js          # createInitialState()/resetState() plus the shared runtime state object
   events.js         # Pure EventBus (no browser APIs; on() returns an unsubscribe fn)
   constants.js      # All game constants: BALANCE, FACTIONS, COMMODITIES, DEFAULT_FACTION_RELATIONS, etc.
   utils.js          # Pure helpers: formatCredits, escapeHtml, log, seededRng, etc.
   core/
     factions.js     # Faction reputation, heat, trust, leverage, guild tiers
     influence.js    # Sector influence spread, dominance, status labels
-    persistence.js  # localStorage save / load, migrateSave (current SAVE_VERSION = 10)
+    persistence.js  # save / load, migrateSave (current SAVE_VERSION = 10), storage/UI adapters
     time.js         # advanceTime, spendTime, daily/hourly hook registry, clearDailyHooks/clearHourlyHooks
     universe.js     # Map generation, sector/port/planet factories, createPlayer (canonical), initRng
     worldEvents.js  # World event log (addWorldEvent)
@@ -87,7 +87,7 @@ In short, the project looks aimed at becoming a systemic "political economy in s
 
 There is no build step. Open `index.html` in a browser to play the prototype.
 
-To run a local dev server on port 3000:
+To run the pinned Vite dev server on port 3000:
 
 ```
 npm run dev
@@ -95,7 +95,7 @@ npm run dev
 
 ## Running the tests
 
-Smoke tests and cross-system simulation tests run with Node.js 18+:
+Smoke tests and cross-system simulation tests run with Node.js 18+ and do not require browser DOM stubs:
 
 ```
 npm test
@@ -106,3 +106,5 @@ npm test
 ```
 npm run lint
 ```
+
+Lint coverage includes both `js/**/*.js` and `tests/**/*.js`.

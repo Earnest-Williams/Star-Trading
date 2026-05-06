@@ -2,9 +2,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-// Stub browser globals used by transitively-imported modules.
-globalThis.document = { getElementById: () => null };
-
 import { state } from '../js/state.js';
 import { createPlayer } from '../js/core/universe.js';
 import { expireMissions } from '../js/systems/missions.js';

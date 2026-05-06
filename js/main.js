@@ -9,7 +9,7 @@ import { runTradeRoutesDaily } from './systems/tradeRoutes.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from './systems/politics.js';
 import { expireMissions, prepareMissionOpportunity } from './systems/missions.js';
 import { updateCaptainsDaily, updateCaptainsHourly } from './systems/captains.js';
-import { saveGame, loadGame } from './core/persistence.js';
+import { saveGame, loadGame, setPersistenceAdapters } from './core/persistence.js';
 import { restUntilMorning } from './systems/travel.js';
 import { setupMapInteraction } from './ui/renderMap.js';
 import { showScreen } from './ui/ui.js';
@@ -32,6 +32,12 @@ export const App = (() => {
     function init() {
         if (initialized) return;
         initialized = true;
+
+        setPersistenceAdapters({
+            storage: globalThis.localStorage || null,
+            notifier: (message, priority) => Notifications.show(message, priority),
+            afterLoad: updateUI
+        });
 
         // Register daily world tick
         registerDailyHook(reason => {
