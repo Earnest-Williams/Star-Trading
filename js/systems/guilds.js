@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS, FACTION_ASK_TYPES, GUILD_REQUIREMENTS, GUILD_TIER_NAMES, COMMODITIES } from '../constants.js';
-import { clampRange, formatCredits, describeCost, hasCargo, removeCargo, log } from '../utils.js';
+import { clampRange, formatCredits, describeCost, hasCargo, removeCargo, log, random } from '../utils.js';
 import { addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { ensureFactionState, addFactionRep, addFactionTrust, addFactionHeat, addFactionLeverage, getGuildTier, addIntel, applyPoliticalEffect, recordFactionMemory, getFactionRep, hasGuildJoinAccess, canAffordGuildRequirement } from '../core/factions.js';
@@ -20,10 +20,10 @@ export function generateFactionAsks() {
 
 export function makeFactionAsk() {
     ensureFactionState();
-    const type = FACTION_ASK_TYPES[Math.floor(Math.random() * FACTION_ASK_TYPES.length)];
+    const type = FACTION_ASK_TYPES[Math.floor(random() * FACTION_ASK_TYPES.length)];
     const id = state.player.factions.nextAskId++;
     const sectors = Object.keys(state.universe).map(Number).filter(s => s !== 1);
-    const sectorId = sectors[Math.floor(Math.random() * sectors.length)];
+    const sectorId = sectors[Math.floor(random() * sectors.length)];
     if (type === "ore_quota") {
         return { id, type: "ore_quota", factionId: "miners", title: "Protect the Ore Floor",
             text: `Mine 60 Ore before Day ${state.player.time.day + 5}. The guild wants enough independent supply to resist Helion price pressure.`,
@@ -40,7 +40,7 @@ export function makeFactionAsk() {
     if (type === "frontier_charter") {
         const targets = Object.keys(state.planets).map(Number).filter(s => !state.planets[s].owner);
         if (targets.length === 0) return null;
-        const target = targets[Math.floor(Math.random() * targets.length)];
+        const target = targets[Math.floor(random() * targets.length)];
         return { id, type: "frontier_charter", factionId: "fu", title: "Frontier Charter",
             text: `Found a colony in sector ${target}. The Frontier Union wants a friendly settlement before corporate claims arrive.`,
             targetSector: target, rewardCredits: 2600, publicRep: 4, trust: 2, favors: 1, sectorId: target, influence: 6,

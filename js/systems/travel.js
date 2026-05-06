@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, FACTIONS } from '../constants.js';
-import { log } from '../utils.js';
+import { log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { getPrivateFactionRep, addFactionLeverage, getFactionTrust, applyPoliticalEffect, getPirateIncidentMultiplier } from '../core/factions.js';
@@ -26,12 +26,12 @@ export function maybeTravelIncident() {
     let chance = Math.min(0.08 * sector.pirateThreat * getPirateIncidentMultiplier(), 0.35);
     if (dominant === "sda") chance *= 0.65;
     if (dominant === "vc" && getPrivateFactionRep("vc") > 50) chance *= 0.55;
-    if (Math.random() > chance) return;
-    const damage = 8 + Math.floor(Math.random() * 15) + sector.pirateThreat * 2;
+    if (random() > chance) return;
+    const damage = 8 + Math.floor(random() * 15) + sector.pirateThreat * 2;
     applyShipDamage(damage);
     log(`Pirates harassed your approach. Shields absorbed ${damage} damage.`);
     Notifications.show(`Pirate attack — ${damage} damage`, 3);
-    if (dominant === "vc" && Math.random() < 0.30) addFactionLeverage("vc", 1, "pirate crew recognized your transponder");
+    if (dominant === "vc" && random() < 0.30) addFactionLeverage("vc", 1, "pirate crew recognized your transponder");
 }
 
 export function restUntilMorning() {

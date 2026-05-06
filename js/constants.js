@@ -39,7 +39,7 @@ export const BALANCE = {
     REPAIR_HULL_COST: 35,
 };
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 export const SAVE_KEY = "starTradingSaveV10";
 export const SAVE_KEY_LEGACY = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];

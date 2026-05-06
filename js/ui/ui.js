@@ -61,8 +61,12 @@ export function handleActionClick(event) {
     for (let i = 0; i < 5; i++) {
         if (target.dataset['arg' + i] !== undefined) args.push(target.dataset['arg' + i]);
     }
-    try { fn.apply(null, args); }
-    catch (e) { console.error(`Action ${action} failed:`, e); }
+    try {
+        const result = fn.apply(null, args);
+        if (result !== false) updateUI();
+    } catch (e) {
+        console.error(`Action ${action} failed:`, e);
+    }
 }
 
 // =====================================================

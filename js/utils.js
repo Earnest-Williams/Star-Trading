@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { BALANCE, COMMODITIES, COMMODITY_NAMES } from './constants.js';
+import { COMMODITIES, COMMODITY_NAMES } from './constants.js';
 
 /**
  * Mulberry32 seedable PRNG.  Returns a function that produces a uniform
@@ -16,6 +16,36 @@ export function seededRng(seed) {
         t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
         return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
     };
+}
+
+let sessionRng = null;
+
+export function initSessionRng(seed, calls = 0) {
+    const safeSeed = Number.isFinite(Number(seed)) ? Number(seed) >>> 0 : Date.now() >>> 0;
+    const safeCalls = Math.max(0, Math.floor(Number(calls) || 0));
+    sessionRng = seededRng(safeSeed);
+    state.rng = { seed: safeSeed, calls: safeCalls };
+    for (let i = 0; i < safeCalls; i++) sessionRng();
+}
+
+export function restoreSessionRng(rngState, fallbackSeed) {
+    if (rngState && Number.isFinite(Number(rngState.seed))) {
+        initSessionRng(rngState.seed, rngState.calls);
+        return;
+    }
+    initSessionRng(fallbackSeed);
+}
+
+export function random() {
+    if (!sessionRng || !state.rng) {
+        const seed = state.rng && Number.isFinite(Number(state.rng.seed))
+            ? state.rng.seed
+            : state.player && state.player.seed;
+        const calls = state.rng && Number.isFinite(Number(state.rng.calls)) ? state.rng.calls : 0;
+        initSessionRng(seed, calls);
+    }
+    state.rng.calls += 1;
+    return sessionRng();
 }
 
 export function escapeHtml(s) {

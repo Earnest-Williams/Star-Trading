@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, COMMODITIES } from '../constants.js';
-import { clampRange, formatCredits, log } from '../utils.js';
+import { clampRange, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, normaliseSectorInfluence, addSectorInfluence, getInfluenceSpread, getSectorStatusLabel } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { ensureFactionState, getFactionRep, getFactionHeat, getFactionLeverage, getFactionTrust, addFactionRep, addFactionHeat, addFactionLeverage, addFactionTrust, getGuildTier, recordFactionMemory, applyPoliticalEffect, getFactionPoliticalPole, getPirateIncidentMultiplier } from '../core/factions.js';
@@ -77,17 +77,17 @@ export function processContestedSector(sector) {
     const memory = getSectorPoliticalMemory(sector);
     const contestedDays = memory.contestedDays || 0;
     const topPair = [first.id, second.id];
-    if (topPair.includes("vc") && sector.pirateThreat < 6 && Math.random() < 0.14 + contestedDays * 0.015) {
+    if (topPair.includes("vc") && sector.pirateThreat < 6 && random() < 0.14 + contestedDays * 0.015) {
         sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
         addWorldEvent({ type: "pirate_surge", factionId: "vc", sectorId: sector.id, text: `Contested control in sector ${sector.id} gave raiders room to surge. Pirate threat is now ${sector.pirateThreat}.`, importance: 3, alert: sector.id === state.player.currentSector });
     }
-    if (topPair.includes("sda") && sector.pirateThreat > 0 && Math.random() < 0.18 + Math.max(0, getFactionRep("sda")) / 4000) {
+    if (topPair.includes("sda") && sector.pirateThreat > 0 && random() < 0.18 + Math.max(0, getFactionRep("sda")) / 4000) {
         sector.pirateThreat = Math.max(0, sector.pirateThreat - 1);
         addSectorInfluence(sector.id, "sda", 1, "patrol response in contested space");
     }
     const politicalOpen = state.missions.filter(m => m.status === "available" && m.kind === "political_contest").length;
-    if (politicalOpen < BALANCE.POLITICAL_MISSION_LIMIT && Math.random() < 0.18 + contestedDays * 0.01) {
-        const sponsor = Math.random() < 0.58 ? first.id : second.id;
+    if (politicalOpen < BALANCE.POLITICAL_MISSION_LIMIT && random() < 0.18 + contestedDays * 0.01) {
+        const sponsor = random() < 0.58 ? first.id : second.id;
         const rival = sponsor === first.id ? second.id : first.id;
         const mission = makeContestMission(sector, sponsor, rival);
         if (mission) {
@@ -104,7 +104,7 @@ export function applyFactionSectorEffects(sector) {
     const fu = sector.influence.fu || 0;
     const hc = sector.influence.hc || 0;
     const vc = sector.influence.vc || 0;
-    if (sda >= 55 && sector.pirateThreat > 0 && Math.random() < Math.min(0.45, (sda - 45) / 130)) {
+    if (sda >= 55 && sector.pirateThreat > 0 && random() < Math.min(0.45, (sda - 45) / 130)) {
         sector.pirateThreat = Math.max(0, sector.pirateThreat - 1);
     }
     if (hc >= 55 && sector.asteroids) {
@@ -113,24 +113,24 @@ export function applyFactionSectorEffects(sector) {
         sector.asteroids.ore = Math.min(sector.asteroids.maxOre, sector.asteroids.ore + regen);
     }
     const planet = state.planets[sector.id];
-    if (fu >= 55 && planet && planet.owner && planet.colonists > 0 && Math.random() < 0.28) {
+    if (fu >= 55 && planet && planet.owner && planet.colonists > 0 && random() < 0.28) {
         const growth = 1 + Math.floor(fu / 35);
         planet.colonists += growth;
         if (typeof planet.satisfaction === "number") planet.satisfaction = Math.min(100, planet.satisfaction + 1);
     }
-    if (vc >= 50 && Math.random() < Math.min(0.32, (vc - 40) / 150) && sector.pirateThreat < 6) {
+    if (vc >= 50 && random() < Math.min(0.32, (vc - 40) / 150) && sector.pirateThreat < 6) {
         sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
     }
     const port = state.ports[sector.id];
-    if (vc >= 58 && port && !port.hiddenFactionId && Math.random() < 0.055) {
+    if (vc >= 58 && port && !port.hiddenFactionId && random() < 0.055) {
         port.hiddenFactionId = "vc";
-        sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: "vc", suspicion: 12 + Math.floor(Math.random() * 18) };
+        sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: "vc", suspicion: 12 + Math.floor(random() * 18) };
     }
 }
 
 export function updateFrontDaily(sector) {
     const port = state.ports[sector.id];
-    if (!sector.front && port && port.hiddenFactionId) sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: port.hiddenFactionId, suspicion: 10 + Math.floor(Math.random() * 15) };
+    if (!sector.front && port && port.hiddenFactionId) sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: port.hiddenFactionId, suspicion: 10 + Math.floor(random() * 15) };
     if (!sector.front) return;
     const front = sector.front;
     if (!FACTIONS[front.hiddenFactionId]) { sector.front = null; return; }
@@ -139,9 +139,9 @@ export function updateFrontDaily(sector) {
     let suspicionGain = 1 + Math.floor(hiddenInfluence / 30);
     if (sector.surveyed) suspicionGain += 1;
     if (sector.pirateThreat >= 3 && front.hiddenFactionId === "vc") suspicionGain += 1;
-    if (publicInfluence > hiddenInfluence + 20 && Math.random() < 0.45) suspicionGain -= 1;
+    if (publicInfluence > hiddenInfluence + 20 && random() < 0.45) suspicionGain -= 1;
     front.suspicion = clampRange((front.suspicion || 0) + suspicionGain, 0, 100);
-    if (front.suspicion >= BALANCE.FRONT_EXPOSURE_THRESHOLD && Math.random() < (sector.surveyed ? 0.68 : 0.38)) exposeFrontOperation(sector);
+    if (front.suspicion >= BALANCE.FRONT_EXPOSURE_THRESHOLD && random() < (sector.surveyed ? 0.68 : 0.38)) exposeFrontOperation(sector);
 }
 
 export function exposeFrontOperation(sector) {
@@ -177,7 +177,7 @@ export function runFactionExpansion() {
             if (strongest.id === "hc" && (target.asteroids || state.ports[targetId])) chance += 0.035;
             if (strongest.id === "vc" && target.region === "Badlands") chance += 0.055;
             if (getSectorStatusLabel(targetId) === "Contested") chance += 0.035;
-            if (Math.random() > Math.min(0.32, chance)) return;
+            if (random() > Math.min(0.32, chance)) return;
             addSectorInfluence(targetId, strongest.id, strongest.value >= 82 ? 2 : 1, "");
             const after = getDominantInfluence(targetId);
             if (after !== before) recordDominanceChange(target, before, after, `expansion pressure from sector ${source.id}`);
@@ -227,26 +227,26 @@ export function maybeGrantPoliticalIntel() {
         if (!interesting) return;
         if (state.player.factions.intel.some(item => item.type === "political_daily" && item.sectorId === sectorId && item.expiresDay >= state.player.time.day)) return;
         const chance = Math.min(0.34, BALANCE.POLITICAL_INTEL_BASE_CHANCE + Math.max(0, getFactionRep(dominant)) / 3500 + Math.max(0, getFactionTrust(dominant)) / 700 + (sectorId === state.player.currentSector ? 0.08 : 0.03));
-        if (Math.random() > chance) return;
+        if (random() > chance) return;
         let msg = `${FACTIONS[dominant].short} contacts report political movement in sector ${sectorId}.`;
         if (sector.front) msg = `Whispers point to a front operation in sector ${sectorId}; suspicion is around ${sector.front.suspicion}.`;
         else if (getSectorStatusLabel(sectorId) === "Contested") msg = `Local contacts say sector ${sectorId} is contested between ${spread.slice(0, 2).map(item => FACTIONS[item.id].short).join(" and ")}.`;
         else if ((sector.pirateThreat || 0) >= 3) msg = `Route chatter flags pirate pressure in sector ${sectorId} at threat ${sector.pirateThreat}.`;
-        state.player.factions.intel.push({ type: "political_daily", factionId: dominant, sectorId, value: 25 + Math.floor(Math.random() * 20), expiresDay: state.player.time.day + 5, text: msg, id: state.player.factions.nextIntelId++ });
+        state.player.factions.intel.push({ type: "political_daily", factionId: dominant, sectorId, value: 25 + Math.floor(random() * 20), expiresDay: state.player.time.day + 5, text: msg, id: state.player.factions.nextIntelId++ });
     });
 }
 
 export function updateFactionsDaily() {
     ensureFactionState();
     MAJOR_FACTIONS.forEach(id => {
-        if (getFactionHeat(id) > 0 && Math.random() < 0.45) state.player.factions.heat[id] = Math.max(0, state.player.factions.heat[id] - 1);
-        if (getFactionLeverage(id) > 0 && Math.random() < 0.12) state.player.factions.leverage[id] = Math.max(0, state.player.factions.leverage[id] - 1);
+        if (getFactionHeat(id) > 0 && random() < 0.45) state.player.factions.heat[id] = Math.max(0, state.player.factions.heat[id] - 1);
+        if (getFactionLeverage(id) > 0 && random() < 0.12) state.player.factions.leverage[id] = Math.max(0, state.player.factions.leverage[id] - 1);
     });
     GUILD_FACTIONS.forEach(id => {
-        if (getFactionTrust(id) > 0 && Math.random() < 0.08) state.player.factions.trust[id] -= 1;
+        if (getFactionTrust(id) > 0 && random() < 0.08) state.player.factions.trust[id] -= 1;
     });
-    if (getFactionHeat("sda") >= 70 && Math.random() < 0.35) {
-        const fine = Math.min(state.player.credits, 400 + Math.floor(Math.random() * 900));
+    if (getFactionHeat("sda") >= 70 && random() < 0.35) {
+        const fine = Math.min(state.player.credits, 400 + Math.floor(random() * 900));
         state.player.credits -= fine;
         addFactionHeat("sda", -12, "inspection fine paid");
         addFactionLeverage("sda", 2, "cargo audit file");
@@ -254,9 +254,9 @@ export function updateFactionsDaily() {
         log(`SDA inspection sweep hit your records. Paid ${formatCredits(fine)} credits; heat dropped.`);
         Notifications.show(`SDA inspection: paid ${formatCredits(fine)}c fine`, 3);
     }
-    if (Math.random() < 0.30) {
-        const pair = Math.random() < 0.5 ? ["sda", "vc"] : ["fu", "hc"];
-        const delta = pair[0] === "sda" ? -1 : (Math.random() < 0.5 ? -1 : 1);
+    if (random() < 0.30) {
+        const pair = random() < 0.5 ? ["sda", "vc"] : ["fu", "hc"];
+        const delta = pair[0] === "sda" ? -1 : (random() < 0.5 ? -1 : 1);
         const fr = state.player.factionRelations;
         if (fr && fr[pair[0]] && fr[pair[1]]) {
             fr[pair[0]][pair[1]] = Math.max(-100, Math.min(100, fr[pair[0]][pair[1]] + delta));
@@ -264,7 +264,7 @@ export function updateFactionsDaily() {
         }
         if (delta < 0 && pair.includes("vc")) {
             Object.values(state.universe).forEach(sector => {
-                if (sector.region !== "Core" || Math.random() > 0.10) return;
+                if (sector.region !== "Core" || random() > 0.10) return;
                 sector.pirateThreat = Math.min(4, sector.pirateThreat + 1);
                 addSectorInfluence(sector.id, "vc", 1, "");
             });
@@ -283,11 +283,11 @@ export function updatePortsDaily() {
         const type = PORT_TYPES[port.typeKey];
         COMMODITIES.forEach(c => {
             if (type.sells.includes(c)) {
-                const refill = Math.ceil(port.maxStock[c] * (0.06 + Math.random() * 0.05));
+                const refill = Math.ceil(port.maxStock[c] * (0.06 + random() * 0.05));
                 port.stock[c] = Math.min(port.maxStock[c], port.stock[c] + refill);
             }
             if (type.buys.includes(c)) {
-                const consumption = Math.ceil(port.maxStock[c] * (0.03 + Math.random() * 0.04));
+                const consumption = Math.ceil(port.maxStock[c] * (0.03 + random() * 0.04));
                 port.stock[c] = Math.max(0, port.stock[c] - consumption);
             }
         });
@@ -310,7 +310,7 @@ export function updateThreatsDaily() {
             if (planet.policy && planet.policy.security === "sda_patrol") chance -= 0.06;
         }
         chance *= getPirateIncidentMultiplier();
-        if (Math.random() < Math.max(0.02, chance)) {
+        if (random() < Math.max(0.02, chance)) {
             sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
             if (top === "vc") addSectorInfluence(sector.id, "vc", 1, "");
         }

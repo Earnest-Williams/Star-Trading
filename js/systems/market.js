@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, COMMODITIES, PORT_TYPES, FACTIONS } from '../constants.js';
-import { formatCommodity, formatCredits, getFreeHolds, log } from '../utils.js';
+import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
 import { getInfluenceSpread, addSectorInfluence } from '../core/influence.js';
 import { getFactionPriceMultiplier, getFactionLabel, getFactionRep, addFactionRep, addFactionHeat, applyPoliticalEffect } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
@@ -34,7 +34,7 @@ export function tradeCommodity(commodity, mode) {
         log(`Bought ${amount} ${formatCommodity(commodity)} for ${formatCredits(amount * price)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         if (amount >= BALANCE.TRADE_BATCH) {
             applyPoliticalEffect({ factionId: port.factionId, publicRep: 1, trust: 1, sectorId: state.player.currentSector, influence: 1, reason: "routine public trade", memoryKey: "reliableJobs" });
-            if (port.hiddenFactionId && Math.random() < 0.18) {
+            if (port.hiddenFactionId && random() < 0.18) {
                 addFactionRep(port.hiddenFactionId, 1, "quiet port relationship", "private");
                 const sector = state.universe[state.player.currentSector];
                 if (sector && sector.front) sector.front.suspicion = Math.min(100, sector.front.suspicion + 2);

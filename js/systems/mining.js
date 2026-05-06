@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, FACTIONS, COMMODITIES } from '../constants.js';
-import { formatCommodity, formatCredits, getFreeHolds, log } from '../utils.js';
+import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
@@ -16,7 +16,7 @@ export function mineAsteroids() {
     if (asteroids.ore <= 0) { log("This asteroid field has been depleted."); return; }
     if (getFreeHolds() <= 0) { log("Your cargo holds are full."); return; }
     if (!spendTime(120)) return;
-    const randomFactor = 0.80 + Math.random() * 0.40;
+    const randomFactor = 0.80 + random() * 0.40;
     const influence = getDominantInfluence(state.player.currentSector);
     const influenceBoost = influence === "hc" ? 1.08 : influence === "vc" ? 1.03 : 1.0;
     const estimatedYield = Math.floor(state.player.ship.miningPower * getMiningYieldMultiplier() * influenceBoost * asteroids.richness * randomFactor);
@@ -32,8 +32,8 @@ export function mineAsteroids() {
             m.progress = Math.min(m.amount, m.progress + mined);
         });
     }
-    if (Math.random() < asteroids.hazard) {
-        const damage = 6 + Math.floor(Math.random() * 22);
+    if (random() < asteroids.hazard) {
+        const damage = 6 + Math.floor(random() * 22);
         applyShipDamage(damage);
         addFactionHeat("sda", 1, "hazard beacon traffic");
         log(`Mining debris hit the ship for ${damage} damage.`);
@@ -52,7 +52,7 @@ export function surveySector() {
     log(`Surveyed sector ${sector.id}.`);
     updateFactionAskProgress("market_intel", 1);
     ensureFactionState();
-    if (sector.front && Math.random() < 0.45) {
+    if (sector.front && random() < 0.45) {
         sector.front.suspicion = Math.min(100, sector.front.suspicion + 12);
         addIntel({
             type: "front",

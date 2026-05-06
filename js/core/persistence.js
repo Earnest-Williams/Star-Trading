@@ -8,7 +8,7 @@ import { normaliseCaptains } from '../systems/captains.js';
 import { normaliseTradeRoutes } from '../systems/tradeRoutes.js';
 import { prepareMissionOpportunity } from '../systems/missions.js';
 import { createContactState } from './factions.js';
-import { makeStock } from '../utils.js';
+import { makeStock, restoreSessionRng } from '../utils.js';
 import { log } from '../utils.js';
 
 
@@ -66,6 +66,7 @@ export function migrateSave(data) {
     }
     // v8: sector.politicalMemory added — normaliseLoadedGame rebuilds missing entries
     // v9→v10: seed added; factionRelations moved from top-level into player object
+    // v10: session RNG state added — normaliseLoadedGame restores missing entries
     if (v < 10) {
         if (data.player) {
             if (!data.player.seed) data.player.seed = Date.now();
@@ -101,7 +102,8 @@ export function saveGame() {
         nextWorldEventId: state.nextWorldEventId,
         tradeRoutes: state.tradeRoutes,
         nextTradeRouteId: state.nextTradeRouteId,
-        nextMissionId: state.nextMissionId
+        nextMissionId: state.nextMissionId,
+        rng: state.rng
     };
     try {
         storage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -146,7 +148,9 @@ export function loadGame() {
         state.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
         state.nextTradeRouteId = data.nextTradeRouteId || (state.tradeRoutes.length + 1);
         state.nextMissionId = data.nextMissionId || (state.missions.length + 1);
+        state.rng = data.rng || null;
         normaliseLoadedGame();
+        restoreSessionRng(state.rng, state.player.seed);
         state.selectedSectorId = state.player.currentSector;
         state.currentScreen = "sector";
         writeLog("Game loaded.");
