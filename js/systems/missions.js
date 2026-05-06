@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS, FACTION_RELATIONS, BALANCE, PORT_TYPES, COMMODITIES } from '../constants.js';
+import { FACTIONS, BALANCE, PORT_TYPES, COMMODITIES } from '../constants.js';
 import { formatCommodity, formatCredits, log } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
@@ -203,7 +203,8 @@ export function completeMission(id) {
     const factionId = m.factionId || "fu";
     applyPoliticalEffect({ factionId, publicRep: m.rewardRep, trust: 1, favors: m.rewardRep >= 3 ? 1 : 0, sectorId: m.destinationSector || m.targetSector || m.originSector, influence: 2, reason: "mission completed", memoryKey: "reliableJobs" });
     if (FACTIONS[factionId] && FACTIONS[factionId].type === "major") {
-        Object.entries(FACTION_RELATIONS[factionId] || {}).forEach(([otherId, relation]) => {
+        const fr = (state.player && state.player.factionRelations) || {};
+        Object.entries(fr[factionId] || {}).forEach(([otherId, relation]) => {
             if (relation <= -50) recordFactionMemory(otherId, "helpedEnemies", 1);
         });
     }

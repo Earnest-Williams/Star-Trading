@@ -1,13 +1,12 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, FACTION_RELATIONS, COMMODITIES } from '../constants.js';
+import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, COMMODITIES } from '../constants.js';
 import { clampRange, formatCredits, log } from '../utils.js';
 import { getDominantInfluence, normaliseSectorInfluence, addSectorInfluence, getInfluenceSpread, getSectorStatusLabel } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { ensureFactionState, getFactionRep, getFactionHeat, getFactionLeverage, getFactionTrust, addFactionRep, addFactionHeat, addFactionLeverage, addFactionTrust, getGuildTier, recordFactionMemory, applyPoliticalEffect, getFactionPoliticalPole, getPirateIncidentMultiplier } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
-import { makeBaseMission } from '../systems/missions.js';
-import { prepareMissionOpportunity, activePortSectors } from '../systems/captains.js';
+import { prepareMissionOpportunity, activePortSectors, makeBaseMission } from '../systems/missions.js';
 import { generateFactionAsks } from '../systems/guilds.js';
 import { PORT_TYPES } from '../constants.js';
 
@@ -23,10 +22,11 @@ export function getSectorPoliticalMemory(sector) {
 }
 
 export function adjustFactionRelation(a, b, delta, reason) {
-    if (!FACTION_RELATIONS[a] || typeof FACTION_RELATIONS[a][b] !== "number") return;
-    FACTION_RELATIONS[a][b] = clampRange(FACTION_RELATIONS[a][b] + delta, -100, 100);
-    if (FACTION_RELATIONS[b] && typeof FACTION_RELATIONS[b][a] === "number") {
-        FACTION_RELATIONS[b][a] = clampRange(FACTION_RELATIONS[b][a] + delta, -100, 100);
+    const fr = state.player && state.player.factionRelations;
+    if (!fr || !fr[a] || typeof fr[a][b] !== "number") return;
+    fr[a][b] = clampRange(fr[a][b] + delta, -100, 100);
+    if (fr[b] && typeof fr[b][a] === "number") {
+        fr[b][a] = clampRange(fr[b][a] + delta, -100, 100);
     }
     if (reason && Math.abs(delta) >= 2) {
         addWorldEvent({
@@ -257,8 +257,11 @@ export function updateFactionsDaily() {
     if (Math.random() < 0.30) {
         const pair = Math.random() < 0.5 ? ["sda", "vc"] : ["fu", "hc"];
         const delta = pair[0] === "sda" ? -1 : (Math.random() < 0.5 ? -1 : 1);
-        FACTION_RELATIONS[pair[0]][pair[1]] = Math.max(-100, Math.min(100, FACTION_RELATIONS[pair[0]][pair[1]] + delta));
-        FACTION_RELATIONS[pair[1]][pair[0]] = Math.max(-100, Math.min(100, FACTION_RELATIONS[pair[1]][pair[0]] + delta));
+        const fr = state.player.factionRelations;
+        if (fr && fr[pair[0]] && fr[pair[1]]) {
+            fr[pair[0]][pair[1]] = Math.max(-100, Math.min(100, fr[pair[0]][pair[1]] + delta));
+            fr[pair[1]][pair[0]] = Math.max(-100, Math.min(100, fr[pair[1]][pair[0]] + delta));
+        }
         if (delta < 0 && pair.includes("vc")) {
             Object.values(state.universe).forEach(sector => {
                 if (sector.region !== "Core" || Math.random() > 0.10) return;

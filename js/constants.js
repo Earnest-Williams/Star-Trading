@@ -39,8 +39,8 @@ export const BALANCE = {
     REPAIR_HULL_COST: 35,
 };
 
-export const SAVE_VERSION = 9;
-export const SAVE_KEY = "starTradingSaveV9";
+export const SAVE_VERSION = 10;
+export const SAVE_KEY = "starTradingSaveV10";
 export const SAVE_KEY_LEGACY = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];
 export const COMMODITY_NAMES = { ore: "Ore", org: "Organics", eq: "Equipment" };
@@ -57,7 +57,7 @@ export const FACTIONS = {
     smugglers: { id: "smugglers", type: "guild", name: "Smugglers Syndicate", short: "SMG", color: "#cc66ff", icon: "◆", description: "Quiet-route specialists and off-ledger freight brokers.", startingRep: 0, majorAffinity: "vc" }
 };
 
-export let FACTION_RELATIONS = {
+export const DEFAULT_FACTION_RELATIONS = {
     sda: { fu: 30, hc: 10, vc: -80 },
     fu: { sda: 30, hc: -10, vc: -40 },
     hc: { sda: 10, fu: -10, vc: -60 },

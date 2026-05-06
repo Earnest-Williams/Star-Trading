@@ -4,7 +4,7 @@ import { escapeHtml, formatCredits, log } from "../utils.js";
 import { getGuildTier, applyPoliticalEffect, addFactionRep, addFactionHeat, getPrivateFactionRep } from "../core/factions.js";
 import { spendTime } from "../core/time.js";
 import { renderMissionBoard } from "./renderMissions.js";
-import { updateUI } from "../events.js";
+import { updateUI } from "./renderer.js";
 
 export function renderShipyardPanel() {
     const { player } = state;

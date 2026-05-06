@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
 import { getSectorFactionId } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
-import { Renderer } from "../events.js";
+import { Renderer } from "./renderer.js";
 
 export function getMapNodes() {
     const universe = state.universe;

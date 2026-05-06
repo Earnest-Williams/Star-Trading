@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 
 // Stub browser globals used by transitively-imported modules.
 globalThis.document = { getElementById: () => null };
-globalThis.requestAnimationFrame = () => {};
 
 import { state } from '../js/state.js';
 import {
