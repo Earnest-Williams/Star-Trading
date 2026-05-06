@@ -2,13 +2,8 @@ import { resetState, state } from './state.js';
 import { EventBus } from './events.js';
 import { Renderer, updateUI } from './ui/renderer.js';
 import { createPlayer, generateUniverse, generateStars } from './core/universe.js';
-import { registerDailyHook, registerHourlyHook, clearDailyHooks, clearHourlyHooks } from './core/time.js';
+import { clearDailyHooks, clearHourlyHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
-import { produceColonies, updateColonyNeedsDaily } from './systems/colonies.js';
-import { runTradeRoutesDaily } from './systems/tradeRoutes.js';
-import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from './systems/politics.js';
-import { expireMissions, prepareMissionOpportunity } from './systems/missions.js';
-import { updateCaptainsDaily, updateCaptainsHourly } from './systems/captains.js';
 import { setPersistenceAdapters } from './core/persistence.js';
 import { setupMapInteraction } from './ui/renderMap.js';
 import { handleActionClick } from './ui/ui.js';
@@ -18,6 +13,7 @@ import { initSessionRng } from './utils.js';
 import { createCaptains } from './systems/captains.js';
 import { generateMissionPool } from './systems/missions.js';
 import { executeAction } from './core/commands.js';
+import { registerSimulationTickHooks } from './core/worldTick.js';
 
 // =====================================================
 // APP BOOTSTRAP
@@ -34,42 +30,24 @@ export const App = (() => {
         resetState();
         initialized = true;
 
+        configurePersistence();
+        registerSimulationTickHooks();
+        registerRendererSubscriptions();
+        startSimulation();
+        bindAppShellDom();
+        postStartupNotifications();
+        updateUI();
+    }
+
+    function configurePersistence() {
         setPersistenceAdapters({
             storage: globalThis.localStorage || null,
             notifier: (message, priority) => Notifications.show(message, priority),
             afterLoad: updateUI
         });
+    }
 
-        // Register daily world tick
-        registerDailyHook(reason => {
-            produceColonies();
-            runTradeRoutesDaily();
-            updateColonyNeedsDaily();
-            updatePortsDaily();
-            updateThreatsDaily();
-            updateFactionsDaily();
-            expireMissions();
-            updateCaptainsDaily(reason);
-            addWorldEvent({
-                type: 'daily_tick',
-                text: `Day ${state.player.time.day} opened: colonies produced goods, markets shifted, captains acted, factions moved, and sector threats advanced.`,
-                importance: 2,
-                alert: false
-            });
-        });
-
-        // Register hourly world tick
-        registerHourlyHook(() => {
-            updateCaptainsHourly();
-            state.missions.filter(m => m.status === 'available').forEach(prepareMissionOpportunity);
-            if (state.player.factions && Array.isArray(state.player.factions.intel)) {
-                state.player.factions.intel = state.player.factions.intel.filter(
-                    item => item.expiresDay >= state.player.time.day
-                );
-            }
-        });
-
-        // EventBus subscriptions — store unsubscribers for clean teardown
+    function registerRendererSubscriptions() {
         _unsubs.push(EventBus.on('time_advanced', () => {
             Renderer.invalidate('priority');
             Renderer.invalidate('header');
@@ -80,8 +58,9 @@ export const App = (() => {
             Renderer.invalidate('sector');
         }));
         _unsubs.push(EventBus.on('captain_changed', () => Renderer.invalidate('sector')));
+    }
 
-        // Initialise game world
+    function startSimulation() {
         state.player = createPlayer();
         initSessionRng(state.player.seed);
         generateStars();
@@ -90,31 +69,37 @@ export const App = (() => {
         generateMissionPool();
         generateFactionAsks();
         state.selectedSectorId = state.player.currentSector;
-        setupMapInteraction();
+    }
 
-        // Bind persistent top-bar buttons (stored so dispose() can remove them)
+    function bindAppShellDom() {
+        setupMapInteraction();
+        bindTopbarButtons();
+        document.body.addEventListener('click', handleActionClick);
+    }
+
+    function bindTopbarButtons() {
         document.querySelectorAll('.topbar button').forEach(btn => {
             const fn = () => executeAction({ type: 'showScreen', args: [btn.dataset.screen] });
             btn.addEventListener('click', fn);
             _topbarListeners.push({ el: btn, fn });
         });
-        const addBtn = (id, fn) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener('click', fn);
-            _topbarListeners.push({ el, fn });
-        };
-        addBtn('btn-rest', () => {
+        addTopbarListener('btn-rest', () => {
             const result = executeAction({ type: 'restUntilMorning' });
             if (result !== false) updateUI();
         });
-        addBtn('btn-save', () => executeAction({ type: 'saveGame' }));
-        addBtn('btn-load', () => executeAction({ type: 'loadGame' }));
-        addBtn('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
+        addTopbarListener('btn-save', () => executeAction({ type: 'saveGame' }));
+        addTopbarListener('btn-load', () => executeAction({ type: 'loadGame' }));
+        addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
+    }
 
-        // Single delegated handler for all data-action buttons
-        document.body.addEventListener('click', handleActionClick);
+    function addTopbarListener(id, fn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', fn);
+        _topbarListeners.push({ el, fn });
+    }
 
+    function postStartupNotifications() {
         addWorldEvent({
             type: 'start',
             sectorId: state.player.currentSector,
@@ -123,7 +108,6 @@ export const App = (() => {
             alert: false
         });
         Notifications.show('Welcome to the frontier', 2);
-        updateUI();
     }
 
     function dispose() {
