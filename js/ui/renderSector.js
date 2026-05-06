@@ -1,9 +1,9 @@
 import { state } from "../state.js";
-import { FACTIONS, PORT_TYPES, PLANET_TYPES, COMMODITIES } from "../constants.js";
+import { FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
-import { getSectorNeighbors } from "../core/navigation.js";
+import { getOutboundJumpGates, getSectorNeighbors } from "../core/navigation.js";
 
 export function renderSectorContents() {
     const { player, universe, ports, planets, tradeRoutes } = state;
@@ -14,7 +14,13 @@ export function renderSectorContents() {
     let html = `<div><strong>Region:</strong> ${escapeHtml(sector.region)} | <strong>Status:</strong> ${escapeHtml(getSectorStatusLabel(player.currentSector))}</div>`;
     if (influence) html += `<div><strong>Dominant Influence:</strong> <span style="color:${influence.color}">${influence.icon} ${escapeHtml(influence.name)}</span></div>`;
     html += `<div class="small muted">${getInfluenceSpread(player.currentSector).map(item => `${FACTIONS[item.id].short}:${item.value}`).join(" | ")}</div>`;
-    html += `<div><strong>Jump Corridors:</strong> ${getSectorNeighbors(player.currentSector).join(", ")}</div>`;
+    const outboundGates = getOutboundJumpGates(player.currentSector);
+    const gateLabels = outboundGates.map(gate => {
+        const gateId = escapeHtml(gate.id || "unknown gate");
+        const corridorId = escapeHtml(gate.corridorId || "unknown corridor");
+        return `${gateId} to sector ${gate.destinationSectorId} (${corridorId})`;
+    });
+    html += `<div><strong>Local Jump Gates:</strong> ${gateLabels.join(" | ") || "None"}</div>`;
     html += `<div><strong>Survey:</strong> ${sector.surveyed ? "Complete" : "Not surveyed"}</div>`;
     const localRoutes = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === player.currentSector || r.destinationSector === player.currentSector));
     if (localRoutes.length > 0) html += `<div><strong>Routes:</strong> ${localRoutes.map(r => `${escapeHtml(r.name)} (${r.status})`).join(" | ")}</div>`;
@@ -71,9 +77,9 @@ export function renderPlanetSummary(planet) {
 
 export function renderMenuPanel() {
     const { player, universe, ports, planets } = state;
-    const sector = universe[player.currentSector];
-    let html = `<div><strong>Direct Jump Corridors</strong></div>`;
-    getSectorNeighbors(player.currentSector).forEach(target => {
+    let html = `<div><strong>Outbound Gates</strong></div>`;
+    getOutboundJumpGates(player.currentSector).forEach(gate => {
+        const target = gate.destinationSectorId;
         const s = universe[target];
         const dominant = FACTIONS[getSectorFactionId(target)];
         html += `<div class="nav-card"><strong>Sector ${target}</strong> <span class="muted">${escapeHtml(s.region)}</span><br>`;
@@ -82,7 +88,8 @@ export function renderMenuPanel() {
         if (planets[target]) html += `Planet `;
         if (s.asteroids) html += `Asteroids `;
         if (s.pirateThreat > 0) html += `<span class="red">Pirates ${s.pirateThreat}</span>`;
-        html += `<br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`;
+        const gateLabel = escapeHtml(gate.id || gate.corridorId || `gate to ${target}`);
+        html += `<br><span class="muted">Gate ${gateLabel}</span><br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`;
     });
     html += `<div class="commodity-row"><strong>Menus</strong><div class="menu-grid">`;
     html += `<button data-action="showScreen" data-arg0="sector">Sector</button>`;

@@ -24,7 +24,7 @@ function renderRouteCreationPanel() {
     const candidates = getAllLogisticsNodes().filter(n => n.sectorId !== player.currentSector);
     let found = false;
     candidates.forEach(node => {
-        const commodities = getRouteCommodityOptions(player.currentSector, node.sectorId).filter(c => !routeExists(player.currentSector, node.sectorId, c));
+        const commodities = getRouteCommodityOptions(player.currentSector, node.sectorId).filter(c => !routeExists(player.currentSector, node.sectorId, c, "player", null));
         if (commodities.length === 0) return;
         found = true;
         const distance = getRouteDistance(player.currentSector, node.sectorId);
