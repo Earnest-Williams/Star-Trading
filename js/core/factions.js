@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
-import { clampRange, hasCargo, log, formatCredits, random } from '../utils.js';
+import { clampRange, hasCargo, log, formatCredits } from '../utils.js';
 import { addSectorInfluence, getInfluenceSpread, getDominantInfluence } from './influence.js';
 import { addWorldEvent } from './worldEvents.js';
 import { EventBus } from '../events.js';
@@ -259,22 +259,6 @@ export function applyPoliticalEffect(effect) {
     if (effect.sectorId && effect.influence) addSectorInfluence(effect.sectorId, factionId, effect.influence, reason);
 }
 
-export function addIntel(intel) {
-    ensureFactionState();
-    const entry = {
-        id: `intel-${state.player.time.day}-${Math.floor(random() * 100000)}`,
-        type: intel.type,
-        factionId: intel.factionId || null,
-        targetFactionId: intel.targetFactionId || null,
-        sectorId: intel.sectorId || state.player.currentSector,
-        value: intel.value || 25,
-        expiresDay: intel.expiresDay || state.player.time.day + 8,
-        text: intel.text || "Useful political information."
-    };
-    state.player.factions.intel.push(entry);
-    log(`Intel acquired: ${entry.text}`);
-    Notifications.show(`Intel: ${entry.text}`, 2);
-}
 
 export function spendFavor(factionId, amount) {
     ensureFactionState();

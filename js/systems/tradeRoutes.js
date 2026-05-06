@@ -23,6 +23,9 @@ export function normaliseTradeRoutes() {
         if (typeof route.heat !== "number") route.heat = 0;
         if (typeof route.reliability !== "number") route.reliability = 50;
         if (typeof route.escortCaptainId === "undefined") route.escortCaptainId = null;
+        if (route.status !== "closed" && !findShortestPath(route.originSector, route.destinationSector)) {
+            throw new Error(`Trade route ${route.name || route.id} is disconnected: no warp path from sector ${route.originSector} to sector ${route.destinationSector}.`);
+        }
     });
     state.nextTradeRouteId = Math.max(state.nextTradeRouteId, state.tradeRoutes.reduce((best, r) => Math.max(best, r.id + 1), 1));
 }
@@ -62,6 +65,7 @@ export function routeExists(originSector, destinationSector, commodity) {
 }
 
 export function findShortestPath(start, goal) {
+    if (!state.universe[start] || !state.universe[goal]) return null;
     if (start === goal) return [start];
     const queue = [[start]];
     const seen = new Set([start]);
@@ -69,36 +73,42 @@ export function findShortestPath(start, goal) {
         const path = queue.shift();
         const here = path[path.length - 1];
         const sector = state.universe[here];
-        if (!sector) continue;
+        if (!sector || !Array.isArray(sector.warps)) continue;
         for (const next of sector.warps) {
-            if (seen.has(next)) continue;
+            if (seen.has(next) || !state.universe[next]) continue;
             const newPath = path.concat([next]);
             if (next === goal) return newPath;
             seen.add(next);
             queue.push(newPath);
         }
     }
-    return [start, goal];
+    return null;
 }
 
 export function getRoutePath(route) { return findShortestPath(route.originSector, route.destinationSector); }
-export function getRouteDistance(originSector, destinationSector) { return Math.max(1, findShortestPath(originSector, destinationSector).length - 1); }
+export function getRouteDistance(originSector, destinationSector) {
+    const path = findShortestPath(originSector, destinationSector);
+    return path ? Math.max(1, path.length - 1) : null;
+}
 
 export function getRouteCommodityOptions(originSector, destinationSector) {
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     if (!origin || !destination || originSector === destinationSector) return [];
+    if (!findShortestPath(originSector, destinationSector)) return [];
     return COMMODITIES.filter(c => origin.sells.includes(c) && destination.buys.includes(c));
 }
 
 export function getRouteSetupCost(originSector, destinationSector) {
     const distance = getRouteDistance(originSector, destinationSector);
     const risk = getRouteRiskForSectors(originSector, destinationSector);
+    if (distance === null || risk === null) return null;
     return BALANCE.TRADE_ROUTE_BASE_COST + distance * 220 + risk * 130;
 }
 
 export function getRouteRiskForSectors(originSector, destinationSector) {
     const path = findShortestPath(originSector, destinationSector);
+    if (!path) return null;
     return path.reduce((sum, sectorId) => {
         const sector = state.universe[sectorId];
         if (!sector) return sum;
@@ -112,7 +122,9 @@ export function getRouteRiskForSectors(originSector, destinationSector) {
 }
 
 export function getRouteRisk(route) {
-    return getRouteRiskForSectors(route.originSector, route.destinationSector) + Math.max(0, route.heat || 0) / 12;
+    const risk = getRouteRiskForSectors(route.originSector, route.destinationSector);
+    if (risk === null) return null;
+    return risk + Math.max(0, route.heat || 0) / 12;
 }
 
 export function getRouteEscortPower(route) {
@@ -146,9 +158,11 @@ export function createTradeRoute(destinationSector, commodity) {
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     if (!origin || !destination) { log("Trade routes need a port or player colony at both ends."); return; }
+    if (!findShortestPath(originSector, destinationSector)) { log(`No connected warp path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) { log("That route does not have a useful commodity flow."); return; }
     if (routeExists(originSector, destinationSector, commodity)) { log("That route already exists."); return; }
     const cost = getRouteSetupCost(originSector, destinationSector);
+    if (cost === null) { log(`No connected warp path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
     if (!spendTime(180)) return;
     state.player.credits -= cost;
@@ -253,6 +267,15 @@ export function runTradeRoute(route) {
         return;
     }
     const risk = getRouteRisk(route);
+    if (risk === null) {
+        route.status = "paused";
+        addWorldEvent({
+            type: "route_disconnected", sectorId: route.originSector, factionId: route.factionId,
+            text: `${route.name} paused because no connected warp path exists between sector ${route.originSector} and sector ${route.destinationSector}.`,
+            importance: 3, alert: true
+        });
+        return;
+    }
     const escortPower = getRouteEscortPower(route);
     const failureChance = Math.max(0.02, Math.min(0.55, 0.04 + risk * 0.035 - escortPower * 0.025));
     const escortCaptain = route.escortCaptainId ? state.captains[route.escortCaptainId] : null;
@@ -260,7 +283,8 @@ export function runTradeRoute(route) {
         route.failures += 1;
         route.heat = Math.min(100, route.heat + 3 + Math.floor(risk));
         route.reliability = clampRange(route.reliability - 8, 0, 100);
-        const hotSector = getRoutePath(route).sort((a, b) => (state.universe[b].pirateThreat || 0) - (state.universe[a].pirateThreat || 0))[0] || route.destinationSector;
+        const path = getRoutePath(route);
+        const hotSector = path ? path.sort((a, b) => (state.universe[b].pirateThreat || 0) - (state.universe[a].pirateThreat || 0))[0] || route.destinationSector : route.destinationSector;
         if (state.universe[hotSector]) state.universe[hotSector].pirateThreat = Math.min(6, (state.universe[hotSector].pirateThreat || 0) + 1);
         if (escortCaptain) nudgeCaptainRelation(escortCaptain.id, { opinion: 1, trust: 1, rivalry: 1 }, `fought through a failed convoy run on ${route.name}`);
         addWorldEvent({

@@ -6,10 +6,33 @@ import { log } from '../utils.js';
 const dailyHooks = [];
 const hourlyHooks = [];
 
-export function registerDailyHook(fn) { dailyHooks.push(fn); }
-export function registerHourlyHook(fn) { hourlyHooks.push(fn); }
+function unregisterHook(hooks, fn) {
+    const idx = hooks.indexOf(fn);
+    if (idx !== -1) hooks.splice(idx, 1);
+}
+
+export function registerDailyHook(fn) {
+    dailyHooks.push(fn);
+    return function unregisterDailyHook() {
+        unregisterHook(dailyHooks, fn);
+    };
+}
+
+export function registerHourlyHook(fn) {
+    hourlyHooks.push(fn);
+    return function unregisterHourlyHook() {
+        unregisterHook(hourlyHooks, fn);
+    };
+}
+
+export function unregisterDailyHook(fn) { unregisterHook(dailyHooks, fn); }
+export function unregisterHourlyHook(fn) { unregisterHook(hourlyHooks, fn); }
 export function clearDailyHooks() { dailyHooks.length = 0; }
 export function clearHourlyHooks() { hourlyHooks.length = 0; }
+export function resetTimeHooks() {
+    clearDailyHooks();
+    clearHourlyHooks();
+}
 
 export function runDailyWorldTick(reason) {
     for (const hook of dailyHooks) hook(reason);

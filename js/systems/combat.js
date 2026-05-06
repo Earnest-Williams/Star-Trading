@@ -3,7 +3,8 @@ import { FACTIONS } from '../constants.js';
 import { log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
-import { addFactionRep, addFactionHeat, addFactionLeverage, addFactionTrust, getPrivateFactionRep, getFactionTrust, applyPoliticalEffect, getPirateIncidentMultiplier, addIntel } from '../core/factions.js';
+import { addFactionRep, addFactionHeat, addFactionLeverage, addFactionTrust, getPrivateFactionRep, getFactionTrust, applyPoliticalEffect, getPirateIncidentMultiplier } from '../core/factions.js';
+import { addIntel } from '../core/intel.js';
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 

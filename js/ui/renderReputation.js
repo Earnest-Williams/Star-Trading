@@ -9,6 +9,7 @@ import {
 } from "../core/factions.js";
 import { renderCaptainsTab } from "./renderCaptains.js";
 import { updateUI } from "./renderer.js";
+import { getActiveIntel } from '../core/intel.js';
 
 export function renderReputationScreen() {
     const { reputationTab } = state;
@@ -240,9 +241,8 @@ function renderFactionAsks() {
 }
 
 function renderIntelPanel() {
-    const { player } = state;
     ensureFactionState();
-    const intel = player.factions.intel.filter(i => i.expiresDay >= player.time.day);
+    const intel = getActiveIntel();
     if (intel.length === 0) return `<div class="muted">No actionable intel.</div>`;
     let html = "";
     intel.forEach(item => {

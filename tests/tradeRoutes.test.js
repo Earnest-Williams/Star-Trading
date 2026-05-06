@@ -61,12 +61,8 @@ describe('findShortestPath', () => {
         assert.deepEqual(path, [1, 2, 4]);
     });
 
-    it('returns a path with length ≥ 2 for disconnected sectors', () => {
-        // sector 5 doesn't exist in universe; fallback is [start, goal]
-        const path = findShortestPath(1, 5);
-        assert.equal(path.length, 2);
-        assert.equal(path[0], 1);
-        assert.equal(path[path.length - 1], 5);
+    it('returns null for disconnected or missing sectors', () => {
+        assert.equal(findShortestPath(1, 5), null);
     });
 });
 
@@ -136,5 +132,11 @@ describe('normaliseTradeRoutes', () => {
         state.nextTradeRouteId = 1;
         normaliseTradeRoutes();
         assert.equal(state.tradeRoutes[0].id, 42);
+    });
+
+    it('throws when an active route has no real path', () => {
+        state.tradeRoutes = [{ id: 42, originSector: 1, destinationSector: 5, commodity: 'ore' }];
+        state.nextTradeRouteId = 1;
+        assert.throws(() => normaliseTradeRoutes(), /disconnected/);
     });
 });
