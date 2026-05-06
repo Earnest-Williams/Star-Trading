@@ -3,12 +3,6 @@
 // without touching any browser-specific code.
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-
-// Stub browser globals used by transitively-imported modules.
-// requestAnimationFrame is no longer needed here because Renderer lives in
-// js/ui/renderer.js, which is not imported by any core or systems module.
-globalThis.document = { getElementById: () => null };
-
 import { state } from '../js/state.js';
 import { createPlayer, generateUniverse, generateStars, initRng } from '../js/core/universe.js';
 import { seededRng } from '../js/utils.js';

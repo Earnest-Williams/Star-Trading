@@ -68,9 +68,13 @@ export function describeCost(cost) {
 }
 
 export function log(msg) {
-    const logEl = document.getElementById("log");
+    const doc = globalThis.document;
+    if (!doc || typeof doc.getElementById !== "function" || typeof doc.createElement !== "function") {
+        return;
+    }
+    const logEl = doc.getElementById("log");
     if (!logEl) return;
-    const line = document.createElement("div");
+    const line = doc.createElement("div");
     line.innerHTML = `&gt; ${escapeHtml(msg)}`;
     logEl.appendChild(line);
     while (logEl.childNodes.length > 200) logEl.removeChild(logEl.firstChild);

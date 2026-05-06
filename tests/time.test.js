@@ -1,11 +1,6 @@
 // Smoke tests for core/time.js — time advancement and hook firing.
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-
-// Stub browser globals used by transitively-imported modules (log, Notifications).
-// All relevant functions guard against a null DOM element, so these are safe no-ops.
-globalThis.document = { getElementById: () => null };
-
 import { state } from '../js/state.js';
 import {
     advanceTime,

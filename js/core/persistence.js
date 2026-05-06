@@ -9,10 +9,44 @@ import { normaliseTradeRoutes } from '../systems/tradeRoutes.js';
 import { prepareMissionOpportunity } from '../systems/missions.js';
 import { createContactState } from './factions.js';
 import { makeStock } from '../utils.js';
-import { Notifications } from '../ui/notifications.js';
 import { log } from '../utils.js';
-import { updateUI } from '../ui/renderer.js';
 
+
+const defaultPersistenceAdapters = {
+    storage: null,
+    logger: log,
+    notifier: null,
+    afterLoad: null
+};
+
+let persistenceAdapters = { ...defaultPersistenceAdapters };
+
+function getStorage() {
+    if (persistenceAdapters.storage) return persistenceAdapters.storage;
+    return globalThis.localStorage || null;
+}
+
+function writeLog(message) {
+    if (typeof persistenceAdapters.logger === "function") {
+        persistenceAdapters.logger(message);
+    }
+}
+
+function notify(message, priority) {
+    if (typeof persistenceAdapters.notifier === "function") {
+        persistenceAdapters.notifier(message, priority);
+    }
+}
+
+function afterLoad() {
+    if (typeof persistenceAdapters.afterLoad === "function") {
+        persistenceAdapters.afterLoad();
+    }
+}
+
+export function setPersistenceAdapters(adapters = {}) {
+    persistenceAdapters = { ...defaultPersistenceAdapters, ...(adapters || {}) };
+}
 
 export function migrateSave(data) {
     const v = data.version || 0;
@@ -48,6 +82,11 @@ export function migrateSave(data) {
 }
 
 export function saveGame() {
+    const storage = getStorage();
+    if (!storage || typeof storage.setItem !== "function") {
+        writeLog("Save failed: no storage adapter is available.");
+        return false;
+    }
     const data = {
         version: SAVE_VERSION,
         player: state.player,
@@ -65,26 +104,33 @@ export function saveGame() {
         nextMissionId: state.nextMissionId
     };
     try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-        log("Game saved.");
-        Notifications.show("Game saved", 1);
+        storage.setItem(SAVE_KEY, JSON.stringify(data));
+        writeLog("Game saved.");
+        notify("Game saved", 1);
+        return true;
     } catch (e) {
-        log("Save failed: " + e.message);
+        writeLog("Save failed: " + e.message);
+        return false;
     }
 }
 
 export function loadGame() {
-    let saved = localStorage.getItem(SAVE_KEY);
-    if (!saved && SAVE_KEY_LEGACY) {
-        saved = localStorage.getItem(SAVE_KEY_LEGACY);
-        if (saved) log("Migrating save from legacy key.");
+    const storage = getStorage();
+    if (!storage || typeof storage.getItem !== "function") {
+        writeLog("Load failed: no storage adapter is available.");
+        return false;
     }
-    if (!saved) { log("No saved game found."); return; }
+    let saved = storage.getItem(SAVE_KEY);
+    if (!saved && SAVE_KEY_LEGACY) {
+        saved = storage.getItem(SAVE_KEY_LEGACY);
+        if (saved) writeLog("Migrating save from legacy key.");
+    }
+    if (!saved) { writeLog("No saved game found."); return false; }
     try {
         let data = JSON.parse(saved);
         if (!data || !data.player || !data.universe || !data.ports || !data.planets) {
-            log("Save data is missing required fields.");
-            return;
+            writeLog("Save data is missing required fields.");
+            return false;
         }
         data = migrateSave(data);
         state.player = data.player;
@@ -103,11 +149,13 @@ export function loadGame() {
         normaliseLoadedGame();
         state.selectedSectorId = state.player.currentSector;
         state.currentScreen = "sector";
-        log("Game loaded.");
-        Notifications.show("Game loaded", 2);
-        updateUI();
+        writeLog("Game loaded.");
+        notify("Game loaded", 2);
+        afterLoad();
+        return true;
     } catch (err) {
-        log("Could not load save data. The saved JSON appears to be invalid.");
+        writeLog("Could not load save data. The saved JSON appears to be invalid.");
+        return false;
     }
 }
 

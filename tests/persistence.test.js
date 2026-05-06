@@ -1,11 +1,9 @@
 // Smoke tests for core/persistence.js — migrateSave and save normalisation.
-import { describe, it } from 'node:test';
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-// Stub browser globals used by transitively-imported modules.
-globalThis.document = { getElementById: () => null };
-
-import { migrateSave } from '../js/core/persistence.js';
+import { migrateSave, saveGame, loadGame, setPersistenceAdapters } from '../js/core/persistence.js';
+import { state, resetState } from '../js/state.js';
 import { SAVE_VERSION, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
 // Build the minimal valid save data that every version should contain.
@@ -141,5 +139,57 @@ describe('migrateSave — pre-v10 (seed + factionRelations moved into player)', 
         const result = migrateSave(save);
         assert.equal(result.player.factionRelations.sda.fu, 99,
             'existing factionRelations in player should not be overwritten');
+    });
+});
+
+
+describe('persistence adapters', () => {
+    afterEach(() => {
+        setPersistenceAdapters();
+        resetState();
+    });
+
+    it('saves through injected storage and notification adapters without browser globals', () => {
+        const writes = new Map();
+        const notifications = [];
+        const storage = {
+            setItem(key, value) { writes.set(key, value); }
+        };
+        state.player = minimalSave(SAVE_VERSION).player;
+
+        const previousDocument = globalThis.document;
+        delete globalThis.document;
+        setPersistenceAdapters({
+            storage,
+            notifier: (message, priority) => notifications.push({ message, priority })
+        });
+
+        assert.equal(saveGame(), true);
+        assert.equal(writes.size, 1);
+        assert.deepEqual(notifications, [{ message: 'Game saved', priority: 1 }]);
+        if (previousDocument !== undefined) globalThis.document = previousDocument;
+    });
+
+    it('loads through injected adapters and invokes afterLoad without browser globals', () => {
+        const save = minimalSave(SAVE_VERSION);
+        const storage = {
+            getItem() { return JSON.stringify(save); }
+        };
+        const notifications = [];
+        let afterLoadCount = 0;
+
+        const previousDocument = globalThis.document;
+        delete globalThis.document;
+        setPersistenceAdapters({
+            storage,
+            notifier: (message, priority) => notifications.push({ message, priority }),
+            afterLoad: () => { afterLoadCount += 1; }
+        });
+
+        assert.equal(loadGame(), true);
+        assert.equal(state.player.currentSector, 1);
+        assert.deepEqual(notifications, [{ message: 'Game loaded', priority: 2 }]);
+        assert.equal(afterLoadCount, 1);
+        if (previousDocument !== undefined) globalThis.document = previousDocument;
     });
 });
