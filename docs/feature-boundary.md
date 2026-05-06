@@ -10,7 +10,7 @@ Global registries are explicit lifecycle objects. EventBus listeners, renderer h
 
 ## Next shipped feature: Contraband
 
-Contraband ships before bounties because it reuses existing mechanics instead of requiring a new combat/capture stack. The first slice is hidden hold state, Void Cartel pickup/delivery, SDA inspections, faction heat/trust consequences, per-route risk, and ports with `hiddenFactionId` receivers. It should create fast payoff in the current map/economy/faction loop without adding unrelated law-enforcement scaffolding.
+Contraband ships before bounties because it reuses existing mechanics instead of requiring a new combat/capture stack. The first slice is hidden hold state, Void Cartel pickup/delivery, SDA inspections, faction heat/trust consequences, per-route risk, and ports with `hiddenFactionId` receivers. The canonical implementation lives in `js/systems/contraband.js`; `js/new/contraband.js` is only a compatibility entry point. It should create fast payoff in the current map/economy/faction loop without adding unrelated law-enforcement scaffolding.
 
 ## Deferred feature: Bounties
 

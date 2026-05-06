@@ -6,6 +6,7 @@ import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
 import { normaliseCaptains } from '../systems/captains.js';
 import { normaliseTradeRoutes } from '../systems/tradeRoutes.js';
+import { ensureContrabandHold } from '../systems/contraband.js';
 import { prepareMissionOpportunity } from '../systems/missions.js';
 import { createContactState } from './factions.js';
 import { makeStock, restoreSessionRng } from '../utils.js';
@@ -276,6 +277,7 @@ function normaliseCurrentLoadedGame() {
     if (!state.player.ship) state.player.ship = createPlayer().ship;
     migrateShipTransitFields(state.player);
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
+    ensureContrabandHold();
     if (!state.player.seed) state.player.seed = Date.now();
     if (!state.player.factionRelations) {
         state.player.factionRelations = JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS));

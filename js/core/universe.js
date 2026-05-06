@@ -155,6 +155,7 @@ export function createPlayer() {
         time: { day: 1, minuteOfDay: BALANCE.DEFAULT_WAKE, wakeMinute: BALANCE.DEFAULT_WAKE, sleepMinute: BALANCE.DEFAULT_SLEEP },
         ship: { name: "Merchant Cruiser", maxHolds: 75, travelMinutesPerCorridor: 45, miningPower: 25, scannerLevel: 1, maxFighters: 2500, maxShields: 400, maxHull: 100 },
         cargo: { ore: 0, org: 0, eq: 0 },
+        contrabandHold: [],
         fighters: 30,
         shields: 400,
         hull: 100,
