@@ -277,6 +277,7 @@ function normaliseCurrentLoadedGame() {
     if (!state.player.ship) state.player.ship = createPlayer().ship;
     migrateShipTransitFields(state.player);
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
+    if (!state.player.currentSector) state.player.currentSector = 1;
     ensureContrabandHold();
     if (!state.player.seed) state.player.seed = Date.now();
     if (!state.player.factionRelations) {
