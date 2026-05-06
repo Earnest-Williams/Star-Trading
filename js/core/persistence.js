@@ -207,7 +207,7 @@ export function loadGame() {
     }
 
     try {
-        const migrated = migrateSave(cloneSaveValue(data));
+        const migrated = migrateSave(data);
         const loadedState = buildLoadedState(migrated);
         replaceStateContents(loadedState);
         restoreSessionRng(state.rng, state.player.seed);
