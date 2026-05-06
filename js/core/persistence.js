@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_VERSION, COMMODITIES, FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_VERSION, COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
@@ -11,7 +11,7 @@ import { createContactState } from './factions.js';
 import { makeStock } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
 import { log } from '../utils.js';
-import { updateUI } from '../events.js';
+import { updateUI } from '../ui/renderer.js';
 
 
 export function migrateSave(data) {
@@ -31,6 +31,18 @@ export function migrateSave(data) {
         data.nextTradeRouteId = data.nextTradeRouteId || 1;
     }
     // v8: sector.politicalMemory added — normaliseLoadedGame rebuilds missing entries
+    // v9→v10: seed added; factionRelations moved from top-level into player object
+    if (v < 10) {
+        if (data.player) {
+            if (!data.player.seed) data.player.seed = Date.now();
+            if (!data.player.factionRelations) {
+                // Prefer the top-level field from old saves; fall back to defaults
+                data.player.factionRelations = data.factionRelations
+                    ? JSON.parse(JSON.stringify(data.factionRelations))
+                    : JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS));
+            }
+        }
+    }
     data.version = SAVE_VERSION;
     return data;
 }
@@ -50,8 +62,7 @@ export function saveGame() {
         nextWorldEventId: state.nextWorldEventId,
         tradeRoutes: state.tradeRoutes,
         nextTradeRouteId: state.nextTradeRouteId,
-        nextMissionId: state.nextMissionId,
-        factionRelations: FACTION_RELATIONS
+        nextMissionId: state.nextMissionId
     };
     try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -89,14 +100,6 @@ export function loadGame() {
         state.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
         state.nextTradeRouteId = data.nextTradeRouteId || (state.tradeRoutes.length + 1);
         state.nextMissionId = data.nextMissionId || (state.missions.length + 1);
-        if (data.factionRelations) {
-            Object.keys(data.factionRelations).forEach(a => {
-                if (!FACTION_RELATIONS[a]) return;
-                Object.keys(data.factionRelations[a]).forEach(b => {
-                    if (typeof FACTION_RELATIONS[a][b] === "number") FACTION_RELATIONS[a][b] = data.factionRelations[a][b];
-                });
-            });
-        }
         normaliseLoadedGame();
         state.selectedSectorId = state.player.currentSector;
         state.currentScreen = "sector";
@@ -112,6 +115,10 @@ export function normaliseLoadedGame() {
     if (!state.player.time) state.player.time = { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 };
     if (!state.player.ship) state.player.ship = createPlayer().ship;
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
+    if (!state.player.seed) state.player.seed = Date.now();
+    if (!state.player.factionRelations) {
+        state.player.factionRelations = JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS));
+    }
     ensureFactionState();
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
     COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });

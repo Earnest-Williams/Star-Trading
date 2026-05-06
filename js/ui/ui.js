@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { Renderer, updateUI } from '../events.js';
+import { Renderer, updateUI } from './renderer.js';
 import { BALANCE } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 

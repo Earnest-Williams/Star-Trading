@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS, FACTION_RELATIONS, MAJOR_FACTIONS, BALANCE, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
+import { FACTIONS, MAJOR_FACTIONS, BALANCE, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import {
@@ -8,7 +8,7 @@ import {
     getKnownContacts, getContactScore
 } from "../core/factions.js";
 import { renderCaptainsTab } from "./renderCaptains.js";
-import { updateUI } from "../events.js";
+import { updateUI } from "./renderer.js";
 
 export function renderReputationScreen() {
     const { reputationTab } = state;
@@ -142,11 +142,12 @@ function renderPoliticalWebTab() {
     html += `<div class="commodity-row"><strong>Current Sector Politics</strong><br>${renderSectorInfluenceDetails(state.player.currentSector)}</div>`;
     html += renderPoliticalSimulationSummary();
     html += `<div class="commodity-row"><strong>Major Relations</strong><br>`;
+    const fr = (state.player && state.player.factionRelations) || {};
     MAJOR_FACTIONS.forEach(a => {
         MAJOR_FACTIONS.forEach(b => {
-            if (a >= b || typeof FACTION_RELATIONS[a][b] !== "number") return;
-            const color = FACTION_RELATIONS[a][b] < -40 ? "red" : FACTION_RELATIONS[a][b] > 20 ? "green" : "muted";
-            html += `<span class="${color}">${FACTIONS[a].short} ↔ ${FACTIONS[b].short}: ${FACTION_RELATIONS[a][b]}</span><br>`;
+            if (a >= b || !fr[a] || typeof fr[a][b] !== "number") return;
+            const color = fr[a][b] < -40 ? "red" : fr[a][b] > 20 ? "green" : "muted";
+            html += `<span class="${color}">${FACTIONS[a].short} ↔ ${FACTIONS[b].short}: ${fr[a][b]}</span><br>`;
         });
     });
     html += `</div>`;

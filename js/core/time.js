@@ -8,6 +8,8 @@ const hourlyHooks = [];
 
 export function registerDailyHook(fn) { dailyHooks.push(fn); }
 export function registerHourlyHook(fn) { hourlyHooks.push(fn); }
+export function clearDailyHooks() { dailyHooks.length = 0; }
+export function clearHourlyHooks() { hourlyHooks.length = 0; }
 
 export function runDailyWorldTick(reason) {
     for (const hook of dailyHooks) hook(reason);

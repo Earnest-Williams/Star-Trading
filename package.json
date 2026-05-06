@@ -1,6 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "dev": "npx serve . --listen 3000",
+    "lint": "npx eslint \"js/**/*.js\""
   }
 }

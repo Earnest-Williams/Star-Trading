@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 // Stub browser globals used by transitively-imported modules (log, Notifications).
 // All relevant functions guard against a null DOM element, so these are safe no-ops.
 globalThis.document = { getElementById: () => null };
-globalThis.requestAnimationFrame = () => {};
 
 import { state } from '../js/state.js';
 import {

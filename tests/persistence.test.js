@@ -4,10 +4,9 @@ import assert from 'node:assert/strict';
 
 // Stub browser globals used by transitively-imported modules.
 globalThis.document = { getElementById: () => null };
-globalThis.requestAnimationFrame = () => {};
 
 import { migrateSave } from '../js/core/persistence.js';
-import { SAVE_VERSION } from '../js/constants.js';
+import { SAVE_VERSION, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
 // Build the minimal valid save data that every version should contain.
 function minimalSave(version) {
@@ -22,6 +21,8 @@ function minimalSave(version) {
             cargo: { ore: 0, org: 0, eq: 0 },
             fighters: 30, shields: 400, hull: 100, reputation: 0,
             time: { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 },
+            seed: 12345,
+            factionRelations: JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS)),
             factions: { reputation: {}, trust: {}, heat: {}, membership: {},
                         leverage: {}, favors: {}, memory: {}, publicRep: {},
                         privateRep: {}, intel: [], asks: [], contacts: {},
@@ -38,8 +39,7 @@ function minimalSave(version) {
         nextWorldEventId: 1,
         tradeRoutes: [],
         nextTradeRouteId: 1,
-        nextMissionId: 1,
-        factionRelations: {}
+        nextMissionId: 1
     };
 }
 
@@ -105,5 +105,41 @@ describe('migrateSave — pre-v8 (trade route seeding)', () => {
         const result = migrateSave(save);
         assert.equal(result.tradeRoutes.length, 1);
         assert.equal(result.nextTradeRouteId, 2);
+    });
+});
+
+describe('migrateSave — pre-v10 (seed + factionRelations moved into player)', () => {
+    it('adds a seed to player when missing', () => {
+        const save = minimalSave(9);
+        delete save.player.seed;
+        delete save.player.factionRelations;
+        const result = migrateSave(save);
+        assert.equal(typeof result.player.seed, 'number', 'seed should be a number');
+        assert.ok(result.player.seed > 0, 'seed should be positive');
+    });
+
+    it('copies top-level factionRelations into player when player has none', () => {
+        const save = minimalSave(9);
+        delete save.player.factionRelations;
+        save.factionRelations = { sda: { fu: 25, hc: 5, vc: -75 }, fu: { sda: 25, hc: -15, vc: -35 }, hc: { sda: 5, fu: -15, vc: -55 }, vc: { sda: -75, fu: -35, hc: -55 } };
+        const result = migrateSave(save);
+        assert.equal(result.player.factionRelations.sda.fu, 25, 'sda→fu relation should be preserved from top-level field');
+    });
+
+    it('falls back to default faction relations when no top-level field exists', () => {
+        const save = minimalSave(9);
+        delete save.player.factionRelations;
+        const result = migrateSave(save);
+        assert.deepEqual(result.player.factionRelations, DEFAULT_FACTION_RELATIONS,
+            'factionRelations should match defaults when no field existed');
+    });
+
+    it('does not overwrite factionRelations already present in player', () => {
+        const save = minimalSave(9);
+        // Already has factionRelations in player; should not be touched
+        save.player.factionRelations.sda.fu = 99;
+        const result = migrateSave(save);
+        assert.equal(result.player.factionRelations.sda.fu, 99,
+            'existing factionRelations in player should not be overwritten');
     });
 });

@@ -7,19 +7,20 @@ Star-Trading is a browser-based space trading game structured as a set of ES mod
 ```
 index.html          # Shell: HTML and <script type="module" src="js/main.js">
 style.css           # Canonical stylesheet (linked from index.html via <link rel="stylesheet">)
-package.json        # type:module + npm test script
+package.json        # type:module + npm scripts (test, dev, lint)
+.eslintrc.json      # ESLint config (ES2022, browser + node envs)
 js/
-  main.js           # Entry point: startGame, daily/hourly tick hooks, EventBus wiring
+  main.js           # Entry point: App.init()/dispose(), daily/hourly tick hooks, EventBus wiring
   state.js          # Single shared mutable state object
-  events.js         # EventBus, Renderer (dirty-tracking RAF scheduler), updateUI()
-  constants.js      # All game constants: BALANCE, FACTIONS, COMMODITIES, etc.
-  utils.js          # Pure helpers: formatCredits, escapeHtml, log, etc.
+  events.js         # Pure EventBus (no browser APIs; on() returns an unsubscribe fn)
+  constants.js      # All game constants: BALANCE, FACTIONS, COMMODITIES, DEFAULT_FACTION_RELATIONS, etc.
+  utils.js          # Pure helpers: formatCredits, escapeHtml, log, seededRng, etc.
   core/
     factions.js     # Faction reputation, heat, trust, leverage, guild tiers
     influence.js    # Sector influence spread, dominance, status labels
-    persistence.js  # localStorage save / load, migrateSave
-    time.js         # advanceTime, spendTime, daily/hourly hook registry
-    universe.js     # Map generation, sector/port/planet factories, createPlayer (canonical)
+    persistence.js  # localStorage save / load, migrateSave (current SAVE_VERSION = 10)
+    time.js         # advanceTime, spendTime, daily/hourly hook registry, clearDailyHooks/clearHourlyHooks
+    universe.js     # Map generation, sector/port/planet factories, createPlayer (canonical), initRng
     worldEvents.js  # World event log (addWorldEvent)
   systems/
     captains.js     # NPC captain AI, daily/hourly actions, history
@@ -33,6 +34,7 @@ js/
     tradeRoutes.js  # Logistics routes, captain assignment, daily processing
     travel.js       # moveTo, travel incidents, restUntilMorning
   ui/
+    renderer.js     # Renderer (dirty-tracking RAF scheduler) + updateUI() — only file using requestAnimationFrame
     ui.js           # Action registry, screen routing, Renderer registrations
     notifications.js
     renderCaptains.js
@@ -52,7 +54,9 @@ js/
 tests/
   time.test.js        # advanceTime, hook firing, canSpendTime, spendTime
   tradeRoutes.test.js # findShortestPath, normaliseTradeRoutes, cost, profit
-  persistence.test.js # migrateSave versioned steps
+  persistence.test.js # migrateSave versioned steps (through v10)
+  simulation.test.js  # seededRng determinism, generateUniverse, 10-day sim invariants
+  missions.test.js    # expireMissions logic
 ```
 
 ## What the app contains right now
@@ -77,16 +81,28 @@ This no longer reads like a minimal trade toy. It appears to be evolving into a 
 - named captains create a living world that changes even when the player is not directly involved
 - the core fantasy is building influence across a contested frontier, not just buying low and selling high
 
-In short, the project looks aimed at becoming a systemic “political economy in space” game: part trader, part colony manager, part convoy planner, and part faction operator.
+In short, the project looks aimed at becoming a systemic "political economy in space" game: part trader, part colony manager, part convoy planner, and part faction operator.
 
 ## Running it
 
-There is no build step at the moment. Open `index.html` in a browser to play the prototype.
+There is no build step. Open `index.html` in a browser to play the prototype.
+
+To run a local dev server on port 3000:
+
+```
+npm run dev
+```
 
 ## Running the tests
 
-Smoke tests covering time advancement, trade-route logic, and save migration run with Node.js 18+:
+Smoke tests and cross-system simulation tests run with Node.js 18+:
 
 ```
 npm test
+```
+
+## Linting
+
+```
+npm run lint
 ```

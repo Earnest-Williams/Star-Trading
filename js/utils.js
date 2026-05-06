@@ -1,6 +1,23 @@
 import { state } from './state.js';
 import { BALANCE, COMMODITIES, COMMODITY_NAMES } from './constants.js';
 
+/**
+ * Mulberry32 seedable PRNG.  Returns a function that produces a uniform
+ * float in [0, 1) — a drop-in replacement for Math.random().
+ *
+ * @param {number} seed  Any 32-bit unsigned integer.
+ * @returns {() => number}
+ */
+export function seededRng(seed) {
+    let s = seed >>> 0;
+    return function() {
+        s |= 0; s = s + 0x6D2B79F5 | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+    };
+}
+
 export function escapeHtml(s) {
     if (s === null || s === undefined) return "";
     return String(s)

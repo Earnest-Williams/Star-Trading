@@ -1,10 +1,21 @@
 import { state } from '../state.js';
-import { BALANCE, PORT_TYPES, PLANET_TYPES, FACTIONS, CAPTAIN_DEFS, CONTACT_DEFS } from '../constants.js';
-import { makeStock } from '../utils.js';
+import { BALANCE, PORT_TYPES, PLANET_TYPES, FACTIONS, CAPTAIN_DEFS, CONTACT_DEFS, DEFAULT_FACTION_RELATIONS } from '../constants.js';
+import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState, createContactState } from './factions.js';
 
 export { makeStock };
+
+// Module-level RNG — replaced by initRng() before each generation call.
+let rng = Math.random;
+
+/**
+ * Seed the PRNG used by generateUniverse() and generateStars().
+ * Call this before generation; it is called automatically by generateUniverse.
+ */
+export function initRng(seed) {
+    rng = seededRng(seed >>> 0);
+}
 
 export function makePort(typeKey) {
     return {
@@ -12,7 +23,7 @@ export function makePort(typeKey) {
         factionId: PORT_TYPES[typeKey].factionId,
         publicFactionId: PORT_TYPES[typeKey].factionId,
         hiddenFactionId: null,
-        stock: makeStock(1500 + Math.floor(Math.random() * 3500), 1200 + Math.floor(Math.random() * 3000), 800 + Math.floor(Math.random() * 2400)),
+        stock: makeStock(1500 + Math.floor(rng() * 3500), 1200 + Math.floor(rng() * 3000), 800 + Math.floor(rng() * 2400)),
         maxStock: makeStock(6000, 5000, 4000),
         basePrices: { ore: 80, org: 150, eq: 300 }
     };
@@ -33,6 +44,7 @@ export function addWarp(a, b) {
 }
 
 export function generateUniverse() {
+    initRng(state.player.seed);
     state.universe = {}; state.ports = {}; state.planets = {}; state.missions = []; state.nextMissionId = 1;
     for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) {
         let region = "Core";
@@ -41,14 +53,14 @@ export function generateUniverse() {
         state.universe[i] = {
             id: i, name: i === 1 ? "StarDock" : `${region} Sector ${i}`,
             region, warps: [], surveyed: i === 1,
-            pirateThreat: i <= 8 ? 0 : Math.floor(Math.random() * (region === "Badlands" ? 5 : 3)),
+            pirateThreat: i <= 8 ? 0 : Math.floor(rng() * (region === "Badlands" ? 5 : 3)),
             asteroids: null, influence: createBaseInfluence(region), front: null
         };
     }
     for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) addWarp(i, i === BALANCE.SECTOR_COUNT ? 1 : i + 1);
     for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) {
-        const extraLinks = 1 + Math.floor(Math.random() * 2);
-        for (let j = 0; j < extraLinks; j++) addWarp(i, 1 + Math.floor(Math.random() * BALANCE.SECTOR_COUNT));
+        const extraLinks = 1 + Math.floor(rng() * 2);
+        for (let j = 0; j < extraLinks; j++) addWarp(i, 1 + Math.floor(rng() * BALANCE.SECTOR_COUNT));
     }
     state.ports[1] = makePort("stardock");
     state.ports[2] = makePort("mining");
@@ -58,12 +70,12 @@ export function generateUniverse() {
     const portKeys = ["mining", "agricultural", "industrial", "consumer", "refinery"];
     for (let i = 6; i <= BALANCE.SECTOR_COUNT; i++) {
         const chance = state.universe[i].region === "Core" ? 0.35 : 0.45;
-        if (Math.random() < chance) state.ports[i] = makePort(portKeys[Math.floor(Math.random() * portKeys.length)]);
+        if (rng() < chance) state.ports[i] = makePort(portKeys[Math.floor(rng() * portKeys.length)]);
     }
     Object.keys(state.ports).forEach(sec => {
         const sectorId = Number(sec);
         const port = state.ports[sectorId];
-        const dominant = state.universe[sectorId].region === "Badlands" && Math.random() < 0.18 ? "vc" : port.factionId;
+        const dominant = state.universe[sectorId].region === "Badlands" && rng() < 0.18 ? "vc" : port.factionId;
         port.publicFactionId = port.factionId;
         port.hiddenFactionId = dominant === port.factionId ? null : dominant;
         addSectorInfluence(sectorId, port.factionId, 16, "");
@@ -71,7 +83,7 @@ export function generateUniverse() {
             state.universe[sectorId].front = {
                 publicFactionId: port.factionId,
                 hiddenFactionId: port.hiddenFactionId,
-                suspicion: 10 + Math.floor(Math.random() * 25)
+                suspicion: 10 + Math.floor(rng() * 25)
             };
             addSectorInfluence(sectorId, port.hiddenFactionId, 10, "");
         }
@@ -80,31 +92,32 @@ export function generateUniverse() {
     state.planets[6] = makePlanet("terran");
     for (let i = 7; i <= BALANCE.SECTOR_COUNT; i++) {
         const chance = state.universe[i].region === "Core" ? 0.18 : 0.32;
-        if (Math.random() < chance) state.planets[i] = makePlanet(planetKeys[Math.floor(Math.random() * planetKeys.length)]);
+        if (rng() < chance) state.planets[i] = makePlanet(planetKeys[Math.floor(rng() * planetKeys.length)]);
     }
     state.universe[7].asteroids = { ore: 8000, maxOre: 8000, richness: 1.25, hazard: 0.08, surveyed: false };
     addSectorInfluence(7, "hc", 8, "");
     for (let i = 8; i <= BALANCE.SECTOR_COUNT; i++) {
         const chance = state.universe[i].region === "Badlands" ? 0.55 : 0.30;
-        if (Math.random() < chance) {
-            const asteroidOre = 2500 + Math.floor(Math.random() * 9000);
+        if (rng() < chance) {
+            const asteroidOre = 2500 + Math.floor(rng() * 9000);
             state.universe[i].asteroids = {
                 ore: asteroidOre, maxOre: asteroidOre,
-                richness: 0.7 + Math.random() * 1.1,
-                hazard: state.universe[i].region === "Badlands" ? 0.12 + Math.random() * 0.18 : Math.random() * 0.12,
+                richness: 0.7 + rng() * 1.1,
+                hazard: state.universe[i].region === "Badlands" ? 0.12 + rng() * 0.18 : rng() * 0.12,
                 surveyed: false
             };
             addSectorInfluence(i, "hc", 5, "");
-            if (state.universe[i].region === "Badlands" && Math.random() < 0.4) addSectorInfluence(i, "vc", 5, "");
+            if (state.universe[i].region === "Badlands" && rng() < 0.4) addSectorInfluence(i, "vc", 5, "");
         }
     }
     // Callers (main.js) are responsible for calling createCaptains, generateMissionPool, generateFactionAsks
 }
 
 export function generateStars() {
+    initRng(state.player.seed);
     state.starField = [];
     for (let i = 0; i < 100; i++) {
-        state.starField.push({ x: Math.random() * 700, y: Math.random() * 420, size: Math.random() < 0.85 ? 1 : 2 });
+        state.starField.push({ x: rng() * 700, y: rng() * 420, size: rng() < 0.85 ? 1 : 2 });
     }
 }
 
@@ -119,6 +132,8 @@ export function createPlayer() {
         shields: 400,
         hull: 100,
         reputation: 0,
+        seed: Date.now(),
+        factionRelations: JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS)),
         factions: createFactionState()
     };
 }

@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS, FACTION_RELATIONS, BALANCE, COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
+import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
 import { clampRange, hasCargo, log, formatCredits } from '../utils.js';
 import { addSectorInfluence, getInfluenceSpread, getDominantInfluence } from './influence.js';
 import { addWorldEvent } from './worldEvents.js';
@@ -233,7 +233,8 @@ export function applyFactionRipple(factionId, amount, visibility) {
         const majorGain = Math.trunc(amount / 3);
         if (majorGain !== 0) addFactionRep(faction.majorAffinity, majorGain, `${faction.short} affinity`, visibility);
     } else if (faction.type === "major") {
-        Object.entries(FACTION_RELATIONS[factionId] || {}).forEach(([otherId, relation]) => {
+        const fr = (state.player && state.player.factionRelations) || DEFAULT_FACTION_RELATIONS;
+        Object.entries(fr[factionId] || {}).forEach(([otherId, relation]) => {
             if (Math.abs(relation) < 40) return;
             const ripple = Math.trunc(amount * relation / 500);
             if (ripple !== 0) {
