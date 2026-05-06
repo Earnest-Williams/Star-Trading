@@ -6,6 +6,8 @@ import { addWorldEvent } from '../core/worldEvents.js';
 import { EventBus } from '../events.js';
 import { Notifications } from '../ui/notifications.js';
 import { getFactionPoliticalPole } from '../core/factions.js';
+import { getSectorNeighbors, getSectorPathDistance, canTransitDirectCorridor } from '../core/navigation.js';
+import { createCaptainTradeRoute, getAllLogisticsNodes, getRouteCommodityOptions, estimateRouteProfit, getRouteRiskForSectors } from './tradeRoutes.js';
 
 export function createCaptains() {
     state.captains = {};
@@ -64,6 +66,9 @@ export function normaliseCaptains() {
         if (!captain.factionStanding) captain.factionStanding = {};
         if (!captain.cargo) captain.cargo = { ore: 0, org: 0, eq: 0 };
         if (!captain.status) captain.status = "active";
+        if (!captain.economy) captain.economy = createCaptainEconomy(captain);
+        if (!captain.economy.capabilities) captain.economy = createCaptainEconomy(captain);
+        if (typeof captain.economy.nextRouteEvaluationDay !== "number") captain.economy.nextRouteEvaluationDay = 1;
     });
 }
 
@@ -156,8 +161,8 @@ export function getCaptainDominantFaction(captain) {
 
 function captainDistanceScore(fromSector, toSector) {
     if (fromSector === toSector) return 0;
-    if (state.universe[fromSector] && state.universe[fromSector].warps.includes(toSector)) return 1;
-    return Math.min(9, Math.abs(fromSector - toSector));
+    const distance = getSectorPathDistance(fromSector, toSector);
+    return distance === null ? 9 : Math.min(9, distance);
 }
 
 export function captainMissionScore(captain, mission) {
@@ -304,10 +309,11 @@ function completeCaptainMission(captain, mission) {
 
 function moveCaptainTowardInterestingSector(captain) {
     const sector = state.universe[captain.currentSector];
-    if (!sector || sector.warps.length === 0) return;
-    let best = sector.warps[Math.floor(random() * sector.warps.length)];
+    const neighbors = getSectorNeighbors(captain.currentSector);
+    if (!sector || neighbors.length === 0) return;
+    let best = neighbors[Math.floor(random() * neighbors.length)];
     let bestScore = -999;
-    sector.warps.forEach(id => {
+    neighbors.forEach(id => {
         const s = state.universe[id];
         let score = random() * 10;
         if (state.ports[id] && ["trader", "industrialist", "fixer", "smuggler"].includes(captain.archetype)) score += 20;
@@ -433,8 +439,77 @@ function maybeCaptainJoinOrLeaveGuild(captain) {
     }
 }
 
+export function createCaptainEconomy(captain) {
+    const profiles = {
+        trader: { canOpenTradeRoutes: true, preferredCommodities: ["ore", "org", "eq"], routeAppetite: 0.85, minimumExpectedMargin: 16, acceptableRiskCeiling: 5 },
+        industrialist: { canOpenTradeRoutes: true, preferredCommodities: ["ore", "eq"], routeAppetite: 0.7, minimumExpectedMargin: 18, acceptableRiskCeiling: 6 },
+        miner: { canOpenTradeRoutes: true, preferredCommodities: ["ore"], routeAppetite: 0.55, minimumExpectedMargin: 14, acceptableRiskCeiling: 6 },
+        colonist: { canOpenTradeRoutes: true, preferredCommodities: ["org", "eq"], routeAppetite: 0.5, minimumExpectedMargin: 10, acceptableRiskCeiling: 4 },
+        smuggler: { canOpenTradeRoutes: true, preferredCommodities: ["eq", "org"], routeAppetite: 0.45, minimumExpectedMargin: 24, acceptableRiskCeiling: 9, illicitPreference: true },
+        mercenary: { canOpenTradeRoutes: false, preferredCommodities: [], routeAppetite: 0, minimumExpectedMargin: 999, acceptableRiskCeiling: 0 },
+        pirate: { canOpenTradeRoutes: false, preferredCommodities: [], routeAppetite: 0, minimumExpectedMargin: 999, acceptableRiskCeiling: 0 },
+        fixer: { canOpenTradeRoutes: false, preferredCommodities: [], routeAppetite: 0, minimumExpectedMargin: 999, acceptableRiskCeiling: 0 }
+    };
+    const profile = profiles[captain.archetype] || profiles.fixer;
+    return {
+        budget: Math.max(0, Math.floor((captain.credits || 0) * 0.35)),
+        homeSectorBias: captain.homeSector || captain.currentSector,
+        nextRouteEvaluationDay: 1,
+        capabilities: { canOpenTradeRoutes: profile.canOpenTradeRoutes },
+        preferredCommodities: profile.preferredCommodities.slice(),
+        routeAppetite: profile.routeAppetite,
+        minimumExpectedMargin: profile.minimumExpectedMargin,
+        acceptableRiskCeiling: profile.acceptableRiskCeiling,
+        colonySupportPreference: captain.archetype === "colonist" ? 0.8 : 0.2,
+        lawfulPreference: captain.archetype === "smuggler" ? 0.15 : 0.75,
+        illicitPreference: Boolean(profile.illicitPreference)
+    };
+}
+
+export function captainCanOpenTradeRoutes(captain) {
+    normaliseCaptains();
+    return Boolean(captain.economy && captain.economy.capabilities && captain.economy.capabilities.canOpenTradeRoutes);
+}
+
+function evaluateCaptainRouteOpenings(captain) {
+    if (!captainCanOpenTradeRoutes(captain)) return;
+    if (state.player.time.day < captain.economy.nextRouteEvaluationDay) return;
+    captain.economy.nextRouteEvaluationDay = state.player.time.day + BALANCE.CAPTAIN_ROUTE.EVALUATION_INTERVAL_DAYS;
+    const owned = state.tradeRoutes.filter(route => route.ownerType === "captain" && route.ownerId === captain.id && route.status !== "closed");
+    owned.forEach(route => {
+        const risk = getRouteRiskForSectors(route.originSector, route.destinationSector);
+        if (risk === null || risk > captain.economy.acceptableRiskCeiling + 2 || route.failures >= BALANCE.CAPTAIN_ROUTE.BAD_ROUTE_FAILURES) route.status = "paused";
+    });
+    if (owned.length >= BALANCE.CAPTAIN_ROUTE.MAX_OWNED_ROUTES) return;
+    if (random() > captain.economy.routeAppetite) return;
+    const nodes = getAllLogisticsNodes();
+    let best = null;
+    nodes.forEach(origin => {
+        nodes.forEach(destination => {
+            if (origin.sectorId === destination.sectorId) return;
+            const distance = getSectorPathDistance(origin.sectorId, destination.sectorId);
+            if (distance === null || distance > 5) return;
+            const risk = getRouteRiskForSectors(origin.sectorId, destination.sectorId);
+            if (risk === null || risk > captain.economy.acceptableRiskCeiling) return;
+            getRouteCommodityOptions(origin.sectorId, destination.sectorId).forEach(commodity => {
+                if (!captain.economy.preferredCommodities.includes(commodity)) return;
+                const profit = estimateRouteProfit(origin.sectorId, destination.sectorId, commodity);
+                const margin = profit / Math.max(1, distance);
+                if (margin < captain.economy.minimumExpectedMargin) return;
+                const homeBias = origin.sectorId === captain.homeSector || destination.sectorId === captain.homeSector ? 20 : 0;
+                const score = profit + homeBias - distance * 18 - risk * 22;
+                if (!best || score > best.score) best = { origin, destination, commodity, score };
+            });
+        });
+    });
+    if (!best) return;
+    const route = createCaptainTradeRoute(captain, best.origin.sectorId, best.destination.sectorId, best.commodity);
+    if (route) addCaptainHistory(captain, `opened captain-operated trade route ${route.name}.`, captain.known);
+}
+
 function runCaptainDailyAction(captain) {
     maybeCaptainJoinOrLeaveGuild(captain);
+    evaluateCaptainRouteOpenings(captain);
     if (captain.currentPlan && captain.currentPlan.type === "mission") {
         const mission = state.missions.find(m => m.id === captain.currentPlan.missionId);
         if (!mission || mission.status !== "captain_taken") {
@@ -443,7 +518,7 @@ function runCaptainDailyAction(captain) {
             completeCaptainMission(captain, mission);
             return;
         } else {
-            if (captain.currentPlan.targetSector && state.universe[captain.currentSector].warps.includes(captain.currentPlan.targetSector)) {
+            if (captain.currentPlan.targetSector && canTransitDirectCorridor(captain.currentSector, captain.currentPlan.targetSector)) {
                 captain.currentSector = captain.currentPlan.targetSector;
             } else {
                 moveCaptainTowardInterestingSector(captain);

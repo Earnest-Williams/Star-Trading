@@ -29,6 +29,48 @@ function cloneSaveValue(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
+function migrateWarpAdjacencyToJumpGates(universe) {
+    if (!isObject(universe)) return;
+    Object.values(universe).forEach(sector => {
+        if (!Array.isArray(sector.jumpGates)) sector.jumpGates = [];
+    });
+    Object.values(universe).forEach(sector => {
+        if (!Array.isArray(sector.warps)) return;
+        sector.warps.forEach(targetId => {
+            const target = universe[targetId];
+            if (!target || sector.id === targetId) return;
+            if (sector.jumpGates.some(gate => gate.destinationSectorId === targetId)) return;
+            if (!Array.isArray(target.jumpGates)) target.jumpGates = [];
+            const corridorId = `legacy-corridor-${Math.min(sector.id, targetId)}-${Math.max(sector.id, targetId)}`;
+            const gateAId = `legacy-gate-${sector.id}-${targetId}`;
+            const gateBId = `legacy-gate-${targetId}-${sector.id}`;
+            sector.jumpGates.push({ id: gateAId, corridorId, destinationSectorId: targetId, destinationGateId: gateBId, status: "active", owningFactionId: null, toll: 0, stability: 100 });
+            if (!target.jumpGates.some(gate => gate.destinationSectorId === sector.id)) {
+                target.jumpGates.push({ id: gateBId, corridorId, destinationSectorId: sector.id, destinationGateId: gateAId, status: "active", owningFactionId: null, toll: 0, stability: 100 });
+            }
+        });
+    });
+    Object.values(universe).forEach(sector => { delete sector.warps; });
+}
+
+function normaliseRouteOwnership(data) {
+    if (!Array.isArray(data.tradeRoutes)) data.tradeRoutes = [];
+    data.tradeRoutes.forEach(route => {
+        if (!route.ownerType) route.ownerType = "player";
+        if (typeof route.ownerId === "undefined") route.ownerId = route.ownerType === "player" ? null : route.ownerId;
+        if (!route.operatorType) route.operatorType = route.ownerType;
+        if (!route.createdBy) route.createdBy = route.ownerType;
+    });
+}
+
+function migrateShipTransitFields(player) {
+    if (!player || !player.ship) return;
+    if (typeof player.ship.travelMinutesPerCorridor !== "number") {
+        player.ship.travelMinutesPerCorridor = typeof player.ship.travelMinutesPerWarp === "number" ? player.ship.travelMinutesPerWarp : 45;
+    }
+    delete player.ship.travelMinutesPerWarp;
+}
+
 function deterministicSeedFromPayload(data) {
     const payload = JSON.stringify(data);
     let hash = 2166136261;
@@ -79,6 +121,7 @@ function buildLoadedState(data) {
     loadedState.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
     loadedState.nextTradeRouteId = data.nextTradeRouteId || (loadedState.tradeRoutes.length + 1);
     loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
+    loadedState.ambientTrade = data.ambientTrade || loadedState.ambientTrade;
     loadedState.rng = data.rng || null;
     normaliseLoadedGame(loadedState);
     loadedState.selectedSectorId = loadedState.player.currentSector;
@@ -143,6 +186,10 @@ export function migrateSave(data) {
             }
         }
     }
+    migrateWarpAdjacencyToJumpGates(data.universe);
+    normaliseRouteOwnership(data);
+    migrateShipTransitFields(data.player);
+    if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
     data.version = SAVE_VERSION;
     return data;
 }
@@ -168,6 +215,7 @@ export function saveGame() {
         tradeRoutes: state.tradeRoutes,
         nextTradeRouteId: state.nextTradeRouteId,
         nextMissionId: state.nextMissionId,
+        ambientTrade: state.ambientTrade,
         rng: state.rng
     };
     try {
@@ -224,6 +272,7 @@ export function loadGame() {
 function normaliseCurrentLoadedGame() {
     if (!state.player.time) state.player.time = { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 };
     if (!state.player.ship) state.player.ship = createPlayer().ship;
+    migrateShipTransitFields(state.player);
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
     if (!state.player.seed) state.player.seed = Date.now();
     if (!state.player.factionRelations) {
@@ -233,6 +282,8 @@ function normaliseCurrentLoadedGame() {
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
     COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
     Object.values(state.universe).forEach(sector => {
+        if (!Array.isArray(sector.jumpGates)) sector.jumpGates = [];
+        delete sector.warps;
         if (typeof sector.surveyed !== "boolean") sector.surveyed = false;
         if (typeof sector.pirateThreat !== "number") sector.pirateThreat = 0;
         normaliseSectorInfluence(sector);
@@ -264,6 +315,7 @@ function normaliseCurrentLoadedGame() {
     });
     normaliseCaptains();
     normaliseTradeRoutes();
+    if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
     state.missions.forEach(m => {

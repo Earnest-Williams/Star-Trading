@@ -8,6 +8,7 @@ import { spendTime } from '../core/time.js';
 import { nudgeCaptainRelation, getKnownCaptains } from './captains.js';
 import { getPortPrice } from './market.js';
 import { getColonyDailyNeeds } from './colonies.js';
+import { findShortestSectorPath, getSectorPathDistance, getCorridorRiskForPath } from '../core/navigation.js';
 
 export function normaliseTradeRoutes() {
     if (!Array.isArray(state.tradeRoutes)) state.tradeRoutes = [];
@@ -19,12 +20,17 @@ export function normaliseTradeRoutes() {
         if (typeof route.nextRunDay !== "number") route.nextRunDay = state.player.time.day + 1;
         if (typeof route.runs !== "number") route.runs = 0;
         if (typeof route.failures !== "number") route.failures = 0;
+        if (typeof route.starvedDays !== "number") route.starvedDays = 0;
         if (typeof route.profit !== "number") route.profit = 0;
         if (typeof route.heat !== "number") route.heat = 0;
         if (typeof route.reliability !== "number") route.reliability = 50;
+        if (!route.ownerType) route.ownerType = "player";
+        if (typeof route.ownerId === "undefined") route.ownerId = route.ownerType === "player" ? null : route.ownerId;
+        if (!route.operatorType) route.operatorType = route.ownerType;
+        if (!route.createdBy) route.createdBy = route.ownerType;
         if (typeof route.escortCaptainId === "undefined") route.escortCaptainId = null;
-        if (route.status !== "closed" && !findShortestPath(route.originSector, route.destinationSector)) {
-            throw new Error(`Trade route ${route.name || route.id} is disconnected: no warp path from sector ${route.originSector} to sector ${route.destinationSector}.`);
+        if (route.status !== "closed" && !findShortestSectorPath(route.originSector, route.destinationSector)) {
+            route.status = "paused";
         }
     });
     state.nextTradeRouteId = Math.max(state.nextTradeRouteId, state.tradeRoutes.reduce((best, r) => Math.max(best, r.id + 1), 1));
@@ -65,37 +71,19 @@ export function routeExists(originSector, destinationSector, commodity) {
 }
 
 export function findShortestPath(start, goal) {
-    if (!state.universe[start] || !state.universe[goal]) return null;
-    if (start === goal) return [start];
-    const queue = [[start]];
-    const seen = new Set([start]);
-    while (queue.length > 0) {
-        const path = queue.shift();
-        const here = path[path.length - 1];
-        const sector = state.universe[here];
-        if (!sector || !Array.isArray(sector.warps)) continue;
-        for (const next of sector.warps) {
-            if (seen.has(next) || !state.universe[next]) continue;
-            const newPath = path.concat([next]);
-            if (next === goal) return newPath;
-            seen.add(next);
-            queue.push(newPath);
-        }
-    }
-    return null;
+    return findShortestSectorPath(start, goal);
 }
 
-export function getRoutePath(route) { return findShortestPath(route.originSector, route.destinationSector); }
+export function getRoutePath(route) { return findShortestSectorPath(route.originSector, route.destinationSector); }
 export function getRouteDistance(originSector, destinationSector) {
-    const path = findShortestPath(originSector, destinationSector);
-    return path ? Math.max(1, path.length - 1) : null;
+    return getSectorPathDistance(originSector, destinationSector);
 }
 
 export function getRouteCommodityOptions(originSector, destinationSector) {
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     if (!origin || !destination || originSector === destinationSector) return [];
-    if (!findShortestPath(originSector, destinationSector)) return [];
+    if (!findShortestSectorPath(originSector, destinationSector)) return [];
     return COMMODITIES.filter(c => origin.sells.includes(c) && destination.buys.includes(c));
 }
 
@@ -107,18 +95,8 @@ export function getRouteSetupCost(originSector, destinationSector) {
 }
 
 export function getRouteRiskForSectors(originSector, destinationSector) {
-    const path = findShortestPath(originSector, destinationSector);
-    if (!path) return null;
-    return path.reduce((sum, sectorId) => {
-        const sector = state.universe[sectorId];
-        if (!sector) return sum;
-        const dominant = getDominantInfluence(sectorId);
-        let risk = sector.pirateThreat || 0;
-        if (sector.region === "Badlands") risk += 1;
-        if (dominant === "vc") risk += 1;
-        if (dominant === "sda") risk -= 1;
-        return sum + Math.max(0, risk);
-    }, 0);
+    const path = findShortestSectorPath(originSector, destinationSector);
+    return path ? getCorridorRiskForPath(path) : null;
 }
 
 export function getRouteRisk(route) {
@@ -158,11 +136,11 @@ export function createTradeRoute(destinationSector, commodity) {
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     if (!origin || !destination) { log("Trade routes need a port or player colony at both ends."); return; }
-    if (!findShortestPath(originSector, destinationSector)) { log(`No connected warp path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
+    if (!findShortestSectorPath(originSector, destinationSector)) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) { log("That route does not have a useful commodity flow."); return; }
     if (routeExists(originSector, destinationSector, commodity)) { log("That route already exists."); return; }
     const cost = getRouteSetupCost(originSector, destinationSector);
-    if (cost === null) { log(`No connected warp path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
+    if (cost === null) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
     if (!spendTime(180)) return;
     state.player.credits -= cost;
@@ -174,9 +152,13 @@ export function createTradeRoute(destinationSector, commodity) {
         intervalDays: BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
         nextRunDay: state.player.time.day + 1,
         factionId: destination.factionId || origin.factionId || "traders",
+        ownerType: "player",
+        ownerId: null,
+        operatorType: "player",
+        createdBy: "player",
         escortCaptainId: null,
         status: "active",
-        runs: 0, failures: 0, profit: 0, heat: 0, reliability: 55
+        runs: 0, failures: 0, starvedDays: 0, profit: 0, heat: 0, reliability: 55
     };
     state.tradeRoutes.push(route);
     addFactionRep("traders", 3, "opened a persistent route");
@@ -185,9 +167,36 @@ export function createTradeRoute(destinationSector, commodity) {
     addSectorInfluence(destinationSector, getFactionPoliticalPole(destination.factionId || "traders"), 1, "new logistics route");
     addWorldEvent({
         type: "route_opened", sectorId: destinationSector, factionId: route.factionId,
-        text: `You opened a persistent ${formatCommodity(commodity)} route from sector ${originSector} to sector ${destinationSector}.`,
+        text: `You opened an explicit ${formatCommodity(commodity)} trade route from sector ${originSector} to sector ${destinationSector}.`,
         importance: 2, alert: true
     });
+}
+
+export function createCaptainTradeRoute(captain, originSector, destinationSector, commodity, options = {}) {
+    const origin = getLogisticsNode(originSector);
+    const destination = getLogisticsNode(destinationSector);
+    if (!captain || !origin || !destination) return null;
+    if (!findShortestSectorPath(originSector, destinationSector)) return null;
+    if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) return null;
+    if (routeExists(originSector, destinationSector, commodity)) return null;
+    const route = {
+        id: state.nextTradeRouteId++,
+        name: `${captain.callsign || captain.name} ${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
+        originSector, destinationSector, commodity,
+        amount: options.amount || Math.max(6, Math.floor((captain.ship.cargoCapacity || 60) * 0.18)),
+        intervalDays: options.intervalDays || BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
+        nextRunDay: state.player.time.day + (options.delayDays || 1),
+        factionId: destination.factionId || origin.factionId || captain.preferredFaction || "traders",
+        ownerType: "captain",
+        ownerId: captain.id,
+        operatorType: "captain",
+        createdBy: captain.id,
+        escortCaptainId: null,
+        status: "active",
+        runs: 0, failures: 0, starvedDays: 0, profit: 0, heat: 0, reliability: 52
+    };
+    state.tradeRoutes.push(route);
+    return route;
 }
 
 export function toggleTradeRoute(routeId) {
@@ -258,6 +267,8 @@ export function runTradeRoute(route) {
     const amount = Math.min(route.amount, available, capacity);
     if (amount <= 0) {
         route.failures += 1;
+        route.starvedDays = (route.starvedDays || 0) + 1;
+        if (route.starvedDays >= 3) route.status = "paused";
         route.reliability = clampRange(route.reliability - 3, 0, 100);
         addWorldEvent({
             type: "route_shortage", sectorId: route.originSector, factionId: route.factionId,
@@ -271,7 +282,7 @@ export function runTradeRoute(route) {
         route.status = "paused";
         addWorldEvent({
             type: "route_disconnected", sectorId: route.originSector, factionId: route.factionId,
-            text: `${route.name} paused because no connected warp path exists between sector ${route.originSector} and sector ${route.destinationSector}.`,
+            text: `${route.name} paused because no connected jump-gate corridor path exists between sector ${route.originSector} and sector ${route.destinationSector}.`,
             importance: 3, alert: true
         });
         return;
@@ -299,9 +310,14 @@ export function runTradeRoute(route) {
     origin.stock[route.commodity] -= amount;
     destination.stock[route.commodity] = Math.min(destination.maxStock[route.commodity] || 9999, (destination.stock[route.commodity] || 0) + amount);
     const profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
-    state.player.credits += profit;
+    if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {
+        state.captains[route.ownerId].credits = (state.captains[route.ownerId].credits || 0) + profit;
+    } else {
+        state.player.credits += profit;
+    }
     route.profit += profit;
     route.runs += 1;
+    route.starvedDays = 0;
     route.heat = Math.max(0, route.heat - 1);
     route.reliability = clampRange(route.reliability + 2, 0, 100);
     addFactionRep("traders", 1, "route income");

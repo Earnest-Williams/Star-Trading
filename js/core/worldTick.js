@@ -3,6 +3,7 @@ import { addWorldEvent } from './worldEvents.js';
 import { registerDailyHook, registerHourlyHook } from './time.js';
 import { produceColonies, updateColonyNeedsDaily } from '../systems/colonies.js';
 import { runTradeRoutesDaily } from '../systems/tradeRoutes.js';
+import { runAmbientTradeDaily } from '../systems/ambientTrade.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../systems/politics.js';
 import { expireMissions, prepareMissionOpportunity } from '../systems/missions.js';
 import { updateCaptainsDaily, updateCaptainsHourly } from '../systems/captains.js';
@@ -10,7 +11,8 @@ import { expireIntel } from './intel.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
-    { id: 'trade_routes', run: () => runTradeRoutesDaily() },
+    { id: 'explicit_trade_route_runs', run: () => runTradeRoutesDaily() },
+    { id: 'ambient_trade_response', run: () => runAmbientTradeDaily() },
     { id: 'colony_needs', run: () => updateColonyNeedsDaily() },
     { id: 'port_markets', run: () => updatePortsDaily() },
     { id: 'sector_threats', run: () => updateThreatsDaily() },
@@ -57,7 +59,7 @@ export function expireFactionIntel() {
 function recordDailyWorldEvent() {
     addWorldEvent({
         type: 'daily_tick',
-        text: `Day ${state.player.time.day} opened: colonies produced goods, markets shifted, captains acted, factions moved, and sector threats advanced.`,
+        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, ambient trade responded, markets shifted, captains acted, factions moved, and sector threats advanced.`,
         importance: 2,
         alert: false
     });

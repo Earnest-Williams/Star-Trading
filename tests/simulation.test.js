@@ -95,16 +95,16 @@ describe('generateUniverse — determinism', () => {
         assert.equal(sectorCount1, sectorCount2, 'sector count should be deterministic');
     });
 
-    it('produces the same warp topology on every run with the same seed', () => {
+    it('produces the same corridor topology on every run with the same seed', () => {
         seedGame(FIXED_SEED);
-        const warps1 = JSON.stringify(
-            Object.fromEntries(Object.entries(state.universe).map(([k, s]) => [k, [...s.warps].sort()]))
+        const corridors1 = JSON.stringify(
+            Object.fromEntries(Object.entries(state.universe).map(([k, s]) => [k, s.jumpGates.map(g => g.destinationSectorId).sort()]))
         );
         seedGame(FIXED_SEED);
-        const warps2 = JSON.stringify(
-            Object.fromEntries(Object.entries(state.universe).map(([k, s]) => [k, [...s.warps].sort()]))
+        const corridors2 = JSON.stringify(
+            Object.fromEntries(Object.entries(state.universe).map(([k, s]) => [k, s.jumpGates.map(g => g.destinationSectorId).sort()]))
         );
-        assert.equal(warps1, warps2, 'warp graph should be identical for the same seed');
+        assert.equal(corridors1, corridors2, 'corridor graph should be identical for the same seed');
     });
 
     it('produces the same port layout on every run with the same seed', () => {
@@ -137,11 +137,11 @@ describe('generateUniverse — determinism', () => {
         assert.equal(Object.keys(state.universe).length, BALANCE.SECTOR_COUNT);
     });
 
-    it('every sector has at least one warp link', () => {
+    it('every sector has at least one jump corridor', () => {
         seedGame(FIXED_SEED);
         Object.values(state.universe).forEach(sector => {
-            assert.ok(sector.warps.length >= 1,
-                `sector ${sector.id} should have at least one warp link`);
+            assert.ok(sector.jumpGates.length >= 1,
+                `sector ${sector.id} should have at least one jump corridor`);
         });
     });
 });

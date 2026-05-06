@@ -7,8 +7,8 @@ import { captainDisplayName } from "../systems/captains.js";
 
 export function renderLogisticsScreen() {
     normaliseTradeRoutes();
-    let html = `<h4>Trade Routes & Convoy Wings</h4>`;
-    html += `<div class="small muted">Persistent routes turn one-off trades into lane control. They move stock daily, earn passive income, feed colonies, shift sector influence, and create convoy work for named captains.</div>`;
+    let html = `<h4>Explicit Trade Routes & Convoy Wings</h4>`;
+    html += `<div class="small muted">Jump gates and corridors are infrastructure. Trade routes are explicit commercial plans operated by you or eligible captains. Ambient trade is aggregate background traffic and is not directly controllable.</div>`;
     html += renderRouteCreationPanel();
     html += renderActiveRoutesPanel();
     html += renderColonyNeedsPanel();
@@ -29,7 +29,7 @@ function renderRouteCreationPanel() {
         found = true;
         const distance = getRouteDistance(player.currentSector, node.sectorId);
         const risk = getRouteRiskForSectors(player.currentSector, node.sectorId);
-        html += `<div class="mission"><strong>${escapeHtml(node.name)}</strong> <span class="muted">${distance} jumps, risk ${risk}</span><br>`;
+        html += `<div class="mission"><strong>${escapeHtml(node.name)}</strong> <span class="muted">${distance} corridors, risk ${risk}</span><br>`;
         commodities.forEach(commodity => {
             const cost = getRouteSetupCost(player.currentSector, node.sectorId);
             const profit = estimateRouteProfit(player.currentSector, node.sectorId, commodity);
@@ -46,18 +46,19 @@ function renderActiveRoutesPanel() {
     const { tradeRoutes, captains } = state;
     const active = tradeRoutes.filter(r => r.status !== "closed");
     let html = `<div class="commodity-row"><strong>Existing Routes</strong>`;
-    if (active.length === 0) return html + `<div class="muted">No persistent routes yet.</div></div>`;
+    if (active.length === 0) return html + `<div class="muted">No explicit trade routes yet. Ambient market traffic may still move small capped volumes in the background.</div></div>`;
     const escorts = getRouteEscortCandidates();
     active.forEach(route => {
         const origin = getLogisticsNode(route.originSector);
         const destination = getLogisticsNode(route.destinationSector);
         const faction = route.factionId && FACTIONS[route.factionId] ? FACTIONS[route.factionId] : null;
         const escort = route.escortCaptainId ? captains[route.escortCaptainId] : null;
+        const owner = route.ownerType === "captain" && captains[route.ownerId] ? captainDisplayName(captains[route.ownerId]) : "Player";
         html += `<div class="card"><strong>${escapeHtml(route.name)}</strong> ${faction ? `<span style="color:${faction.color}">${faction.icon} ${faction.short}</span>` : ""}<br>`;
         html += `${origin ? escapeHtml(origin.name) : "Missing origin"} -> ${destination ? escapeHtml(destination.name) : "Missing destination"}<br>`;
-        html += `Status: ${route.status} | Next run: Day ${route.nextRunDay} | Reliability ${route.reliability} | Heat ${route.heat}<br>`;
+        html += `Owner: ${escapeHtml(owner)} | Status: ${route.status} | Next run: Day ${route.nextRunDay} | Reliability ${route.reliability} | Heat ${route.heat}<br>`;
         html += `Runs ${route.runs} / Failures ${route.failures} / Lifetime profit ${formatCredits(route.profit)}<br>`;
-        html += `Risk ${getRouteRisk(route).toFixed(1)} | Escort: ${escort ? escapeHtml(captainDisplayName(escort)) : "none"}<br>`;
+        html += `Risk ${getRouteRisk(route) === null ? "disconnected" : getRouteRisk(route).toFixed(1)} | Escort: ${escort ? escapeHtml(captainDisplayName(escort)) : "none"}<br>`;
         html += `<button data-action="toggleTradeRoute" data-arg0="${route.id}">${route.status === "active" ? "Pause" : "Resume"}</button>`;
         html += `<button data-action="closeTradeRoute" data-arg0="${route.id}">Close</button>`;
         if (escort) html += `<button data-action="unassignRouteEscort" data-arg0="${route.id}">Release Escort</button>`;
@@ -69,6 +70,7 @@ function renderActiveRoutesPanel() {
         html += `</div></div>`;
     });
     html += `</div>`;
+    html += `<div class="small muted">Last ambient trade: ${state.ambientTrade ? state.ambientTrade.flows : 0} aggregate flows. These background haulers are capped by shortage, surplus, distance, and risk.</div>`;
     return html;
 }
 
