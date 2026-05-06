@@ -193,3 +193,44 @@ describe('persistence adapters', () => {
         if (previousDocument !== undefined) globalThis.document = previousDocument;
     });
 });
+
+describe('loadGame — validation before live state swap', () => {
+    afterEach(() => {
+        setPersistenceAdapters();
+        resetState();
+    });
+
+    it('does not touch live state when normalisation rejects malformed save content', () => {
+        const badSave = minimalSave(SAVE_VERSION);
+        badSave.ports = {
+            1: { typeKey: 'missing-port-type', stock: { ore: 0, org: 0, eq: 0 } }
+        };
+        state.player = minimalSave(SAVE_VERSION).player;
+        state.player.credits = 1234;
+        const messages = [];
+        setPersistenceAdapters({
+            storage: { getItem() { return JSON.stringify(badSave); } },
+            logger: message => messages.push(message)
+        });
+
+        assert.equal(loadGame(), false);
+        assert.equal(state.player.credits, 1234);
+        assert.ok(messages.includes('Could not load save data. The save failed validation or normalisation.'));
+    });
+});
+
+describe('migrateSave — deterministic seed fallback', () => {
+    it('derives the same missing seed from identical pre-v10 payloads', () => {
+        const saveA = minimalSave(9);
+        const saveB = minimalSave(9);
+        delete saveA.player.seed;
+        delete saveB.player.seed;
+
+        const resultA = migrateSave(saveA);
+        const resultB = migrateSave(saveB);
+
+        assert.equal(resultA.player.seed, resultB.player.seed);
+        assert.equal(typeof resultA.player.seed, 'number');
+        assert.ok(resultA.player.seed > 0);
+    });
+});

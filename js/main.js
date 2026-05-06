@@ -9,16 +9,15 @@ import { runTradeRoutesDaily } from './systems/tradeRoutes.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from './systems/politics.js';
 import { expireMissions, prepareMissionOpportunity } from './systems/missions.js';
 import { updateCaptainsDaily, updateCaptainsHourly } from './systems/captains.js';
-import { saveGame, loadGame, setPersistenceAdapters } from './core/persistence.js';
-import { restUntilMorning } from './systems/travel.js';
+import { setPersistenceAdapters } from './core/persistence.js';
 import { setupMapInteraction } from './ui/renderMap.js';
-import { showScreen } from './ui/ui.js';
 import { handleActionClick } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
 import { initSessionRng } from './utils.js';
 import { createCaptains } from './systems/captains.js';
 import { generateMissionPool } from './systems/missions.js';
+import { executeAction } from './core/commands.js';
 
 // =====================================================
 // APP BOOTSTRAP
@@ -95,7 +94,7 @@ export const App = (() => {
 
         // Bind persistent top-bar buttons (stored so dispose() can remove them)
         document.querySelectorAll('.topbar button').forEach(btn => {
-            const fn = () => showScreen(btn.dataset.screen);
+            const fn = () => executeAction({ type: 'showScreen', args: [btn.dataset.screen] });
             btn.addEventListener('click', fn);
             _topbarListeners.push({ el: btn, fn });
         });
@@ -106,12 +105,12 @@ export const App = (() => {
             _topbarListeners.push({ el, fn });
         };
         addBtn('btn-rest', () => {
-            restUntilMorning();
-            updateUI();
+            const result = executeAction({ type: 'restUntilMorning' });
+            if (result !== false) updateUI();
         });
-        addBtn('btn-save', saveGame);
-        addBtn('btn-load', loadGame);
-        addBtn('btn-intel', () => showScreen('reputation'));
+        addBtn('btn-save', () => executeAction({ type: 'saveGame' }));
+        addBtn('btn-load', () => executeAction({ type: 'loadGame' }));
+        addBtn('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
 
         // Single delegated handler for all data-action buttons
         document.body.addEventListener('click', handleActionClick);

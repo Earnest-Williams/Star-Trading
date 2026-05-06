@@ -79,3 +79,23 @@ describe('player actions — combat', () => {
         assert.ok(state.player.hull <= state.player.ship.maxHull);
     });
 });
+
+describe('domain command layer', () => {
+    it('executes registered actions with positional args and notifies observers', async () => {
+        const { executeAction, onActionExecuted, registerAction } = await import('../js/core/commands.js');
+        const observed = [];
+        const unsubscribe = onActionExecuted(entry => observed.push(entry));
+        registerAction('test:add', (a, b) => Number(a) + Number(b));
+
+        const result = executeAction({ type: 'test:add', args: ['2', '3'] });
+
+        unsubscribe();
+        assert.equal(result, 5);
+        assert.deepEqual(observed, [{ type: 'test:add', args: ['2', '3'], result: 5 }]);
+    });
+
+    it('rejects unknown actions without mutating state', async () => {
+        const { executeAction } = await import('../js/core/commands.js');
+        assert.equal(executeAction({ type: 'test:missing', args: [] }), false);
+    });
+});

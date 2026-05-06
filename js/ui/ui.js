@@ -2,6 +2,7 @@ import { state } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
 import { BALANCE } from '../constants.js';
 import { advanceTime } from '../core/time.js';
+import { executeAction, registerAction } from '../core/commands.js';
 
 // Render subsystems
 import {
@@ -9,7 +10,7 @@ import {
     renderPriorityFeed, renderSectorActionMenu, injectLogisticsModule
 } from './renderHUD.js';
 import { renderSectorContents, renderMenuPanel, renderMapInspector } from './renderSector.js';
-import { drawMap, setupMapInteraction, selectSector } from './renderMap.js';
+import { drawMap, selectSector } from './renderMap.js';
 import { renderMarketPanel } from './renderMarket.js';
 import { renderColonyPanel } from './renderColony.js';
 import { renderShipyardPanel, buyUpgrade, repairShip, buyFighters } from './renderShipyard.js';
@@ -46,23 +47,19 @@ import { spendTime } from '../core/time.js';
 
 // =====================================================
 // ACTION DISPATCHER
-// All data-action buttons are handled via event delegation.
+// All data-action buttons are handled via event delegation, then
+// passed through the domain command layer.
 // =====================================================
-const Actions = {};
-export function registerAction(name, fn) { Actions[name] = fn; }
-
 export function handleActionClick(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
     const action = target.dataset.action;
-    const fn = Actions[action];
-    if (!fn) return;
     const args = [];
     for (let i = 0; i < 5; i++) {
         if (target.dataset['arg' + i] !== undefined) args.push(target.dataset['arg' + i]);
     }
     try {
-        const result = fn.apply(null, args);
+        const result = executeAction({ type: action, args });
         if (result !== false) updateUI();
     } catch (e) {
         console.error(`Action ${action} failed:`, e);
