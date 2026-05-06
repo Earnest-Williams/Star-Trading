@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { FACTIONS, COMMODITIES } from "../constants.js";
 import { escapeHtml, formatCredits, formatCommodity, makeStock } from "../utils.js";
 import { getColonyDailyNeeds } from "../systems/colonies.js";
-import { buildLogisticsSnapshot, getRouteEscortCandidates } from "../systems/tradeRoutes.js";
+import { buildLogisticsSnapshot, getRouteEscortCandidates, routeExists } from "../systems/tradeRoutes.js";
 import { captainDisplayName } from "../systems/captains.js";
 
 export function renderLogisticsScreen() {
