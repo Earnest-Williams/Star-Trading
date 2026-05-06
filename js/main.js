@@ -2,7 +2,7 @@ import { resetState, state } from './state.js';
 import { EventBus } from './events.js';
 import { Renderer, updateUI } from './ui/renderer.js';
 import { createPlayer, generateUniverse, generateStars } from './core/universe.js';
-import { clearDailyHooks, clearHourlyHooks } from './core/time.js';
+import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters } from './core/persistence.js';
 import { setupMapInteraction } from './ui/renderMap.js';
@@ -111,10 +111,10 @@ export const App = (() => {
     }
 
     function dispose() {
-        clearDailyHooks();
-        clearHourlyHooks();
+        resetTimeHooks();
         _unsubs.forEach(unsub => unsub());
         _unsubs = [];
+        EventBus.reset();
         _topbarListeners.forEach(({ el, fn }) => el.removeEventListener('click', fn));
         _topbarListeners = [];
         document.body.removeEventListener('click', handleActionClick);

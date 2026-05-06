@@ -14,21 +14,42 @@ export const Renderer = (function() {
         });
     }
 
+    function scheduleFlush() {
+        if (scheduled) return;
+        scheduled = true;
+        const raf = globalThis.requestAnimationFrame || (fn => globalThis.setTimeout(fn, 0));
+        raf(flush);
+    }
+
     return {
-        register(key, fn) { handlers[key] = fn; },
+        register(key, fn) {
+            handlers[key] = fn;
+            return function unregister() {
+                if (handlers[key] === fn) delete handlers[key];
+            };
+        },
+        unregister(key, fn) {
+            if (!handlers[key]) return false;
+            if (fn && handlers[key] !== fn) return false;
+            delete handlers[key];
+            dirty.delete(key);
+            return true;
+        },
+        clear() {
+            Object.keys(handlers).forEach(key => delete handlers[key]);
+            dirty.clear();
+            scheduled = false;
+        },
+        reset() {
+            this.clear();
+        },
         invalidate(key) {
             dirty.add(key);
-            if (!scheduled) {
-                scheduled = true;
-                requestAnimationFrame(flush);
-            }
+            scheduleFlush();
         },
         invalidateAll() {
             Object.keys(handlers).forEach(k => dirty.add(k));
-            if (!scheduled) {
-                scheduled = true;
-                requestAnimationFrame(flush);
-            }
+            scheduleFlush();
         }
     };
 })();

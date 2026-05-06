@@ -6,6 +6,7 @@ import { runTradeRoutesDaily } from '../systems/tradeRoutes.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../systems/politics.js';
 import { expireMissions, prepareMissionOpportunity } from '../systems/missions.js';
 import { updateCaptainsDaily, updateCaptainsHourly } from '../systems/captains.js';
+import { expireIntel } from './intel.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
@@ -22,7 +23,7 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
 export const HOURLY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'captain_hourly_actions', run: () => updateCaptainsHourly() },
     { id: 'mission_opportunities', run: () => prepareAvailableMissionOpportunities() },
-    { id: 'intel_expiry', run: () => expireFactionIntel() }
+    { id: 'intel_expiry', run: () => expireIntel() }
 ]);
 
 export function runWorldTickPhases(phases, reason) {
@@ -48,13 +49,9 @@ export function prepareAvailableMissionOpportunities() {
         .forEach(prepareMissionOpportunity);
 }
 
-export function expireFactionIntel() {
-    if (!state.player || !state.player.factions) return;
-    if (!Array.isArray(state.player.factions.intel)) return;
 
-    state.player.factions.intel = state.player.factions.intel.filter(
-        item => item.expiresDay >= state.player.time.day
-    );
+export function expireFactionIntel() {
+    expireIntel();
 }
 
 function recordDailyWorldEvent() {

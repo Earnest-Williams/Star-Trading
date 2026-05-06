@@ -4,7 +4,8 @@ import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../ut
 import { getDominantInfluence } from '../core/influence.js';
 import { addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
-import { addFactionRep, addFactionTrust, addFactionHeat, applyPoliticalEffect, getMiningYieldMultiplier, addIntel, ensureFactionState } from '../core/factions.js';
+import { addFactionRep, addFactionTrust, addFactionHeat, applyPoliticalEffect, getMiningYieldMultiplier, ensureFactionState } from '../core/factions.js';
+import { addIntel } from '../core/intel.js';
 import { spendTime } from '../core/time.js';
 import { applyShipDamage } from './combat.js';
 import { updateFactionAskProgress } from './guilds.js';

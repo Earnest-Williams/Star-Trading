@@ -3,9 +3,11 @@ import { FACTIONS, FACTION_ASK_TYPES, GUILD_REQUIREMENTS, GUILD_TIER_NAMES, COMM
 import { clampRange, formatCredits, describeCost, hasCargo, removeCargo, log, random } from '../utils.js';
 import { addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
-import { ensureFactionState, addFactionRep, addFactionTrust, addFactionHeat, addFactionLeverage, getGuildTier, addIntel, applyPoliticalEffect, recordFactionMemory, getFactionRep, hasGuildJoinAccess, canAffordGuildRequirement } from '../core/factions.js';
+import { ensureFactionState, addFactionRep, addFactionTrust, addFactionHeat, addFactionLeverage, getGuildTier, applyPoliticalEffect, getFactionRep, hasGuildJoinAccess, canAffordGuildRequirement } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
+import { addIntel, sellIntel } from '../core/intel.js';
+export { sellIntel };
 
 export function generateFactionAsks() {
     ensureFactionState();
@@ -128,31 +130,6 @@ export function completeFactionAsk(id) {
     log(`Completed political ask: ${ask.title}. Reward: ${formatCredits(ask.rewardCredits || 0)} credits.`);
 }
 
-export function sellIntel(intelId, factionId) {
-    ensureFactionState();
-    const idx = state.player.factions.intel.findIndex(item => item.id === intelId);
-    if (idx < 0 || !FACTIONS[factionId]) return;
-    const item = state.player.factions.intel[idx];
-    if (item.expiresDay < state.player.time.day) {
-        state.player.factions.intel.splice(idx, 1);
-        log("That intel has expired.");
-        return;
-    }
-    const reward = item.value * (factionId === "traders" ? 18 : 12);
-    state.player.credits += reward;
-    if (factionId === "vc") {
-        addFactionRep("vc", 3, "intel sold quietly", "private");
-        addFactionHeat("sda", 3, "suspicious intel traffic");
-    } else {
-        addFactionRep(factionId, 2, "intel provided", "public");
-        addFactionTrust(factionId, 1, "useful intel");
-    }
-    if (item.targetFactionId && item.targetFactionId !== factionId) {
-        recordFactionMemory(item.targetFactionId, "helpedEnemies", 1);
-    }
-    state.player.factions.intel.splice(idx, 1);
-    log(`Intel sold for ${formatCredits(reward)} credits.`);
-}
 
 export function joinGuild(guildId) {
     if (!FACTIONS[guildId] || FACTIONS[guildId].type !== "guild") return;
