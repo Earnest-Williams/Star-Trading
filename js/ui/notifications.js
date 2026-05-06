@@ -5,10 +5,12 @@ export const Notifications = (function() {
     let nextId = 1;
 
     function show(text, priority = 1, action = null) {
+        const doc = globalThis.document;
+        if (!doc || typeof doc.getElementById !== "function" || typeof doc.createElement !== "function") return;
         const id = nextId++;
-        const feed = document.getElementById("notificationFeed");
+        const feed = doc.getElementById("notificationFeed");
         if (!feed) return;
-        const el = document.createElement("div");
+        const el = doc.createElement("div");
         el.className = `notification priority-${priority}`;
         el.dataset.id = id;
         el.textContent = text;

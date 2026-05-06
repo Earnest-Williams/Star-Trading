@@ -35,6 +35,7 @@ js/
     captains.js     # NPC captain AI, differentiated economy capability, route evaluation, daily/hourly actions, history
     colonies.js     # Colony production, buildings, policy, shortages
     combat.js       # Pirate encounters, fighter mechanics
+    contraband.js   # Hidden hold, black-market sourcing, inspections, and Cartel delivery
     guilds.js       # Faction asks, intel selling, guild join/promote
     market.js       # Trade commodity logic, price calculation
     mining.js       # Asteroid mining, sector survey
@@ -58,12 +59,13 @@ js/
     renderShipyard.js
   new/              # Stub modules for planned features
     bounties.js
-    contraband.js
+    contraband.js  # Compatibility entry point for systems/contraband.js
     intel.js
 tests/
   navigation.test.js     # Jump gates, corridors, shortest paths, distance, disconnected sectors
   ambientTrade.test.js   # Capped background flows under supply/demand, distance, risk, connectivity
   captainEconomy.test.js # Eligible/ineligible captain route behavior and risk response
+  contraband.test.js      # Hidden hold normalization, black-market sourcing, delivery, and inspection status
   time.test.js           # advanceTime, hook firing, canSpendTime, spendTime
   tradeRoutes.test.js    # explicit route pathing, normaliseTradeRoutes, cost, profit
   persistence.test.js    # migrateSave versioned steps, legacy adjacency/timing/route ownership migration
