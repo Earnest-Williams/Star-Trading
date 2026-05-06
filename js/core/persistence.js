@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { SAVE_KEY, SAVE_VERSION, COMMODITIES, FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_VERSION, COMMODITIES, FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
@@ -12,17 +13,26 @@ import { Notifications } from '../ui/notifications.js';
 import { log } from '../utils.js';
 import { updateUI } from '../events.js';
 
-function createPlayer() {
-    return {
-        ship: { name: "Vagrant Star", maxHolds: 100, travelMinutesPerWarp: 30, scannerLevel: 1, miningPower: 10, maxShields: 200, maxHull: 100, maxFighters: 100 },
-        credits: 5000,
-        cargo: { ore: 0, org: 0, eq: 0 },
-        fighters: 20, shields: 200, hull: 100,
-        currentSector: 1,
-        reputation: 0,
-        time: { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 },
-        factions: null
-    };
+
+export function migrateSave(data) {
+    const v = data.version || 0;
+    // v1-v5: faction state was absent or had a different shape; force a full rebuild
+    if (v < 6) {
+        if (data.player) delete data.player.factions;
+    }
+    // v6: captainEventLog and worldEvents were not yet persisted
+    if (v < 7) {
+        data.captainEventLog = data.captainEventLog || [];
+        data.worldEvents = data.worldEvents || [];
+    }
+    // v7: tradeRoutes and nextTradeRouteId added
+    if (v < 8) {
+        data.tradeRoutes = data.tradeRoutes || [];
+        data.nextTradeRouteId = data.nextTradeRouteId || 1;
+    }
+    // v8: sector.politicalMemory added — normaliseLoadedGame rebuilds missing entries
+    data.version = SAVE_VERSION;
+    return data;
 }
 
 export function saveGame() {
@@ -53,14 +63,19 @@ export function saveGame() {
 }
 
 export function loadGame() {
-    const saved = localStorage.getItem(SAVE_KEY);
+    let saved = localStorage.getItem(SAVE_KEY);
+    if (!saved && SAVE_KEY_LEGACY) {
+        saved = localStorage.getItem(SAVE_KEY_LEGACY);
+        if (saved) log("Migrating save from legacy key.");
+    }
     if (!saved) { log("No saved game found."); return; }
     try {
-        const data = JSON.parse(saved);
+        let data = JSON.parse(saved);
         if (!data || !data.player || !data.universe || !data.ports || !data.planets) {
             log("Save data is missing required fields.");
             return;
         }
+        data = migrateSave(data);
         state.player = data.player;
         state.universe = data.universe;
         state.ports = data.ports;

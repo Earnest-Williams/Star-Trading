@@ -40,7 +40,8 @@ export const BALANCE = {
 };
 
 export const SAVE_VERSION = 9;
-export const SAVE_KEY = "soloSpaceTraderSaveV6";
+export const SAVE_KEY = "starTradingSaveV9";
+export const SAVE_KEY_LEGACY = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];
 export const COMMODITY_NAMES = { ore: "Ore", org: "Organics", eq: "Equipment" };
 export const DEBUG_MODE = true;

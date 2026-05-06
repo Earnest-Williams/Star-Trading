@@ -1,5 +1,5 @@
-import { state } from '../state.js';
-import { BALANCE, COMMODITIES, COMMODITY_NAMES } from '../constants.js';
+import { state } from './state.js';
+import { BALANCE, COMMODITIES, COMMODITY_NAMES } from './constants.js';
 
 export function escapeHtml(s) {
     if (s === null || s === undefined) return "";

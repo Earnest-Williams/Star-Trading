@@ -5,8 +5,9 @@ Star-Trading is a browser-based space trading game structured as a set of ES mod
 ## Project structure
 
 ```
-index.html          # Shell: HTML, CSS, and <script type="module" src="js/main.js">
-style.css           # Extracted stylesheet (referenced from index.html)
+index.html          # Shell: HTML and <script type="module" src="js/main.js">
+style.css           # Canonical stylesheet (linked from index.html via <link rel="stylesheet">)
+package.json        # type:module + npm test script
 js/
   main.js           # Entry point: startGame, daily/hourly tick hooks, EventBus wiring
   state.js          # Single shared mutable state object
@@ -16,9 +17,9 @@ js/
   core/
     factions.js     # Faction reputation, heat, trust, leverage, guild tiers
     influence.js    # Sector influence spread, dominance, status labels
-    persistence.js  # localStorage save / load
+    persistence.js  # localStorage save / load, migrateSave
     time.js         # advanceTime, spendTime, daily/hourly hook registry
-    universe.js     # Map generation, sector/port/planet factories, createPlayer
+    universe.js     # Map generation, sector/port/planet factories, createPlayer (canonical)
     worldEvents.js  # World event log (addWorldEvent)
   systems/
     captains.js     # NPC captain AI, daily/hourly actions, history
@@ -48,6 +49,10 @@ js/
     bounties.js
     contraband.js
     intel.js
+tests/
+  time.test.js        # advanceTime, hook firing, canSpendTime, spendTime
+  tradeRoutes.test.js # findShortestPath, normaliseTradeRoutes, cost, profit
+  persistence.test.js # migrateSave versioned steps
 ```
 
 ## What the app contains right now
@@ -77,3 +82,11 @@ In short, the project looks aimed at becoming a systemic “political economy in
 ## Running it
 
 There is no build step at the moment. Open `index.html` in a browser to play the prototype.
+
+## Running the tests
+
+Smoke tests covering time advancement, trade-route logic, and save migration run with Node.js 18+:
+
+```
+npm test
+```
