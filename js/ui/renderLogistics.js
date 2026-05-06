@@ -2,38 +2,40 @@ import { state } from "../state.js";
 import { FACTIONS, COMMODITIES } from "../constants.js";
 import { escapeHtml, formatCredits, formatCommodity, makeStock } from "../utils.js";
 import { getColonyDailyNeeds } from "../systems/colonies.js";
-import { getLogisticsNode, getAllLogisticsNodes, getRouteCommodityOptions, routeExists, getRouteDistance, getRouteRiskForSectors, getRouteSetupCost, estimateRouteProfit, getRouteRisk, getRouteEscortCandidates, normaliseTradeRoutes } from "../systems/tradeRoutes.js";
+import { buildLogisticsSnapshot, getRouteEscortCandidates } from "../systems/tradeRoutes.js";
 import { captainDisplayName } from "../systems/captains.js";
 
 export function renderLogisticsScreen() {
-    normaliseTradeRoutes();
+    const snapshot = buildLogisticsSnapshot();
     let html = `<h4>Explicit Trade Routes & Convoy Wings</h4>`;
     html += `<div class="small muted">Jump gates and corridors are infrastructure. Trade routes are explicit commercial plans operated by you or eligible captains. Ambient trade is aggregate background traffic and is not directly controllable.</div>`;
-    html += renderRouteCreationPanel();
-    html += renderActiveRoutesPanel();
+    html += renderRouteCreationPanel(snapshot);
+    html += renderActiveRoutesPanel(snapshot);
     html += renderColonyNeedsPanel();
     return html;
 }
 
-function renderRouteCreationPanel() {
-    const { player } = state;
-    const origin = getLogisticsNode(player.currentSector);
+function renderRouteCreationPanel(snapshot) {
+    const { origin } = snapshot;
     let html = `<div class="commodity-row"><strong>Open Route From Current Sector</strong>`;
     if (!origin) return html + `<div class="muted">This sector needs a port or one of your colonies before it can anchor a persistent route.</div></div>`;
     html += `<div>Origin: ${escapeHtml(origin.name)}</div>`;
-    const candidates = getAllLogisticsNodes().filter(n => n.sectorId !== player.currentSector);
     let found = false;
-    candidates.forEach(node => {
-        const commodities = getRouteCommodityOptions(player.currentSector, node.sectorId).filter(c => !routeExists(player.currentSector, node.sectorId, c, "player", null));
+    snapshot.candidates.forEach(candidate => {
+        const commodities = candidate.commodities.filter(option => !state.tradeRoutes.some(route => {
+            const routeOwnerId = typeof route.ownerId === "undefined" ? null : route.ownerId;
+            return route.status !== "closed"
+                && route.originSector === snapshot.originSector
+                && route.destinationSector === candidate.destination.sectorId
+                && route.commodity === option.commodity
+                && (route.ownerType || "player") === "player"
+                && routeOwnerId === null;
+        }));
         if (commodities.length === 0) return;
         found = true;
-        const distance = getRouteDistance(player.currentSector, node.sectorId);
-        const risk = getRouteRiskForSectors(player.currentSector, node.sectorId);
-        html += `<div class="mission"><strong>${escapeHtml(node.name)}</strong> <span class="muted">${distance} corridors, risk ${risk}</span><br>`;
-        commodities.forEach(commodity => {
-            const cost = getRouteSetupCost(player.currentSector, node.sectorId);
-            const profit = estimateRouteProfit(player.currentSector, node.sectorId, commodity);
-            html += `<button data-action="createTradeRoute" data-arg0="${node.sectorId}" data-arg1="${commodity}">Open ${formatCommodity(commodity)} Route (${formatCredits(cost)}c, est ${formatCredits(profit)}c/day)</button>`;
+        html += `<div class="mission"><strong>${escapeHtml(candidate.destination.name)}</strong> <span class="muted">${candidate.distance} corridors, risk ${candidate.risk}</span><br>`;
+        commodities.forEach(option => {
+            html += `<button data-action="createTradeRoute" data-arg0="${candidate.destination.sectorId}" data-arg1="${option.commodity}">Open ${formatCommodity(option.commodity)} Route (${formatCredits(candidate.setupCost)}c, est ${formatCredits(option.estimatedProfit)}c/day)</button>`;
         });
         html += `</div>`;
     });
@@ -42,15 +44,14 @@ function renderRouteCreationPanel() {
     return html;
 }
 
-function renderActiveRoutesPanel() {
-    const { tradeRoutes, captains } = state;
-    const active = tradeRoutes.filter(r => r.status !== "closed");
+function renderActiveRoutesPanel(snapshot) {
+    const { captains } = state;
+    const active = snapshot.activeRoutes;
     let html = `<div class="commodity-row"><strong>Existing Routes</strong>`;
     if (active.length === 0) return html + `<div class="muted">No explicit trade routes yet. Ambient market traffic may still move small capped volumes in the background.</div></div>`;
     const escorts = getRouteEscortCandidates();
-    active.forEach(route => {
-        const origin = getLogisticsNode(route.originSector);
-        const destination = getLogisticsNode(route.destinationSector);
+    active.forEach(entry => {
+        const { route, origin, destination, risk } = entry;
         const faction = route.factionId && FACTIONS[route.factionId] ? FACTIONS[route.factionId] : null;
         const escort = route.escortCaptainId ? captains[route.escortCaptainId] : null;
         const owner = route.ownerType === "captain" && captains[route.ownerId] ? captainDisplayName(captains[route.ownerId]) : "Player";
@@ -58,7 +59,7 @@ function renderActiveRoutesPanel() {
         html += `${origin ? escapeHtml(origin.name) : "Missing origin"} -> ${destination ? escapeHtml(destination.name) : "Missing destination"}<br>`;
         html += `Owner: ${escapeHtml(owner)} | Status: ${route.status} | Next run: Day ${route.nextRunDay} | Reliability ${route.reliability} | Heat ${route.heat}<br>`;
         html += `Runs ${route.runs} / Failures ${route.failures} / Lifetime profit ${formatCredits(route.profit)}<br>`;
-        html += `Risk ${getRouteRisk(route) === null ? "disconnected" : getRouteRisk(route).toFixed(1)} | Escort: ${escort ? escapeHtml(captainDisplayName(escort)) : "none"}<br>`;
+        html += `Risk ${risk === null ? "disconnected" : risk.toFixed(1)} | Escort: ${escort ? escapeHtml(captainDisplayName(escort)) : "none"}<br>`;
         html += `<button data-action="toggleTradeRoute" data-arg0="${route.id}">${route.status === "active" ? "Pause" : "Resume"}</button>`;
         html += `<button data-action="closeTradeRoute" data-arg0="${route.id}">Close</button>`;
         if (escort) html += `<button data-action="unassignRouteEscort" data-arg0="${route.id}">Release Escort</button>`;
