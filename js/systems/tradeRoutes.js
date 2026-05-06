@@ -236,8 +236,8 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
     const activeRoutes = state.tradeRoutes
         .filter(route => route.status !== "closed")
         .map(route => {
-            const routeOrigin = bySector.get(route.originSector) || getLogisticsNode(route.originSector);
-            const routeDestination = bySector.get(route.destinationSector) || getLogisticsNode(route.destinationSector);
+            const routeOrigin = bySector.get(route.originSector) || null;
+            const routeDestination = bySector.get(route.destinationSector) || null;
             const path = findShortestSectorPath(route.originSector, route.destinationSector);
             const baseRisk = path ? getCorridorRiskForPath(path) : null;
             const risk = baseRisk === null ? null : baseRisk + Math.max(0, route.heat || 0) / 12;
