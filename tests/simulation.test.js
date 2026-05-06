@@ -3,9 +3,9 @@
 // without touching any browser-specific code.
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { state } from '../js/state.js';
-import { createPlayer, generateUniverse, generateStars, initRng } from '../js/core/universe.js';
-import { seededRng } from '../js/utils.js';
+import { resetState, state } from '../js/state.js';
+import { createPlayer, generateUniverse } from '../js/core/universe.js';
+import { initSessionRng, random, restoreSessionRng, seededRng } from '../js/utils.js';
 import { registerDailyHook, clearDailyHooks, clearHourlyHooks, advanceTime } from '../js/core/time.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../js/systems/politics.js';
 import { expireMissions } from '../js/systems/missions.js';
@@ -51,6 +51,35 @@ describe('seededRng', () => {
         const seq1 = Array.from({ length: 10 }, () => rng1());
         const seq2 = Array.from({ length: 10 }, () => rng2());
         assert.notDeepEqual(seq1, seq2, 'different seeds should produce different sequences');
+    });
+});
+
+describe('session RNG', () => {
+    it('produces reproducible runtime sequences from the same seed', () => {
+        initSessionRng(FIXED_SEED);
+        const first = Array.from({ length: 10 }, () => random());
+        initSessionRng(FIXED_SEED);
+        const second = Array.from({ length: 10 }, () => random());
+        assert.deepEqual(first, second, 'session RNG should replay from the same seed');
+    });
+
+    it('restores from persisted call counts', () => {
+        initSessionRng(FIXED_SEED);
+        const expected = Array.from({ length: 6 }, () => random());
+        restoreSessionRng({ seed: FIXED_SEED, calls: 3 }, 0);
+        const resumed = Array.from({ length: 3 }, () => random());
+        assert.deepEqual(resumed, expected.slice(3), 'restored RNG should continue at saved call count');
+    });
+
+    it('reinitializes safely after resetState clears persisted RNG metadata', () => {
+        initSessionRng(FIXED_SEED);
+        random();
+        resetState();
+        state.player = createPlayer();
+        state.player.seed = FIXED_SEED;
+        assert.doesNotThrow(() => random());
+        assert.equal(state.rng.seed, FIXED_SEED);
+        assert.equal(state.rng.calls, 1);
     });
 });
 

@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
-import { clampRange, hasCargo, log, formatCredits } from '../utils.js';
+import { clampRange, hasCargo, log, formatCredits, random } from '../utils.js';
 import { addSectorInfluence, getInfluenceSpread, getDominantInfluence } from './influence.js';
 import { addWorldEvent } from './worldEvents.js';
 import { EventBus } from '../events.js';
@@ -262,7 +262,7 @@ export function applyPoliticalEffect(effect) {
 export function addIntel(intel) {
     ensureFactionState();
     const entry = {
-        id: `intel-${state.player.time.day}-${Math.floor(Math.random() * 100000)}`,
+        id: `intel-${state.player.time.day}-${Math.floor(random() * 100000)}`,
         type: intel.type,
         factionId: intel.factionId || null,
         targetFactionId: intel.targetFactionId || null,

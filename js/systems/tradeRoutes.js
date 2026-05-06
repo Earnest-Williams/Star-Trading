@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, COMMODITIES, PORT_TYPES, FACTIONS } from '../constants.js';
-import { clampRange, makeStock, formatCommodity, formatCredits, log } from '../utils.js';
+import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { getFactionPoliticalPole, addFactionRep, addFactionTrust, applyPoliticalEffect } from '../core/factions.js';
@@ -256,7 +256,7 @@ export function runTradeRoute(route) {
     const escortPower = getRouteEscortPower(route);
     const failureChance = Math.max(0.02, Math.min(0.55, 0.04 + risk * 0.035 - escortPower * 0.025));
     const escortCaptain = route.escortCaptainId ? state.captains[route.escortCaptainId] : null;
-    if (Math.random() < failureChance) {
+    if (random() < failureChance) {
         route.failures += 1;
         route.heat = Math.min(100, route.heat + 3 + Math.floor(risk));
         route.reliability = clampRange(route.reliability - 8, 0, 100);
@@ -302,7 +302,7 @@ export function maybeRoutePoliticalSideEffect(route, amount, escortCaptain) {
     if (route.commodity === "eq" && pole === "hc") addFactionTrust("hc", 1, "equipment route reliability");
     if (route.commodity === "org" && state.planets[route.destinationSector]) addFactionTrust("colonists", 1, "colony food route");
     if (route.commodity === "ore" && pole === "hc") addFactionRep("miners", 1, "ore route throughput");
-    if (escortCaptain && escortCaptain.preferredFaction === "smugglers" && Math.random() < 0.15) {
+    if (escortCaptain && escortCaptain.preferredFaction === "smugglers" && random() < 0.15) {
         route.heat = Math.min(100, route.heat + 2);
         addFactionRep("vc", 1, "quiet convoy side business", "private");
     }

@@ -7,7 +7,7 @@ import { createFactionState, createContactState } from './factions.js';
 export { makeStock };
 
 // Module-level RNG — replaced by initRng() before each generation call.
-let rng = Math.random;
+let rng = seededRng(0);
 
 /**
  * Seed the PRNG used by generateUniverse() and generateStars().

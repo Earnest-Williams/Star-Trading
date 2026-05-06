@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { FACTIONS, ARCHETYPE_LABELS, GUILD_TIER_NAMES } from "../constants.js";
-import { escapeHtml, formatCredits } from "../utils.js";
+import { escapeHtml, formatCredits, random } from "../utils.js";
 import { getCaptainsInSector, getCaptain, getCaptainDominantFaction, getCaptainRelationshipLabel, captainDisplayName, nudgeCaptainRelation, getKnownCaptains, normaliseCaptains } from "../systems/captains.js";
 import { addIntel } from "../core/factions.js";
 import { updateUI } from "./renderer.js";
@@ -121,7 +121,7 @@ export function tradeRumorsWithCaptain(id) {
     const { spendTime } = _deps;
     if (!spendTime(30)) return;
     const rel = captain.relationshipToPlayer;
-    if ((rel.trust || 0) + (rel.opinion || 0) < 5 && Math.random() < 0.55) {
+    if ((rel.trust || 0) + (rel.opinion || 0) < 5 && random() < 0.55) {
         nudgeCaptainRelation(id, { opinion: -2, rivalry: 1 }, "brushed off your attempt to trade rumors");
         console.log(`${captain.name} gives you nothing useful.`);
     } else {
@@ -129,7 +129,7 @@ export function tradeRumorsWithCaptain(id) {
         addIntel({
             type: "captain_rumor", factionId,
             sectorId: captain.currentSector,
-            value: 20 + Math.floor(Math.random() * 25),
+            value: 20 + Math.floor(random() * 25),
             expiresDay: state.player.time.day + 6,
             text: `${captain.name} shared a rumor about ${FACTIONS[factionId].name} activity near sector ${captain.currentSector}.`
         });
@@ -162,7 +162,7 @@ export function buyOffCaptain(id) {
     if (!spendTime(30)) return;
     state.player.credits -= cost;
     const mission = state.missions.find(m => m.id === captain.currentPlan.missionId);
-    if (mission && Math.random() < 0.65 + Math.max(0, captain.relationshipToPlayer.opinion || 0) / 200) {
+    if (mission && random() < 0.65 + Math.max(0, captain.relationshipToPlayer.opinion || 0) / 200) {
         mission.status = "available";
         mission.takenBy = null;
         mission.completionDay = null;

@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS, BALANCE, CAPTAIN_DEFS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
-import { clampRange, log } from '../utils.js';
+import { clampRange, log, random } from '../utils.js';
 import { addSectorInfluence, getDominantInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { EventBus } from '../events.js';
@@ -33,7 +33,7 @@ export function createCaptains() {
             const factionAffinity = a.preferredFaction === b.preferredFaction ? 10 : 0;
             const outlawFriction = (a.archetype === "pirate" || b.archetype === "pirate") ? -12 : 0;
             a.relations[idB] = {
-                opinion: factionAffinity + outlawFriction + Math.floor(Math.random() * 11) - 5,
+                opinion: factionAffinity + outlawFriction + Math.floor(random() * 11) - 5,
                 trust: Math.max(0, factionAffinity / 2),
                 rivalry: outlawFriction < 0 ? 8 : 0,
                 debt: 0
@@ -163,7 +163,7 @@ function captainDistanceScore(fromSector, toSector) {
 export function captainMissionScore(captain, mission) {
     if (!mission || mission.status !== "available") return -9999;
     const distance = captainDistanceScore(captain.currentSector, mission.originSector);
-    if (distance > 3 && Math.random() < 0.75) return -9999;
+    if (distance > 3 && random() < 0.75) return -9999;
     let score = mission.rewardCredits / 220 - distance * 14;
     const standing = captain.factionStanding[mission.factionId] || 0;
     score += standing / 9;
@@ -213,7 +213,7 @@ function chooseCaptainMission(captain) {
         .filter(item => item.score > BALANCE.CAPTAIN_MISSION_TAKE_THRESHOLD)
         .sort((a, b) => b.score - a.score);
     if (candidates.length === 0) return null;
-    if (Math.random() > 0.62 && candidates[0].score < 95) return null;
+    if (random() > 0.62 && candidates[0].score < 95) return null;
     return candidates[0].mission;
 }
 
@@ -222,7 +222,7 @@ function startCaptainMission(captain, mission) {
     mission.takenBy = captain.id;
     const target = mission.destinationSector || mission.targetSector || mission.originSector;
     const distance = captainDistanceScore(captain.currentSector, target);
-    const duration = Math.max(1, Math.min(4, 1 + Math.ceil(distance / 3) + Math.floor(Math.random() * 2)));
+    const duration = Math.max(1, Math.min(4, 1 + Math.ceil(distance / 3) + Math.floor(random() * 2)));
     mission.completionDay = state.player.time.day + duration;
     captain.currentPlan = { type: "mission", missionId: mission.id, completionDay: mission.completionDay, targetSector: target };
     captain.currentSector = mission.originSector;
@@ -282,7 +282,7 @@ function completeCaptainMission(captain, mission) {
     if (mission.type === "colony" && state.planets[mission.targetSector] && !state.planets[mission.targetSector].owner) {
         state.planets[mission.targetSector].owner = captain.name;
         state.planets[mission.targetSector].factionId = captain.preferredFaction;
-        state.planets[mission.targetSector].colonists = 80 + Math.floor(Math.random() * 80);
+        state.planets[mission.targetSector].colonists = 80 + Math.floor(random() * 80);
         state.planets[mission.targetSector].buildings.habitat = 1;
         addSectorInfluence(mission.targetSector, getFactionPoliticalPole(captain.preferredFaction), 4, "captain-backed colony founded");
     }
@@ -305,11 +305,11 @@ function completeCaptainMission(captain, mission) {
 function moveCaptainTowardInterestingSector(captain) {
     const sector = state.universe[captain.currentSector];
     if (!sector || sector.warps.length === 0) return;
-    let best = sector.warps[Math.floor(Math.random() * sector.warps.length)];
+    let best = sector.warps[Math.floor(random() * sector.warps.length)];
     let bestScore = -999;
     sector.warps.forEach(id => {
         const s = state.universe[id];
-        let score = Math.random() * 10;
+        let score = random() * 10;
         if (state.ports[id] && ["trader", "industrialist", "fixer", "smuggler"].includes(captain.archetype)) score += 20;
         if (s.asteroids && captain.archetype === "miner") score += 30;
         if (state.planets[id] && captain.archetype === "colonist") score += 24;
@@ -332,10 +332,10 @@ function captainTrade(captain) {
     const type = PORT_TYPES[port.typeKey];
     const factionId = port.factionId || type.factionId;
     let commodity = null;
-    if (type.buys.length > 0) commodity = type.buys[Math.floor(Math.random() * type.buys.length)];
-    else if (type.sells.length > 0) commodity = type.sells[Math.floor(Math.random() * type.sells.length)];
+    if (type.buys.length > 0) commodity = type.buys[Math.floor(random() * type.buys.length)];
+    else if (type.sells.length > 0) commodity = type.sells[Math.floor(random() * type.sells.length)];
     if (!commodity) return false;
-    const amount = 5 + Math.floor(Math.random() * 16);
+    const amount = 5 + Math.floor(random() * 16);
     if (type.buys.includes(commodity)) port.stock[commodity] = Math.min(port.maxStock[commodity], port.stock[commodity] + amount);
     if (type.sells.includes(commodity)) port.stock[commodity] = Math.max(0, port.stock[commodity] - amount);
     captain.credits += Math.floor(amount * (port.basePrices[commodity] || 100) * 0.12);
@@ -348,7 +348,7 @@ function captainTrade(captain) {
 function captainMine(captain) {
     const sector = state.universe[captain.currentSector];
     if (!sector || !sector.asteroids || sector.asteroids.ore <= 0) return false;
-    const amount = Math.min(sector.asteroids.ore, Math.floor((captain.ship.miningRating || 10) * (0.6 + Math.random() * 0.8) * sector.asteroids.richness));
+    const amount = Math.min(sector.asteroids.ore, Math.floor((captain.ship.miningRating || 10) * (0.6 + random() * 0.8) * sector.asteroids.richness));
     sector.asteroids.ore -= amount;
     captain.cargo.ore = Math.min(captain.ship.cargoCapacity, (captain.cargo.ore || 0) + amount);
     nudgeCaptainFaction(captain, "miners", 2);
@@ -362,9 +362,9 @@ function captainSmuggle(captain) {
     const sector = state.universe[captain.currentSector];
     if (!sector) return false;
     addSectorInfluence(sector.id, "vc", 2, "quiet captain traffic");
-    if (state.ports[sector.id] && Math.random() < 0.25) state.ports[sector.id].hiddenFactionId = "vc";
+    if (state.ports[sector.id] && random() < 0.25) state.ports[sector.id].hiddenFactionId = "vc";
     nudgeCaptainFaction(captain, "vc", 2);
-    if (Math.random() < 0.30) sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
+    if (random() < 0.30) sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
     if (sector.id === state.player.currentSector) addCaptainHistory(captain, "made a suspiciously quiet cargo exchange.", false);
     return true;
 }
@@ -382,17 +382,17 @@ function captainFightPirates(captain) {
 function captainSupportColony(captain) {
     const planet = state.planets[captain.currentSector];
     if (!planet) return false;
-    if (!planet.owner && captain.archetype === "colonist" && Math.random() < 0.18) {
+    if (!planet.owner && captain.archetype === "colonist" && random() < 0.18) {
         planet.owner = captain.name;
         planet.factionId = captain.preferredFaction;
-        planet.colonists = 75 + Math.floor(Math.random() * 100);
+        planet.colonists = 75 + Math.floor(random() * 100);
         planet.buildings.habitat = 1;
         addSectorInfluence(captain.currentSector, "fu", 4, "captain-founded settlement");
         addCaptainHistory(captain, `founded a small settlement in sector ${captain.currentSector}.`, true);
         return true;
     }
     if (planet.owner) {
-        planet.stock.org += 5 + Math.floor(Math.random() * 12);
+        planet.stock.org += 5 + Math.floor(random() * 12);
         addSectorInfluence(captain.currentSector, "fu", 1, "captain colony relief");
         if (captain.currentSector === state.player.currentSector) addCaptainHistory(captain, "delivered relief supplies to the colony.", false);
         return true;
@@ -422,12 +422,12 @@ function maybeCaptainJoinOrLeaveGuild(captain) {
     const guild = captain.preferredFaction;
     if (!FACTIONS[guild] || FACTIONS[guild].type !== "guild") return;
     const standing = captain.factionStanding[guild] || 0;
-    if (!captain.memberships[guild] && standing > 110 && Math.random() < 0.18) {
+    if (!captain.memberships[guild] && standing > 110 && random() < 0.18) {
         captain.memberships[guild] = 1;
         addCaptainHistory(captain, `joined ${FACTIONS[guild].name}.`, true);
         const major = FACTIONS[guild].majorAffinity;
         if (major) nudgeCaptainFaction(captain, major, 10);
-    } else if (captain.memberships[guild] && standing < -60 && Math.random() < 0.25) {
+    } else if (captain.memberships[guild] && standing < -60 && random() < 0.25) {
         delete captain.memberships[guild];
         addCaptainHistory(captain, `left ${FACTIONS[guild].name} after a run of bad blood.`, true);
     }
@@ -460,7 +460,7 @@ function runCaptainDailyAction(captain) {
     if (captain.archetype === "smuggler" && captainSmuggle(captain)) return;
     if (captain.archetype === "colonist" && captainSupportColony(captain)) return;
     if (["trader", "industrialist", "fixer", "smuggler"].includes(captain.archetype) && captainTrade(captain)) return;
-    if (Math.random() < 0.15) addCaptainHistory(captain, "kept a low profile and gathered local news.", false);
+    if (random() < 0.15) addCaptainHistory(captain, "kept a low profile and gathered local news.", false);
 }
 
 function resolveCaptainMeetings() {
@@ -475,7 +475,7 @@ function resolveCaptainMeetings() {
         for (let i = 0; i < group.length; i++) {
             for (let j = i + 1; j < group.length; j++) {
                 const a = group[i], b = group[j];
-                if (Math.random() > 0.22) continue;
+                if (random() > 0.22) continue;
                 const aligned = a.preferredFaction === b.preferredFaction || getFactionPoliticalPole(a.preferredFaction) === getFactionPoliticalPole(b.preferredFaction);
                 const aRel = ensureCaptainRelation(a, b.id);
                 const bRel = ensureCaptainRelation(b, a.id);

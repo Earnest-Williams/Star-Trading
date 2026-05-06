@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS, BALANCE, PORT_TYPES, COMMODITIES } from '../constants.js';
-import { formatCommodity, formatCredits, log } from '../utils.js';
+import { formatCommodity, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { getGuildTier, getFactionRep, getFactionTrust, getPrivateFactionRep, applyPoliticalEffect, recordFactionMemory, addIntel, ensureFactionState, addFactionTrust, getFactionPoliticalPole } from '../core/factions.js';
@@ -16,8 +16,8 @@ export function makeBaseMission(title, originSector, rewardCredits, expiresInDay
     const port = state.ports[originSector];
     const dominant = getDominantInfluence(originSector);
     let factionId = port && port.factionId ? port.factionId : dominant;
-    if (Math.random() < 0.25) factionId = dominant;
-    if (port && port.hiddenFactionId && Math.random() < 0.12) factionId = port.hiddenFactionId;
+    if (random() < 0.25) factionId = dominant;
+    if (port && port.hiddenFactionId && random() < 0.12) factionId = port.hiddenFactionId;
     return {
         id: state.nextMissionId++,
         title, originSector, factionId,
@@ -31,12 +31,12 @@ export function makeBaseMission(title, originSector, rewardCredits, expiresInDay
 export function makeDeliveryMission() {
     const sectors = activePortSectors().filter(s => s !== 1 && PORT_TYPES[state.ports[s].typeKey].sells.length > 0);
     if (sectors.length < 1) return null;
-    const origin = sectors[Math.floor(Math.random() * sectors.length)];
+    const origin = sectors[Math.floor(random() * sectors.length)];
     const commodity = PORT_TYPES[state.ports[origin].typeKey].sells[0];
     const destinations = activePortSectors().filter(s => s !== origin && PORT_TYPES[state.ports[s].typeKey].buys.includes(commodity));
     if (destinations.length < 1) return null;
-    const destination = destinations[Math.floor(Math.random() * destinations.length)];
-    const amount = 10 + Math.floor(Math.random() * 3) * 10;
+    const destination = destinations[Math.floor(random() * destinations.length)];
+    const amount = 10 + Math.floor(random() * 3) * 10;
     const distance = Math.abs(destination - origin) + 1;
     const reward = amount * state.ports[origin].basePrices[commodity] + distance * 180 + 600;
     const m = makeBaseMission(`Deliver ${amount} ${formatCommodity(commodity)} to sector ${destination}`, origin, reward, 4 + Math.ceil(distance / 6));
@@ -48,8 +48,8 @@ export function makeDeliveryMission() {
 }
 
 export function makeMiningMission() {
-    const origin = activePortSectors()[Math.floor(Math.random() * activePortSectors().length)];
-    const amount = 30 + Math.floor(Math.random() * 5) * 10;
+    const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
+    const amount = 30 + Math.floor(random() * 5) * 10;
     const m = makeBaseMission(`Mine ${amount} Ore for sector ${origin}`, origin, amount * 95 + 700, 5);
     m.factionId = PORT_TYPES[state.ports[origin].typeKey].factionId === "hc" ? "miners" : m.factionId;
     m.type = "mining";
@@ -59,10 +59,10 @@ export function makeMiningMission() {
 }
 
 export function makeSurveyMission() {
-    const origin = activePortSectors()[Math.floor(Math.random() * activePortSectors().length)];
+    const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
     const candidates = Object.values(state.universe).filter(s => !s.surveyed && s.id !== origin);
     if (candidates.length < 1) return null;
-    const target = candidates[Math.floor(Math.random() * candidates.length)].id;
+    const target = candidates[Math.floor(random() * candidates.length)].id;
     const m = makeBaseMission(`Survey sector ${target}`, origin, 1200 + target * 25, 5);
     m.type = "survey";
     m.targetSector = target;
@@ -70,10 +70,10 @@ export function makeSurveyMission() {
 }
 
 export function makeColonyMission() {
-    const origin = activePortSectors()[Math.floor(Math.random() * activePortSectors().length)];
+    const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
     const candidates = Object.keys(state.planets).map(Number).filter(s => !state.planets[s].owner);
     if (candidates.length < 1) return null;
-    const target = candidates[Math.floor(Math.random() * candidates.length)];
+    const target = candidates[Math.floor(random() * candidates.length)];
     const m = makeBaseMission(`Found a colony in sector ${target}`, origin, 4500, 8);
     m.type = "colony";
     m.targetSector = target;
@@ -83,7 +83,7 @@ export function makeColonyMission() {
 export function generateMissionPool(count) {
     const requested = count || 10;
     for (let i = 0; i < requested; i++) {
-        const typeRoll = Math.random();
+        const typeRoll = random();
         let mission = null;
         if (typeRoll < 0.45) mission = makeDeliveryMission();
         else if (typeRoll < 0.70) mission = makeMiningMission();
@@ -208,7 +208,7 @@ export function completeMission(id) {
             if (relation <= -50) recordFactionMemory(otherId, "helpedEnemies", 1);
         });
     }
-    if (m.type === "survey" && Math.random() < 0.35) {
+    if (m.type === "survey" && random() < 0.35) {
         addIntel({
             type: "survey", factionId,
             sectorId: m.targetSector,

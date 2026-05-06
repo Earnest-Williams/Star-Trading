@@ -18,7 +18,8 @@ export function createInitialState() {
         currentScreen: "sector",
         reputationTab: "factions",
         selectedCaptainId: null,
-        mapNodeCache: {}
+        mapNodeCache: {},
+        rng: null
     };
 }
 

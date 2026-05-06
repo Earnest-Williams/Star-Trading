@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS } from '../constants.js';
-import { log } from '../utils.js';
+import { log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { addFactionRep, addFactionHeat, addFactionLeverage, addFactionTrust, getPrivateFactionRep, getFactionTrust, applyPoliticalEffect, getPirateIncidentMultiplier, addIntel } from '../core/factions.js';
@@ -28,9 +28,9 @@ export function fightPirates() {
     if (!spendTime(60)) return;
     const threat = sector.pirateThreat;
     const vcSoftening = Math.max(0, getPrivateFactionRep("vc") + getFactionTrust("vc")) / 1000;
-    const fighterLoss = Math.min(state.player.fighters, Math.max(1, Math.floor((3 + Math.random() * (8 + threat * 4)) * (1 - vcSoftening))));
-    const shieldDamage = Math.max(1, Math.floor((10 + Math.random() * (12 + threat * 8)) * (1 - vcSoftening / 2)));
-    const reward = 250 + threat * 350 + Math.floor(Math.random() * 300);
+    const fighterLoss = Math.min(state.player.fighters, Math.max(1, Math.floor((3 + random() * (8 + threat * 4)) * (1 - vcSoftening))));
+    const shieldDamage = Math.max(1, Math.floor((10 + random() * (12 + threat * 8)) * (1 - vcSoftening / 2)));
+    const reward = 250 + threat * 350 + Math.floor(random() * 300);
     state.player.fighters -= fighterLoss;
     applyShipDamage(shieldDamage);
     state.player.credits += reward;
@@ -38,10 +38,10 @@ export function fightPirates() {
     applyPoliticalEffect({ factionId: "sda", publicRep: 3, trust: 1, favors: threat >= 3 ? 1 : 0, sectorId: state.player.currentSector, influence: 4, reason: "pirate suppression", memoryKey: "reliableJobs" });
     addFactionRep("vc", -2, "pirate suppression", "public");
     addFactionLeverage("vc", threat >= 3 ? 1 : 0, "you disrupted a useful deniable asset");
-    sector.pirateThreat = Math.max(0, sector.pirateThreat - 1 - Math.floor(Math.random() * 2));
+    sector.pirateThreat = Math.max(0, sector.pirateThreat - 1 - Math.floor(random() * 2));
     addWorldEvent({ type: "security", factionId: "sda", sectorId: state.player.currentSector, text: `You cleared pirates in sector ${state.player.currentSector}; SDA influence improved and VC standing suffered.`, importance: 3, alert: false });
     log(`Cleared pirates for ${reward} credits. Lost ${fighterLoss} fighters and took ${shieldDamage} damage.`);
-    if (Math.random() < 0.25) {
+    if (random() < 0.25) {
         addIntel({ type: "pirate_route", factionId: "vc", targetFactionId: "sda", sectorId: state.player.currentSector, value: 30 + threat * 5, expiresDay: state.player.time.day + 7, text: `Recovered route chatter linking pirate traffic near sector ${state.player.currentSector} to a shadow broker.` });
     }
 }

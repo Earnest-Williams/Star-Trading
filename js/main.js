@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { resetState, state } from './state.js';
 import { EventBus } from './events.js';
 import { Renderer, updateUI } from './ui/renderer.js';
 import { createPlayer, generateUniverse, generateStars } from './core/universe.js';
@@ -16,6 +16,7 @@ import { showScreen } from './ui/ui.js';
 import { handleActionClick } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
+import { initSessionRng } from './utils.js';
 import { createCaptains } from './systems/captains.js';
 import { generateMissionPool } from './systems/missions.js';
 
@@ -31,6 +32,7 @@ export const App = (() => {
 
     function init() {
         if (initialized) return;
+        resetState();
         initialized = true;
 
         setPersistenceAdapters({
@@ -82,6 +84,7 @@ export const App = (() => {
 
         // Initialise game world
         state.player = createPlayer();
+        initSessionRng(state.player.seed);
         generateStars();
         generateUniverse();
         createCaptains();
@@ -102,7 +105,10 @@ export const App = (() => {
             el.addEventListener('click', fn);
             _topbarListeners.push({ el, fn });
         };
-        addBtn('btn-rest', restUntilMorning);
+        addBtn('btn-rest', () => {
+            restUntilMorning();
+            updateUI();
+        });
         addBtn('btn-save', saveGame);
         addBtn('btn-load', loadGame);
         addBtn('btn-intel', () => showScreen('reputation'));
@@ -129,6 +135,7 @@ export const App = (() => {
         _topbarListeners.forEach(({ el, fn }) => el.removeEventListener('click', fn));
         _topbarListeners = [];
         document.body.removeEventListener('click', handleActionClick);
+        resetState();
         initialized = false;
     }
 

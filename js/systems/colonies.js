@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, COMMODITIES, PLANET_TYPES, FACTIONS, BUILDING_DEFS, GUILD_FACTIONS } from '../constants.js';
-import { clampRange, makeStock, formatCommodity, formatCredits, getFreeHolds, hasCargo, removeCargo, describeCost, log } from '../utils.js';
+import { clampRange, makeStock, formatCommodity, formatCredits, getFreeHolds, hasCargo, removeCargo, describeCost, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { getGuildTier, getFactionRep, addFactionRep, addFactionTrust, addFactionHeat, addFactionLeverage, applyPoliticalEffect, getColonyProductionMultiplier } from '../core/factions.js';
@@ -157,7 +157,7 @@ export function updateColonyNeedsDaily() {
         });
         if (shortageCount === 0) {
             planet.satisfaction = clampRange(planet.satisfaction + 3, 0, 100);
-            if (planet.satisfaction >= 80 && Math.random() < 0.18) addFactionRep("colonists", 1, "well-supplied colony");
+            if (planet.satisfaction >= 80 && random() < 0.18) addFactionRep("colonists", 1, "well-supplied colony");
             return;
         }
         planet.satisfaction = clampRange(planet.satisfaction - shortageCount * 7, 0, 100);
