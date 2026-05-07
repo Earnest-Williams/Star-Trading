@@ -12,6 +12,11 @@ function numeric(value, fallback = 0) {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function compareGatesByDestination(a, b) {
+    if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
+    return String(a.id || '').localeCompare(String(b.id || ''));
+}
+
 function gateSortKey(gate) {
     return [
         gate.destinationSectorId,
@@ -94,8 +99,7 @@ function getOpenGates(sectorId) {
         .sort((a, b) => {
             const costDelta = edgeCost(sectorId, a) - edgeCost(sectorId, b);
             if (costDelta !== 0) return costDelta;
-            if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
-            return String(a.id || '').localeCompare(String(b.id || ''));
+            return compareGatesByDestination(a, b);
         });
 }
 
@@ -105,10 +109,7 @@ function getFewestHopGates(sectorId) {
     return sector.jumpGates
         .filter(gate => gate && gate.status !== 'closed' && state.universe[gate.destinationSectorId])
         .slice()
-        .sort((a, b) => {
-            if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
-            return String(a.id || '').localeCompare(String(b.id || ''));
-        });
+        .sort(compareGatesByDestination);
 }
 
 function reservePressureCost(site) {

@@ -270,6 +270,10 @@ function routeMetricKey(originSector, destinationSector) {
     return `${originSector}->${destinationSector}`;
 }
 
+function routeMetricCacheKey(revision, key) {
+    return `${revision}:${key}`;
+}
+
 function computeRouteSetupCost(metrics) {
     if (!metrics.path) return null;
     const effectiveSpanCost = metrics.totalEffectiveSpan;
@@ -293,7 +297,7 @@ function getProfitBand(originSector, destinationSector, commodity) {
 export function deriveRouteMetrics(originSector, destinationSector) {
     const revision = ensureRoutePathMetricsCacheFresh();
     const key = routeMetricKey(originSector, destinationSector);
-    const pathCacheKey = `${revision}:${key}`;
+    const pathCacheKey = routeMetricCacheKey(revision, key);
     let pathMetrics = routePathMetricsCache.get(pathCacheKey);
     if (!pathMetrics) {
         const corridorPath = findCheapestCorridorPath(originSector, destinationSector);
@@ -318,7 +322,7 @@ export function deriveRouteMetrics(originSector, destinationSector) {
     }
 
     const marketRevision = getRouteMetricsMarketRevision();
-    const marketCacheKey = `${marketRevision}:${key}`;
+    const marketCacheKey = routeMetricCacheKey(marketRevision, key);
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     let marketMetrics = routeMarketMetricsCache.get(marketCacheKey);
