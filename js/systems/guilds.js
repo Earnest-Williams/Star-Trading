@@ -7,6 +7,7 @@ import { ensureFactionState, addFactionRep, addFactionTrust, addFactionHeat, add
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { addIntel, sellIntel } from '../core/intel.js';
+import { getTraitBonus } from '../core/traitHooks.js';
 export { sellIntel };
 
 export function generateFactionAsks() {
@@ -124,7 +125,7 @@ export function completeFactionAsk(id) {
     }
     ask.status = "completed";
     state.player.credits += ask.rewardCredits || 0;
-    applyPoliticalEffect({ factionId: ask.factionId, publicRep: ask.publicRep || 0, privateRep: ask.privateRep || 0, trust: ask.trust || 1, favors: ask.favors || 1, sectorId: ask.sectorId || state.player.currentSector, influence: ask.influence || 2, reason: "completed political ask", memoryKey: "reliableJobs" });
+    applyPoliticalEffect({ factionId: ask.factionId, publicRep: ask.publicRep || 0, privateRep: ask.privateRep || 0, trust: (ask.trust || 1) + getTraitBonus(state.player.character, "factionAskBonus"), favors: (ask.favors || 1) + getTraitBonus(state.player.character, "factionAskBonus"), sectorId: ask.sectorId || state.player.currentSector, influence: ask.influence || 2, reason: "completed political ask", memoryKey: "reliableJobs" });
     if (ask.heatFactionId && ask.heat) addFactionHeat(ask.heatFactionId, ask.heat, "questionable political ask");
     if (ask.intel) addIntel(ask.intel);
     log(`Completed political ask: ${ask.title}. Reward: ${formatCredits(ask.rewardCredits || 0)} credits.`);

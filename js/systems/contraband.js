@@ -15,6 +15,7 @@ import {
 } from '../core/factions.js';
 import { getRouteRiskForSectors } from '../systems/tradeRoutes.js';
 import { clampRange, formatCredits, log, random } from '../utils.js';
+import { getInspectionChanceMod } from '../core/characterChecks.js';
 
 export const CONTRABAND_TYPES = Object.freeze(BALANCE.CONTRABAND.TYPES);
 
@@ -341,7 +342,8 @@ export function getInspectionProfile(sectorId = state.player && state.player.cur
         + manifest.heat * contrabandBalance().INSPECTION_HEAT_MULT
         + localPressure
         - scannerMitigation
-        - forgedMitigation;
+        - forgedMitigation
+        + getInspectionChanceMod(player && player.character);
     const detectionChance = Math.min(
         contrabandBalance().INSPECTION_MAX_CHANCE,
         Math.max(contrabandBalance().INSPECTION_MIN_CHANCE, rawDetectionChance)

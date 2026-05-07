@@ -4,6 +4,7 @@ import { escapeHtml, formatCredits, random } from "../utils.js";
 import { getCaptainsInSector, getCaptain, getCaptainDominantFaction, getCaptainRelationshipLabel, captainDisplayName, nudgeCaptainRelation, getKnownCaptains } from "../systems/captains.js";
 import { addIntel } from '../core/intel.js';
 import { updateUI } from "./renderer.js";
+import { getTraitBonus } from '../core/traitHooks.js';
 import { missionDescription } from "./renderMissions.js";
 
 export function renderCaptainChipsForSector(sectorId) {
@@ -108,7 +109,8 @@ export function offerHelpToCaptain(id) {
     if (!captain || captain.currentSector !== state.player.currentSector) return;
     const { spendTime, addFactionRep } = _deps;
     if (!spendTime(45)) return;
-    nudgeCaptainRelation(id, { opinion: 8, trust: 3, debt: 1 }, "you offered practical help without demanding a contract");
+    const relationBonus = getTraitBonus(state.player.character, "captainRelationBonus");
+    nudgeCaptainRelation(id, { opinion: 8 + relationBonus, trust: 3, debt: 1 }, "you offered practical help without demanding a contract");
     if (captain.archetype === "trader") addFactionRep("traders", 1, "helped a guild hauler");
     if (captain.archetype === "miner") addFactionRep("miners", 1, "helped a prospector");
     updateUI();
@@ -182,7 +184,8 @@ export function provokeCaptain(id) {
     if (!captain || captain.currentSector !== state.player.currentSector) return;
     const { spendTime } = _deps;
     if (!spendTime(30)) return;
-    nudgeCaptainRelation(id, { opinion: -12, rivalry: 14 }, "you deliberately needled them in open comms");
+    const relationBonus = getTraitBonus(state.player.character, "captainRelationBonus");
+    nudgeCaptainRelation(id, { opinion: -12 + Math.floor(relationBonus / 2), rivalry: Math.max(4, 14 - relationBonus) }, "you deliberately needled them in open comms");
     updateUI();
     hailCaptain(id);
 }

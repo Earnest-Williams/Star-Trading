@@ -9,6 +9,8 @@ import { addIntel } from '../core/intel.js';
 import { spendTime } from '../core/time.js';
 import { applyShipDamage } from './combat.js';
 import { updateFactionAskProgress } from './guilds.js';
+import { getMiningHazardChanceMod, getMiningYieldMultiplier as getCharacterMiningYieldMultiplier, getSurveyEfficiency } from '../core/characterChecks.js';
+import { getTraitBonus } from '../core/traitHooks.js';
 
 export function mineAsteroids() {
     const sector = state.universe[state.player.currentSector];
@@ -20,7 +22,8 @@ export function mineAsteroids() {
     const randomFactor = 0.80 + random() * 0.40;
     const influence = getDominantInfluence(state.player.currentSector);
     const influenceBoost = influence === "hc" ? 1.08 : influence === "vc" ? 1.03 : 1.0;
-    const estimatedYield = Math.floor(state.player.ship.miningPower * getMiningYieldMultiplier() * influenceBoost * asteroids.richness * randomFactor);
+    const characterYieldBoost = getCharacterMiningYieldMultiplier(state.player.character);
+    const estimatedYield = Math.floor(state.player.ship.miningPower * getMiningYieldMultiplier() * influenceBoost * asteroids.richness * randomFactor * characterYieldBoost);
     const mined = Math.min(estimatedYield, asteroids.ore, getFreeHolds());
     asteroids.ore -= mined;
     state.player.cargo.ore += mined;
@@ -33,7 +36,8 @@ export function mineAsteroids() {
             m.progress = Math.min(m.amount, m.progress + mined);
         });
     }
-    if (random() < asteroids.hazard) {
+    const hazardChance = Math.max(0.01, asteroids.hazard + getMiningHazardChanceMod(state.player.character));
+    if (random() < hazardChance) {
         const damage = 6 + Math.floor(random() * 22);
         applyShipDamage(damage);
         addFactionHeat("sda", 1, "hazard beacon traffic");
@@ -47,13 +51,15 @@ export function surveySector() {
         log("This sector is already surveyed.");
         return;
     }
-    if (!spendTime(60)) return;
+    const surveyMinutes = Math.max(35, Math.round(60 / getSurveyEfficiency(state.player.character)));
+    if (!spendTime(surveyMinutes)) return;
     sector.surveyed = true;
     if (sector.asteroids) sector.asteroids.surveyed = true;
-    log(`Surveyed sector ${sector.id}.`);
+    log(`Surveyed sector ${sector.id}. Survey took ${surveyMinutes} minutes.`);
     updateFactionAskProgress("market_intel", 1);
     ensureFactionState();
-    if (sector.front && random() < 0.45) {
+    const surveyIntelChance = Math.min(0.85, 0.45 + getTraitBonus(state.player.character, "surveyIntelChance"));
+    if (sector.front && random() < surveyIntelChance) {
         sector.front.suspicion = Math.min(100, sector.front.suspicion + 12);
         addIntel({
             type: "front",

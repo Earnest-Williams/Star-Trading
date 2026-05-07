@@ -17,6 +17,7 @@ import { renderShipyardPanel, buyUpgrade, repairShip, buyFighters } from './rend
 import { renderAllMissionScreen } from './renderMissions.js';
 import { renderReputationScreen } from './renderReputation.js';
 import { renderLogisticsScreen } from './renderLogistics.js';
+import { renderCharacterSheet } from './renderCharacterSheet.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -89,7 +90,7 @@ export function setReputationTab(tab) {
 // SCREEN-LEVEL RENDERERS (registered with Renderer)
 // =====================================================
 function renderTopTabs() {
-    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'shipyard'].forEach(screen => {
+    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'shipyard', 'character'].forEach(screen => {
         const el = document.getElementById(`top-${screen}`);
         if (!el) return;
         if (screen === state.currentScreen) el.classList.add('active-tab');
@@ -128,6 +129,11 @@ function renderCurrentScreen() {
     if (currentScreen === 'logistics') {
         title.innerHTML = 'Trade Routes &amp; Supply Chains';
         document.getElementById('actions').innerHTML = renderLogisticsScreen();
+        return;
+    }
+    if (currentScreen === 'character') {
+        title.innerHTML = 'Character Sheet';
+        document.getElementById('actions').innerHTML = renderCharacterSheet();
         return;
     }
     state.currentScreen = 'sector';
