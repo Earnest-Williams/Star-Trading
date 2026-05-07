@@ -11,6 +11,13 @@ let mapProjectionSignature = "";
 let mapProjectionUniverseRef = null;
 let mapProjectionCache = {};
 
+export function invalidateMapProjectionCache() {
+    mapProjectionSignature = "";
+    mapProjectionUniverseRef = null;
+    mapProjectionCache = {};
+    state.mapNodeCache = {};
+}
+
 function projectedCoord(site, sectorId) {
     const coord = site.coord || { x: sectorId, y: 0, z: 0 };
     return {
@@ -19,12 +26,25 @@ function projectedCoord(site, sectorId) {
     };
 }
 
-export function getMapNodes() {
-    const universe = state.universe;
-    const ids = Object.keys(universe)
+function getVisibleMapSectorIds(universe) {
+    return Object.keys(universe)
         .map(Number)
         .filter(id => universe[id].charted || id === state.player.currentSector);
-    const signature = ids.join(",");
+}
+
+function getMapProjectionSignature(universe, ids) {
+    return ids.map(id => {
+        const site = universe[id];
+        const coord = projectedCoord(site, id);
+        const charted = site.charted ? 1 : 0;
+        return `${id}:${charted}:${coord.x}:${coord.y}`;
+    }).join("|");
+}
+
+export function getMapNodes() {
+    const universe = state.universe;
+    const ids = getVisibleMapSectorIds(universe);
+    const signature = getMapProjectionSignature(universe, ids);
     if (mapProjectionUniverseRef === universe && signature === mapProjectionSignature) {
         state.mapNodeCache = mapProjectionCache;
         return mapProjectionCache;

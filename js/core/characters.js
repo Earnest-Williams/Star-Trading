@@ -1,6 +1,49 @@
 // Core character factory and helpers for player + captains.
 import { CHAR_STATS, CHAR_DEFAULTS, STAT_BUY_CURVE, DEFAULT_PLATFORM_TYPE } from '../config/characters.js';
 
+export const CHARACTER_SCHEMA_FIELDS = Object.freeze([
+    "stats",
+    "traits",
+    "originTraitId",
+    "careerTraitIds",
+    "platform",
+    "contacts"
+]);
+
+function normaliseStats(stats) {
+    const normalised = {};
+    CHAR_STATS.forEach(stat => {
+        normalised[stat] = typeof stats?.[stat] === "number"
+            ? stats[stat]
+            : CHAR_DEFAULTS.STAT_BASE;
+    });
+    return normalised;
+}
+
+function normalisePlatform(platform) {
+    return {
+        type: platform?.type || DEFAULT_PLATFORM_TYPE,
+        employerLaneId: typeof platform?.employerLaneId === "undefined"
+            ? null
+            : platform.employerLaneId
+    };
+}
+
+export function normaliseCharacter(character = {}) {
+    const source = character && typeof character === "object" ? character : {};
+    return {
+        ...source,
+        stats: normaliseStats(source.stats),
+        traits: Array.isArray(source.traits) ? source.traits : [],
+        originTraitId: source.originTraitId || null,
+        careerTraitIds: Array.isArray(source.careerTraitIds)
+            ? source.careerTraitIds
+            : [],
+        platform: normalisePlatform(source.platform),
+        contacts: Array.isArray(source.contacts) ? source.contacts : []
+    };
+}
+
 /**
  * Return a fresh character block with all stats at base and no traits.
  * @param {object} [overrides] - Optional partial overrides (e.g. { platform: { type: 'ship_rented' } })
@@ -8,7 +51,7 @@ import { CHAR_STATS, CHAR_DEFAULTS, STAT_BUY_CURVE, DEFAULT_PLATFORM_TYPE } from
 export function createCharacter(overrides = {}) {
     const stats = {};
     CHAR_STATS.forEach(s => { stats[s] = CHAR_DEFAULTS.STAT_BASE; });
-    return {
+    return normaliseCharacter({
         stats,
         traits: [],
         originTraitId: null,
@@ -16,7 +59,7 @@ export function createCharacter(overrides = {}) {
         platform: { type: DEFAULT_PLATFORM_TYPE, employerLaneId: null },
         contacts: [],
         ...overrides
-    };
+    });
 }
 
 /**

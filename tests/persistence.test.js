@@ -2,7 +2,14 @@
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { migrateSave, saveGame, loadGame, setPersistenceAdapters, buildSaveData } from '../js/core/persistence.js';
+import {
+    migrateSave,
+    saveGame,
+    loadGame,
+    setPersistenceAdapters,
+    buildSaveData,
+    SAVE_STATE_FIELDS
+} from '../js/core/persistence.js';
 import { state, resetState } from '../js/state.js';
 import { SAVE_VERSION, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
@@ -208,6 +215,105 @@ describe('save serialization', () => {
 
         assert.equal(Object.hasOwn(data, 'sitesById'), false);
         assert.equal(data.universe, state.universe);
+    });
+
+
+    it('serializes only the persisted state manifest fields', () => {
+        const save = minimalSave(SAVE_VERSION);
+        state.player = save.player;
+        state.universe = { 1: { id: 1, jumpGates: [] } };
+        state.siteIdByCoord = { '1,0,0': 1 };
+        state.ports = {};
+        state.planets = {};
+        state.starField = [{ x: 1, y: 2, size: 1 }];
+        state.selectedSectorId = 99;
+        state.currentScreen = 'map';
+        state.reputationTab = 'captains';
+        state.selectedCaptainId = 'captain-1';
+        state.mapNodeCache = { 1: { x: 10, y: 20 } };
+        state.worldGraphRevision = 12;
+
+        const data = buildSaveData();
+        const expectedKeys = ['version', ...SAVE_STATE_FIELDS].sort();
+
+        assert.deepEqual(Object.keys(data).sort(), expectedKeys);
+        assert.equal(Object.hasOwn(data, 'sitesById'), false);
+        assert.equal(Object.hasOwn(data, 'starField'), false);
+        assert.equal(Object.hasOwn(data, 'selectedSectorId'), false);
+        assert.equal(Object.hasOwn(data, 'currentScreen'), false);
+        assert.equal(Object.hasOwn(data, 'reputationTab'), false);
+        assert.equal(Object.hasOwn(data, 'selectedCaptainId'), false);
+        assert.equal(Object.hasOwn(data, 'mapNodeCache'), false);
+        assert.equal(Object.hasOwn(data, 'worldGraphRevision'), false);
+    });
+
+    it('round-trips through JSON save data and rebuilds derived live aliases', () => {
+        const save = minimalSave(SAVE_VERSION);
+        const captain = {
+            id: 'captain-1',
+            name: 'Round Trip Captain',
+            factionId: 'sda',
+            currentSector: 1,
+            known: true,
+            character: {
+                stats: { nerve: 51, tradecraft: 52, fieldcraft: 53, command: 54 },
+                traits: [],
+                originTraitId: null,
+                careerTraitIds: [],
+                platform: { type: 'ship_owned', employerLaneId: null },
+                contacts: []
+            }
+        };
+        state.player = save.player;
+        state.player.credits = 4321;
+        state.universe = {
+            1: {
+                id: 1,
+                name: 'Round Trip Sector',
+                coord: { x: 2, y: 3, z: 1 },
+                coordKey: '2,3,1',
+                charted: true,
+                reachable: true,
+                jumpGates: [],
+                region: 'Core',
+                pirateThreat: 0
+            }
+        };
+        state.sitesById = { 99: { id: 99 } };
+        state.siteIdByCoord = { '2,3,1': 1 };
+        state.world = { saveModel: 'sparse-3d-sites', roles: { homeSiteId: 1 } };
+        state.worldgenSettings = { sectorCount: 12 };
+        state.ports = {};
+        state.planets = {};
+        state.missions = [{ id: 7, status: 'completed', rewardRep: 3 }];
+        state.captains = { [captain.id]: captain };
+        state.captainEventLog = [{ id: 1, text: 'Captain event' }];
+        state.nextCaptainEventId = 2;
+        state.worldEvents = [{ id: 1, text: 'World event' }];
+        state.nextWorldEventId = 2;
+        state.tradeRoutes = [];
+        state.nextTradeRouteId = 1;
+        state.nextMissionId = 8;
+        state.ambientTrade = { day: 2, moved: { ore: 3, org: 4, eq: 5 }, flows: 6 };
+        state.rng = { seed: 12345, session: 2 };
+        state.starField = [{ x: 99, y: 99, size: 2 }];
+        state.mapNodeCache = { 1: { x: 50, y: 50 } };
+
+        const payload = JSON.stringify(buildSaveData());
+        resetState();
+        setPersistenceAdapters({ storage: { getItem() { return payload; } } });
+
+        assert.equal(loadGame(), true);
+        assert.equal(state.player.credits, 4321);
+        assert.equal(state.universe[1].name, 'Round Trip Sector');
+        assert.equal(state.sitesById, state.universe);
+        assert.equal(state.sitesById[99], undefined);
+        assert.deepEqual(state.siteIdByCoord, { '2,3,1': 1 });
+        assert.equal(state.captains['captain-1'].name, 'Round Trip Captain');
+        assert.equal(state.selectedSectorId, state.player.currentSector);
+        assert.equal(state.currentScreen, 'sector');
+        assert.deepEqual(state.starField, []);
+        assert.deepEqual(state.mapNodeCache, {});
     });
 
     it('loads legacy sitesById saves by aliasing sitesById to universe', () => {
