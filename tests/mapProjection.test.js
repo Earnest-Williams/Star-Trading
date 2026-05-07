@@ -17,7 +17,7 @@ function seedMapState() {
 describe('map projection cache', () => {
     beforeEach(seedMapState);
 
-    it('reuses projected nodes until charted geometry or current sector changes', () => {
+    it('reuses projected nodes until the charted set changes', () => {
         const first = getMapNodes();
         const second = getMapNodes();
 
@@ -32,9 +32,21 @@ describe('map projection cache', () => {
         const reusedAfterCharting = getMapNodes();
         assert.equal(reusedAfterCharting, afterCharting);
 
+        // Moving between already-charted sectors does not change node positions
+        // so the cache should be reused.
         state.player.currentSector = 2;
-        const afterCurrentSectorChange = getMapNodes();
+        const afterChartedSectorChange = getMapNodes();
+        assert.equal(afterChartedSectorChange, afterCharting);
+    });
 
-        assert.notEqual(afterCurrentSectorChange, afterCharting);
+    it('invalidates cache when player moves to an uncharted sector', () => {
+        state.universe[4] = { id: 4, charted: false, coord: { x: 20, y: 0, z: 0 }, jumpGates: [] };
+        const before = getMapNodes();
+
+        state.player.currentSector = 4;
+        const after = getMapNodes();
+
+        assert.notEqual(after, before);
+        assert.ok(after[4]);
     });
 });

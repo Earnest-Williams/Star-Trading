@@ -19,23 +19,12 @@ function projectedCoord(site, sectorId) {
     };
 }
 
-function buildMapProjectionSignature(universe, ids) {
-    return [
-        state.player.currentSector,
-        ids.map(id => {
-            const site = universe[id];
-            const coord = site.coord || { x: id, y: 0, z: 0 };
-            return [id, site.charted ? 1 : 0, coord.x, coord.y, coord.z].join(":");
-        }).join("|")
-    ].join(";");
-}
-
 export function getMapNodes() {
     const universe = state.universe;
     const ids = Object.keys(universe)
         .map(Number)
         .filter(id => universe[id].charted || id === state.player.currentSector);
-    const signature = buildMapProjectionSignature(universe, ids);
+    const signature = ids.join(",");
     if (mapProjectionUniverseRef === universe && signature === mapProjectionSignature) {
         state.mapNodeCache = mapProjectionCache;
         return mapProjectionCache;
@@ -43,15 +32,18 @@ export function getMapNodes() {
 
     const nodes = {};
     if (ids.length > 0) {
-        const coords = ids.map(id => projectedCoord(universe[id], id));
-        const minX = Math.min(...coords.map(coord => coord.x));
-        const maxX = Math.max(...coords.map(coord => coord.x));
-        const minY = Math.min(...coords.map(coord => coord.y));
-        const maxY = Math.max(...coords.map(coord => coord.y));
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        const projected = ids.map(id => {
+            const coord = projectedCoord(universe[id], id);
+            if (coord.x < minX) minX = coord.x;
+            if (coord.x > maxX) maxX = coord.x;
+            if (coord.y < minY) minY = coord.y;
+            if (coord.y > maxY) maxY = coord.y;
+            return { id, coord };
+        });
         const spanX = Math.max(1, maxX - minX);
         const spanY = Math.max(1, maxY - minY);
-        ids.forEach(id => {
-            const coord = projectedCoord(universe[id], id);
+        projected.forEach(({ id, coord }) => {
             nodes[id] = {
                 x: MAP_UI.LAYOUT.LEFT + ((coord.x - minX) / spanX) * MAP_UI.LAYOUT.WIDTH,
                 y: MAP_UI.LAYOUT.TOP + ((coord.y - minY) / spanY) * MAP_UI.LAYOUT.HEIGHT
