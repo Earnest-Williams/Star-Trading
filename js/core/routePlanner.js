@@ -95,6 +95,18 @@ function getOpenGates(sectorId) {
         });
 }
 
+function getFewestHopGates(sectorId) {
+    const sector = state.universe[sectorId];
+    if (!sector || !Array.isArray(sector.jumpGates)) return [];
+    return sector.jumpGates
+        .filter(gate => gate && gate.status !== 'closed' && state.universe[gate.destinationSectorId])
+        .slice()
+        .sort((a, b) => {
+            if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
+            return String(a.id || '').localeCompare(String(b.id || ''));
+        });
+}
+
 function reservePressureCost(site) {
     if (!site || site.siteType !== 'way_station' || !site.station) return 0;
     const max = numeric(site.station.pulseReserveMaxCredits);
@@ -146,7 +158,7 @@ function reconstructPath(previous, startSectorId, goalSectorId) {
     while (current !== startSectorId) {
         const entry = previous.get(current);
         if (!entry) return null;
-        segments.push(entry.segment);
+        segments.push(entry.segment || buildSegment(entry.fromSectorId, entry.gate));
         current = entry.fromSectorId;
     }
     segments.reverse();
@@ -185,7 +197,7 @@ function planWeightedCorridorPath(startSectorId, goalSectorId) {
             distances.set(next, candidateCost);
             previous.set(next, {
                 fromSectorId: current.sectorId,
-                segment: buildSegment(current.sectorId, gate)
+                gate
             });
             frontier.push({ sectorId: next, cost: candidateCost });
         });
@@ -199,21 +211,18 @@ function planFewestHopCorridorPath(startSectorId, goalSectorId) {
     if (startSectorId === goalSectorId) return [];
 
     const visited = new Set([startSectorId]);
-    const queue = [{ sectorId: startSectorId, segments: [] }];
+    const previous = new Map();
+    const queue = [startSectorId];
     for (let index = 0; index < queue.length; index++) {
-        const current = queue[index];
-        const gates = getOpenGates(current.sectorId)
-            .sort((a, b) => {
-                if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
-                return String(a.id || '').localeCompare(String(b.id || ''));
-            });
+        const currentSectorId = queue[index];
+        const gates = getFewestHopGates(currentSectorId);
         for (const gate of gates) {
             const next = gate.destinationSectorId;
             if (visited.has(next)) continue;
-            const segments = current.segments.concat(buildSegment(current.sectorId, gate));
-            if (next === goalSectorId) return segments;
+            previous.set(next, { fromSectorId: currentSectorId, gate });
+            if (next === goalSectorId) return reconstructPath(previous, startSectorId, goalSectorId);
             visited.add(next);
-            queue.push({ sectorId: next, segments });
+            queue.push(next);
         }
     }
     return null;

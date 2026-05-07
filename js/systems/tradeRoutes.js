@@ -198,9 +198,13 @@ export function estimateRouteProfit(originSector, destinationSector, commodity, 
     return Math.max(25, Math.floor(spread * amount * 0.38));
 }
 
-const routeMetricsCache = new Map();
+const routePathMetricsCache = new Map();
+const routeMarketMetricsCache = new Map();
 let routeMetricsMarketSignature = '';
-let routeMetricsRevision = null;
+let routeMetricsMarketRevision = 0;
+let routeMetricsCachedMarketRevision = null;
+let routeMetricsMarketMicrotaskScheduled = false;
+let routePathMetricsRevision = null;
 
 function buildRouteMetricsMarketSignature() {
     return getAllLogisticsNodes()
@@ -216,14 +220,32 @@ function buildRouteMetricsMarketSignature() {
         .join('|');
 }
 
-function ensureRouteMetricsCacheFresh() {
-    const revision = getWorldGraphRevision();
+function getRouteMetricsMarketRevision() {
+    if (routeMetricsCachedMarketRevision !== null) return routeMetricsCachedMarketRevision;
     const marketSignature = buildRouteMetricsMarketSignature();
-    if (routeMetricsRevision !== revision || routeMetricsMarketSignature !== marketSignature) {
-        routeMetricsCache.clear();
-        routeMetricsRevision = revision;
+    if (routeMetricsMarketSignature !== marketSignature) {
+        routeMarketMetricsCache.clear();
         routeMetricsMarketSignature = marketSignature;
+        routeMetricsMarketRevision += 1;
     }
+    routeMetricsCachedMarketRevision = routeMetricsMarketRevision;
+    if (!routeMetricsMarketMicrotaskScheduled) {
+        routeMetricsMarketMicrotaskScheduled = true;
+        Promise.resolve().then(() => {
+            routeMetricsMarketMicrotaskScheduled = false;
+            routeMetricsCachedMarketRevision = null;
+        });
+    }
+    return routeMetricsCachedMarketRevision;
+}
+
+function ensureRoutePathMetricsCacheFresh() {
+    const revision = getWorldGraphRevision();
+    if (routePathMetricsRevision !== revision) {
+        routePathMetricsCache.clear();
+        routePathMetricsRevision = revision;
+    }
+    return revision;
 }
 
 function routeMetricKey(originSector, destinationSector) {
@@ -251,53 +273,59 @@ function getProfitBand(originSector, destinationSector, commodity) {
 }
 
 export function deriveRouteMetrics(originSector, destinationSector) {
-    ensureRouteMetricsCacheFresh();
+    const revision = ensureRoutePathMetricsCacheFresh();
     const key = routeMetricKey(originSector, destinationSector);
-    if (routeMetricsCache.has(key)) {
-        const cached = routeMetricsCache.get(key);
-        return {
-            ...cached,
-            path: cached.path ? cached.path.slice() : null,
-            corridorPath: cached.corridorPath ? cached.corridorPath.map(segment => ({ ...segment })) : null,
-            viableCommodities: cached.viableCommodities.slice(),
-            profitBands: cached.profitBands.map(option => ({ ...option }))
+    const pathCacheKey = `${revision}:${key}`;
+    let pathMetrics = routePathMetricsCache.get(pathCacheKey);
+    if (!pathMetrics) {
+        const corridorPath = findCheapestCorridorPath(originSector, destinationSector);
+        const path = corridorPath
+            ? [originSector].concat(corridorPath.map(segment => segment.toSectorId))
+            : null;
+        const hopCount = path ? Math.max(0, path.length - 1) : null;
+        const totalEffectiveSpan = corridorPath
+            ? corridorPath.reduce((sum, segment) => sum + Math.max(0, segment.effectiveSpanCost || 0), 0)
+            : null;
+        pathMetrics = {
+            path,
+            corridorPath,
+            hopCount,
+            distance: hopCount,
+            totalEffectiveSpan,
+            pathCost: corridorPath ? getPathCost(corridorPath) : null,
+            risk: path ? getCorridorRiskForPath(path) : null,
+            surcharge: path ? getRelaySurchargeForPath(path) : 0
         };
+        routePathMetricsCache.set(pathCacheKey, pathMetrics);
     }
 
+    const marketRevision = getRouteMetricsMarketRevision();
+    const marketCacheKey = `${marketRevision}:${key}`;
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
-    const corridorPath = findCheapestCorridorPath(originSector, destinationSector);
-    const path = corridorPath
-        ? [originSector].concat(corridorPath.map(segment => segment.toSectorId))
-        : null;
-    const hopCount = path ? Math.max(0, path.length - 1) : null;
-    const totalEffectiveSpan = corridorPath
-        ? corridorPath.reduce((sum, segment) => sum + Math.max(0, segment.effectiveSpanCost || 0), 0)
-        : null;
-    const risk = path ? getCorridorRiskForPath(path) : null;
-    const surcharge = path ? getRelaySurchargeForPath(path) : 0;
-    const viableCommodities = origin && destination && originSector !== destinationSector && path
-        ? MARKET_COMMODITIES.filter(commodity => origin.sells.includes(commodity) && destination.buys.includes(commodity))
-        : [];
-    const profitBands = viableCommodities.map(commodity => getProfitBand(originSector, destinationSector, commodity));
+    let marketMetrics = routeMarketMetricsCache.get(marketCacheKey);
+    if (!marketMetrics) {
+        const viableCommodities = origin && destination && originSector !== destinationSector && pathMetrics.path
+            ? MARKET_COMMODITIES.filter(commodity => origin.sells.includes(commodity) && destination.buys.includes(commodity))
+            : [];
+        const profitBands = viableCommodities.map(commodity => getProfitBand(originSector, destinationSector, commodity));
+        marketMetrics = {
+            viableCommodities,
+            profitBands
+        };
+        routeMarketMetricsCache.set(marketCacheKey, marketMetrics);
+    }
+
     const metrics = {
         origin,
         destination,
-        path,
-        corridorPath,
-        hopCount,
-        distance: hopCount,
-        totalEffectiveSpan,
-        pathCost: corridorPath ? getPathCost(corridorPath) : null,
-        risk,
-        surcharge,
+        ...pathMetrics,
         setupCost: null,
-        viableCommodities,
-        commodities: profitBands,
-        profitBands
+        viableCommodities: marketMetrics.viableCommodities,
+        commodities: marketMetrics.profitBands,
+        profitBands: marketMetrics.profitBands
     };
     metrics.setupCost = computeRouteSetupCost(metrics);
-    routeMetricsCache.set(key, metrics);
     return {
         ...metrics,
         path: metrics.path ? metrics.path.slice() : null,

@@ -125,6 +125,16 @@ describe('deriveRouteMetrics', () => {
         assert.equal(metrics.profitBands[0].commodity, 'ore');
         assert.equal(metrics.profitBands[0].estimatedProfit, estimateRouteProfit(1, 4, 'ore'));
     });
+
+    it('refreshes market-derived profit bands on the next microtask without changing the cached path data', async () => {
+        const before = deriveRouteMetrics(1, 4);
+        state.ports[1].stock.ore = 0;
+        await Promise.resolve();
+        const after = deriveRouteMetrics(1, 4);
+        assert.deepEqual(after.path, before.path);
+        assert.equal(after.totalEffectiveSpan, before.totalEffectiveSpan);
+        assert.notEqual(after.profitBands[0].estimatedProfit, before.profitBands[0].estimatedProfit);
+    });
 });
 
 describe('estimateRouteProfit', () => {
