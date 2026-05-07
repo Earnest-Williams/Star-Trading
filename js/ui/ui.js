@@ -2,7 +2,7 @@ import { state } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
 import { BALANCE } from '../constants.js';
 import { advanceTime } from '../core/time.js';
-import { executeAction, registerAction } from '../core/commands.js';
+import { executeAction, registerAction, resetActions } from '../core/commands.js';
 
 // Render subsystems
 import {
@@ -138,22 +138,33 @@ function renderCurrentScreen() {
 // =====================================================
 // REGISTER RENDERERS
 // =====================================================
-Renderer.register('header', renderHeader);
-Renderer.register('sector', renderSectorContents);
-Renderer.register('screen', renderCurrentScreen);
-Renderer.register('menu', renderMenuPanel);
-Renderer.register('acceptedMissions', renderAcceptedMissions);
-Renderer.register('factions', renderFactionPanel);
-Renderer.register('map', drawMap);
-Renderer.register('mapInspector', renderMapInspector);
-Renderer.register('topTabs', renderTopTabs);
-Renderer.register('priority', renderPriorityFeed);
+const rendererRegistrations = [
+    ['header', renderHeader],
+    ['sector', renderSectorContents],
+    ['screen', renderCurrentScreen],
+    ['menu', renderMenuPanel],
+    ['acceptedMissions', renderAcceptedMissions],
+    ['factions', renderFactionPanel],
+    ['map', drawMap],
+    ['mapInspector', renderMapInspector],
+    ['topTabs', renderTopTabs],
+    ['priority', renderPriorityFeed]
+];
+let rendererUnsubscribers = [];
+let uiInitialized = false;
+
+function registerUIRenderers() {
+    if (rendererUnsubscribers.length > 0) return;
+    rendererUnsubscribers = rendererRegistrations.map(([key, fn]) => Renderer.register(key, fn));
+}
 
 // =====================================================
 // INJECT CROSS-MODULE DEPENDENCIES
 // =====================================================
-injectLogisticsModule({ getLogisticsNode });
-injectCaptainUIDeps({ spendTime, addFactionRep });
+function injectUIDependencies() {
+    injectLogisticsModule({ getLogisticsNode });
+    injectCaptainUIDeps({ spendTime, addFactionRep });
+}
 
 // =====================================================
 // REGISTER ACTIONS
@@ -244,4 +255,18 @@ export function markUIActionsUnregistered() {
     actionsRegistered = false;
 }
 
-registerUIActions();
+export function initUI() {
+    if (uiInitialized) return;
+    injectUIDependencies();
+    registerUIRenderers();
+    registerUIActions();
+    uiInitialized = true;
+}
+
+export function disposeUI() {
+    rendererUnsubscribers.forEach(unregister => unregister());
+    rendererUnsubscribers = [];
+    resetActions();
+    actionsRegistered = false;
+    uiInitialized = false;
+}

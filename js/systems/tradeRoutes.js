@@ -212,7 +212,8 @@ function buildRouteMetrics(origin, destination) {
             distance: null,
             risk: null,
             setupCost: null,
-            commodities: []
+            commodities: [],
+            availableCommodities: []
         };
     }
     const distance = Math.max(1, path.length - 1);
@@ -224,7 +225,14 @@ function buildRouteMetrics(origin, destination) {
             commodity,
             estimatedProfit: estimateRouteProfit(origin.sectorId, destination.sectorId, commodity)
         }));
-    return { origin, destination, path, distance, risk, setupCost, commodities };
+    const availableCommodities = commodities.filter(option => !routeExists(
+        origin.sectorId,
+        destination.sectorId,
+        option.commodity,
+        "player",
+        null
+    ));
+    return { origin, destination, path, distance, risk, setupCost, commodities, availableCommodities };
 }
 
 export function buildLogisticsSnapshot(originSector = state.player.currentSector) {
@@ -237,7 +245,13 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
             .map(node => buildRouteMetrics(origin, node))
             .filter(metric => metric.commodities.length > 0)
         : [];
-    const activeRoutes = state.tradeRoutes
+    const availableRouteOptions = candidates
+        .filter(metric => metric.availableCommodities.length > 0)
+        .map(metric => ({
+            ...metric,
+            commodities: metric.availableCommodities
+        }));
+    const activeRouteSummaries = state.tradeRoutes
         .filter(route => route.status !== "closed")
         .map(route => {
             const routeOrigin = bySector.get(route.originSector) || null;
@@ -247,7 +261,20 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
             const risk = baseRisk === null ? null : baseRisk + Math.max(0, route.heat || 0) / 12;
             return { route, origin: routeOrigin, destination: routeDestination, path, risk };
         });
-    return { originSector, origin, nodes, candidates, activeRoutes };
+    const playerColonies = Object.fromEntries(
+        Object.entries(state.planets).filter(([, planet]) => planet.owner === "Player")
+    );
+    return {
+        originSector,
+        origin,
+        nodes,
+        candidates,
+        availableRouteOptions,
+        activeRouteSummaries,
+        playerColonies,
+        captains: state.captains,
+        ambientTradeFlows: state.ambientTrade ? state.ambientTrade.flows : 0
+    };
 }
 
 export function createTradeRoute(destinationSector, commodity) {

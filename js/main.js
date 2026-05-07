@@ -7,13 +7,13 @@ import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters } from './core/persistence.js';
 import { setupMapInteraction } from './ui/renderMap.js';
-import { handleActionClick, markUIActionsUnregistered, registerUIActions } from './ui/ui.js';
+import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
 import { initSessionRng } from './utils.js';
 import { createCaptains, normaliseCaptains } from './systems/captains.js';
 import { generateMissionPool } from './systems/missions.js';
-import { executeAction, resetActions } from './core/commands.js';
+import { executeAction } from './core/commands.js';
 import { registerSimulationTickHooks } from './core/worldTick.js';
 import { normaliseTradeRoutes } from './systems/tradeRoutes.js';
 
@@ -34,7 +34,7 @@ export const App = (() => {
         initialized = true;
 
         configurePersistence();
-        registerUIActions();
+        initUI();
         registerSimulationTickHooks();
         registerRendererSubscriptions();
         startSimulation(readWorldgenSettingsFromDom());
@@ -112,10 +112,9 @@ export const App = (() => {
         addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
         addTopbarListener('btn-new-game', () => {
             resetState();
-            resetActions();
+            disposeUI();
             resetTimeHooks();
-            markUIActionsUnregistered();
-            registerUIActions();
+            initUI();
             registerSimulationTickHooks();
             startSimulation(readWorldgenSettingsFromDom());
             updateUI();
@@ -150,8 +149,7 @@ export const App = (() => {
         _unsubscribeMapInteraction();
         _unsubscribeMapInteraction = () => {};
         document.body.removeEventListener('click', handleActionClick);
-        resetActions();
-        markUIActionsUnregistered();
+        disposeUI();
         resetState();
         initialized = false;
     }

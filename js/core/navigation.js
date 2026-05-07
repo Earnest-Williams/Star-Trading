@@ -1,6 +1,7 @@
 import { state } from '../state.js';
 import { BALANCE } from '../constants.js';
 import { getDominantInfluence } from './influence.js';
+import { findCheapestCorridorPath, findCheapestSectorPath } from './routePlanner.js';
 
 export function getOutboundJumpGates(sectorId) {
     const sector = state.universe[sectorId];
@@ -29,36 +30,11 @@ export function getDirectCorridor(startSectorId, goalSectorId) {
 }
 
 export function findShortestCorridorPath(startSectorId, goalSectorId) {
-    if (!state.universe[startSectorId] || !state.universe[goalSectorId]) return null;
-    if (startSectorId === goalSectorId) return [];
-    const queue = [{ sectorId: startSectorId, segments: [] }];
-    const seen = new Set([startSectorId]);
-    while (queue.length > 0) {
-        const current = queue.shift();
-        for (const gate of getOutboundJumpGates(current.sectorId)) {
-            const next = gate.destinationSectorId;
-            if (seen.has(next)) continue;
-            const segment = {
-                fromSectorId: current.sectorId,
-                gateId: gate.id,
-                corridorId: gate.corridorId,
-                toSectorId: next,
-                destinationGateId: gate.destinationGateId
-            };
-            const segments = current.segments.concat([segment]);
-            if (next === goalSectorId) return segments;
-            seen.add(next);
-            queue.push({ sectorId: next, segments });
-        }
-    }
-    return null;
+    return findCheapestCorridorPath(startSectorId, goalSectorId);
 }
 
 export function findShortestSectorPath(startSectorId, goalSectorId) {
-    const corridorPath = findShortestCorridorPath(startSectorId, goalSectorId);
-    if (!corridorPath) return null;
-    if (corridorPath.length === 0) return [startSectorId];
-    return [startSectorId].concat(corridorPath.map(segment => segment.toSectorId));
+    return findCheapestSectorPath(startSectorId, goalSectorId);
 }
 
 export function getSectorPathDistance(startSectorId, goalSectorId) {
