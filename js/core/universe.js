@@ -5,6 +5,7 @@ import { STARTER_PLAYER, STARTER_SHIP } from '../config/player.js';
 import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
+import { createCharacter } from './characters.js';
 
 export { makeStock };
 
@@ -516,6 +517,7 @@ export function createPlayer() {
         reputation: STARTER_PLAYER.REPUTATION,
         seed: Date.now(),
         factionRelations: JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS)),
-        factions: createFactionState()
+        factions: createFactionState(),
+        character: createCharacter()
     };
 }

@@ -6,7 +6,7 @@
     "lint": "eslint \"js/**/*.js\" \"tests/**/*.js\""
   },
   "devDependencies": {
-    "eslint": "8.57.1",
+    "eslint": "^8.57.1",
     "vite": "6.0.11"
   }
 }
