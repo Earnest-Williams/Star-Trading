@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
+import { FACTIONS } from "../constants.js";
 import { getSectorFactionId } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
@@ -7,31 +7,53 @@ import { getSectorNeighbors } from "../core/navigation.js";
 import { MAP_UI } from "../config/ui.js";
 
 const mapInteractionUnsubscribers = new WeakMap();
+let mapProjectionSignature = "";
+let mapProjectionUniverseRef = null;
+let mapProjectionCache = {};
+
+function projectedCoord(site, sectorId) {
+    const coord = site.coord || { x: sectorId, y: 0, z: 0 };
+    return {
+        x: coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X,
+        y: coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y
+    };
+}
 
 export function getMapNodes() {
     const universe = state.universe;
-    const nodes = {};
-    const ids = Object.keys(universe).map(Number).filter(id => universe[id].charted || id === state.player.currentSector);
-    if (ids.length === 0) {
-        state.mapNodeCache = nodes;
-        return nodes;
+    const ids = Object.keys(universe)
+        .map(Number)
+        .filter(id => universe[id].charted || id === state.player.currentSector);
+    const signature = ids.join(",");
+    if (mapProjectionUniverseRef === universe && signature === mapProjectionSignature) {
+        state.mapNodeCache = mapProjectionCache;
+        return mapProjectionCache;
     }
-    const coords = ids.map(id => universe[id].coord || { x: id, y: 0, z: 0 });
-    const minX = Math.min(...coords.map(coord => coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X));
-    const maxX = Math.max(...coords.map(coord => coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X));
-    const minY = Math.min(...coords.map(coord => coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y));
-    const maxY = Math.max(...coords.map(coord => coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y));
-    const spanX = Math.max(1, maxX - minX);
-    const spanY = Math.max(1, maxY - minY);
-    ids.forEach(id => {
-        const coord = universe[id].coord || { x: id, y: 0, z: 0 };
-        const projectedX = coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X;
-        const projectedY = coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y;
-        nodes[id] = {
-            x: MAP_UI.LAYOUT.LEFT + ((projectedX - minX) / spanX) * MAP_UI.LAYOUT.WIDTH,
-            y: MAP_UI.LAYOUT.TOP + ((projectedY - minY) / spanY) * MAP_UI.LAYOUT.HEIGHT
-        };
-    });
+
+    const nodes = {};
+    if (ids.length > 0) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        const projected = ids.map(id => {
+            const coord = projectedCoord(universe[id], id);
+            if (coord.x < minX) minX = coord.x;
+            if (coord.x > maxX) maxX = coord.x;
+            if (coord.y < minY) minY = coord.y;
+            if (coord.y > maxY) maxY = coord.y;
+            return { id, coord };
+        });
+        const spanX = Math.max(1, maxX - minX);
+        const spanY = Math.max(1, maxY - minY);
+        projected.forEach(({ id, coord }) => {
+            nodes[id] = {
+                x: MAP_UI.LAYOUT.LEFT + ((coord.x - minX) / spanX) * MAP_UI.LAYOUT.WIDTH,
+                y: MAP_UI.LAYOUT.TOP + ((coord.y - minY) / spanY) * MAP_UI.LAYOUT.HEIGHT
+            };
+        });
+    }
+
+    mapProjectionUniverseRef = universe;
+    mapProjectionSignature = signature;
+    mapProjectionCache = nodes;
     state.mapNodeCache = nodes;
     return nodes;
 }
