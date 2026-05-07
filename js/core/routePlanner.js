@@ -175,7 +175,7 @@ export function findCheapestCorridorPath(startSectorId, goalSectorId) {
         return cached ? cached.map(segment => ({ ...segment })) : null;
     }
     const path = planWeightedCorridorPath(startSectorId, goalSectorId);
-    routeCache.set(key, path ? path.map(segment => ({ ...segment })) : null);
+    routeCache.set(key, path);
     return path ? path.map(segment => ({ ...segment })) : null;
 }
 
