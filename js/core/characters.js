@@ -7,7 +7,9 @@ export const CHARACTER_SCHEMA_FIELDS = Object.freeze([
     "originTraitId",
     "careerTraitIds",
     "platform",
-    "contacts"
+    "contacts",
+    "packageIds",
+    "equipment"
 ]);
 
 function normaliseStats(stats) {
@@ -21,8 +23,15 @@ function normaliseStats(stats) {
 }
 
 function normalisePlatform(platform) {
+    const legacyTypes = {
+        ship_owned: DEFAULT_PLATFORM_TYPE,
+        ship_rented: "rental_cutter_no_ship",
+        employed_salary: "employer_salary_no_ship",
+        employed_commission: "employer_commission_no_ship"
+    };
+    const rawType = platform?.type || DEFAULT_PLATFORM_TYPE;
     return {
-        type: platform?.type || DEFAULT_PLATFORM_TYPE,
+        type: legacyTypes[rawType] || rawType,
         employerLaneId: typeof platform?.employerLaneId === "undefined"
             ? null
             : platform.employerLaneId
@@ -35,7 +44,9 @@ const CHARACTER_FIELD_NORMALIZERS = Object.freeze({
     originTraitId: value => value || null,
     careerTraitIds: value => Array.isArray(value) ? value : [],
     platform: value => normalisePlatform(value),
-    contacts: value => Array.isArray(value) ? value : []
+    contacts: value => Array.isArray(value) ? value : [],
+    packageIds: value => Array.isArray(value) ? value : [],
+    equipment: value => Array.isArray(value) ? value : []
 });
 const IDENTITY_FIELD_NORMALIZER = value => value;
 
@@ -68,6 +79,8 @@ export function createCharacter(overrides = {}) {
         careerTraitIds: [],
         platform: { type: DEFAULT_PLATFORM_TYPE, employerLaneId: null },
         contacts: [],
+        packageIds: [],
+        equipment: [],
         ...overrides
     });
 }

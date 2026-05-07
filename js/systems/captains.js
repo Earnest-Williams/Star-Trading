@@ -9,7 +9,34 @@ import { getFactionPoliticalPole } from '../core/factions.js';
 import { getSectorNeighbors, getSectorPathDistance, canTransitDirectCorridor } from '../core/navigation.js';
 import { createCaptainTradeRoute, getAllLogisticsNodes, deriveRouteMetrics } from './tradeRoutes.js';
 import { createCharacter, normaliseCharacter } from '../core/characters.js';
-import { getCaptainMissionScore } from '../core/characterChecks.js';
+import { getCaptainMissionScore, getCaptainRelationshipActionAdjustment, getPoliticalActionAdjustment } from '../core/characterChecks.js';
+
+
+const CAPTAIN_CHARACTER_TEMPLATES = Object.freeze({
+    trader: { stats: { nerve: 56, tradecraft: 78, fieldcraft: 58, command: 68 }, originTraitId: "dockside_brokers_apprentice", careerTraitIds: ["freight_dispatcher"], platform: { type: "ship_tier1_tramp", employerLaneId: null } },
+    miner: { stats: { nerve: 68, tradecraft: 54, fieldcraft: 82, command: 58 }, originTraitId: "raised_in_an_asteroid_mine", careerTraitIds: ["veteran_miner"], platform: { type: "ship_tier2_prospector", employerLaneId: null } },
+    smuggler: { stats: { nerve: 74, tradecraft: 84, fieldcraft: 66, command: 55 }, originTraitId: "black_route_family", careerTraitIds: ["quiet_hands", "manifest_forger"], platform: { type: "rental_cutter_no_ship", employerLaneId: null } },
+    mercenary: { stats: { nerve: 82, tradecraft: 58, fieldcraft: 62, command: 72 }, originTraitId: "political_adjutant", careerTraitIds: ["rival_handler"], platform: { type: "employer_salary_no_ship", employerLaneId: "sda_auxiliary" } },
+    colonist: { stats: { nerve: 62, tradecraft: 55, fieldcraft: 70, command: 82 }, originTraitId: "quartermasters_child", careerTraitIds: ["settlement_organizer", "union_paperwork"], platform: { type: "employer_commission_no_ship", employerLaneId: "colonists_logistics" } },
+    industrialist: { stats: { nerve: 60, tradecraft: 72, fieldcraft: 70, command: 76 }, originTraitId: "quartermasters_child", careerTraitIds: ["freight_dispatcher"], platform: { type: "employer_commission_no_ship", employerLaneId: "hc_extractor" } },
+    pirate: { stats: { nerve: 86, tradecraft: 76, fieldcraft: 68, command: 64 }, originTraitId: "black_route_family", careerTraitIds: ["quiet_hands", "rival_handler"], platform: { type: "rental_cutter_no_ship", employerLaneId: null } },
+    fixer: { stats: { nerve: 64, tradecraft: 80, fieldcraft: 62, command: 78 }, originTraitId: "political_adjutant", careerTraitIds: ["rival_handler"], platform: { type: "employer_salary_no_ship", employerLaneId: "traders_guild_freight" } }
+});
+
+function createCaptainCharacter(def) {
+    const template = CAPTAIN_CHARACTER_TEMPLATES[def.archetype] || CAPTAIN_CHARACTER_TEMPLATES.fixer;
+    const traits = [template.originTraitId, ...template.careerTraitIds];
+    return createCharacter({
+        stats: { ...template.stats },
+        traits,
+        originTraitId: template.originTraitId,
+        careerTraitIds: template.careerTraitIds.slice(),
+        platform: { ...template.platform },
+        contacts: [],
+        packageIds: [],
+        equipment: []
+    });
+}
 
 export function createCaptains() {
     state.captains = {};
@@ -18,6 +45,7 @@ export function createCaptains() {
     const allIds = Object.keys(CAPTAIN_DEFS);
     Object.values(CAPTAIN_DEFS).forEach(def => {
         const captain = JSON.parse(JSON.stringify(def));
+        captain.character = normaliseCharacter(def.character || createCaptainCharacter(def));
         captain.known = Boolean(def.knownAtStart);
         captain.status = "active";
         captain.currentPlan = null;
@@ -128,14 +156,21 @@ export function addCaptainHistory(captain, text, important = false) {
 export function nudgeCaptainRelation(captainId, deltas, reason) {
     const captain = getCaptain(captainId);
     if (!captain) return;
+    const adjustedDeltas = { ...deltas };
+    if (state.player && state.player.character) {
+        const adjustment = getCaptainRelationshipActionAdjustment(state.player.character);
+        if (adjustedDeltas.opinion > 0) adjustedDeltas.opinion += Math.max(0, adjustment);
+        if (adjustedDeltas.trust > 0) adjustedDeltas.trust += Math.max(0, Math.floor(adjustment / 2));
+        if (adjustedDeltas.rivalry > 0) adjustedDeltas.rivalry = Math.max(0, adjustedDeltas.rivalry - Math.max(0, Math.floor(adjustment / 3)));
+    }
     const rel = captain.relationshipToPlayer;
-    rel.opinion = clampRange((rel.opinion || 0) + (deltas.opinion || 0), -100, 100);
-    rel.trust = clampRange((rel.trust || 0) + (deltas.trust || 0), -100, 100);
-    rel.rivalry = clampRange((rel.rivalry || 0) + (deltas.rivalry || 0), 0, 100);
-    rel.debt = clampRange((rel.debt || 0) + (deltas.debt || 0), -20, 20);
-    rel.leverage = clampRange((rel.leverage || 0) + (deltas.leverage || 0), 0, 100);
+    rel.opinion = clampRange((rel.opinion || 0) + (adjustedDeltas.opinion || 0), -100, 100);
+    rel.trust = clampRange((rel.trust || 0) + (adjustedDeltas.trust || 0), -100, 100);
+    rel.rivalry = clampRange((rel.rivalry || 0) + (adjustedDeltas.rivalry || 0), 0, 100);
+    rel.debt = clampRange((rel.debt || 0) + (adjustedDeltas.debt || 0), -20, 20);
+    rel.leverage = clampRange((rel.leverage || 0) + (adjustedDeltas.leverage || 0), 0, 100);
     captain.known = true;
-    if (reason) addCaptainHistory(captain, reason, Math.abs(deltas.opinion || 0) + Math.abs(deltas.rivalry || 0) >= 8);
+    if (reason) addCaptainHistory(captain, reason, Math.abs(adjustedDeltas.opinion || 0) + Math.abs(adjustedDeltas.rivalry || 0) >= 8);
     EventBus.emit("captain_changed", { captainId });
 }
 
@@ -250,7 +285,9 @@ export function applyContestMissionOutcome(mission, actor, captain = null) {
     const rivalPole = mission.rivalFactionId ? getFactionPoliticalPole(mission.rivalFactionId) : null;
     // Import adjustFactionRelation lazily to avoid circular dep (captains → politics → missions)
     // We inline a simple version here; full political effect is handled by politics.js hooks
-    if (MAJOR_FACTIONS.includes(sponsorPole)) addSectorInfluence(targetId, sponsorPole, actor === "player" ? 4 : 3, `${actor} completed political operation`);
+    const actorCharacter = actor === "player" ? state.player.character : captain?.character;
+    const politicalAdjustment = Math.max(0, getPoliticalActionAdjustment(actorCharacter));
+    if (MAJOR_FACTIONS.includes(sponsorPole)) addSectorInfluence(targetId, sponsorPole, (actor === "player" ? 4 : 3) + politicalAdjustment, `${actor} completed political operation`);
     if (rivalPole && MAJOR_FACTIONS.includes(rivalPole)) {
         sector.influence[rivalPole] = Math.max(0, Math.min(100, (sector.influence[rivalPole] || 0) - 2));
     }

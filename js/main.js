@@ -16,8 +16,9 @@ import { generateMissionPool } from './systems/missions.js';
 import { executeAction } from './core/commands.js';
 import { registerSimulationTickHooks } from './core/worldTick.js';
 import { normaliseTradeRoutes } from './systems/tradeRoutes.js';
+import { ARCHETYPE_PRESETS } from './config/chargen.js';
 import { renderChargenControls } from './ui/renderChargen.js';
-import { getChargenBuild, readChargenBuildFromDom, validateChargenDraft } from './ui/chargenState.js';
+import { getChargenBuild, readChargenBuildFromDom, setChargenBuild, validateChargenDraft } from './ui/chargenState.js';
 
 // =====================================================
 // APP BOOTSTRAP
@@ -133,7 +134,14 @@ export const App = (() => {
             const el = document.getElementById(id);
             if (!el) return;
             el.addEventListener('input', () => { readChargenBuildFromDom(); renderChargen(); });
-            el.addEventListener('change', () => { readChargenBuildFromDom(); renderChargen(); });
+            el.addEventListener('change', event => {
+                if (event.target && event.target.id === 'chargen-preset' && event.target.value && ARCHETYPE_PRESETS[event.target.value]) {
+                    setChargenBuild(ARCHETYPE_PRESETS[event.target.value].build);
+                } else {
+                    readChargenBuildFromDom();
+                }
+                renderChargen();
+            });
         });
     }
 

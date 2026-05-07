@@ -2,12 +2,14 @@ import { state } from '../state.js';
 import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
 import { GATE_DEFAULTS, PLANET_DEFAULTS, PORT_DEFAULTS, STARFIELD, WORLDGEN_ANCHORS, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../config/worldgen.js';
 import { STARTER_PLAYER } from '../config/player.js';
-import { DEFAULT_BUILD_SPEC, DEFAULT_EMPLOYER_LANE_ID, EMPLOYER_LANES, PLATFORM_PACKAGES, createStarterShipFromPlatform, getStarterCredits } from '../config/chargen.js';
+import { DEFAULT_BUILD_SPEC, DEFAULT_EMPLOYER_LANE_ID, EMPLOYER_LANES, PLATFORM_PACKAGES, START_PACKAGES, createStarterShipFromPlatform, getStarterCredits } from '../config/chargen.js';
 import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
 import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from './characterBuild.js';
+import { getTraitDefinition } from '../config/traits.js';
+import { getEmploymentTerms } from './characterChecks.js';
 
 export { makeStock };
 
@@ -505,6 +507,78 @@ export function generateStars() {
     }
 }
 
+function addStartBenefitTotals(totals, benefits) {
+    if (!benefits) return;
+    totals.credits += benefits.credits || 0;
+    Object.entries(benefits.cargo || {}).forEach(([commodity, amount]) => {
+        totals.cargo[commodity] = (totals.cargo[commodity] || 0) + amount;
+    });
+    ["contacts", "equipment"].forEach(key => {
+        (benefits[key] || []).forEach(item => {
+            if (!totals[key].includes(item)) totals[key].push(item);
+        });
+    });
+    ["memberships", "publicRep", "privateRep", "heat"].forEach(key => {
+        Object.entries(benefits[key] || {}).forEach(([id, amount]) => {
+            totals[key][id] = (totals[key][id] || 0) + amount;
+        });
+    });
+    totals.employerRankBonus += benefits.employerRankBonus || 0;
+    totals.wageBonus += benefits.wageBonus || 0;
+    totals.commissionBonus += benefits.commissionBonus || 0;
+    if (benefits.paperwork) totals.paperwork = benefits.paperwork;
+}
+
+function collectStartBenefits(character) {
+    const totals = {
+        credits: 0, cargo: {}, contacts: [], equipment: [], memberships: {}, publicRep: {},
+        privateRep: {}, heat: {}, employerRankBonus: 0, wageBonus: 0, commissionBonus: 0, paperwork: null
+    };
+    (character.traits || []).forEach(traitId => {
+        const trait = getTraitDefinition(traitId);
+        if (trait) addStartBenefitTotals(totals, trait.startBenefits);
+    });
+    (character.packageIds || []).forEach(packageId => {
+        addStartBenefitTotals(totals, START_PACKAGES[packageId]?.benefits);
+    });
+    return totals;
+}
+
+function applyStartBenefitsToPlayer(player, benefits) {
+    Object.entries(benefits.cargo).forEach(([commodity, amount]) => {
+        player.cargo[commodity] = (player.cargo[commodity] || 0) + amount;
+    });
+    benefits.contacts.forEach(contactId => {
+        if (!player.character.contacts.includes(contactId)) player.character.contacts.push(contactId);
+    });
+    benefits.equipment.forEach(item => {
+        if (!player.character.equipment.includes(item)) player.character.equipment.push(item);
+    });
+    Object.entries(benefits.memberships).forEach(([factionId, tier]) => {
+        player.factions.membership[factionId] = Math.max(player.factions.membership[factionId] || 0, tier);
+    });
+    Object.entries(benefits.publicRep).forEach(([factionId, amount]) => {
+        player.factions.reputation[factionId] = (player.factions.reputation[factionId] || 0) + amount;
+        player.factions.publicRep[factionId] = (player.factions.publicRep[factionId] || 0) + amount;
+    });
+    Object.entries(benefits.privateRep).forEach(([factionId, amount]) => {
+        player.factions.privateRep[factionId] = (player.factions.privateRep[factionId] || 0) + amount;
+    });
+    Object.entries(benefits.heat).forEach(([factionId, amount]) => {
+        player.factions.heat[factionId] = Math.max(0, (player.factions.heat[factionId] || 0) + amount);
+    });
+    if (benefits.paperwork) player.character.paperwork = benefits.paperwork;
+    if (player.employment && benefits.employerRankBonus) {
+        player.employment.rankLevel = (player.employment.rankLevel || 0) + benefits.employerRankBonus;
+        player.employment.rank = `${player.employment.rank} +${benefits.employerRankBonus}`;
+    }
+    if (player.employment) {
+        player.employment.wageDaily = (player.employment.wageDaily || 0) + benefits.wageBonus;
+        player.employment.commissionShare = (player.employment.commissionShare || 0) + benefits.commissionBonus;
+        player.employment = getEmploymentTerms(player.character, player.employment);
+    }
+}
+
 function makePlayerBase(ship, credits, character, platformPackage, employerLane) {
     return {
         credits,
@@ -526,8 +600,9 @@ function makePlayerBase(ship, credits, character, platformPackage, employerLane)
             factionId: employerLane.factionId,
             rank: employerLane.rank,
             access: employerLane.access.slice(),
+            runtimeType: platformPackage.runtimeType,
             ...(platformPackage.employment || {})
-        } : platformPackage.employment ? { ...platformPackage.employment } : null
+        } : platformPackage.employment ? { runtimeType: platformPackage.runtimeType, ...platformPackage.employment } : null
     };
 }
 
@@ -538,16 +613,20 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
     }
     const { character, leftoverPoints } = buildCharacterFromSpec(buildSpec);
     const platformType = character.platform.type;
-    const platformPackage = PLATFORM_PACKAGES[platformType] || PLATFORM_PACKAGES.ship_owned;
+    const platformPackage = PLATFORM_PACKAGES[platformType] || PLATFORM_PACKAGES[DEFAULT_BUILD_SPEC.platform.type];
     const isEmployed = isPlatformEmployed(platformType);
     const laneId = isEmployed
         ? character.platform.employerLaneId || DEFAULT_EMPLOYER_LANE_ID
         : null;
     const employerLane = laneId ? EMPLOYER_LANES.find(lane => lane.id === laneId) || null : null;
     if (isEmployed) character.platform.employerLaneId = laneId;
+    const builtCharacter = createCharacter(character);
+    const startBenefits = collectStartBenefits(builtCharacter);
     const ship = createStarterShipFromPlatform(platformPackage);
-    const credits = getStarterCredits(leftoverPoints, platformPackage);
-    return makePlayerBase(ship, credits, createCharacter(character), platformPackage, employerLane);
+    const credits = getStarterCredits(leftoverPoints, platformPackage, startBenefits);
+    const player = makePlayerBase(ship, credits, builtCharacter, platformPackage, employerLane);
+    applyStartBenefitsToPlayer(player, startBenefits);
+    return player;
 }
 
 export function createPlayer() {

@@ -8,6 +8,7 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { addIntel, sellIntel } from '../core/intel.js';
 import { getTraitBonus } from '../core/traitHooks.js';
+import { getFactionAskCompletionQuality } from '../core/characterChecks.js';
 export { sellIntel };
 
 export function generateFactionAsks() {
@@ -123,9 +124,11 @@ export function completeFactionAsk(id) {
     if (ask.type === "quiet_delivery" && (ask.progress || 0) < ask.amount && state.player.cargo[ask.commodity] >= ask.amount) {
         state.player.cargo[ask.commodity] -= ask.amount;
     }
+    const quality = getFactionAskCompletionQuality(state.player.character, ask);
+    ask.qualityScore = quality.score;
     ask.status = "completed";
     state.player.credits += ask.rewardCredits || 0;
-    applyPoliticalEffect({ factionId: ask.factionId, publicRep: ask.publicRep || 0, privateRep: ask.privateRep || 0, trust: (ask.trust || 1) + getTraitBonus(state.player.character, "factionAskBonus"), favors: (ask.favors || 1) + getTraitBonus(state.player.character, "factionAskBonus"), sectorId: ask.sectorId || state.player.currentSector, influence: ask.influence || 2, reason: "completed political ask", memoryKey: "reliableJobs" });
+    applyPoliticalEffect({ factionId: ask.factionId, publicRep: ask.publicRep || 0, privateRep: ask.privateRep || 0, trust: (ask.trust || 1) + getTraitBonus(state.player.character, "factionAskBonus") + quality.trustBonus, favors: (ask.favors || 1) + getTraitBonus(state.player.character, "factionAskBonus") + quality.favorBonus, sectorId: ask.sectorId || state.player.currentSector, influence: (ask.influence || 2) + Math.max(0, quality.score), reason: `completed political ask (quality ${quality.score})`, memoryKey: "reliableJobs" });
     if (ask.heatFactionId && ask.heat) addFactionHeat(ask.heatFactionId, ask.heat, "questionable political ask");
     if (ask.intel) addIntel(ask.intel);
     log(`Completed political ask: ${ask.title}. Reward: ${formatCredits(ask.rewardCredits || 0)} credits.`);

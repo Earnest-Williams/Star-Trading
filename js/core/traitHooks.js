@@ -16,6 +16,10 @@ export function getTraitBonus(character, bonusKey) {
     }, 0);
 }
 
+export function getTraitDrawbacks(character) {
+    return getCharacterTraits(character).flatMap(trait => trait.drawbacks || []);
+}
+
 export function hasTrait(character, traitId) {
     return Boolean(character && Array.isArray(character.traits) && character.traits.includes(traitId));
 }
@@ -30,5 +34,7 @@ export function describeActiveBonuses(character) {
     if (routeReliability) bonuses.push(`Route reliability +${routeReliability}`);
     const colonyStability = getTraitBonus(character, "colonyStability");
     if (colonyStability) bonuses.push(`Colony stability +${colonyStability}`);
+    const askBonus = getTraitBonus(character, "factionAskBonus");
+    if (askBonus) bonuses.push(`Faction ask quality +${askBonus}`);
     return bonuses;
 }

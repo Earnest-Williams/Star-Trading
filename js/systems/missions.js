@@ -9,6 +9,7 @@ import { addIntel } from '../core/intel.js';
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { nudgeCaptainRelation, prepareMissionOpportunity, normaliseCaptains, applyContestMissionOutcome } from '../systems/captains.js';
+import { getMissionOutcomeBand } from '../core/characterChecks.js';
 
 export { prepareMissionOpportunity };
 
@@ -201,8 +202,10 @@ export function completeMission(id) {
         if (!spendTime(m.operationMinutes || MISSION_TUNING.BASE.CONTEST_OPERATION_MINUTES)) return;
         applyContestMissionOutcome(m, "player");
     }
+    const outcome = getMissionOutcomeBand(state.player.character, m);
+    m.outcomeBand = outcome.band;
     m.status = "completed";
-    state.player.credits += m.rewardCredits;
+    state.player.credits += Math.floor(m.rewardCredits * outcome.rewardMultiplier);
     state.player.reputation += m.rewardRep;
     addWorldEvent({
         type: "player_mission",
@@ -212,7 +215,7 @@ export function completeMission(id) {
         importance: 3, alert: false
     });
     const factionId = m.factionId || "fu";
-    applyPoliticalEffect({ factionId, publicRep: m.rewardRep, trust: 1, favors: m.rewardRep >= 3 ? 1 : 0, sectorId: m.destinationSector || m.targetSector || m.originSector, influence: 2, reason: "mission completed", memoryKey: "reliableJobs" });
+    applyPoliticalEffect({ factionId, publicRep: m.rewardRep, trust: 1 + outcome.trustBonus, favors: m.rewardRep >= 3 ? 1 : 0, sectorId: m.destinationSector || m.targetSector || m.originSector, influence: 2 + outcome.influenceBonus, reason: `mission completed (${outcome.band})`, memoryKey: "reliableJobs" });
     if (FACTIONS[factionId] && FACTIONS[factionId].type === "major") {
         const fr = (state.player && state.player.factionRelations) || {};
         Object.entries(fr[factionId] || {}).forEach(([otherId, relation]) => {
@@ -229,6 +232,7 @@ export function completeMission(id) {
         });
     }
     notifyCaptainsPlayerCompletedMission(m);
-    log(`Completed mission: ${m.title}. Reward: ${formatCredits(m.rewardCredits)} credits.`);
-    Notifications.show(`Mission complete: +${formatCredits(m.rewardCredits)}c`, 2);
+    const paid = Math.floor(m.rewardCredits * outcome.rewardMultiplier);
+    log(`Completed mission: ${m.title}. Outcome: ${outcome.band}. Reward: ${formatCredits(paid)} credits.`);
+    Notifications.show(`Mission complete (${outcome.band}): +${formatCredits(paid)}c`, 2);
 }
