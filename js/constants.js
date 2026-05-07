@@ -219,7 +219,16 @@ export const SAVE_KEY = "starTradingSaveV13";
 export const SAVE_KEY_LEGACY = "starTradingSaveV12";
 export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];
-export const COMMODITY_NAMES = { ore: "Ore", org: "Organics", eq: "Equipment" };
+export const PULSE_COMMODITIES = ["pulse_canister", "heavy_pulse_module"];
+export const MARKET_COMMODITIES = COMMODITIES.concat(PULSE_COMMODITIES);
+export const CARGO_COMMODITIES = MARKET_COMMODITIES;
+export const COMMODITY_NAMES = {
+    ore: "Ore",
+    org: "Organics",
+    eq: "Equipment",
+    pulse_canister: "Pulse Canisters",
+    heavy_pulse_module: "Heavy Pulse Modules"
+};
 export const DEBUG_MODE = true;
 
 export const FACTIONS = {
@@ -270,12 +279,12 @@ export const GUILD_REQUIREMENTS = {
 };
 
 export const PORT_TYPES = {
-    stardock: { name: "StarDock Services", factionId: "sda", sells: [], buys: [], description: "Shipyard, repairs, upgrades, and mission brokerage." },
-    mining: { name: "Mining Outpost", factionId: "hc", sells: ["ore"], buys: ["org", "eq"], description: "Exports ore and imports supplies." },
-    agricultural: { name: "Agricultural Station", factionId: "fu", sells: ["org"], buys: ["ore", "eq"], description: "Exports organics and imports machinery." },
-    industrial: { name: "Industrial Port", factionId: "hc", sells: ["eq"], buys: ["ore", "org"], description: "Exports equipment and imports raw materials." },
-    consumer: { name: "Consumer Hub", factionId: "fu", sells: [], buys: ["ore", "org", "eq"], description: "Pays for almost anything the frontier needs." },
-    refinery: { name: "Refinery", factionId: "hc", sells: ["eq"], buys: ["ore"], description: "Turns ore into high-value industrial goods." }
+    stardock: { name: "StarDock Services", factionId: "sda", sells: ["pulse_canister", "heavy_pulse_module"], buys: ["pulse_canister", "heavy_pulse_module"], description: "Shipyard, repairs, upgrades, mission brokerage, and certified pulse logistics." },
+    mining: { name: "Mining Outpost", factionId: "hc", sells: ["ore"], buys: ["org", "eq", "pulse_canister"], description: "Exports ore and imports supplies, machinery, and limited jump-pulse stores." },
+    agricultural: { name: "Agricultural Station", factionId: "fu", sells: ["org"], buys: ["ore", "eq", "pulse_canister"], description: "Exports organics and imports machinery plus reserve pulse canisters." },
+    industrial: { name: "Industrial Port", factionId: "hc", sells: ["eq", "pulse_canister"], buys: ["ore", "org", "heavy_pulse_module"], description: "Exports equipment and conditioned pulse canisters while importing raw materials." },
+    consumer: { name: "Consumer Hub", factionId: "fu", sells: [], buys: ["ore", "org", "eq", "pulse_canister"], description: "Pays for almost anything the frontier needs, including packaged jump reserves." },
+    refinery: { name: "Refinery", factionId: "hc", sells: ["eq", "pulse_canister", "heavy_pulse_module"], buys: ["ore"], description: "Turns ore and industrial power into equipment and packaged jump-pulse inventory." }
 };
 
 export const PLANET_TYPES = {

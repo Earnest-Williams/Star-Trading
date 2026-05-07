@@ -1,7 +1,7 @@
 export const STARTER_PLAYER = Object.freeze({
     CREDITS: 5000,
     CURRENT_SECTOR: 1,
-    CARGO: Object.freeze({ ore: 0, org: 0, eq: 0 }),
+    CARGO: Object.freeze({ ore: 0, org: 0, eq: 0, pulse_canister: 0, heavy_pulse_module: 0 }),
     FIGHTERS: 30,
     REPUTATION: 0
 });

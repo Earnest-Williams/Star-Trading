@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, COMMODITIES } from '../constants.js';
+import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, MARKET_COMMODITIES, PORT_TYPES } from '../constants.js';
 import { clampRange, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, normaliseSectorInfluence, addSectorInfluence, getInfluenceSpread, getSectorStatusLabel } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
@@ -8,7 +8,6 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { prepareMissionOpportunity, activePortSectors, makeBaseMission } from '../systems/missions.js';
 import { generateFactionAsks } from '../systems/guilds.js';
-import { PORT_TYPES } from '../constants.js';
 import { getSectorNeighbors } from '../core/navigation.js';
 import { POLITICS } from '../config/politics.js';
 
@@ -291,7 +290,7 @@ export function updateFactionsDaily() {
 export function updatePortsDaily() {
     Object.values(state.ports).forEach(port => {
         const type = PORT_TYPES[port.typeKey];
-        COMMODITIES.forEach(c => {
+        MARKET_COMMODITIES.forEach(c => {
             if (type.sells.includes(c)) {
                 const refill = Math.ceil(port.maxStock[c] * (POLITICS.PORT_ECONOMY.SELLER_REFILL_BASE + random() * POLITICS.PORT_ECONOMY.SELLER_REFILL_SPAN));
                 port.stock[c] = Math.min(port.maxStock[c], port.stock[c] + refill);

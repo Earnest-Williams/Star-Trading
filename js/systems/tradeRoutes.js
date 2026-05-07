@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE, COMMODITIES, PORT_TYPES } from '../constants.js';
+import { BALANCE, COMMODITIES, MARKET_COMMODITIES, PORT_TYPES } from '../constants.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../utils.js';
 import { addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
@@ -152,7 +152,7 @@ export function getRouteCommodityOptions(originSector, destinationSector) {
     const destination = getLogisticsNode(destinationSector);
     if (!origin || !destination || originSector === destinationSector) return [];
     if (!findShortestSectorPath(originSector, destinationSector)) return [];
-    return COMMODITIES.filter(c => origin.sells.includes(c) && destination.buys.includes(c));
+    return MARKET_COMMODITIES.filter(c => origin.sells.includes(c) && destination.buys.includes(c));
 }
 
 export function getRouteSetupCost(originSector, destinationSector) {
@@ -186,7 +186,11 @@ export function getRouteMarketValue(sectorId, commodity, mode) {
     const stock = Math.max(0, node.stock[commodity] || 0);
     const maxStock = Math.max(1, node.maxStock[commodity] || 1);
     const ratio = Math.max(0, Math.min(1, stock / maxStock));
-    const base = node.kind === "port" ? state.ports[sectorId].basePrices[commodity] : { ore: 85, org: 160, eq: 320 }[commodity];
+    const colonyBasePrices = { ore: 85, org: 160, eq: 320, pulse_canister: 7, heavy_pulse_module: 26 };
+    const base = node.kind === "port"
+        ? state.ports[sectorId].basePrices[commodity]
+        : colonyBasePrices[commodity];
+    if (typeof base !== "number") return 0;
     if (mode === "buy") return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * (0.72 + (1 - ratio) * 0.65)));
     return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * (0.70 + (1 - ratio) * 1.10)));
 }
@@ -214,7 +218,7 @@ function buildRouteMetrics(origin, destination) {
     const distance = Math.max(1, path.length - 1);
     const risk = getCorridorRiskForPath(path);
     const setupCost = BALANCE.TRADE_ROUTE_BASE_COST + distance * 220 + risk * 130;
-    const commodities = COMMODITIES
+    const commodities = MARKET_COMMODITIES
         .filter(commodity => origin.sells.includes(commodity) && destination.buys.includes(commodity))
         .map(commodity => ({
             commodity,

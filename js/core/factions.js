@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
+import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, CARGO_COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
 import { clampRange, hasCargo, log, formatCredits } from '../utils.js';
 import { addSectorInfluence, getInfluenceSpread, getDominantInfluence } from './influence.js';
 import { addWorldEvent } from './worldEvents.js';
@@ -355,5 +355,5 @@ export function clampPlayerState() {
     state.player.fighters = Math.max(0, Math.min(state.player.fighters, state.player.ship.maxFighters));
     state.player.shields = Math.max(0, Math.min(state.player.shields, state.player.ship.maxShields));
     state.player.hull = Math.max(0, Math.min(state.player.hull, state.player.ship.maxHull));
-    COMMODITIES.forEach(c => { state.player.cargo[c] = Math.max(0, Math.floor(state.player.cargo[c])); });
+    CARGO_COMMODITIES.forEach(c => { state.player.cargo[c] = Math.max(0, Math.floor(state.player.cargo[c])); });
 }

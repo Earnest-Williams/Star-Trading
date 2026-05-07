@@ -81,8 +81,20 @@ export const PORT_DEFAULTS = Object.freeze({
         EQ_BASE: 800,
         EQ_SPAN: 2400
     }),
-    MAX_STOCK: Object.freeze({ ore: 6000, org: 5000, eq: 4000 }),
-    BASE_PRICES: Object.freeze({ ore: 80, org: 150, eq: 300 })
+    MAX_STOCK: Object.freeze({
+        ore: 6000,
+        org: 5000,
+        eq: 4000,
+        pulse_canister: 120,
+        heavy_pulse_module: 40
+    }),
+    BASE_PRICES: Object.freeze({
+        ore: 80,
+        org: 150,
+        eq: 300,
+        pulse_canister: 7,
+        heavy_pulse_module: 26
+    })
 });
 
 export const STARFIELD = Object.freeze({

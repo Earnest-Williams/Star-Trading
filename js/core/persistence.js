@@ -1,5 +1,5 @@
 import { createInitialState, state } from '../state.js';
-import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
@@ -299,7 +299,7 @@ function normaliseCurrentLoadedGame() {
     }
     ensureFactionState();
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
-    COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
+    CARGO_COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
     state.sitesById = state.universe;
     if (!state.siteIdByCoord) state.siteIdByCoord = {};
     Object.values(state.universe).forEach(sector => {
@@ -332,6 +332,20 @@ function normaliseCurrentLoadedGame() {
         if (!port.factionId) port.factionId = PORT_TYPES[port.typeKey].factionId;
         if (!port.publicFactionId) port.publicFactionId = port.factionId;
         if (typeof port.hiddenFactionId === "undefined") port.hiddenFactionId = null;
+        if (!port.stock) port.stock = makeStock(0, 0, 0);
+        if (!port.maxStock) port.maxStock = makeStock(6000, 5000, 4000, 120, 40);
+        if (!port.basePrices) port.basePrices = { ore: 80, org: 150, eq: 300 };
+        MARKET_COMMODITIES.forEach(commodity => {
+            if (typeof port.stock[commodity] !== "number") port.stock[commodity] = 0;
+            if (typeof port.maxStock[commodity] !== "number") {
+                port.maxStock[commodity] = commodity === "pulse_canister" ? 120
+                    : commodity === "heavy_pulse_module" ? 40 : 1;
+            }
+            if (typeof port.basePrices[commodity] !== "number") {
+                port.basePrices[commodity] = commodity === "pulse_canister" ? 7
+                    : commodity === "heavy_pulse_module" ? 26 : 80;
+            }
+        });
     });
     Object.values(state.planets).forEach(planet => {
         if (!planet.stock) planet.stock = makeStock(0, 0, 0);
@@ -348,7 +362,7 @@ function normaliseCurrentLoadedGame() {
     if (!state.world.roles.startingPortSiteId) state.world.roles.startingPortSiteId = state.world.roles.homeSiteId;
     normaliseCaptains();
     normaliseTradeRoutes();
-    if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
+    if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(0, 0, 0), flows: 0 };
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
     state.missions.forEach(m => {

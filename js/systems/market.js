@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE, COMMODITIES, PORT_TYPES, FACTIONS } from '../constants.js';
+import { BALANCE, PORT_TYPES, FACTIONS } from '../constants.js';
 import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
 import { getInfluenceSpread, addSectorInfluence } from '../core/influence.js';
 import { getFactionPriceMultiplier, getFactionLabel, getFactionRep, addFactionRep, addFactionHeat, applyPoliticalEffect } from '../core/factions.js';
@@ -7,10 +7,10 @@ import { spendTime } from '../core/time.js';
 import { updatePoliticalAsksForTrade } from './guilds.js';
 
 export function getPortPrice(port, commodity, mode) {
-    const stock = Math.max(0, port.stock[commodity]);
-    const maxStock = Math.max(1, port.maxStock[commodity]);
+    const stock = Math.max(0, port.stock[commodity] || 0);
+    const maxStock = Math.max(1, port.maxStock[commodity] || 1);
     const stockRatio = Math.max(0, Math.min(1, stock / maxStock));
-    const base = port.basePrices[commodity];
+    const base = port.basePrices[commodity] || BALANCE.MIN_TRADE_PRICE;
     const marketPrice = mode === "buy"
         ? base * (0.75 + (1 - stockRatio) * 0.90)
         : base * (0.65 + (1 - stockRatio) * 1.20);
@@ -25,12 +25,12 @@ export function tradeCommodity(commodity, mode) {
     let amount = BALANCE.TRADE_BATCH;
     if (mode === "buy") {
         if (!type.sells.includes(commodity)) { log("This port does not sell that commodity."); return; }
-        amount = Math.min(amount, port.stock[commodity], getFreeHolds(), Math.floor(state.player.credits / price));
+        amount = Math.min(amount, port.stock[commodity] || 0, getFreeHolds(), Math.floor(state.player.credits / price));
         if (amount <= 0) { log("You cannot buy that right now. Check credits, port stock, and free holds."); return; }
         if (!spendTime(BALANCE.TRADE_TIME_MINUTES)) return;
         state.player.credits -= amount * price;
-        state.player.cargo[commodity] += amount;
-        port.stock[commodity] -= amount;
+        state.player.cargo[commodity] = (state.player.cargo[commodity] || 0) + amount;
+        port.stock[commodity] = Math.max(0, (port.stock[commodity] || 0) - amount);
         log(`Bought ${amount} ${formatCommodity(commodity)} for ${formatCredits(amount * price)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         if (amount >= BALANCE.TRADE_BATCH) {
             applyPoliticalEffect({ factionId: port.factionId, publicRep: 1, trust: 1, sectorId: state.player.currentSector, influence: 1, reason: "routine public trade", memoryKey: "reliableJobs" });
@@ -42,12 +42,12 @@ export function tradeCommodity(commodity, mode) {
         }
     } else {
         if (!type.buys.includes(commodity)) { log("This port does not buy that commodity."); return; }
-        amount = Math.min(amount, state.player.cargo[commodity]);
+        amount = Math.min(amount, state.player.cargo[commodity] || 0);
         if (amount <= 0) { log("You do not have that cargo to sell."); return; }
         if (!spendTime(BALANCE.TRADE_TIME_MINUTES)) return;
         state.player.credits += amount * price;
-        state.player.cargo[commodity] -= amount;
-        port.stock[commodity] = Math.min(port.maxStock[commodity], port.stock[commodity] + amount);
+        state.player.cargo[commodity] = Math.max(0, (state.player.cargo[commodity] || 0) - amount);
+        port.stock[commodity] = Math.min(port.maxStock[commodity] || 1, (port.stock[commodity] || 0) + amount);
         log(`Sold ${amount} ${formatCommodity(commodity)} for ${formatCredits(amount * price)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         if (amount >= BALANCE.TRADE_BATCH) {
             applyPoliticalEffect({ factionId: port.factionId, publicRep: 1, trust: 1, sectorId: state.player.currentSector, influence: 2, reason: "supply-chain support", memoryKey: "reliableJobs" });
