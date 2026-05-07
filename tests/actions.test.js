@@ -2,7 +2,7 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BALANCE } from '../js/constants.js';
+import { BALANCE, PORT_TYPES } from '../js/constants.js';
 import { createPlayer, generateUniverse } from '../js/core/universe.js';
 import { state, resetState } from '../js/state.js';
 import { fightPirates } from '../js/systems/combat.js';
@@ -20,13 +20,24 @@ function seedGame() {
     state.selectedSectorId = state.player.currentSector;
 }
 
+function findPortForCommodity(commodity, mode) {
+    const entry = Object.entries(state.ports).find(([, port]) => {
+        const portType = PORT_TYPES[port.typeKey];
+        if (!portType) return false;
+        const side = mode === 'buy' ? portType.sells : portType.buys;
+        return side.includes(commodity);
+    });
+    assert.ok(entry, `expected a port that can ${mode} ${commodity}`);
+    return { sectorId: Number(entry[0]), port: entry[1] };
+}
+
 describe('player actions — trading', () => {
     beforeEach(seedGame);
 
     it('buying from a port debits credits, fills cargo, reduces stock, and advances time', () => {
-        state.player.currentSector = 2;
-        state.selectedSectorId = 2;
-        const port = state.ports[2];
+        const { sectorId, port } = findPortForCommodity('ore', 'buy');
+        state.player.currentSector = sectorId;
+        state.selectedSectorId = sectorId;
         const price = getPortPrice(port, 'ore', 'buy');
         const startingCredits = state.player.credits;
         const startingStock = port.stock.ore;
@@ -41,10 +52,10 @@ describe('player actions — trading', () => {
     });
 
     it('selling to a port credits the player, empties cargo, increases stock, and advances time', () => {
-        state.player.currentSector = 3;
-        state.selectedSectorId = 3;
+        const { sectorId, port } = findPortForCommodity('ore', 'sell');
+        state.player.currentSector = sectorId;
+        state.selectedSectorId = sectorId;
         state.player.cargo.ore = BALANCE.TRADE_BATCH;
-        const port = state.ports[3];
         const price = getPortPrice(port, 'ore', 'sell');
         const startingCredits = state.player.credits;
         const startingStock = port.stock.ore;
