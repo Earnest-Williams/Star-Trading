@@ -225,16 +225,15 @@ function buildRouteMetricsMarketSignature() {
 
 function detectRouteMetricsRootChange() {
     const universeChanged = routeMetricsUniverseRef !== state.universe;
-    const marketChanged = universeChanged || routeMetricsPortsRef !== state.ports || routeMetricsPlanetsRef !== state.planets;
+    const marketInputsChanged = universeChanged || routeMetricsPortsRef !== state.ports || routeMetricsPlanetsRef !== state.planets;
     routeMetricsUniverseRef = state.universe;
     routeMetricsPortsRef = state.ports;
     routeMetricsPlanetsRef = state.planets;
-    return { universeChanged, marketChanged };
+    return { universeChanged, marketInputsChanged };
 }
 
-function getRouteMetricsMarketRevision() {
-    const rootChange = detectRouteMetricsRootChange();
-    if (rootChange.marketChanged) {
+function getRouteMetricsMarketRevision(rootChange = detectRouteMetricsRootChange()) {
+    if (rootChange.marketInputsChanged) {
         routeMarketMetricsCache.clear();
         routeMetricsMarketSignature = '';
         routeMetricsCachedMarketRevision = null;
@@ -257,9 +256,9 @@ function getRouteMetricsMarketRevision() {
     return routeMetricsCachedMarketRevision;
 }
 
-function ensureRoutePathMetricsCacheFresh() {
+function ensureRoutePathMetricsCacheFresh(rootChange = detectRouteMetricsRootChange()) {
     const revision = getWorldGraphRevision();
-    if (routePathMetricsRevision !== revision || detectRouteMetricsRootChange().universeChanged) {
+    if (routePathMetricsRevision !== revision || rootChange.universeChanged) {
         routePathMetricsCache.clear();
         routePathMetricsRevision = revision;
     }
@@ -295,7 +294,8 @@ function getProfitBand(originSector, destinationSector, commodity) {
 }
 
 export function deriveRouteMetrics(originSector, destinationSector) {
-    const revision = ensureRoutePathMetricsCacheFresh();
+    const rootChange = detectRouteMetricsRootChange();
+    const revision = ensureRoutePathMetricsCacheFresh(rootChange);
     const key = routeMetricKey(originSector, destinationSector);
     const pathCacheKey = routeMetricCacheKey(revision, key);
     let pathMetrics = routePathMetricsCache.get(pathCacheKey);
@@ -321,7 +321,7 @@ export function deriveRouteMetrics(originSector, destinationSector) {
         routePathMetricsCache.set(pathCacheKey, pathMetrics);
     }
 
-    const marketRevision = getRouteMetricsMarketRevision();
+    const marketRevision = getRouteMetricsMarketRevision(rootChange);
     const marketCacheKey = routeMetricCacheKey(marketRevision, key);
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
