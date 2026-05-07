@@ -6,9 +6,15 @@ const routeCache = new Map();
 let lastGraphSignature = '';
 let cachedRevision = null;
 let microtaskScheduled = false;
+let cachedUniverseRef = null;
 
 function numeric(value, fallback = 0) {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function compareGatesByDestination(a, b) {
+    if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
+    return String(a.id || '').localeCompare(String(b.id || ''));
 }
 
 function gateSortKey(gate) {
@@ -51,7 +57,7 @@ function buildGraphSignature() {
 }
 
 export function getWorldGraphRevision() {
-    if (cachedRevision !== null) return cachedRevision;
+    if (cachedRevision !== null && cachedUniverseRef === state.universe) return cachedRevision;
     const signature = buildGraphSignature();
     if (signature !== lastGraphSignature) {
         lastGraphSignature = signature;
@@ -59,6 +65,7 @@ export function getWorldGraphRevision() {
         routeCache.clear();
     }
     cachedRevision = state.worldGraphRevision;
+    cachedUniverseRef = state.universe;
     if (!microtaskScheduled) {
         microtaskScheduled = true;
         Promise.resolve().then(() => { microtaskScheduled = false; cachedRevision = null; });
@@ -71,6 +78,7 @@ export function invalidateRoutePlannerCache() {
     routeCache.clear();
     state.worldGraphRevision = numeric(state.worldGraphRevision) + 1;
     cachedRevision = null;
+    cachedUniverseRef = state.universe;
 }
 
 /** Force signature recheck on the next getWorldGraphRevision() call without bumping the revision counter.
@@ -79,6 +87,7 @@ export function invalidateRoutePlannerCache() {
 export function markGraphDirty() {
     cachedRevision = null;
     lastGraphSignature = '';
+    cachedUniverseRef = state.universe;
 }
 
 function getOpenGates(sectorId) {
@@ -90,9 +99,17 @@ function getOpenGates(sectorId) {
         .sort((a, b) => {
             const costDelta = edgeCost(sectorId, a) - edgeCost(sectorId, b);
             if (costDelta !== 0) return costDelta;
-            if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
-            return String(a.id || '').localeCompare(String(b.id || ''));
+            return compareGatesByDestination(a, b);
         });
+}
+
+function getFewestHopGates(sectorId) {
+    const sector = state.universe[sectorId];
+    if (!sector || !Array.isArray(sector.jumpGates)) return [];
+    return sector.jumpGates
+        .filter(gate => gate && gate.status !== 'closed' && state.universe[gate.destinationSectorId])
+        .slice()
+        .sort(compareGatesByDestination);
 }
 
 function reservePressureCost(site) {
@@ -126,12 +143,16 @@ function edgeCost(fromSectorId, gate) {
 }
 
 function buildSegment(fromSectorId, gate) {
+    const spanBase = numeric(BALANCE.GATE_PHYSICS?.VACUUM_SPAN, 1) || 1;
     return {
         fromSectorId,
         gateId: gate.id,
         corridorId: gate.corridorId,
         toSectorId: gate.destinationSectorId,
         destinationGateId: gate.destinationGateId,
+        effectiveSpanCost: numeric(gate.effectiveSpanCost, spanBase),
+        toll: numeric(gate.toll),
+        stability: numeric(gate.stability, 100),
         cost: edgeCost(fromSectorId, gate)
     };
 }
@@ -142,7 +163,7 @@ function reconstructPath(previous, startSectorId, goalSectorId) {
     while (current !== startSectorId) {
         const entry = previous.get(current);
         if (!entry) return null;
-        segments.push(entry.segment);
+        segments.push(buildSegment(entry.fromSectorId, entry.gate));
         current = entry.fromSectorId;
     }
     segments.reverse();
@@ -181,12 +202,54 @@ function planWeightedCorridorPath(startSectorId, goalSectorId) {
             distances.set(next, candidateCost);
             previous.set(next, {
                 fromSectorId: current.sectorId,
-                segment: buildSegment(current.sectorId, gate)
+                gate
             });
             frontier.push({ sectorId: next, cost: candidateCost });
         });
     }
     return null;
+}
+
+
+function planFewestHopCorridorPath(startSectorId, goalSectorId) {
+    if (!state.universe[startSectorId] || !state.universe[goalSectorId]) return null;
+    if (startSectorId === goalSectorId) return [];
+
+    const visited = new Set([startSectorId]);
+    const previous = new Map();
+    const queue = [startSectorId];
+    for (let index = 0; index < queue.length; index++) {
+        const currentSectorId = queue[index];
+        const gates = getFewestHopGates(currentSectorId);
+        for (const gate of gates) {
+            const next = gate.destinationSectorId;
+            if (visited.has(next)) continue;
+            previous.set(next, { fromSectorId: currentSectorId, gate });
+            if (next === goalSectorId) return reconstructPath(previous, startSectorId, goalSectorId);
+            visited.add(next);
+            queue.push(next);
+        }
+    }
+    return null;
+}
+
+export function findFewestHopCorridorPath(startSectorId, goalSectorId) {
+    const revision = getWorldGraphRevision();
+    const key = `${revision}:fewest:${startSectorId}->${goalSectorId}`;
+    if (routeCache.has(key)) {
+        const cached = routeCache.get(key);
+        return cached ? cached.map(segment => ({ ...segment })) : null;
+    }
+    const path = planFewestHopCorridorPath(startSectorId, goalSectorId);
+    routeCache.set(key, path);
+    return path ? path.map(segment => ({ ...segment })) : null;
+}
+
+export function findFewestHopSectorPath(startSectorId, goalSectorId) {
+    const corridorPath = findFewestHopCorridorPath(startSectorId, goalSectorId);
+    if (!corridorPath) return null;
+    if (corridorPath.length === 0) return [startSectorId];
+    return [startSectorId].concat(corridorPath.map(segment => segment.toSectorId));
 }
 
 export function findCheapestCorridorPath(startSectorId, goalSectorId) {
