@@ -10,8 +10,12 @@ import {
 } from '../config/chargen.js';
 import { TRAIT_CATEGORIES, getTraitDefinition } from '../config/traits.js';
 
-function maxStatSpend() {
+export function maxStatSpend() {
     return STAT_BUY_CURVE[STAT_BUY_CURVE.length - 1].to;
+}
+
+export function isPlatformEmployed(platformType) {
+    return platformType === "employed_salary" || platformType === "employed_commission";
 }
 
 function isObject(value) {
@@ -101,8 +105,8 @@ function validateTraitRules(spec, errors) {
     const origin = getTraitDefinition(spec.originTraitId);
     if (!origin) {
         errors.push(`Origin trait '${spec.originTraitId}' is not defined.`);
-    } else if (origin.category !== TRAIT_CATEGORIES.ORIGIN) {
-        errors.push(`Trait '${spec.originTraitId}' is not an Origin trait.`);
+    } else if (origin.category !== TRAIT_CATEGORIES.ORIGIN || !origin.chargenOnly) {
+        errors.push(`Trait '${spec.originTraitId}' is not a valid Origin trait for character generation.`);
     }
 
     if (unique(spec.careerTraitIds).length !== spec.careerTraitIds.length) {
@@ -115,8 +119,8 @@ function validateTraitRules(spec, errors) {
             errors.push(`Career trait '${traitId}' is not defined.`);
             return;
         }
-        if (trait.category !== TRAIT_CATEGORIES.CAREER) {
-            errors.push(`Trait '${traitId}' is not a Career trait.`);
+        if (trait.category !== TRAIT_CATEGORIES.CAREER || !trait.chargenOnly) {
+            errors.push(`Trait '${traitId}' is not a valid Career trait for character generation.`);
         }
         const exclusiveWith = trait.exclusiveWith || [];
         exclusiveWith.forEach(otherId => {
@@ -133,7 +137,7 @@ function validatePlatformRules(spec, errors) {
         errors.push(`Platform '${platformType}' is not defined.`);
         return;
     }
-    const isEmployed = platformType === "employed_salary" || platformType === "employed_commission";
+    const isEmployed = isPlatformEmployed(platformType);
     if (isEmployed) {
         const laneId = spec.platform.employerLaneId || DEFAULT_EMPLOYER_LANE_ID;
         if (!EMPLOYER_LANES.some(lane => lane.id === laneId)) {

@@ -1,6 +1,6 @@
 import { CHAR_DEFAULTS, CHAR_STATS, EMPLOYER_LANES, PLATFORM_PACKAGES } from '../config/chargen.js';
 import { CAREER_TRAITS, ORIGIN_TRAITS, getTraitDefinition } from '../config/traits.js';
-import { calcStatGain, getBuildSpend, validateBuild } from '../core/characterBuild.js';
+import { calcStatGain, getBuildSpend, maxStatSpend, validateBuild } from '../core/characterBuild.js';
 import { getChargenBuild } from './chargenState.js';
 
 function option(value, label, selected) {
@@ -24,7 +24,7 @@ export function renderChargenControls() {
     const statControls = CHAR_STATS.map(stat => {
         const spent = Number(build.statSpend[stat] || 0);
         const value = CHAR_DEFAULTS.STAT_BASE + calcStatGain(spent);
-        return `<label>${stat} <input id="chargen-${stat}" type="number" min="0" max="25" value="${spent}"> <span>${value}</span></label>`;
+        return `<label>${stat} <input id="chargen-${stat}" type="number" min="0" max="${maxStatSpend()}" value="${spent}"> <span>${value}</span></label>`;
     }).join("");
     const careerControls = CAREER_TRAITS.map(traitId => {
         const trait = getTraitDefinition(traitId);

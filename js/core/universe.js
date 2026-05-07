@@ -7,7 +7,7 @@ import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
-import { buildCharacterFromSpec, validateBuild } from './characterBuild.js';
+import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from './characterBuild.js';
 
 export { makeStock };
 
@@ -539,7 +539,7 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
     const { character, leftoverPoints } = buildCharacterFromSpec(buildSpec);
     const platformType = character.platform.type;
     const platformPackage = PLATFORM_PACKAGES[platformType] || PLATFORM_PACKAGES.ship_owned;
-    const isEmployed = platformType === "employed_salary" || platformType === "employed_commission";
+    const isEmployed = isPlatformEmployed(platformType);
     const laneId = isEmployed
         ? character.platform.employerLaneId || DEFAULT_EMPLOYER_LANE_ID
         : null;
