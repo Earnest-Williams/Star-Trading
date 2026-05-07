@@ -4,6 +4,7 @@ import { getSectorFactionId } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
 import { getSectorNeighbors } from "../core/navigation.js";
+import { MAP_UI } from "../config/ui.js";
 
 const mapInteractionUnsubscribers = new WeakMap();
 
@@ -16,19 +17,19 @@ export function getMapNodes() {
         return nodes;
     }
     const coords = ids.map(id => universe[id].coord || { x: id, y: 0, z: 0 });
-    const minX = Math.min(...coords.map(coord => coord.x - coord.z * 0.35));
-    const maxX = Math.max(...coords.map(coord => coord.x - coord.z * 0.35));
-    const minY = Math.min(...coords.map(coord => coord.y + coord.z * 0.22));
-    const maxY = Math.max(...coords.map(coord => coord.y + coord.z * 0.22));
+    const minX = Math.min(...coords.map(coord => coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X));
+    const maxX = Math.max(...coords.map(coord => coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X));
+    const minY = Math.min(...coords.map(coord => coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y));
+    const maxY = Math.max(...coords.map(coord => coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y));
     const spanX = Math.max(1, maxX - minX);
     const spanY = Math.max(1, maxY - minY);
     ids.forEach(id => {
         const coord = universe[id].coord || { x: id, y: 0, z: 0 };
-        const projectedX = coord.x - coord.z * 0.35;
-        const projectedY = coord.y + coord.z * 0.22;
+        const projectedX = coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X;
+        const projectedY = coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y;
         nodes[id] = {
-            x: 50 + ((projectedX - minX) / spanX) * 600,
-            y: 35 + ((projectedY - minY) / spanY) * 350
+            x: MAP_UI.LAYOUT.LEFT + ((projectedX - minX) / spanX) * MAP_UI.LAYOUT.WIDTH,
+            y: MAP_UI.LAYOUT.TOP + ((projectedY - minY) / spanY) * MAP_UI.LAYOUT.HEIGHT
         };
     });
     state.mapNodeCache = nodes;
@@ -48,7 +49,7 @@ export function drawMap() {
     const nodes = getMapNodes();
     const ids = Object.keys(universe).map(Number).filter(id => universe[id].charted || id === player.currentSector);
     ctx.strokeStyle = "rgba(0, 204, 153, 0.45)";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = MAP_UI.LINKS.WIDTH;
     ids.forEach(id => {
         getSectorNeighbors(id).forEach(target => {
             if (id < target && nodes[target] && universe[target].charted) {
@@ -69,29 +70,29 @@ export function drawMap() {
         const selected = id === selectedSectorId;
         if (selected) {
             ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 3;
+            ctx.lineWidth = MAP_UI.SELECTION.STROKE_WIDTH;
             ctx.beginPath();
-            ctx.arc(nodes[id].x, nodes[id].y, 17, 0, Math.PI * 2);
+            ctx.arc(nodes[id].x, nodes[id].y, MAP_UI.NODES.SELECTED_RADIUS, 0, Math.PI * 2);
             ctx.stroke();
         }
         ctx.fillStyle = fill;
         ctx.beginPath();
-        ctx.arc(nodes[id].x, nodes[id].y, 12, 0, Math.PI * 2);
+        ctx.arc(nodes[id].x, nodes[id].y, MAP_UI.NODES.RADIUS, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#001122";
-        ctx.font = "13px VT323";
-        ctx.fillText(String(id), nodes[id].x - 6, nodes[id].y + 4);
+        ctx.font = MAP_UI.LABELS.ID_FONT;
+        ctx.fillText(String(id), nodes[id].x + MAP_UI.LABELS.ID_OFFSET_X, nodes[id].y + MAP_UI.LABELS.ID_OFFSET_Y);
         const faction = FACTIONS[getSectorFactionId(id)];
         if (faction) {
             ctx.fillStyle = faction.color;
-            ctx.font = "14px VT323";
-            ctx.fillText(faction.icon, nodes[id].x + 9, nodes[id].y - 9);
+            ctx.font = MAP_UI.LABELS.FACTION_FONT;
+            ctx.fillText(faction.icon, nodes[id].x + MAP_UI.LABELS.FACTION_OFFSET_X, nodes[id].y + MAP_UI.LABELS.FACTION_OFFSET_Y);
         }
         const localCaptains = getCaptainsInSector(id, true);
         if (localCaptains.length > 0) {
             ctx.fillStyle = "#ffffff";
-            ctx.font = "13px VT323";
-            ctx.fillText("C" + localCaptains.length, nodes[id].x - 18, nodes[id].y - 12);
+            ctx.font = MAP_UI.LABELS.CAPTAIN_FONT;
+            ctx.fillText("C" + localCaptains.length, nodes[id].x + MAP_UI.LABELS.CAPTAIN_OFFSET_X, nodes[id].y + MAP_UI.LABELS.CAPTAIN_OFFSET_Y);
         }
     });
 }
@@ -117,7 +118,7 @@ export function setupMapInteraction() {
             const distance = Math.sqrt(dx * dx + dy * dy);
             if (distance < closestDistance) { closestDistance = distance; closestId = Number(id); }
         });
-        if (closestId && closestDistance <= 24) selectSector(closestId);
+        if (closestId && closestDistance <= MAP_UI.NODES.CLICK_RADIUS) selectSector(closestId);
     };
 
     canvas.dataset.bound = "1";

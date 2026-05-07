@@ -10,6 +10,7 @@ import { prepareMissionOpportunity, activePortSectors, makeBaseMission } from '.
 import { generateFactionAsks } from '../systems/guilds.js';
 import { PORT_TYPES } from '../constants.js';
 import { getSectorNeighbors } from '../core/navigation.js';
+import { POLITICS } from '../config/politics.js';
 
 export function getSectorPoliticalMemory(sector) {
     if (!sector.politicalMemory) {
@@ -71,15 +72,17 @@ export function runSectorPoliticsDaily() {
 
 export function processContestedSector(sector) {
     const spread = getInfluenceSpread(sector.id);
-    if (spread.length < 2) return false;
+    if (spread.length < POLITICS.CONTESTED.MIN_FACTION_SPREAD) return false;
     const first = spread[0], second = spread[1];
     const gap = first.value - second.value;
     if (gap > BALANCE.CONTESTED_GAP) return false;
     const memory = getSectorPoliticalMemory(sector);
     const contestedDays = memory.contestedDays || 0;
     const topPair = [first.id, second.id];
-    if (topPair.includes("vc") && sector.pirateThreat < 6 && random() < 0.14 + contestedDays * 0.015) {
-        sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
+    if (topPair.includes("vc") && sector.pirateThreat < POLITICS.CONTESTED.PIRATE_SURGE_CAP
+        && random() < POLITICS.CONTESTED.PIRATE_SURGE_BASE_CHANCE
+            + contestedDays * POLITICS.CONTESTED.PIRATE_SURGE_DAILY_CHANCE) {
+        sector.pirateThreat = Math.min(POLITICS.CONTESTED.PIRATE_SURGE_CAP, sector.pirateThreat + 1);
         addWorldEvent({ type: "pirate_surge", factionId: "vc", sectorId: sector.id, text: `Contested control in sector ${sector.id} gave raiders room to surge. Pirate threat is now ${sector.pirateThreat}.`, importance: 3, alert: sector.id === state.player.currentSector });
     }
     if (topPair.includes("sda") && sector.pirateThreat > 0 && random() < 0.18 + Math.max(0, getFactionRep("sda")) / 4000) {
@@ -88,7 +91,7 @@ export function processContestedSector(sector) {
     }
     const politicalOpen = state.missions.filter(m => m.status === "available" && m.kind === "political_contest").length;
     if (politicalOpen < BALANCE.POLITICAL_MISSION_LIMIT && random() < 0.18 + contestedDays * 0.01) {
-        const sponsor = random() < 0.58 ? first.id : second.id;
+        const sponsor = random() < POLITICS.CONTESTED.MISSION_SPONSOR_TOP_CHANCE ? first.id : second.id;
         const rival = sponsor === first.id ? second.id : first.id;
         const mission = makeContestMission(sector, sponsor, rival);
         if (mission) {
@@ -105,25 +108,27 @@ export function applyFactionSectorEffects(sector) {
     const fu = sector.influence.fu || 0;
     const hc = sector.influence.hc || 0;
     const vc = sector.influence.vc || 0;
-    if (sda >= 55 && sector.pirateThreat > 0 && random() < Math.min(0.45, (sda - 45) / 130)) {
+    if (sda >= POLITICS.SECTOR_EFFECTS.SDA_THRESHOLD && sector.pirateThreat > 0 && random() < Math.min(POLITICS.SECTOR_EFFECTS.SDA_MAX_REDUCTION_CHANCE,
+        (sda - POLITICS.SECTOR_EFFECTS.SDA_CHANCE_OFFSET) / POLITICS.SECTOR_EFFECTS.SDA_CHANCE_DIVISOR)) {
         sector.pirateThreat = Math.max(0, sector.pirateThreat - 1);
     }
-    if (hc >= 55 && sector.asteroids) {
-        if (typeof sector.asteroids.maxOre !== "number") sector.asteroids.maxOre = Math.max(sector.asteroids.ore, 2500);
+    if (hc >= POLITICS.SECTOR_EFFECTS.HC_THRESHOLD && sector.asteroids) {
+        if (typeof sector.asteroids.maxOre !== "number") sector.asteroids.maxOre = Math.max(sector.asteroids.ore, POLITICS.SECTOR_EFFECTS.HC_MIN_MAX_ORE);
         const regen = Math.floor((12 + hc * 0.65) * (sector.asteroids.richness || 1));
         sector.asteroids.ore = Math.min(sector.asteroids.maxOre, sector.asteroids.ore + regen);
     }
     const planet = state.planets[sector.id];
-    if (fu >= 55 && planet && planet.owner && planet.colonists > 0 && random() < 0.28) {
-        const growth = 1 + Math.floor(fu / 35);
+    if (fu >= POLITICS.SECTOR_EFFECTS.FU_THRESHOLD && planet && planet.owner && planet.colonists > 0 && random() < POLITICS.SECTOR_EFFECTS.FU_GROWTH_CHANCE) {
+        const growth = 1 + Math.floor(fu * POLITICS.SECTOR_EFFECTS.FU_COLONIST_GROWTH_RATE);
         planet.colonists += growth;
         if (typeof planet.satisfaction === "number") planet.satisfaction = Math.min(100, planet.satisfaction + 1);
     }
-    if (vc >= 50 && random() < Math.min(0.32, (vc - 40) / 150) && sector.pirateThreat < 6) {
-        sector.pirateThreat = Math.min(6, sector.pirateThreat + 1);
+    if (vc >= POLITICS.SECTOR_EFFECTS.VC_PIRATE_THRESHOLD && random() < Math.min(POLITICS.SECTOR_EFFECTS.VC_PIRATE_MAX_CHANCE,
+        (vc - POLITICS.SECTOR_EFFECTS.VC_PIRATE_CHANCE_OFFSET) / POLITICS.SECTOR_EFFECTS.VC_PIRATE_CHANCE_DIVISOR) && sector.pirateThreat < POLITICS.SECTOR_EFFECTS.VC_PIRATE_CAP) {
+        sector.pirateThreat = Math.min(POLITICS.SECTOR_EFFECTS.VC_PIRATE_CAP, sector.pirateThreat + 1);
     }
     const port = state.ports[sector.id];
-    if (vc >= 58 && port && !port.hiddenFactionId && random() < 0.055) {
+    if (vc >= POLITICS.SECTOR_EFFECTS.VC_FRONT_THRESHOLD && port && !port.hiddenFactionId && random() < POLITICS.SECTOR_EFFECTS.VC_FRONT_CHANCE) {
         port.hiddenFactionId = "vc";
         sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: "vc", suspicion: 12 + Math.floor(random() * 18) };
     }
@@ -137,12 +142,17 @@ export function updateFrontDaily(sector) {
     if (!FACTIONS[front.hiddenFactionId]) { sector.front = null; return; }
     const hiddenInfluence = sector.influence[front.hiddenFactionId] || 0;
     const publicInfluence = sector.influence[front.publicFactionId] || 0;
-    let suspicionGain = 1 + Math.floor(hiddenInfluence / 30);
+    let suspicionGain = POLITICS.FRONTS.SUSPICION_BASE_GAIN
+        + Math.floor(hiddenInfluence / POLITICS.FRONTS.SUSPICION_INFLUENCE_DIVISOR);
     if (sector.surveyed) suspicionGain += 1;
     if (sector.pirateThreat >= 3 && front.hiddenFactionId === "vc") suspicionGain += 1;
-    if (publicInfluence > hiddenInfluence + 20 && random() < 0.45) suspicionGain -= 1;
+    if (publicInfluence > hiddenInfluence + POLITICS.FRONTS.HIDDEN_ADVANTAGE_THRESHOLD
+        && random() < POLITICS.FRONTS.PUBLIC_ADVANTAGE_CHANCE) {
+        suspicionGain -= POLITICS.FRONTS.PUBLIC_ADVANTAGE_REDUCTION;
+    }
     front.suspicion = clampRange((front.suspicion || 0) + suspicionGain, 0, 100);
-    if (front.suspicion >= BALANCE.FRONT_EXPOSURE_THRESHOLD && random() < (sector.surveyed ? 0.68 : 0.38)) exposeFrontOperation(sector);
+    if (front.suspicion >= BALANCE.FRONT_EXPOSURE_THRESHOLD && random() < (sector.surveyed
+        ? POLITICS.FRONTS.SURVEYED_EXPOSURE_CHANCE : POLITICS.FRONTS.UNSURVEYED_EXPOSURE_CHANCE)) exposeFrontOperation(sector);
 }
 
 export function exposeFrontOperation(sector) {
@@ -155,10 +165,10 @@ export function exposeFrontOperation(sector) {
     sector.front = null;
     normaliseSectorInfluence(sector);
     sector.influence[hiddenId] = clampRange((sector.influence[hiddenId] || 0) - 9, 0, 100);
-    if (MAJOR_FACTIONS.includes(publicId)) addSectorInfluence(sector.id, publicId, 4, "front operation exposed");
-    if (hiddenId === "vc") addSectorInfluence(sector.id, "sda", 2, "anti-front enforcement action");
-    adjustFactionRelation(publicId, hiddenId, -3, `front exposed in sector ${sector.id}`);
-    addWorldEvent({ type: "front_exposed", factionId: hiddenId, sectorId: sector.id, text: `${FACTIONS[hiddenId].short} front activity in sector ${sector.id} was exposed and publicly dismantled.`, importance: 4, alert: true });
+    if (MAJOR_FACTIONS.includes(publicId)) addSectorInfluence(sector.id, publicId, POLITICS.FRONTS.PUBLIC_INFLUENCE_ON_EXPOSED, "front operation exposed");
+    if (hiddenId === "vc") addSectorInfluence(sector.id, "sda", POLITICS.FRONTS.SDA_INFLUENCE_ON_VC_EXPOSED, "anti-front enforcement action");
+    adjustFactionRelation(publicId, hiddenId, POLITICS.FRONTS.RELATION_ON_EXPOSED, `front exposed in sector ${sector.id}`);
+    addWorldEvent({ type: "front_exposed", factionId: hiddenId, sectorId: sector.id, text: `${FACTIONS[hiddenId].short} front activity in sector ${sector.id} was exposed and publicly dismantled.`, importance: POLITICS.FRONTS.EVENT_IMPORTANCE, alert: true });
 }
 
 export function runFactionExpansion() {
@@ -172,14 +182,15 @@ export function runFactionExpansion() {
             if (!target) return;
             const before = getDominantInfluence(targetId);
             if (before === strongest.id && (target.influence[strongest.id] || 0) >= 72) return;
-            let chance = (strongest.value - 58) / 260;
-            if (strongest.id === "sda" && source.region === "Core") chance += 0.025;
-            if (strongest.id === "fu" && target.region === "Frontier") chance += 0.035;
-            if (strongest.id === "hc" && (target.asteroids || state.ports[targetId])) chance += 0.035;
-            if (strongest.id === "vc" && target.region === "Badlands") chance += 0.055;
+            let chance = (strongest.value - POLITICS.EXPANSION.SOURCE_THRESHOLD) / POLITICS.EXPANSION.CHANCE_DIVISOR;
+            if (strongest.id === "sda" && source.region === "Core") chance += POLITICS.EXPANSION.SDA_CORE_BONUS;
+            if (strongest.id === "fu" && target.region === "Frontier") chance += POLITICS.EXPANSION.FU_FRONTIER_BONUS;
+            if (strongest.id === "hc" && (target.asteroids || state.ports[targetId])) chance += POLITICS.EXPANSION.HC_ASTEROID_BONUS;
+            if (strongest.id === "vc" && target.region === "Badlands") chance += POLITICS.EXPANSION.VC_BADLANDS_BONUS;
             if (getSectorStatusLabel(targetId) === "Contested") chance += 0.035;
             if (random() > Math.min(0.32, chance)) return;
-            addSectorInfluence(targetId, strongest.id, strongest.value >= 82 ? 2 : 1, "");
+            addSectorInfluence(targetId, strongest.id, strongest.value >= POLITICS.EXPANSION.STRONG_INFLUENCE_THRESHOLD
+                ? POLITICS.EXPANSION.STRONG_GAIN : POLITICS.EXPANSION.NORMAL_GAIN, "");
             const after = getDominantInfluence(targetId);
             if (after !== before) recordDominanceChange(target, before, after, `expansion pressure from sector ${source.id}`);
         });
@@ -191,14 +202,12 @@ export function makeContestMission(sector, sponsorId, rivalId) {
     const originCandidates = activePortSectors().sort((a, b) => Math.abs(a - sector.id) - Math.abs(b - sector.id));
     const origin = state.ports[sector.id] ? sector.id : originCandidates[0];
     if (!origin) return null;
-    const templates = {
-        sda: { verb: "Run patrol pressure", operation: "patrol", minutes: 90, reward: 1900 },
-        fu: { verb: "Rally frontier support", operation: "rally", minutes: 75, reward: 1750 },
-        hc: { verb: "Secure industrial claims", operation: "claims", minutes: 90, reward: 2050 },
-        vc: { verb: "Disrupt official control", operation: "disrupt", minutes: 75, reward: 2200 }
-    };
+    const templates = POLITICS.CONTEST_MISSIONS.TEMPLATES;
     const template = templates[sponsorId] || templates.fu;
-    const m = makeBaseMission(`${template.verb} in sector ${sector.id}`, origin, template.reward + (sector.pirateThreat || 0) * 220 + sector.id * 12, 4);
+    const reward = template.reward
+        + (sector.pirateThreat || 0) * POLITICS.CONTEST_MISSIONS.PIRATE_THREAT_REWARD
+        + sector.id * POLITICS.CONTEST_MISSIONS.SECTOR_REWARD;
+    const m = makeBaseMission(`${template.verb} in sector ${sector.id}`, origin, reward, POLITICS.CONTEST_MISSIONS.EXPIRES_DAYS);
     m.type = "contest";
     m.kind = "political_contest";
     m.factionId = sponsorId;

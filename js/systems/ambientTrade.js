@@ -7,14 +7,20 @@ import { findShortestSectorPath, getSectorPathDistance, getCorridorRiskForPath }
 function getNodeSurplus(node, commodity) {
     const stock = node.stock[commodity] || 0;
     const maxStock = Math.max(1, node.maxStock[commodity] || 1);
-    const preferredFloor = node.sells.includes(commodity) ? maxStock * 0.25 : maxStock * 0.55;
+    const preferredFloorRatio = node.sells.includes(commodity)
+        ? BALANCE.AMBIENT_TRADE.NODE_TARGETS.SELLER_SURPLUS_FLOOR
+        : BALANCE.AMBIENT_TRADE.NODE_TARGETS.NONSELLER_SURPLUS_FLOOR;
+    const preferredFloor = maxStock * preferredFloorRatio;
     return Math.max(0, Math.floor(stock - preferredFloor));
 }
 
 function getNodeShortage(node, commodity) {
     const stock = node.stock[commodity] || 0;
     const maxStock = Math.max(1, node.maxStock[commodity] || 1);
-    const desired = node.buys.includes(commodity) ? maxStock * 0.62 : maxStock * 0.35;
+    const desiredRatio = node.buys.includes(commodity)
+        ? BALANCE.AMBIENT_TRADE.NODE_TARGETS.BUYER_SHORTAGE_TARGET
+        : BALANCE.AMBIENT_TRADE.NODE_TARGETS.NONBUYER_SHORTAGE_TARGET;
+    const desired = maxStock * desiredRatio;
     return Math.max(0, Math.floor(desired - stock));
 }
 
@@ -47,7 +53,7 @@ export function runAmbientTradeDaily() {
                 const path = findShortestSectorPath(sourceItem.node.sectorId, sinkItem.node.sectorId);
                 const risk = getCorridorRiskForPath(path) || 0;
                 if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity)) return;
-                const distanceFactor = 1 / (1 + Math.max(0, distance - 1) * BALANCE.AMBIENT_TRADE.DISTANCE_PENALTY);
+                const distanceFactor = 1 / (1 + Math.max(0, distance - BALANCE.AMBIENT_TRADE.DISTANCE_BASELINE) * BALANCE.AMBIENT_TRADE.DISTANCE_PENALTY);
                 const riskFactor = 1 / (1 + risk * BALANCE.AMBIENT_TRADE.RISK_PENALTY);
                 const jitter = 1 - BALANCE.AMBIENT_TRADE.JITTER + random() * BALANCE.AMBIENT_TRADE.JITTER * 2;
                 const exportCap = Math.floor(sourceItem.surplus * BALANCE.AMBIENT_TRADE.MAX_DAILY_EXPORT_SHARE);
@@ -55,7 +61,7 @@ export function runAmbientTradeDaily() {
                 const amount = Math.max(0, Math.min(base, exportCap, sourceItem.surplus, sinkRemainingCap));
                 if (amount <= 0) return;
                 sourceItem.node.stock[commodity] = Math.max(0, (sourceItem.node.stock[commodity] || 0) - amount);
-                sinkItem.node.stock[commodity] = Math.min(sinkItem.node.maxStock[commodity] || 9999, (sinkItem.node.stock[commodity] || 0) + amount);
+                sinkItem.node.stock[commodity] = Math.min(sinkItem.node.maxStock[commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP, (sinkItem.node.stock[commodity] || 0) + amount);
                 sourceItem.surplus -= amount;
                 sinkRemainingCap -= amount;
                 summary.moved[commodity] += amount;

@@ -3,6 +3,8 @@ import { BALANCE } from '../constants.js';
 import { EventBus } from '../events.js';
 import { log } from '../utils.js';
 
+const MINUTES_PER_HOUR = 60;
+
 const dailyHooks = [];
 const hourlyHooks = [];
 
@@ -74,10 +76,10 @@ export function advanceTime(minutes, reason = "time passes") {
     const startAbsolute = getAbsoluteMinute();
     const endAbsolute = startAbsolute + minutes;
     let boundary;
-    if (startAbsolute % 60 === 0) {
-        boundary = startAbsolute + 60;
+    if (startAbsolute % MINUTES_PER_HOUR === 0) {
+        boundary = startAbsolute + MINUTES_PER_HOUR;
     } else {
-        boundary = Math.ceil(startAbsolute / 60) * 60;
+        boundary = Math.ceil(startAbsolute / MINUTES_PER_HOUR) * MINUTES_PER_HOUR;
     }
     while (boundary <= endAbsolute) {
         setTimeFromAbsoluteMinute(boundary);
@@ -86,7 +88,7 @@ export function advanceTime(minutes, reason = "time passes") {
         } else {
             runHourlyWorldTick(reason);
         }
-        boundary += 60;
+        boundary += MINUTES_PER_HOUR;
     }
     setTimeFromAbsoluteMinute(endAbsolute);
     EventBus.emit("time_advanced");
