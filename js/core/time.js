@@ -1,9 +1,8 @@
 import { state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE, MINUTES_PER_HOUR } from '../constants.js';
 import { EventBus } from '../events.js';
 import { log } from '../utils.js';
 
-const MINUTES_PER_HOUR = 60;
 
 const dailyHooks = [];
 const hourlyHooks = [];

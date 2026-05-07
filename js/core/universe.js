@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
-import { PORT_DEFAULTS, STARFIELD, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../config/worldgen.js';
+import { GATE_DEFAULTS, PLANET_DEFAULTS, PORT_DEFAULTS, STARFIELD, WORLDGEN_ANCHORS, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../config/worldgen.js';
 import { STARTER_PLAYER, STARTER_SHIP } from '../config/player.js';
 import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
@@ -49,8 +49,10 @@ export function makePort(typeKey) {
             PORT_DEFAULTS.STOCK.ORE_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORE_SPAN),
             PORT_DEFAULTS.STOCK.ORG_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORG_SPAN),
             PORT_DEFAULTS.STOCK.EQ_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.EQ_SPAN),
-            Math.floor(PORT_DEFAULTS.MAX_STOCK.pulse_canister * (0.35 + rng() * 0.45)),
-            Math.floor(PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module * (0.20 + rng() * 0.35))
+            Math.floor(PORT_DEFAULTS.MAX_STOCK.pulse_canister * (PORT_DEFAULTS.STOCK.PULSE_CANISTER_FILL_BASE
+                + rng() * PORT_DEFAULTS.STOCK.PULSE_CANISTER_FILL_SPAN)),
+            Math.floor(PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module * (PORT_DEFAULTS.STOCK.HEAVY_PULSE_MODULE_FILL_BASE
+                + rng() * PORT_DEFAULTS.STOCK.HEAVY_PULSE_MODULE_FILL_SPAN))
         ),
         maxStock: makeStock(
             PORT_DEFAULTS.MAX_STOCK.ore,
@@ -65,9 +67,9 @@ export function makePort(typeKey) {
 
 export function makePlanet(typeKey) {
     return {
-        typeKey, owner: null, factionId: null, colonists: 0,
-        stock: makeStock(0, 0, 0), satisfaction: 60, shortages: makeStock(0, 0, 0),
-        buildings: { habitat: 0, mine: 0, farm: 0, factory: 0, defense: 0 }
+        typeKey, owner: null, factionId: null, colonists: PLANET_DEFAULTS.COLONISTS,
+        stock: makeStock(0, 0, 0), satisfaction: PLANET_DEFAULTS.SATISFACTION, shortages: makeStock(0, 0, 0),
+        buildings: { ...PLANET_DEFAULTS.BUILDINGS }
     };
 }
 
@@ -221,7 +223,10 @@ function generateSiteCoordinate(archetype, centers, index) {
 function createSparseSites(config) {
     const archetype = BALANCE.WORLDGEN.ARCHETYPES[config.archetypeKey]
         || BALANCE.WORLDGEN.ARCHETYPES[BALANCE.WORLDGEN.DEFAULT_ARCHETYPE];
-    const centers = generateClusterCenters(archetype, Math.max(5, Math.ceil(config.occupiedSites / 12)));
+    const centers = generateClusterCenters(
+        archetype,
+        Math.max(WORLDGEN_ANCHORS.CENTER_COUNT_MIN, Math.ceil(config.occupiedSites / WORLDGEN_ANCHORS.SITES_PER_CLUSTER_CENTER))
+    );
     const occupiedCoords = new Set();
     const sites = {};
     const siteIdByCoord = {};
@@ -231,7 +236,7 @@ function createSparseSites(config) {
         occupiedCoords.add(coordKey(coord));
         let siteType = pickWeighted(BALANCE.WORLDGEN.SITE_TYPE_MIX);
         let richness = pickWeighted(BALANCE.WORLDGEN.RICHNESS_MIX);
-        if (siteType === "way_station") richness = rng() < 0.65 ? "sparse" : "strategic";
+        if (siteType === "way_station") richness = rng() < WORLDGEN_ANCHORS.WAY_STATION_SPARSE_CHANCE ? "sparse" : "strategic";
         const region = id <= Math.ceil(config.occupiedSites * WORLDGEN_GEOMETRY.REGIONS.CORE_FRACTION) ? "Core"
             : id <= Math.ceil(config.occupiedSites * WORLDGEN_GEOMETRY.REGIONS.FRONTIER_FRACTION) ? "Frontier" : "Badlands";
         sites[id] = {
@@ -282,7 +287,7 @@ export function addJumpGateCorridor(a, b, options = {}) {
         status: options.status || "active",
         owningFactionId: options.owningFactionId || null,
         toll: options.toll || 0,
-        stability: typeof options.stability === "number" ? options.stability : 100,
+        stability: typeof options.stability === "number" ? options.stability : GATE_DEFAULTS.STABILITY,
         effectiveSpanCost,
         sourcePulseCredits: pulseCost.sourceCredits,
         anchorPulseCredits: pulseCost.anchorCredits,
@@ -331,17 +336,15 @@ function buildCorridors(config) {
 
 function scoreAnchorCandidate(id) {
     const site = state.universe[id];
-    const richnessScore = { hub: 0, settled: 1, strategic: 2, developing: 3, sparse: 4, barren: 5 };
-    const typeScore = site.siteType === "stellar_system" ? 0
-        : site.siteType === "multiple_star_system" ? 1
-            : site.siteType === "circumbinary_system" ? 2 : 3;
+    const richnessScore = WORLDGEN_ANCHORS.RICHNESS_SCORE[site.richness] ?? WORLDGEN_ANCHORS.DEFAULT_RICHNESS_SCORE;
+    const typeScore = WORLDGEN_ANCHORS.TYPE_SCORE[site.siteType] ?? WORLDGEN_ANCHORS.DEFAULT_TYPE_SCORE;
     const coord = site.coord || { x: id, y: 0, z: 0 };
     const planeDistance = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
-    return (richnessScore[site.richness] ?? 6) * 12
-        + typeScore * 5
-        + (site.metricShear || 0) * 4
-        + Math.abs(planeDistance - 14) * 0.05
-        + id * 0.0001;
+    return richnessScore * WORLDGEN_ANCHORS.RICHNESS_SCORE_MULTIPLIER
+        + typeScore * WORLDGEN_ANCHORS.TYPE_SCORE_MULTIPLIER
+        + (site.metricShear || 0) * WORLDGEN_ANCHORS.SHEAR_SCORE_MULTIPLIER
+        + Math.abs(planeDistance - WORLDGEN_ANCHORS.IDEAL_PLANE_DISTANCE) * WORLDGEN_ANCHORS.PLANE_DISTANCE_MULTIPLIER
+        + id * WORLDGEN_ANCHORS.ID_TIEBREAKER_MULTIPLIER;
 }
 
 function getNearestSiteIds(originId, candidates) {
