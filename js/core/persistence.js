@@ -11,7 +11,7 @@ import { prepareMissionOpportunity } from '../systems/missions.js';
 import { createContactState } from './factions.js';
 import { makeStock, restoreSessionRng } from '../utils.js';
 import { log } from '../utils.js';
-import { createCharacter } from './characters.js';
+import { createCharacter, normaliseCharacter } from './characters.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -196,12 +196,12 @@ export function migrateSave(data) {
     if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
     // v14: character block added to player and captains
     if (v < 14) {
-        if (data.player && !data.player.character) {
-            data.player.character = createCharacter();
+        if (data.player) {
+            data.player.character = normaliseCharacter(data.player.character || createCharacter());
         }
         if (data.captains && typeof data.captains === "object") {
             Object.values(data.captains).forEach(captain => {
-                if (!captain.character) captain.character = createCharacter();
+                captain.character = normaliseCharacter(captain.character || createCharacter());
             });
         }
     }
@@ -209,7 +209,13 @@ export function migrateSave(data) {
     return data;
 }
 
-const SAVE_STATE_FIELDS = [
+// Persisted state manifest: this is the only list buildSaveData() may serialize.
+// Persisted fields below are durable game data needed to resume a run.
+// Derived/transient fields intentionally excluded include sitesById, starField,
+// selectedSectorId, currentScreen, reputationTab, selectedCaptainId,
+// mapNodeCache, and worldGraphRevision. Add new save fields here first so tests
+// catch accidental cache/UI leakage or serializer drift.
+export const SAVE_STATE_FIELDS = [
     "player",
     "universe",
     "siteIdByCoord",
@@ -314,7 +320,7 @@ function normaliseCurrentLoadedGame() {
     }
     ensureFactionState();
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
-    if (!state.player.character) state.player.character = createCharacter();
+    state.player.character = normaliseCharacter(state.player.character || createCharacter());
     CARGO_COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
     state.sitesById = state.universe;
     if (!state.siteIdByCoord) state.siteIdByCoord = {};

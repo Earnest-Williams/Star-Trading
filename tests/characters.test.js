@@ -8,7 +8,9 @@ import {
     calcStatGain,
     calcPointsForStatValue,
     validateBuild,
-    buildCharacterFromSpec
+    buildCharacterFromSpec,
+    normaliseCharacter,
+    CHARACTER_SCHEMA_FIELDS
 } from '../js/core/characters.js';
 import { migrateSave } from '../js/core/persistence.js';
 import { SAVE_VERSION, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
@@ -252,6 +254,34 @@ describe('buildCharacterFromSpec', () => {
     });
 });
 
+// ─── shared character schema ────────────────────────────────────────────────
+
+describe('shared character schema', () => {
+    it('normalises partial player and captain character blocks into one schema', () => {
+        const normalised = normaliseCharacter({
+            stats: { nerve: 72 },
+            traits: 'legacy-trait',
+            platform: { type: 'employed_salary' },
+            legacyNote: 'preserved'
+        });
+
+        const schemaKeys = Object.keys(normalised)
+            .filter(key => CHARACTER_SCHEMA_FIELDS.includes(key));
+        assert.deepEqual(new Set(schemaKeys), new Set(CHARACTER_SCHEMA_FIELDS));
+        assert.equal(normalised.stats.nerve, 72);
+        assert.equal(normalised.stats.tradecraft, CHAR_DEFAULTS.STAT_BASE);
+        assert.equal(normalised.stats.fieldcraft, CHAR_DEFAULTS.STAT_BASE);
+        assert.equal(normalised.stats.command, CHAR_DEFAULTS.STAT_BASE);
+        assert.deepEqual(normalised.traits, []);
+        assert.deepEqual(normalised.careerTraitIds, []);
+        assert.equal(normalised.originTraitId, null);
+        assert.equal(normalised.platform.type, 'employed_salary');
+        assert.equal(normalised.platform.employerLaneId, null);
+        assert.deepEqual(normalised.contacts, []);
+        assert.equal(normalised.legacyNote, 'preserved');
+    });
+});
+
 // ─── save migration — character block ───────────────────────────────────────
 
 describe('migrateSave — v14 character block injection', () => {
@@ -263,6 +293,24 @@ describe('migrateSave — v14 character block injection', () => {
         assert.equal(result.player.character.stats.nerve, CHAR_DEFAULTS.STAT_BASE);
         assert.equal(result.player.character.originTraitId, null);
         assert.equal(result.player.character.platform.type, 'ship_owned');
+    });
+
+    it('fills missing fields on legacy partial player and captain characters', () => {
+        const save = minimalSave(13);
+        save.player.character = { stats: { nerve: 70 } };
+        save.captains = {
+            npc_1: { id: 'npc_1', character: { stats: { command: 66 } } }
+        };
+
+        const result = migrateSave(save);
+
+        assert.equal(result.player.character.stats.nerve, 70);
+        assert.equal(result.player.character.stats.tradecraft, CHAR_DEFAULTS.STAT_BASE);
+        assert.deepEqual(result.player.character.traits, []);
+        assert.equal(result.player.character.platform.type, 'ship_owned');
+        assert.equal(result.captains.npc_1.character.stats.command, 66);
+        assert.equal(result.captains.npc_1.character.stats.nerve, CHAR_DEFAULTS.STAT_BASE);
+        assert.deepEqual(result.captains.npc_1.character.contacts, []);
     });
 
     it('does not overwrite character already present in player', () => {
