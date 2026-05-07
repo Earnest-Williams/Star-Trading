@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { state, resetState } from '../js/state.js';
+import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
 import { getSectorNeighbors, findShortestSectorPath, getSectorPathDistance, areSectorsConnected } from '../js/core/navigation.js';
 
@@ -27,6 +28,13 @@ describe('jump-gate corridor navigation', () => {
         addJumpGateCorridor(1, 2);
         addJumpGateCorridor(2, 4);
         addJumpGateCorridor(1, 3);
+        assert.deepEqual(findShortestSectorPath(1, 4), [1, 2, 4]);
+    });
+
+    it('prefers lower-cost corridors over fewer expensive hops', () => {
+        addJumpGateCorridor(1, 4, { effectiveSpanCost: BALANCE.GATE_PHYSICS.VACUUM_SPAN * 40 });
+        addJumpGateCorridor(1, 2, { effectiveSpanCost: BALANCE.GATE_PHYSICS.VACUUM_SPAN * 0.2 });
+        addJumpGateCorridor(2, 4, { effectiveSpanCost: BALANCE.GATE_PHYSICS.VACUUM_SPAN * 0.2 });
         assert.deepEqual(findShortestSectorPath(1, 4), [1, 2, 4]);
     });
 

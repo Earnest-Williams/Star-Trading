@@ -1,8 +1,7 @@
-import { state } from "../state.js";
 import { FACTIONS, COMMODITIES } from "../constants.js";
 import { escapeHtml, formatCredits, formatCommodity, makeStock } from "../utils.js";
 import { getColonyDailyNeeds } from "../systems/colonies.js";
-import { buildLogisticsSnapshot, getRouteEscortCandidates, routeExists } from "../systems/tradeRoutes.js";
+import { buildLogisticsSnapshot, getRouteEscortCandidates } from "../systems/tradeRoutes.js";
 import { captainDisplayName } from "../systems/captains.js";
 
 export function renderLogisticsScreen() {
@@ -11,7 +10,7 @@ export function renderLogisticsScreen() {
     html += `<div class="small muted">Jump gates and corridors are infrastructure. Trade routes are explicit commercial plans operated by you or eligible captains. Ambient trade is aggregate background traffic and is not directly controllable.</div>`;
     html += renderRouteCreationPanel(snapshot);
     html += renderActiveRoutesPanel(snapshot);
-    html += renderColonyNeedsPanel();
+    html += renderColonyNeedsPanel(snapshot);
     return html;
 }
 
@@ -21,17 +20,8 @@ function renderRouteCreationPanel(snapshot) {
     if (!origin) return html + `<div class="muted">This sector needs a port or one of your colonies before it can anchor a persistent route.</div></div>`;
     html += `<div>Origin: ${escapeHtml(origin.name)}</div>`;
     let found = false;
-    snapshot.candidates.forEach(candidate => {
-        const commodities = candidate.commodities.filter(option => !state.tradeRoutes.some(route => {
-            const routeOwnerId = typeof route.ownerId === "undefined" ? null : route.ownerId;
-            return route.status !== "closed"
-                && route.originSector === snapshot.originSector
-                && route.destinationSector === candidate.destination.sectorId
-                && route.commodity === option.commodity
-                && (route.ownerType || "player") === "player"
-                && routeOwnerId === null;
-        }));
-        if (commodities.length === 0) return;
+    snapshot.availableRouteOptions.forEach(candidate => {
+        const { commodities } = candidate;
         found = true;
         html += `<div class="mission"><strong>${escapeHtml(candidate.destination.name)}</strong> <span class="muted">${candidate.distance} corridors, risk ${candidate.risk}</span><br>`;
         commodities.forEach(option => {
@@ -45,8 +35,8 @@ function renderRouteCreationPanel(snapshot) {
 }
 
 function renderActiveRoutesPanel(snapshot) {
-    const { captains } = state;
-    const active = snapshot.activeRoutes;
+    const captains = snapshot.captains || {};
+    const active = snapshot.activeRouteSummaries;
     let html = `<div class="commodity-row"><strong>Existing Routes</strong>`;
     if (active.length === 0) return html + `<div class="muted">No explicit trade routes yet. Ambient market traffic may still move small capped volumes in the background.</div></div>`;
     const escorts = getRouteEscortCandidates();
@@ -71,13 +61,12 @@ function renderActiveRoutesPanel(snapshot) {
         html += `</div></div>`;
     });
     html += `</div>`;
-    html += `<div class="small muted">Last ambient trade: ${state.ambientTrade ? state.ambientTrade.flows : 0} aggregate flows. These background haulers are capped by shortage, surplus, distance, and risk.</div>`;
+    html += `<div class="small muted">Last ambient trade: ${snapshot.ambientTradeFlows} aggregate flows. These background haulers are capped by shortage, surplus, distance, and risk.</div>`;
     return html;
 }
 
-function renderColonyNeedsPanel() {
-    const { planets } = state;
-    const playerColonies = Object.entries(planets).filter(([, p]) => p.owner === "Player");
+function renderColonyNeedsPanel(snapshot) {
+    const playerColonies = Object.entries(snapshot.playerColonies);
     let html = `<div class="commodity-row"><strong>Colony Supply Needs</strong>`;
     if (playerColonies.length === 0) return html + `<div class="muted">Found a colony to unlock supply pressure.</div></div>`;
     playerColonies.forEach(([sectorIdText, planet]) => {
@@ -91,3 +80,4 @@ function renderColonyNeedsPanel() {
     html += `</div>`;
     return html;
 }
+
