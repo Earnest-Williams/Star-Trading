@@ -18,6 +18,7 @@ import {
 } from '../js/systems/tradeRoutes.js';
 import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
+import { initSessionRng } from '../js/utils.js';
 
 // Minimal universe: 1 — 2 — 4 (direct path length 3, distance 2)
 //                       \— 3
@@ -47,7 +48,8 @@ function buildUniverse() {
              basePrices: { ore: 80, org: 150, eq: 300 } },
     };
     state.planets = {};
-    state.player = { time: { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 } };
+    state.player = { time: { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 }, seed: 1 };
+    initSessionRng(1);
     state.tradeRoutes = [];
     state.nextTradeRouteId = 1;
 }

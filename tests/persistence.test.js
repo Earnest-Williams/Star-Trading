@@ -2,7 +2,7 @@
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { migrateSave, saveGame, loadGame, setPersistenceAdapters } from '../js/core/persistence.js';
+import { migrateSave, saveGame, loadGame, setPersistenceAdapters, buildSaveData } from '../js/core/persistence.js';
 import { state, resetState } from '../js/state.js';
 import { SAVE_VERSION, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
@@ -186,6 +186,42 @@ describe('migrateSave — pre-v12 jump gate and explicit route migration', () =>
         const twice = migrateSave(once);
         assert.equal(twice.universe[1].jumpGates.length, 1);
         assert.equal(twice.universe[2].jumpGates.length, 1);
+    });
+});
+
+describe('save serialization', () => {
+    afterEach(() => {
+        setPersistenceAdapters();
+        resetState();
+    });
+
+    it('does not persist sitesById because it is derived from universe', () => {
+        const save = minimalSave(SAVE_VERSION);
+        state.player = save.player;
+        state.universe = { 1: { id: 1, jumpGates: [] } };
+        state.sitesById = state.universe;
+        state.siteIdByCoord = { '1,0,0': 1 };
+        state.ports = {};
+        state.planets = {};
+
+        const data = buildSaveData();
+
+        assert.equal(Object.hasOwn(data, 'sitesById'), false);
+        assert.equal(data.universe, state.universe);
+    });
+
+    it('loads legacy sitesById saves by aliasing sitesById to universe', () => {
+        const save = minimalSave(SAVE_VERSION);
+        save.universe = { 1: { id: 1, jumpGates: [], region: 'Core', pirateThreat: 0 } };
+        save.sitesById = { 99: { id: 99, jumpGates: [] } };
+        const storage = {
+            getItem() { return JSON.stringify(save); }
+        };
+        setPersistenceAdapters({ storage });
+
+        assert.equal(loadGame(), true);
+        assert.equal(state.sitesById, state.universe);
+        assert.equal(state.sitesById[99], undefined);
     });
 });
 

@@ -26,9 +26,6 @@ function isObject(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function cloneSaveValue(value) {
-    return JSON.parse(JSON.stringify(value));
-}
 
 function migrateLegacyWarpAdjacencyToJumpGates(universe) {
     if (!isObject(universe)) return;
@@ -113,7 +110,7 @@ function buildLoadedState(data) {
     const loadedState = createInitialState();
     loadedState.player = data.player;
     loadedState.universe = data.universe;
-    loadedState.sitesById = data.sitesById || data.universe;
+    loadedState.sitesById = data.universe;
     loadedState.siteIdByCoord = data.siteIdByCoord || {};
     loadedState.world = data.world || loadedState.world;
     loadedState.worldgenSettings = data.worldgenSettings || null;
@@ -201,36 +198,43 @@ export function migrateSave(data) {
     return data;
 }
 
+const SAVE_STATE_FIELDS = [
+    "player",
+    "universe",
+    "siteIdByCoord",
+    "world",
+    "worldgenSettings",
+    "ports",
+    "planets",
+    "missions",
+    "captains",
+    "captainEventLog",
+    "nextCaptainEventId",
+    "worldEvents",
+    "nextWorldEventId",
+    "tradeRoutes",
+    "nextTradeRouteId",
+    "nextMissionId",
+    "ambientTrade",
+    "rng"
+];
+
+export function buildSaveData() {
+    const data = { version: SAVE_VERSION };
+    SAVE_STATE_FIELDS.forEach(field => {
+        data[field] = state[field];
+    });
+    return data;
+}
+
 export function saveGame() {
     const storage = getStorage();
     if (!storage || typeof storage.setItem !== "function") {
         writeLog("Save failed: no storage adapter is available.");
         return false;
     }
-    const data = {
-        version: SAVE_VERSION,
-        player: state.player,
-        universe: state.universe,
-        sitesById: state.sitesById,
-        siteIdByCoord: state.siteIdByCoord,
-        world: state.world,
-        worldgenSettings: state.worldgenSettings,
-        ports: state.ports,
-        planets: state.planets,
-        missions: state.missions,
-        captains: state.captains,
-        captainEventLog: state.captainEventLog,
-        nextCaptainEventId: state.nextCaptainEventId,
-        worldEvents: state.worldEvents,
-        nextWorldEventId: state.nextWorldEventId,
-        tradeRoutes: state.tradeRoutes,
-        nextTradeRouteId: state.nextTradeRouteId,
-        nextMissionId: state.nextMissionId,
-        ambientTrade: state.ambientTrade,
-        rng: state.rng
-    };
     try {
-        storage.setItem(SAVE_KEY, JSON.stringify(data));
+        storage.setItem(SAVE_KEY, JSON.stringify(buildSaveData()));
         writeLog("Game saved.");
         notify("Game saved", 1);
         return true;
