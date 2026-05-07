@@ -4,6 +4,8 @@ import { getDominantInfluence } from './influence.js';
 
 const routeCache = new Map();
 let lastGraphSignature = '';
+let cachedRevision = null;
+let microtaskScheduled = false;
 
 function numeric(value, fallback = 0) {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -49,19 +51,31 @@ function buildGraphSignature() {
 }
 
 export function getWorldGraphRevision() {
+    if (cachedRevision !== null) return cachedRevision;
     const signature = buildGraphSignature();
     if (signature !== lastGraphSignature) {
         lastGraphSignature = signature;
         state.worldGraphRevision = numeric(state.worldGraphRevision) + 1;
         routeCache.clear();
     }
-    return state.worldGraphRevision;
+    cachedRevision = state.worldGraphRevision;
+    if (!microtaskScheduled) {
+        microtaskScheduled = true;
+        Promise.resolve().then(() => { cachedRevision = null; microtaskScheduled = false; });
+    }
+    return cachedRevision;
 }
 
 export function invalidateRoutePlannerCache() {
     lastGraphSignature = '';
     routeCache.clear();
     state.worldGraphRevision = numeric(state.worldGraphRevision) + 1;
+    cachedRevision = null;
+}
+
+export function markGraphDirty() {
+    cachedRevision = null;
+    lastGraphSignature = '';
 }
 
 function getOpenGates(sectorId) {
@@ -142,8 +156,12 @@ function planWeightedCorridorPath(startSectorId, goalSectorId) {
     const settled = new Set();
 
     while (frontier.length > 0) {
-        frontier.sort((a, b) => a.cost - b.cost || a.sectorId - b.sectorId);
-        const current = frontier.shift();
+        let minIdx = 0;
+        for (let i = 1; i < frontier.length; i++) {
+            const a = frontier[i], b = frontier[minIdx];
+            if (a.cost < b.cost || (a.cost === b.cost && a.sectorId < b.sectorId)) minIdx = i;
+        }
+        const [current] = frontier.splice(minIdx, 1);
         if (settled.has(current.sectorId)) continue;
         if (current.sectorId === goalSectorId) {
             return reconstructPath(previous, startSectorId, goalSectorId);

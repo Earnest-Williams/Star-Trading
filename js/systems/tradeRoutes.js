@@ -270,7 +270,6 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
         nodes,
         candidates,
         availableRouteOptions,
-        activeRoutes: activeRouteSummaries,
         activeRouteSummaries,
         playerColonies,
         captains: state.captains,
