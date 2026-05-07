@@ -162,7 +162,7 @@ function reconstructPath(previous, startSectorId, goalSectorId) {
     while (current !== startSectorId) {
         const entry = previous.get(current);
         if (!entry) return null;
-        segments.push(entry.segment || buildSegment(entry.fromSectorId, entry.gate));
+        segments.push(buildSegment(entry.fromSectorId, entry.gate));
         current = entry.fromSectorId;
     }
     segments.reverse();

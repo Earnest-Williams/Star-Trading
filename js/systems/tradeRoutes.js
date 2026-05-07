@@ -208,7 +208,6 @@ let routePathMetricsRevision = null;
 let routeMetricsUniverseRef = null;
 let routeMetricsPortsRef = null;
 let routeMetricsPlanetsRef = null;
-let routePathMetricsUniverseRef = null;
 
 function buildRouteMetricsMarketSignature() {
     return getAllLogisticsNodes()
@@ -224,14 +223,21 @@ function buildRouteMetricsMarketSignature() {
         .join('|');
 }
 
+function detectRouteMetricsRootChange() {
+    const universeChanged = routeMetricsUniverseRef !== state.universe;
+    const marketChanged = universeChanged || routeMetricsPortsRef !== state.ports || routeMetricsPlanetsRef !== state.planets;
+    routeMetricsUniverseRef = state.universe;
+    routeMetricsPortsRef = state.ports;
+    routeMetricsPlanetsRef = state.planets;
+    return { universeChanged, marketChanged };
+}
+
 function getRouteMetricsMarketRevision() {
-    if (routeMetricsUniverseRef !== state.universe || routeMetricsPortsRef !== state.ports || routeMetricsPlanetsRef !== state.planets) {
+    const rootChange = detectRouteMetricsRootChange();
+    if (rootChange.marketChanged) {
         routeMarketMetricsCache.clear();
         routeMetricsMarketSignature = '';
         routeMetricsCachedMarketRevision = null;
-        routeMetricsUniverseRef = state.universe;
-        routeMetricsPortsRef = state.ports;
-        routeMetricsPlanetsRef = state.planets;
     }
     if (routeMetricsCachedMarketRevision !== null) return routeMetricsCachedMarketRevision;
     const marketSignature = buildRouteMetricsMarketSignature();
@@ -253,10 +259,9 @@ function getRouteMetricsMarketRevision() {
 
 function ensureRoutePathMetricsCacheFresh() {
     const revision = getWorldGraphRevision();
-    if (routePathMetricsRevision !== revision || routePathMetricsUniverseRef !== state.universe) {
+    if (routePathMetricsRevision !== revision || detectRouteMetricsRootChange().universeChanged) {
         routePathMetricsCache.clear();
         routePathMetricsRevision = revision;
-        routePathMetricsUniverseRef = state.universe;
     }
     return revision;
 }
