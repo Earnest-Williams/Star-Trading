@@ -9,6 +9,41 @@
 <body>
     <h1>SOLO SPACE TRADER: LOGISTICS, CONVOYS & POLITICAL ECONOMY</h1>
     <div id="notificationFeed"></div>
+
+    <details class="panel" id="newGamePanel">
+        <summary>New Game Settings</summary>
+        <label>Galaxy Archetype
+            <select id="worldgen-archetype">
+                <option value="barred_spiral" selected>Barred Spiral</option>
+                <option value="four_arm_spiral">Four-Arm Spiral</option>
+                <option value="dwarf_irregular">Dwarf Irregular</option>
+            </select>
+        </label>
+        <label>Occupied Sites
+            <select id="worldgen-sites">
+                <option value="60" selected>60</option>
+                <option value="90">90</option>
+                <option value="120">120</option>
+                <option value="150">150</option>
+            </select>
+        </label>
+        <span class="advanced-settings">Advanced:</span>
+        <label>Route Density
+            <select id="worldgen-route-density">
+                <option value="0.85">Low</option>
+                <option value="1" selected>Standard</option>
+                <option value="1.15">High</option>
+            </select>
+        </label>
+        <label>Known Space at Start
+            <select id="worldgen-known-space">
+                <option value="0.20">20%</option>
+                <option value="0.28" selected>28%</option>
+                <option value="0.35">35%</option>
+            </select>
+        </label>
+        <button id="btn-new-game">Start New Galaxy</button>
+    </details>
     <div class="topbar panel">
         <button id="top-sector" data-screen="sector">Sector</button>
         <button id="top-market" data-screen="market">Market</button>

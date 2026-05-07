@@ -233,3 +233,13 @@ input { width: 100%; }
     #game { grid-template-columns: 1fr; }
     #notificationFeed { display: none; }
 }
+
+#newGamePanel {
+    margin-bottom: 10px;
+}
+
+#newGamePanel label,
+#newGamePanel .advanced-settings {
+    display: inline-block;
+    margin: 6px 10px 6px 0;
+}

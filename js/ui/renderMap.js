@@ -10,14 +10,26 @@ const mapInteractionUnsubscribers = new WeakMap();
 export function getMapNodes() {
     const universe = state.universe;
     const nodes = {};
-    const ids = Object.keys(universe).map(Number);
-    const angleStep = (2 * Math.PI) / ids.length;
-    ids.forEach((id, idx) => {
-        const radiusX = universe[id].region === "Core" ? 155 : universe[id].region === "Frontier" ? 220 : 280;
-        const radiusY = universe[id].region === "Core" ? 105 : universe[id].region === "Frontier" ? 150 : 185;
-        const x = 350 + Math.cos(idx * angleStep - Math.PI / 2) * radiusX;
-        const y = 210 + Math.sin(idx * angleStep - Math.PI / 2) * radiusY;
-        nodes[id] = { x, y };
+    const ids = Object.keys(universe).map(Number).filter(id => universe[id].charted || id === state.player.currentSector);
+    if (ids.length === 0) {
+        state.mapNodeCache = nodes;
+        return nodes;
+    }
+    const coords = ids.map(id => universe[id].coord || { x: id, y: 0, z: 0 });
+    const minX = Math.min(...coords.map(coord => coord.x - coord.z * 0.35));
+    const maxX = Math.max(...coords.map(coord => coord.x - coord.z * 0.35));
+    const minY = Math.min(...coords.map(coord => coord.y + coord.z * 0.22));
+    const maxY = Math.max(...coords.map(coord => coord.y + coord.z * 0.22));
+    const spanX = Math.max(1, maxX - minX);
+    const spanY = Math.max(1, maxY - minY);
+    ids.forEach(id => {
+        const coord = universe[id].coord || { x: id, y: 0, z: 0 };
+        const projectedX = coord.x - coord.z * 0.35;
+        const projectedY = coord.y + coord.z * 0.22;
+        nodes[id] = {
+            x: 50 + ((projectedX - minX) / spanX) * 600,
+            y: 35 + ((projectedY - minY) / spanY) * 350
+        };
     });
     state.mapNodeCache = nodes;
     return nodes;
@@ -34,12 +46,12 @@ export function drawMap() {
     ctx.fillStyle = "#ffffff";
     starField.forEach(star => ctx.fillRect(star.x, star.y, star.size, star.size));
     const nodes = getMapNodes();
-    const ids = Object.keys(universe).map(Number);
+    const ids = Object.keys(universe).map(Number).filter(id => universe[id].charted || id === player.currentSector);
     ctx.strokeStyle = "rgba(0, 204, 153, 0.45)";
     ctx.lineWidth = 1;
     ids.forEach(id => {
         getSectorNeighbors(id).forEach(target => {
-            if (id < target && nodes[target]) {
+            if (id < target && nodes[target] && universe[target].charted) {
                 ctx.beginPath();
                 ctx.moveTo(nodes[id].x, nodes[id].y);
                 ctx.lineTo(nodes[target].x, nodes[target].y);

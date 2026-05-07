@@ -1,13 +1,33 @@
 import { state } from '../state.js';
-import { BALANCE, PORT_TYPES, PLANET_TYPES, FACTIONS, CAPTAIN_DEFS, CONTACT_DEFS, DEFAULT_FACTION_RELATIONS } from '../constants.js';
+import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
 import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
-import { createFactionState, createContactState } from './factions.js';
+import { createFactionState } from './factions.js';
 
 export { makeStock };
 
 // Module-level RNG — replaced by initRng() before each generation call.
 let rng = seededRng(0);
+
+const SITE_TYPE_LABELS = {
+    stellar_system: "Stellar System",
+    brown_dwarf_system: "Brown Dwarf System",
+    rogue_system: "Rogue System",
+    way_station: "Way Station",
+    white_dwarf_remnant: "White Dwarf Remnant",
+    circumbinary_system: "Circumbinary System",
+    multiple_star_system: "Multiple Star System",
+    exotic_remnant: "Exotic Remnant"
+};
+
+const RICHNESS_LABELS = {
+    barren: "Barren",
+    sparse: "Sparse",
+    developing: "Developing",
+    settled: "Settled",
+    hub: "Hub",
+    strategic: "Strategic"
+};
 
 /**
  * Seed the PRNG used by generateUniverse() and generateStars().
@@ -37,68 +57,295 @@ export function makePlanet(typeKey) {
     };
 }
 
+export function coordKey(coord) {
+    return `${coord.x},${coord.y},${coord.z}`;
+}
+
+export function getSiteTypeLabel(siteType) {
+    return SITE_TYPE_LABELS[siteType] || siteType || "Unknown Site";
+}
+
+export function getRichnessLabel(richness) {
+    return RICHNESS_LABELS[richness] || richness || "Unrated";
+}
+
+function pickWeighted(weights) {
+    const entries = Object.entries(weights);
+    const total = entries.reduce((sum, entry) => sum + entry[1], 0);
+    let roll = rng() * total;
+    for (const [key, weight] of entries) {
+        roll -= weight;
+        if (roll <= 0) return key;
+    }
+    return entries[entries.length - 1][0];
+}
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function distanceBetweenCoords(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dz = a.z - b.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function generateClusterCenters(archetype, count) {
+    if (archetype.armCount === 0) {
+        return Array.from({ length: count }, (_, index) => ({
+            x: Math.round(-16 + rng() * 32 + index * 1.5),
+            y: Math.round(-12 + rng() * 24),
+            z: Math.round((rng() - 0.5) * archetype.zScale)
+        }));
+    }
+    return Array.from({ length: count }, (_, index) => {
+        const arm = index % archetype.armCount;
+        const radius = 10 + index * 3.5 + rng() * 5;
+        const angle = arm * (Math.PI * 2 / archetype.armCount) + radius * 0.16;
+        return {
+            x: Math.round(Math.cos(angle) * radius),
+            y: Math.round(Math.sin(angle) * radius),
+            z: Math.round((rng() - 0.5) * archetype.zScale)
+        };
+    });
+}
+
+function metricShearAtCoord(coord) {
+    const planarDistance = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
+    const centralNoise = Math.max(0, (9 - planarDistance) / 9) * 1.18;
+    const offPlaneRelief = Math.min(0.12, Math.abs(coord.z) * 0.015);
+    const lumpyNoise = (Math.sin(coord.x * 0.31) + Math.cos(coord.y * 0.27) + Math.sin(coord.z * 0.73)) * 0.045;
+    return clamp(0.12 + centralNoise + lumpyNoise - offPlaneRelief, 0, 1.35);
+}
+
+function sampleCorridorMetric(fromCoord, toCoord) {
+    const samples = 5;
+    let sum = 0;
+    let peak = 0;
+    for (let index = 0; index <= samples; index++) {
+        const t = index / samples;
+        const coord = {
+            x: fromCoord.x + (toCoord.x - fromCoord.x) * t,
+            y: fromCoord.y + (toCoord.y - fromCoord.y) * t,
+            z: fromCoord.z + (toCoord.z - fromCoord.z) * t
+        };
+        const shear = metricShearAtCoord(coord);
+        sum += shear;
+        peak = Math.max(peak, shear);
+    }
+    return { avg: sum / (samples + 1), peak };
+}
+
+export function calculateEffectiveSpanCost(fromCoord, toCoord) {
+    const d = distanceBetweenCoords(fromCoord, toCoord);
+    const shear = sampleCorridorMetric(fromCoord, toCoord);
+    return d * (1 + BALANCE.GATE_PHYSICS.SHEAR_AVG_MULT * shear.avg + BALANCE.GATE_PHYSICS.SHEAR_PEAK_MULT * shear.peak);
+}
+
+export function calculateGatePulseCost({ effectiveSpanCost, apertureDiameterM, holdSeconds }) {
+    const energy = BALANCE.GATE_PHYSICS.ENERGY;
+    const vacuumSpan = BALANCE.GATE_PHYSICS.VACUUM_SPAN;
+    const r = effectiveSpanCost / vacuumSpan;
+    const sourcePulseTJ = energy.SOURCE_BASE_TJ
+        * (1 + energy.SOURCE_RANGE_MULT * r * r)
+        * Math.pow(apertureDiameterM / energy.REFERENCE_APERTURE_DIAMETER_M, energy.SOURCE_DIAMETER_EXPONENT)
+        * Math.exp(Math.max(0, holdSeconds - energy.SOURCE_HOLD_GRACE_SECONDS) / energy.SOURCE_HOLD_EXP_SECONDS);
+    const anchorPulseTJ = energy.ANCHOR_BASE_TJ
+        * (1 + energy.ANCHOR_RANGE_MULT * r)
+        * Math.pow(apertureDiameterM / energy.REFERENCE_APERTURE_DIAMETER_M, energy.ANCHOR_DIAMETER_EXPONENT)
+        * Math.exp(Math.max(0, holdSeconds - energy.ANCHOR_HOLD_GRACE_SECONDS) / energy.ANCHOR_HOLD_EXP_SECONDS);
+    return {
+        sourcePulseTJ,
+        anchorPulseTJ,
+        totalTJ: sourcePulseTJ + anchorPulseTJ,
+        sourceCredits: sourcePulseTJ * energy.CREDIT_PER_TJ,
+        anchorCredits: anchorPulseTJ * energy.CREDIT_PER_TJ,
+        totalCredits: (sourcePulseTJ + anchorPulseTJ) * energy.CREDIT_PER_TJ
+    };
+}
+
+function createWorldConfig() {
+    const config = state.worldgenSettings || {};
+    const worldgen = BALANCE.WORLDGEN;
+    const requestedSiteCount = Number(config.occupiedSites) || worldgen.DEFAULT_OCCUPIED_SITES;
+    return {
+        archetypeKey: config.galaxyArchetype || worldgen.DEFAULT_ARCHETYPE,
+        occupiedSites: clamp(requestedSiteCount, 1, worldgen.MAX_OCCUPIED_SITES),
+        routeDensity: Number(config.routeDensity) || worldgen.DEFAULT_ROUTE_DENSITY,
+        chartedFraction: Number(config.chartedFraction) || worldgen.DEFAULT_CHARTED_FRACTION
+    };
+}
+
+function generateSiteCoordinate(archetype, centers, index) {
+    const center = centers[index % centers.length];
+    for (let attempt = 0; attempt < 24; attempt++) {
+        const scale = index < 22 ? 3.8 : index < 45 ? 4.7 : 5.5;
+        const coord = {
+            x: Math.round(center.x + (rng() - 0.5) * archetype.clusterJitter * scale),
+            y: Math.round(center.y + (rng() - 0.5) * archetype.clusterJitter * scale),
+            z: Math.round(center.z + (rng() - 0.5) * archetype.zScale * 2)
+        };
+        if (metricShearAtCoord(coord) < 0.9) return coord;
+    }
+    return { x: center.x + index, y: center.y, z: center.z };
+}
+
+function createSparseSites(config) {
+    const archetype = BALANCE.WORLDGEN.ARCHETYPES[config.archetypeKey]
+        || BALANCE.WORLDGEN.ARCHETYPES[BALANCE.WORLDGEN.DEFAULT_ARCHETYPE];
+    const centers = generateClusterCenters(archetype, Math.max(5, Math.ceil(config.occupiedSites / 12)));
+    const occupiedCoords = new Set();
+    const sites = {};
+    const siteIdByCoord = {};
+    for (let id = 1; id <= config.occupiedSites; id++) {
+        let coord = generateSiteCoordinate(archetype, centers, id - 1);
+        while (occupiedCoords.has(coordKey(coord))) coord = { ...coord, x: coord.x + 1 };
+        occupiedCoords.add(coordKey(coord));
+        let siteType = pickWeighted(BALANCE.WORLDGEN.SITE_TYPE_MIX);
+        let richness = pickWeighted(BALANCE.WORLDGEN.RICHNESS_MIX);
+        if (siteType === "way_station") richness = rng() < 0.65 ? "sparse" : "strategic";
+        const region = id <= Math.ceil(config.occupiedSites * 0.30) ? "Core"
+            : id <= Math.ceil(config.occupiedSites * 0.72) ? "Frontier" : "Badlands";
+        sites[id] = {
+            id,
+            siteId: `site-${id}`,
+            coord,
+            coordKey: coordKey(coord),
+            name: `${getSiteTypeLabel(siteType)} ${id}`,
+            region,
+            siteType,
+            richness,
+            charted: false,
+            reachable: false,
+            surveyed: false,
+            jumpGates: [],
+            pirateThreat: id <= 8 ? 0 : Math.floor(rng() * (region === "Badlands" ? 5 : 3)),
+            asteroids: null,
+            influence: createBaseInfluence(region),
+            front: null,
+            metricShear: metricShearAtCoord(coord)
+        };
+        siteIdByCoord[coordKey(coord)] = id;
+    }
+    return { sites, siteIdByCoord, archetypeName: archetype.name };
+}
+
 export function addJumpGateCorridor(a, b, options = {}) {
     if (a === b || !state.universe[a] || !state.universe[b]) return null;
     if (!Array.isArray(state.universe[a].jumpGates)) state.universe[a].jumpGates = [];
     if (!Array.isArray(state.universe[b].jumpGates)) state.universe[b].jumpGates = [];
     const existing = state.universe[a].jumpGates.find(gate => gate.destinationSectorId === b && gate.status !== "closed");
     if (existing) return existing.corridorId;
+    const fromCoord = state.universe[a].coord || { x: a, y: 0, z: 0 };
+    const toCoord = state.universe[b].coord || { x: b, y: 0, z: 0 };
+    const effectiveSpanCost = typeof options.effectiveSpanCost === "number"
+        ? options.effectiveSpanCost : calculateEffectiveSpanCost(fromCoord, toCoord);
+    const pulseCost = calculateGatePulseCost({
+        effectiveSpanCost,
+        apertureDiameterM: BALANCE.GATE_PHYSICS.ENERGY.REFERENCE_APERTURE_DIAMETER_M,
+        holdSeconds: BALANCE.GATE_PHYSICS.ENERGY.REFERENCE_HOLD_SECONDS
+    });
     const corridorId = options.corridorId || `corridor-${Math.min(a, b)}-${Math.max(a, b)}-${state.universe[a].jumpGates.length + state.universe[b].jumpGates.length}`;
     const gateAId = options.gateAId || `gate-${a}-${corridorId}`;
     const gateBId = options.gateBId || `gate-${b}-${corridorId}`;
-    state.universe[a].jumpGates.push({
-        id: gateAId,
+    const common = {
         corridorId,
-        destinationSectorId: b,
-        destinationGateId: gateBId,
         status: options.status || "active",
         owningFactionId: options.owningFactionId || null,
         toll: options.toll || 0,
-        stability: typeof options.stability === "number" ? options.stability : 100
-    });
-    state.universe[b].jumpGates.push({
-        id: gateBId,
-        corridorId,
-        destinationSectorId: a,
-        destinationGateId: gateAId,
-        status: options.status || "active",
-        owningFactionId: options.owningFactionId || null,
-        toll: options.toll || 0,
-        stability: typeof options.stability === "number" ? options.stability : 100
-    });
+        stability: typeof options.stability === "number" ? options.stability : 100,
+        effectiveSpanCost,
+        sourcePulseCredits: pulseCost.sourceCredits,
+        anchorPulseCredits: pulseCost.anchorCredits,
+        scheduleHours: options.scheduleHours || 0,
+        relayClass: options.relayClass || "direct"
+    };
+    state.universe[a].jumpGates.push({ ...common, id: gateAId, destinationSectorId: b, destinationGateId: gateBId });
+    state.universe[b].jumpGates.push({ ...common, id: gateBId, destinationSectorId: a, destinationGateId: gateAId });
     return corridorId;
 }
 
+function buildCorridors(config) {
+    const ids = Object.keys(state.universe).map(Number);
+    const maxCost = BALANCE.GATE_PHYSICS.VACUUM_SPAN * config.routeDensity;
+    ids.forEach(id => {
+        const candidates = ids
+            .filter(target => target !== id)
+            .map(target => ({
+                target,
+                cost: calculateEffectiveSpanCost(state.universe[id].coord, state.universe[target].coord)
+            }))
+            .filter(candidate => candidate.cost <= maxCost)
+            .sort((a, b) => a.cost - b.cost)
+            .slice(0, 3);
+        candidates.forEach(candidate => addJumpGateCorridor(id, candidate.target, { effectiveSpanCost: candidate.cost }));
+    });
+    ids.forEach(id => {
+        if (state.universe[id].jumpGates.length > 0) return;
+        const nearest = ids
+            .filter(target => target !== id)
+            .map(target => ({
+                target,
+                cost: calculateEffectiveSpanCost(state.universe[id].coord, state.universe[target].coord)
+            }))
+            .sort((a, b) => a.cost - b.cost)[0];
+        if (nearest) {
+            addJumpGateCorridor(id, nearest.target, {
+                effectiveSpanCost: nearest.cost,
+                relayClass: nearest.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN ? "scheduled_relay" : "direct",
+                scheduleHours: nearest.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN ? 24 : 0
+            });
+        }
+    });
+}
 
-export function generateUniverse() {
-    initRng(state.player.seed);
-    state.universe = {}; state.ports = {}; state.planets = {}; state.missions = []; state.nextMissionId = 1;
-    for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) {
-        let region = "Core";
-        if (i > 20) region = "Badlands";
-        else if (i > 10) region = "Frontier";
-        state.universe[i] = {
-            id: i, name: i === 1 ? "StarDock" : `${region} Sector ${i}`,
-            region, jumpGates: [], surveyed: i === 1,
-            pirateThreat: i <= 8 ? 0 : Math.floor(rng() * (region === "Badlands" ? 5 : 3)),
-            asteroids: null, influence: createBaseInfluence(region), front: null
-        };
-    }
-    for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) addJumpGateCorridor(i, i === BALANCE.SECTOR_COUNT ? 1 : i + 1);
-    for (let i = 1; i <= BALANCE.SECTOR_COUNT; i++) {
-        const extraLinks = 1 + Math.floor(rng() * 2);
-        for (let j = 0; j < extraLinks; j++) addJumpGateCorridor(i, 1 + Math.floor(rng() * BALANCE.SECTOR_COUNT));
-    }
-    state.ports[1] = makePort("stardock");
-    state.ports[2] = makePort("mining");
-    state.ports[3] = makePort("agricultural");
-    state.ports[4] = makePort("industrial");
-    state.ports[5] = makePort("consumer");
+function assignAnchorsAndVisibility(config) {
+    const ids = Object.keys(state.universe).map(Number);
+    const sortedByCore = ids.slice().sort((a, b) => {
+        const shearDelta = state.universe[a].metricShear - state.universe[b].metricShear;
+        if (shearDelta !== 0) return shearDelta;
+        return a - b;
+    });
+    const homeSiteId = state.universe[1] ? 1 : sortedByCore[0];
+    const shipyardSiteId = homeSiteId;
+    const startingPortSiteId = homeSiteId;
+    const chartedTarget = Math.max(1, Math.round(ids.length * config.chartedFraction));
+    const chartedIds = [homeSiteId].concat(sortedByCore.filter(id => id !== homeSiteId)).slice(0, chartedTarget);
+    const reachableTarget = Math.max(1, Math.round(chartedIds.length * BALANCE.WORLDGEN.DEFAULT_REACHABLE_CHARTED_FRACTION));
+    chartedIds.forEach((id, index) => {
+        state.universe[id].charted = true;
+        state.universe[id].reachable = index < reachableTarget;
+    });
+    state.universe[homeSiteId].name = "StarDock";
+    state.universe[homeSiteId].richness = "hub";
+    state.universe[homeSiteId].siteType = "stellar_system";
+    state.universe[homeSiteId].surveyed = true;
+    state.world.roles = { homeSiteId, shipyardSiteId, startingPortSiteId, capitalSiteId: homeSiteId };
+    state.player.currentSector = homeSiteId;
+    state.selectedSectorId = homeSiteId;
+}
+
+function seedPortsPlanetsAndResources() {
+    const ids = Object.keys(state.universe).map(Number);
+    const roles = state.world.roles;
+    state.ports[roles.startingPortSiteId] = makePort("stardock");
+    const starterPorts = ["mining", "agricultural", "industrial", "consumer"];
+    starterPorts.forEach((typeKey, index) => {
+        const id = index + 2;
+        if (state.universe[id] && !state.ports[id]) state.ports[id] = makePort(typeKey);
+    });
     const portKeys = ["mining", "agricultural", "industrial", "consumer", "refinery"];
-    for (let i = 6; i <= BALANCE.SECTOR_COUNT; i++) {
-        const chance = state.universe[i].region === "Core" ? 0.35 : 0.45;
-        if (rng() < chance) state.ports[i] = makePort(portKeys[Math.floor(rng() * portKeys.length)]);
-    }
+    ids.forEach(id => {
+        if (state.ports[id]) return;
+        const site = state.universe[id];
+        if (site.siteType === "way_station") {
+            if (rng() < 0.7) state.ports[id] = makePort("refinery");
+            return;
+        }
+        const chance = site.region === "Core" ? 0.42 : site.region === "Frontier" ? 0.34 : 0.24;
+        if (rng() < chance) state.ports[id] = makePort(portKeys[Math.floor(rng() * portKeys.length)]);
+    });
     Object.keys(state.ports).forEach(sec => {
         const sectorId = Number(sec);
         const port = state.ports[sectorId];
@@ -116,27 +363,59 @@ export function generateUniverse() {
         }
     });
     const planetKeys = Object.keys(PLANET_TYPES);
-    state.planets[6] = makePlanet("terran");
-    for (let i = 7; i <= BALANCE.SECTOR_COUNT; i++) {
-        const chance = state.universe[i].region === "Core" ? 0.18 : 0.32;
-        if (rng() < chance) state.planets[i] = makePlanet(planetKeys[Math.floor(rng() * planetKeys.length)]);
-    }
-    state.universe[7].asteroids = { ore: 8000, maxOre: 8000, richness: 1.25, hazard: 0.08, surveyed: false };
-    addSectorInfluence(7, "hc", 8, "");
-    for (let i = 8; i <= BALANCE.SECTOR_COUNT; i++) {
-        const chance = state.universe[i].region === "Badlands" ? 0.55 : 0.30;
-        if (rng() < chance) {
+    ids.forEach(id => {
+        const site = state.universe[id];
+        if (site.siteType === "way_station" || site.siteType === "exotic_remnant") return;
+        const chance = site.region === "Core" ? 0.24 : 0.32;
+        if (rng() < chance) state.planets[id] = makePlanet(planetKeys[Math.floor(rng() * planetKeys.length)]);
+    });
+    ids.forEach(id => {
+        const site = state.universe[id];
+        const chance = site.region === "Badlands" ? 0.55 : site.siteType === "brown_dwarf_system" ? 0.42 : 0.28;
+        if (site.siteType !== "way_station" && rng() < chance) {
             const asteroidOre = 2500 + Math.floor(rng() * 9000);
-            state.universe[i].asteroids = {
+            site.asteroids = {
                 ore: asteroidOre, maxOre: asteroidOre,
                 richness: 0.7 + rng() * 1.1,
-                hazard: state.universe[i].region === "Badlands" ? 0.12 + rng() * 0.18 : rng() * 0.12,
+                hazard: site.region === "Badlands" ? 0.12 + rng() * 0.18 : rng() * 0.12,
                 surveyed: false
             };
-            addSectorInfluence(i, "hc", 5, "");
-            if (state.universe[i].region === "Badlands" && rng() < 0.4) addSectorInfluence(i, "vc", 5, "");
+            addSectorInfluence(id, "hc", 5, "");
+            if (site.region === "Badlands" && rng() < 0.4) addSectorInfluence(id, "vc", 5, "");
         }
-    }
+        if (site.siteType === "way_station") {
+            const station = BALANCE.GATE_PHYSICS.WAY_STATION;
+            const strategic = site.richness === "strategic";
+            const min = strategic ? station.FRONTIER_RESERVE_MIN : station.ORDINARY_RESERVE_MIN;
+            const max = strategic ? station.FRONTIER_RESERVE_MAX : station.ORDINARY_RESERVE_MAX;
+            site.station = {
+                baselinePowerCreditsPerHour: station.BASELINE_POWER_CREDITS_PER_HOUR,
+                pulseReserveCredits: min + Math.floor(rng() * (max - min + 1)),
+                pulseReserveMaxCredits: max
+            };
+        }
+    });
+}
+
+export function generateUniverse() {
+    initRng(state.player.seed);
+    state.universe = {}; state.ports = {}; state.planets = {}; state.missions = []; state.nextMissionId = 1;
+    const config = createWorldConfig();
+    const sparse = createSparseSites(config);
+    state.universe = sparse.sites;
+    state.sitesById = state.universe;
+    state.siteIdByCoord = sparse.siteIdByCoord;
+    state.world = {
+        saveModel: "sparse-3d-sites",
+        archetypeKey: config.archetypeKey,
+        archetypeName: sparse.archetypeName,
+        occupiedSites: config.occupiedSites,
+        vacuumSpan: BALANCE.GATE_PHYSICS.VACUUM_SPAN,
+        roles: {}
+    };
+    assignAnchorsAndVisibility(config);
+    buildCorridors(config);
+    seedPortsPlanetsAndResources();
     // Callers (main.js) are responsible for calling createCaptains, generateMissionPool, generateFactionAsks
 }
 

@@ -113,7 +113,81 @@ export const BALANCE = {
     NOTIFICATION_LIFETIME_MS: 8000,
     MAX_NOTIFICATIONS: 5,
     PRIORITY_FEED_LIMIT: 8,
-    SECTOR_COUNT: 30,
+    LEGACY_SECTOR_COUNT: 30,
+    SECTOR_COUNT: 60,
+    WORLDGEN: {
+        DEFAULT_OCCUPIED_SITES: 60,
+        SITE_COUNT_PRESETS: [60, 90, 120, 150],
+        MAX_OCCUPIED_SITES: 150,
+        DEFAULT_ARCHETYPE: "barred_spiral",
+        DEFAULT_ROUTE_DENSITY: 1.0,
+        DEFAULT_CHARTED_FRACTION: 0.28,
+        DEFAULT_REACHABLE_CHARTED_FRACTION: 0.75,
+        WAY_STATION_MAX_FRACTION: 0.08,
+        SITE_TYPE_MIX: {
+            stellar_system: 0.62,
+            brown_dwarf_system: 0.14,
+            circumbinary_system: 0.06,
+            multiple_star_system: 0.07,
+            rogue_system: 0.04,
+            white_dwarf_remnant: 0.02,
+            way_station: 0.04,
+            exotic_remnant: 0.01
+        },
+        RICHNESS_MIX: {
+            barren: 0.18,
+            sparse: 0.24,
+            developing: 0.22,
+            settled: 0.20,
+            hub: 0.10,
+            strategic: 0.06
+        },
+        ARCHETYPES: {
+            barred_spiral: { name: "Barred Spiral", armCount: 2, clusterJitter: 3.8, zScale: 3.0 },
+            four_arm_spiral: { name: "Four-Arm Spiral", armCount: 4, clusterJitter: 3.2, zScale: 3.4 },
+            dwarf_irregular: { name: "Dwarf Irregular", armCount: 0, clusterJitter: 5.0, zScale: 4.5 }
+        }
+    },
+    GATE_PHYSICS: {
+        VACUUM_SPAN: 6.0,
+        SHEAR_AVG_MULT: 0.35,
+        SHEAR_PEAK_MULT: 0.20,
+        ROUTE_SURCHARGE_BY_WAY_STATIONS: [0, 0.08, 0.25, 0.60, 1.20],
+        ENERGY: {
+            CREDIT_PER_TJ: 1,
+            REFERENCE_SHIP_PRICE: 100,
+            REFERENCE_APERTURE_DIAMETER_M: 4,
+            REFERENCE_HOLD_SECONDS: 12,
+            SOURCE_BASE_TJ: 4.0,
+            SOURCE_RANGE_MULT: 1.6,
+            SOURCE_DIAMETER_EXPONENT: 2.4,
+            SOURCE_HOLD_GRACE_SECONDS: 18,
+            SOURCE_HOLD_EXP_SECONDS: 22,
+            ANCHOR_BASE_TJ: 0.8,
+            ANCHOR_RANGE_MULT: 0.4,
+            ANCHOR_DIAMETER_EXPONENT: 1.2,
+            ANCHOR_HOLD_GRACE_SECONDS: 18,
+            ANCHOR_HOLD_EXP_SECONDS: 40
+        },
+        WAY_STATION: {
+            BASELINE_POWER_CREDITS_PER_HOUR: 0.02,
+            ORDINARY_RESERVE_MIN: 18,
+            ORDINARY_RESERVE_MAX: 36,
+            FRONTIER_RESERVE_MIN: 40,
+            FRONTIER_RESERVE_MAX: 60,
+            SERVICE_HOURS_BY_CHAIN_LENGTH: [0, 12, 24, 48, 96],
+            RESERVE_STATE_THRESHOLDS: { full: 0.90, stable: 0.65, strained: 0.40, low: 0.15 }
+        },
+        PULSE_CARGO: {
+            pulse_canister: { name: "Pulse Canister", storedTJ: 5, basePrice: 7 },
+            heavy_pulse_module: { name: "Heavy Pulse Module", storedTJ: 20, basePrice: 26 }
+        },
+        ACCUMULATORS: {
+            NAME: "Metric Pulse Accumulator",
+            CAPACITY_BANDS_TJ: [12, 24, 48, 96, 192, 320],
+            PRACTICAL_UPPER_TJ: 320
+        }
+    },
     PRICE: {
         REP_DIVISOR: 3000,
         PRIVATE_DIVISOR: 7000,
@@ -132,9 +206,10 @@ export const BALANCE = {
     REPAIR_HULL_COST: 35,
 };
 
-export const SAVE_VERSION = 12;
-export const SAVE_KEY = "starTradingSaveV12";
-export const SAVE_KEY_LEGACY = "soloSpaceTraderSaveV6";
+export const SAVE_VERSION = 13;
+export const SAVE_KEY = "starTradingSaveV13";
+export const SAVE_KEY_LEGACY = "starTradingSaveV12";
+export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];
 export const COMMODITY_NAMES = { ore: "Ore", org: "Organics", eq: "Equipment" };
 export const DEBUG_MODE = true;

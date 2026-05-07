@@ -2,6 +2,10 @@ export function createInitialState() {
     return {
         player: null,
         universe: {},
+        sitesById: {},
+        siteIdByCoord: {},
+        world: { saveModel: "sparse-3d-sites", roles: {} },
+        worldgenSettings: null,
         ports: {},
         planets: {},
         missions: [],

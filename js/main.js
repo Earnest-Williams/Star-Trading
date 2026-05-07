@@ -1,6 +1,7 @@
 import { resetState, state } from './state.js';
 import { EventBus } from './events.js';
 import { Renderer, updateUI } from './ui/renderer.js';
+import { BALANCE } from './constants.js';
 import { createPlayer, generateUniverse, generateStars } from './core/universe.js';
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
@@ -36,7 +37,7 @@ export const App = (() => {
         registerUIActions();
         registerSimulationTickHooks();
         registerRendererSubscriptions();
-        startSimulation();
+        startSimulation(readWorldgenSettingsFromDom());
         bindAppShellDom();
         postStartupNotifications();
         updateUI();
@@ -63,7 +64,21 @@ export const App = (() => {
         _unsubs.push(EventBus.on('captain_changed', () => Renderer.invalidate('sector')));
     }
 
-    function startSimulation() {
+    function readWorldgenSettingsFromDom() {
+        const archetype = document.getElementById("worldgen-archetype");
+        const occupiedSites = document.getElementById("worldgen-sites");
+        const routeDensity = document.getElementById("worldgen-route-density");
+        const chartedFraction = document.getElementById("worldgen-known-space");
+        return {
+            galaxyArchetype: archetype ? archetype.value : BALANCE.WORLDGEN.DEFAULT_ARCHETYPE,
+            occupiedSites: occupiedSites ? Number(occupiedSites.value) : BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
+            routeDensity: routeDensity ? Number(routeDensity.value) : BALANCE.WORLDGEN.DEFAULT_ROUTE_DENSITY,
+            chartedFraction: chartedFraction ? Number(chartedFraction.value) : BALANCE.WORLDGEN.DEFAULT_CHARTED_FRACTION
+        };
+    }
+
+    function startSimulation(worldgenSettings = null) {
+        state.worldgenSettings = worldgenSettings;
         state.player = createPlayer();
         initSessionRng(state.player.seed);
         generateStars();
@@ -95,6 +110,16 @@ export const App = (() => {
         addTopbarListener('btn-save', () => executeAction({ type: 'saveGame' }));
         addTopbarListener('btn-load', () => executeAction({ type: 'loadGame' }));
         addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
+        addTopbarListener('btn-new-game', () => {
+            resetState();
+            resetActions();
+            resetTimeHooks();
+            markUIActionsUnregistered();
+            registerUIActions();
+            registerSimulationTickHooks();
+            startSimulation(readWorldgenSettingsFromDom());
+            updateUI();
+        });
     }
 
     function addTopbarListener(id, fn) {

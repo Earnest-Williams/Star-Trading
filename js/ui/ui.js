@@ -73,7 +73,7 @@ export function showScreen(screen) {
     state.currentScreen = screen;
     if (screen === 'colony' && !state.planets[state.player.currentSector]) state.currentScreen = 'sector';
     if (screen === 'market' && !state.ports[state.player.currentSector]) state.currentScreen = 'sector';
-    if (screen === 'shipyard' && state.player.currentSector !== 1) state.currentScreen = 'sector';
+    if (screen === 'shipyard' && state.player.currentSector !== state.world?.roles?.shipyardSiteId) state.currentScreen = 'sector';
     if (state.currentScreen !== 'reputation') state.selectedCaptainId = null;
     Renderer.invalidateAll();
 }
@@ -110,7 +110,7 @@ function renderCurrentScreen() {
         renderColonyPanel();
         return;
     }
-    if (currentScreen === 'shipyard' && player.currentSector === 1) {
+    if (currentScreen === 'shipyard' && player.currentSector === state.world?.roles?.shipyardSiteId) {
         title.innerHTML = 'StarDock Shipyard';
         renderShipyardPanel();
         return;
