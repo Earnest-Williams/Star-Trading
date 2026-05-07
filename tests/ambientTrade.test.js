@@ -7,7 +7,7 @@ import { runAmbientTradeDaily } from '../js/systems/ambientTrade.js';
 
 function buildWorld({ connected = true, badlands = false } = {}) {
     resetState();
-    state.player = { time: { day: 1 } };
+    state.player = { time: { day: 1 }, seed: 12345 };
     state.universe = {
         1: { id: 1, jumpGates: [], region: 'Core', pirateThreat: 0, influence: { sda: 60, fu: 0, hc: 0, vc: 0 } },
         2: { id: 2, jumpGates: [], region: badlands ? 'Badlands' : 'Core', pirateThreat: badlands ? 6 : 0, influence: { sda: 20, fu: 0, hc: 0, vc: badlands ? 80 : 0 } },

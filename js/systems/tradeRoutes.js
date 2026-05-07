@@ -205,6 +205,10 @@ let routeMetricsMarketRevision = 0;
 let routeMetricsCachedMarketRevision = null;
 let routeMetricsMarketMicrotaskScheduled = false;
 let routePathMetricsRevision = null;
+let routeMetricsUniverseRef = null;
+let routeMetricsPortsRef = null;
+let routeMetricsPlanetsRef = null;
+let routePathMetricsUniverseRef = null;
 
 function buildRouteMetricsMarketSignature() {
     return getAllLogisticsNodes()
@@ -221,6 +225,14 @@ function buildRouteMetricsMarketSignature() {
 }
 
 function getRouteMetricsMarketRevision() {
+    if (routeMetricsUniverseRef !== state.universe || routeMetricsPortsRef !== state.ports || routeMetricsPlanetsRef !== state.planets) {
+        routeMarketMetricsCache.clear();
+        routeMetricsMarketSignature = '';
+        routeMetricsCachedMarketRevision = null;
+        routeMetricsUniverseRef = state.universe;
+        routeMetricsPortsRef = state.ports;
+        routeMetricsPlanetsRef = state.planets;
+    }
     if (routeMetricsCachedMarketRevision !== null) return routeMetricsCachedMarketRevision;
     const marketSignature = buildRouteMetricsMarketSignature();
     if (routeMetricsMarketSignature !== marketSignature) {
@@ -241,9 +253,10 @@ function getRouteMetricsMarketRevision() {
 
 function ensureRoutePathMetricsCacheFresh() {
     const revision = getWorldGraphRevision();
-    if (routePathMetricsRevision !== revision) {
+    if (routePathMetricsRevision !== revision || routePathMetricsUniverseRef !== state.universe) {
         routePathMetricsCache.clear();
         routePathMetricsRevision = revision;
+        routePathMetricsUniverseRef = state.universe;
     }
     return revision;
 }

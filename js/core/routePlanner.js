@@ -6,6 +6,7 @@ const routeCache = new Map();
 let lastGraphSignature = '';
 let cachedRevision = null;
 let microtaskScheduled = false;
+let cachedUniverseRef = null;
 
 function numeric(value, fallback = 0) {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -51,7 +52,7 @@ function buildGraphSignature() {
 }
 
 export function getWorldGraphRevision() {
-    if (cachedRevision !== null) return cachedRevision;
+    if (cachedRevision !== null && cachedUniverseRef === state.universe) return cachedRevision;
     const signature = buildGraphSignature();
     if (signature !== lastGraphSignature) {
         lastGraphSignature = signature;
@@ -59,6 +60,7 @@ export function getWorldGraphRevision() {
         routeCache.clear();
     }
     cachedRevision = state.worldGraphRevision;
+    cachedUniverseRef = state.universe;
     if (!microtaskScheduled) {
         microtaskScheduled = true;
         Promise.resolve().then(() => { microtaskScheduled = false; cachedRevision = null; });
@@ -71,6 +73,7 @@ export function invalidateRoutePlannerCache() {
     routeCache.clear();
     state.worldGraphRevision = numeric(state.worldGraphRevision) + 1;
     cachedRevision = null;
+    cachedUniverseRef = state.universe;
 }
 
 /** Force signature recheck on the next getWorldGraphRevision() call without bumping the revision counter.
@@ -79,6 +82,7 @@ export function invalidateRoutePlannerCache() {
 export function markGraphDirty() {
     cachedRevision = null;
     lastGraphSignature = '';
+    cachedUniverseRef = state.universe;
 }
 
 function getOpenGates(sectorId) {
