@@ -300,18 +300,47 @@ function buildCorridors(config) {
     });
 }
 
-function assignAnchorsAndVisibility(config) {
-    const ids = Object.keys(state.universe).map(Number);
-    const sortedByCore = ids.slice().sort((a, b) => {
-        const shearDelta = state.universe[a].metricShear - state.universe[b].metricShear;
-        if (shearDelta !== 0) return shearDelta;
+function scoreAnchorCandidate(id) {
+    const site = state.universe[id];
+    const richnessScore = { hub: 0, settled: 1, strategic: 2, developing: 3, sparse: 4, barren: 5 };
+    const typeScore = site.siteType === "stellar_system" ? 0
+        : site.siteType === "multiple_star_system" ? 1
+            : site.siteType === "circumbinary_system" ? 2 : 3;
+    const coord = site.coord || { x: id, y: 0, z: 0 };
+    const planeDistance = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
+    return (richnessScore[site.richness] ?? 6) * 12
+        + typeScore * 5
+        + (site.metricShear || 0) * 4
+        + Math.abs(planeDistance - 14) * 0.05
+        + id * 0.0001;
+}
+
+function getNearestSiteIds(originId, candidates) {
+    const origin = state.universe[originId];
+    if (!origin) return [];
+    return candidates.slice().sort((a, b) => {
+        const distanceDelta = distanceBetweenCoords(origin.coord, state.universe[a].coord)
+            - distanceBetweenCoords(origin.coord, state.universe[b].coord);
+        if (distanceDelta !== 0) return distanceDelta;
         return a - b;
     });
-    const homeSiteId = state.universe[1] ? 1 : sortedByCore[0];
+}
+
+function assignAnchorsAndVisibility(config) {
+    const ids = Object.keys(state.universe).map(Number);
+    const sortedByAnchorScore = ids.slice().sort((a, b) => {
+        const scoreDelta = scoreAnchorCandidate(a) - scoreAnchorCandidate(b);
+        if (scoreDelta !== 0) return scoreDelta;
+        return a - b;
+    });
+    const homeSiteId = sortedByAnchorScore[0];
     const shipyardSiteId = homeSiteId;
     const startingPortSiteId = homeSiteId;
+    const sortedByStartNetwork = [homeSiteId].concat(
+        getNearestSiteIds(homeSiteId, sortedByAnchorScore.filter(id => id !== homeSiteId))
+    );
     const chartedTarget = Math.max(1, Math.round(ids.length * config.chartedFraction));
-    const chartedIds = [homeSiteId].concat(sortedByCore.filter(id => id !== homeSiteId)).slice(0, chartedTarget);
+    const chartedIds = sortedByStartNetwork.slice(0, chartedTarget);
     const reachableTarget = Math.max(1, Math.round(chartedIds.length * BALANCE.WORLDGEN.DEFAULT_REACHABLE_CHARTED_FRACTION));
     chartedIds.forEach((id, index) => {
         state.universe[id].charted = true;
@@ -331,9 +360,11 @@ function seedPortsPlanetsAndResources() {
     const roles = state.world.roles;
     state.ports[roles.startingPortSiteId] = makePort("stardock");
     const starterPorts = ["mining", "agricultural", "industrial", "consumer"];
+    const starterCandidates = getNearestSiteIds(roles.homeSiteId, ids)
+        .filter(id => id !== roles.startingPortSiteId && state.universe[id].siteType !== "way_station");
     starterPorts.forEach((typeKey, index) => {
-        const id = index + 2;
-        if (state.universe[id] && !state.ports[id]) state.ports[id] = makePort(typeKey);
+        const id = starterCandidates[index];
+        if (id && !state.ports[id]) state.ports[id] = makePort(typeKey);
     });
     const portKeys = ["mining", "agricultural", "industrial", "consumer", "refinery"];
     ids.forEach(id => {

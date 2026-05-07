@@ -115,11 +115,14 @@ describe('generateUniverse — determinism', () => {
         assert.equal(portKeys1, portKeys2, 'port sectors should be identical for the same seed');
     });
 
-    it('always creates sector 1 (StarDock) with a stardock port', () => {
+    it('creates a role-anchored StarDock with a stardock port', () => {
         seedGame(FIXED_SEED);
-        assert.equal(state.universe[1].name, 'StarDock');
-        assert.ok(state.ports[1], 'sector 1 should have a port');
-        assert.equal(state.ports[1].typeKey, 'stardock');
+        const homeSiteId = state.world.roles.homeSiteId;
+        assert.ok(state.universe[homeSiteId], 'home role should point at an occupied site');
+        assert.equal(state.universe[homeSiteId].name, 'StarDock');
+        assert.ok(state.ports[homeSiteId], 'home site should have a port');
+        assert.equal(state.ports[homeSiteId].typeKey, 'stardock');
+        assert.equal(state.player.currentSector, homeSiteId);
     });
 
     it('produces different layouts for different seeds', () => {
@@ -132,9 +135,9 @@ describe('generateUniverse — determinism', () => {
         assert.notEqual(portKeys1, portKeys2, 'different seeds should produce different maps');
     });
 
-    it('universe has exactly SECTOR_COUNT sectors', () => {
+    it('universe has the configured occupied navigable site count', () => {
         seedGame(FIXED_SEED);
-        assert.equal(Object.keys(state.universe).length, BALANCE.SECTOR_COUNT);
+        assert.equal(Object.keys(state.universe).length, BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES);
     });
 
     it('every sector has at least one jump corridor', () => {
