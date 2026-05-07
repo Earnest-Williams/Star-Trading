@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { getSectorNeighbors } from "../core/navigation.js";
-import { FACTIONS, BALANCE, COMMODITIES, GUILD_FACTIONS, PORT_TYPES, PLANET_TYPES, GUILD_TIER_NAMES } from "../constants.js";
+import { FACTIONS, BALANCE, CARGO_COMMODITIES, GUILD_FACTIONS, PORT_TYPES, PLANET_TYPES, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed, getFreeHolds } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getPrivateFactionRep, getFactionHeat, getFactionTrust, getFactionFavors, getFactionLeverage, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
@@ -87,7 +87,7 @@ export function renderHeader() {
     document.getElementById("sectorName").textContent = sector.name;
     const cs = document.getElementById("curSector");
     if (cs) cs.textContent = player.currentSector;
-    document.getElementById("cargoSummary").textContent = COMMODITIES.map(c => `${formatCommodity(c)} ${player.cargo[c]}`).join(" / ");
+    document.getElementById("cargoSummary").textContent = CARGO_COMMODITIES.map(c => `${formatCommodity(c)} ${player.cargo[c] || 0}`).join(" / ");
     document.getElementById("holds").textContent = `${getCargoUsed()}/${player.ship.maxHolds}`;
     document.getElementById("fighters").textContent = `${player.fighters}/${player.ship.maxFighters}`;
     document.getElementById("shields").textContent = `${player.shields}/${player.ship.maxShields}`;

@@ -21,7 +21,7 @@ The default galaxy currently generates about 60 occupied navigable sites, with p
 - **Corridor**: the FTL link created when two jump gates in different sites are paired. Corridor legality is based on effective span cost, not raw distance alone.
 - **Way Station**: rare artificial relay/maintenance infrastructure, usually in deep or sparse space. Way stations are not resource-rich normal economies.
 - **Metric Pulse Accumulator**: specialist jump-opening storage hardware. It stores preconditioned pulse inventory, not generic ship power.
-- **Pulse Canister / Heavy Pulse Module**: packaged jump-energy cargo used to physically resupply gates, way stations, and tenders.
+- **Pulse Canister / Heavy Pulse Module**: packaged jump-energy cargo used to physically resupply gates, way stations, and tenders. These are now distinct market cargo types rather than raw joule UI values.
 - **Jump Tender / Pulse Tender**: reserved specialist ship role for carrying large accumulators and recharging gate banks or relay stations.
 - **Trade Route**: an explicit commercial plan operated by the player or a modeled captain. A route uses the corridor network but is not the network itself.
 - **Ambient Trade**: capped aggregate background flows representing unmodeled traders. Ambient trade responds to shortages, surplus, distance, risk, and margin, but it does not create route objects or fully solve the economy.
@@ -78,7 +78,7 @@ A gate opening uses:
 2. a smaller destination-side anchor/capture pulse;
 3. local stored jump-opening inventory at the source side.
 
-This preserves logistics gameplay: deep relay chains must be stocked materially with Pulse Canisters, Heavy Pulse Modules, accumulators, or tender support. Gates move ships and cargo; they do not make one hostile or high-energy region an unlimited power plant for the whole network.
+This preserves logistics gameplay: deep relay chains must be stocked materially with Pulse Canisters, Heavy Pulse Modules, accumulators, or tender support. StarDock, industrial ports, and refineries can trade packaged pulse inventory; mining, agricultural, and consumer sites consume it as reserve logistics stock. Gates move ships and cargo; they do not make one hostile or high-energy region an unlimited power plant for the whole network.
 
 ## Way stations and relay chains
 

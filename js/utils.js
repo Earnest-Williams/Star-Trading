@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { COMMODITIES, COMMODITY_NAMES } from './constants.js';
+import { CARGO_COMMODITIES, COMMODITY_NAMES } from './constants.js';
 
 /**
  * Mulberry32 seedable PRNG.  Returns a function that produces a uniform
@@ -59,7 +59,15 @@ export function escapeHtml(s) {
 }
 
 export function clampRange(value, min, max) { return Math.max(min, Math.min(max, Math.round(value))); }
-export function makeStock(ore, org, eq) { return { ore, org, eq }; }
+export function makeStock(ore, org, eq, pulseCanister = 0, heavyPulseModule = 0) {
+    return {
+        ore,
+        org,
+        eq,
+        pulse_canister: pulseCanister,
+        heavy_pulse_module: heavyPulseModule
+    };
+}
 export function formatCredits(value) { return Math.floor(value).toLocaleString(); }
 export function formatCommodity(commodity) { return COMMODITY_NAMES[commodity] || commodity; }
 export function formatTime(minutes) {
@@ -68,17 +76,17 @@ export function formatTime(minutes) {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-export function getCargoUsed() { return COMMODITIES.reduce((sum, c) => sum + state.player.cargo[c], 0); }
+export function getCargoUsed() { return CARGO_COMMODITIES.reduce((sum, c) => sum + (state.player.cargo[c] || 0), 0); }
 export function getFreeHolds() { return Math.max(0, state.player.ship.maxHolds - getCargoUsed()); }
 
 export function hasCargo(cost) {
     if (!cost) return true;
-    return COMMODITIES.every(c => (state.player.cargo[c] || 0) >= (cost[c] || 0));
+    return CARGO_COMMODITIES.every(c => (state.player.cargo[c] || 0) >= (cost[c] || 0));
 }
 
 export function removeCargo(cost) {
     if (!cost) return;
-    COMMODITIES.forEach(c => { state.player.cargo[c] = Math.max(0, (state.player.cargo[c] || 0) - (cost[c] || 0)); });
+    CARGO_COMMODITIES.forEach(c => { state.player.cargo[c] = Math.max(0, (state.player.cargo[c] || 0) - (cost[c] || 0)); });
 }
 
 export function addCargo(commodity, amount) {
@@ -90,11 +98,11 @@ export function addCargo(commodity, amount) {
 }
 
 export function describeCargo() {
-    return COMMODITIES.map(c => `${formatCommodity(c)} ${state.player.cargo[c]}`).join(" / ");
+    return CARGO_COMMODITIES.map(c => `${formatCommodity(c)} ${state.player.cargo[c] || 0}`).join(" / ");
 }
 
 export function describeCost(cost) {
-    return COMMODITIES.filter(c => (cost[c] || 0) > 0).map(c => `${cost[c]} ${formatCommodity(c)}`).join(", ") || "none";
+    return CARGO_COMMODITIES.filter(c => (cost[c] || 0) > 0).map(c => `${cost[c]} ${formatCommodity(c)}`).join(", ") || "none";
 }
 
 export function log(msg) {

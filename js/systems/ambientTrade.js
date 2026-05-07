@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE, COMMODITIES } from '../constants.js';
+import { BALANCE, MARKET_COMMODITIES } from '../constants.js';
 import { formatCommodity, makeStock, random } from '../utils.js';
 import { getAllLogisticsNodes, getRouteMarketValue } from './tradeRoutes.js';
 import { findShortestSectorPath, getSectorPathDistance, getCorridorRiskForPath } from '../core/navigation.js';
@@ -33,7 +33,7 @@ function isProfitableAmbientFlow(source, sink, commodity) {
 export function runAmbientTradeDaily() {
     const summary = { day: state.player.time.day, moved: makeStock(0, 0, 0), flows: 0 };
     const nodes = getAllLogisticsNodes();
-    COMMODITIES.forEach(commodity => {
+    MARKET_COMMODITIES.forEach(commodity => {
         const sources = nodes
             .map(node => ({ node, surplus: getNodeSurplus(node, commodity) }))
             .filter(item => item.surplus > 0)
@@ -75,5 +75,5 @@ export function runAmbientTradeDaily() {
 
 export function describeAmbientTradeSummary(summary = state.ambientTrade) {
     if (!summary || summary.flows <= 0) return "Ambient trade found no profitable connected shortages today.";
-    return `Ambient trade moved ${COMMODITIES.map(c => `${summary.moved[c]} ${formatCommodity(c)}`).join(" / ")} across ${summary.flows} aggregate flows.`;
+    return `Ambient trade moved ${MARKET_COMMODITIES.map(c => `${summary.moved[c]} ${formatCommodity(c)}`).join(" / ")} across ${summary.flows} aggregate flows.`;
 }

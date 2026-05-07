@@ -48,9 +48,17 @@ export function makePort(typeKey) {
         stock: makeStock(
             PORT_DEFAULTS.STOCK.ORE_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORE_SPAN),
             PORT_DEFAULTS.STOCK.ORG_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORG_SPAN),
-            PORT_DEFAULTS.STOCK.EQ_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.EQ_SPAN)
+            PORT_DEFAULTS.STOCK.EQ_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.EQ_SPAN),
+            Math.floor(PORT_DEFAULTS.MAX_STOCK.pulse_canister * (0.35 + rng() * 0.45)),
+            Math.floor(PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module * (0.20 + rng() * 0.35))
         ),
-        maxStock: makeStock(PORT_DEFAULTS.MAX_STOCK.ore, PORT_DEFAULTS.MAX_STOCK.org, PORT_DEFAULTS.MAX_STOCK.eq),
+        maxStock: makeStock(
+            PORT_DEFAULTS.MAX_STOCK.ore,
+            PORT_DEFAULTS.MAX_STOCK.org,
+            PORT_DEFAULTS.MAX_STOCK.eq,
+            PORT_DEFAULTS.MAX_STOCK.pulse_canister,
+            PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module
+        ),
         basePrices: { ...PORT_DEFAULTS.BASE_PRICES }
     };
 }
