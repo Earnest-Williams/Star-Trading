@@ -1,7 +1,12 @@
 import { state } from '../state.js';
 import { BALANCE } from '../constants.js';
 import { getDominantInfluence } from './influence.js';
-import { findCheapestCorridorPath, findCheapestSectorPath } from './routePlanner.js';
+import {
+    findCheapestCorridorPath,
+    findCheapestSectorPath,
+    findFewestHopCorridorPath,
+    findFewestHopSectorPath
+} from './routePlanner.js';
 
 export function getOutboundJumpGates(sectorId) {
     const sector = state.universe[sectorId];
@@ -27,6 +32,14 @@ export function getSectorNeighbors(sectorId) {
 export function getDirectCorridor(startSectorId, goalSectorId) {
     return getOutboundJumpGates(startSectorId)
         .find(gate => gate.destinationSectorId === goalSectorId) || null;
+}
+
+export function findFewestHopPath(startSectorId, goalSectorId) {
+    return findFewestHopSectorPath(startSectorId, goalSectorId);
+}
+
+export function findFewestHopCorridorRoute(startSectorId, goalSectorId) {
+    return findFewestHopCorridorPath(startSectorId, goalSectorId);
 }
 
 export function findShortestCorridorPath(startSectorId, goalSectorId) {

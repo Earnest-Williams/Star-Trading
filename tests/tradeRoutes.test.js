@@ -8,6 +8,7 @@ import {
     findShortestCorridorPath,
     getRouteDistance,
     getRouteSetupCost,
+    deriveRouteMetrics,
     estimateRouteProfit,
     normaliseTradeRoutes,
     createTradeRoute,
@@ -105,6 +106,24 @@ describe('getRouteSetupCost', () => {
         const short = getRouteSetupCost(1, 2); // 1 hop
         const long  = getRouteSetupCost(1, 4); // 2 hops
         assert.ok(long > short, `longer route (${long}) should cost more than shorter (${short})`);
+    });
+});
+
+
+describe('deriveRouteMetrics', () => {
+    beforeEach(buildUniverse);
+
+    it('centralises weighted path, physical span, risk, setup cost, and profit bands', () => {
+        const metrics = deriveRouteMetrics(1, 4);
+        assert.deepEqual(metrics.path, [1, 2, 4]);
+        assert.equal(metrics.hopCount, 2);
+        assert.equal(metrics.distance, 2);
+        assert.ok(metrics.totalEffectiveSpan > 0);
+        assert.equal(metrics.risk, 0);
+        assert.equal(metrics.setupCost, getRouteSetupCost(1, 4));
+        assert.deepEqual(metrics.viableCommodities, ['ore']);
+        assert.equal(metrics.profitBands[0].commodity, 'ore');
+        assert.equal(metrics.profitBands[0].estimatedProfit, estimateRouteProfit(1, 4, 'ore'));
     });
 });
 

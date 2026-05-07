@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { state, resetState } from '../js/state.js';
 import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
-import { getSectorNeighbors, findShortestSectorPath, getSectorPathDistance, areSectorsConnected } from '../js/core/navigation.js';
+import { getSectorNeighbors, findFewestHopPath, findShortestSectorPath, getSectorPathDistance, areSectorsConnected } from '../js/core/navigation.js';
 
 function sector(id) {
     return { id, name: `S${id}`, region: 'Core', jumpGates: [], pirateThreat: 0, influence: { sda: 50, fu: 20, hc: 10, vc: 0 } };
@@ -31,10 +31,11 @@ describe('jump-gate corridor navigation', () => {
         assert.deepEqual(findShortestSectorPath(1, 4), [1, 2, 4]);
     });
 
-    it('prefers lower-cost corridors over fewer expensive hops', () => {
+    it('keeps fewest-hop BFS available alongside weighted routing', () => {
         addJumpGateCorridor(1, 4, { effectiveSpanCost: BALANCE.GATE_PHYSICS.VACUUM_SPAN * 40 });
         addJumpGateCorridor(1, 2, { effectiveSpanCost: BALANCE.GATE_PHYSICS.VACUUM_SPAN * 0.2 });
         addJumpGateCorridor(2, 4, { effectiveSpanCost: BALANCE.GATE_PHYSICS.VACUUM_SPAN * 0.2 });
+        assert.deepEqual(findFewestHopPath(1, 4), [1, 4]);
         assert.deepEqual(findShortestSectorPath(1, 4), [1, 2, 4]);
     });
 

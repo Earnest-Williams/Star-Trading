@@ -126,12 +126,16 @@ function edgeCost(fromSectorId, gate) {
 }
 
 function buildSegment(fromSectorId, gate) {
+    const spanBase = numeric(BALANCE.GATE_PHYSICS?.VACUUM_SPAN, 1) || 1;
     return {
         fromSectorId,
         gateId: gate.id,
         corridorId: gate.corridorId,
         toSectorId: gate.destinationSectorId,
         destinationGateId: gate.destinationGateId,
+        effectiveSpanCost: numeric(gate.effectiveSpanCost, spanBase),
+        toll: numeric(gate.toll),
+        stability: numeric(gate.stability, 100),
         cost: edgeCost(fromSectorId, gate)
     };
 }
@@ -187,6 +191,51 @@ function planWeightedCorridorPath(startSectorId, goalSectorId) {
         });
     }
     return null;
+}
+
+
+function planFewestHopCorridorPath(startSectorId, goalSectorId) {
+    if (!state.universe[startSectorId] || !state.universe[goalSectorId]) return null;
+    if (startSectorId === goalSectorId) return [];
+
+    const visited = new Set([startSectorId]);
+    const queue = [{ sectorId: startSectorId, segments: [] }];
+    for (let index = 0; index < queue.length; index++) {
+        const current = queue[index];
+        const gates = getOpenGates(current.sectorId)
+            .sort((a, b) => {
+                if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
+                return String(a.id || '').localeCompare(String(b.id || ''));
+            });
+        for (const gate of gates) {
+            const next = gate.destinationSectorId;
+            if (visited.has(next)) continue;
+            const segments = current.segments.concat(buildSegment(current.sectorId, gate));
+            if (next === goalSectorId) return segments;
+            visited.add(next);
+            queue.push({ sectorId: next, segments });
+        }
+    }
+    return null;
+}
+
+export function findFewestHopCorridorPath(startSectorId, goalSectorId) {
+    const revision = getWorldGraphRevision();
+    const key = `${revision}:fewest:${startSectorId}->${goalSectorId}`;
+    if (routeCache.has(key)) {
+        const cached = routeCache.get(key);
+        return cached ? cached.map(segment => ({ ...segment })) : null;
+    }
+    const path = planFewestHopCorridorPath(startSectorId, goalSectorId);
+    routeCache.set(key, path);
+    return path ? path.map(segment => ({ ...segment })) : null;
+}
+
+export function findFewestHopSectorPath(startSectorId, goalSectorId) {
+    const corridorPath = findFewestHopCorridorPath(startSectorId, goalSectorId);
+    if (!corridorPath) return null;
+    if (corridorPath.length === 0) return [startSectorId];
+    return [startSectorId].concat(corridorPath.map(segment => segment.toSectorId));
 }
 
 export function findCheapestCorridorPath(startSectorId, goalSectorId) {

@@ -7,7 +7,7 @@ import { EventBus } from '../events.js';
 import { Notifications } from '../ui/notifications.js';
 import { getFactionPoliticalPole } from '../core/factions.js';
 import { getSectorNeighbors, getSectorPathDistance, canTransitDirectCorridor } from '../core/navigation.js';
-import { createCaptainTradeRoute, getAllLogisticsNodes, getRouteCommodityOptions, estimateRouteProfit, getRouteRiskForSectors } from './tradeRoutes.js';
+import { createCaptainTradeRoute, getAllLogisticsNodes, deriveRouteMetrics } from './tradeRoutes.js';
 
 export function createCaptains() {
     state.captains = {};
@@ -474,8 +474,8 @@ function evaluateCaptainRouteOpenings(captain) {
     captain.economy.nextRouteEvaluationDay = state.player.time.day + BALANCE.CAPTAIN_ROUTE.EVALUATION_INTERVAL_DAYS;
     const owned = state.tradeRoutes.filter(route => route.ownerType === "captain" && route.ownerId === captain.id && route.status !== "closed");
     owned.forEach(route => {
-        const risk = getRouteRiskForSectors(route.originSector, route.destinationSector);
-        if (risk === null || risk > captain.economy.acceptableRiskCeiling + 2 || route.failures >= BALANCE.CAPTAIN_ROUTE.BAD_ROUTE_FAILURES) route.status = "paused";
+        const metrics = deriveRouteMetrics(route.originSector, route.destinationSector);
+        if (metrics.risk === null || metrics.risk > captain.economy.acceptableRiskCeiling + 2 || route.failures >= BALANCE.CAPTAIN_ROUTE.BAD_ROUTE_FAILURES) route.status = "paused";
     });
     if (owned.length >= BALANCE.CAPTAIN_ROUTE.MAX_OWNED_ROUTES) return;
     if (random() > captain.economy.routeAppetite) return;
@@ -484,18 +484,18 @@ function evaluateCaptainRouteOpenings(captain) {
     nodes.forEach(origin => {
         nodes.forEach(destination => {
             if (origin.sectorId === destination.sectorId) return;
-            const distance = getSectorPathDistance(origin.sectorId, destination.sectorId);
-            if (distance === null || distance > 5) return;
-            const risk = getRouteRiskForSectors(origin.sectorId, destination.sectorId);
-            if (risk === null || risk > captain.economy.acceptableRiskCeiling) return;
-            getRouteCommodityOptions(origin.sectorId, destination.sectorId).forEach(commodity => {
-                if (!captain.economy.preferredCommodities.includes(commodity)) return;
-                const profit = estimateRouteProfit(origin.sectorId, destination.sectorId, commodity);
-                const margin = profit / Math.max(1, distance);
+            const metrics = deriveRouteMetrics(origin.sectorId, destination.sectorId);
+            if (metrics.hopCount === null || metrics.hopCount > 5) return;
+            if (metrics.risk === null || metrics.risk > captain.economy.acceptableRiskCeiling) return;
+            metrics.profitBands.forEach(option => {
+                if (!captain.economy.preferredCommodities.includes(option.commodity)) return;
+                const profit = option.expected;
+                const physicalSpan = Math.max(1, metrics.totalEffectiveSpan || metrics.hopCount);
+                const margin = profit / physicalSpan;
                 if (margin < captain.economy.minimumExpectedMargin) return;
                 const homeBias = origin.sectorId === captain.homeSector || destination.sectorId === captain.homeSector ? 20 : 0;
-                const score = profit + homeBias - distance * 18 - risk * 22;
-                if (!best || score > best.score) best = { origin, destination, commodity, score };
+                const score = profit + homeBias - physicalSpan * 3 - metrics.risk * 22 - metrics.surcharge * 100;
+                if (!best || score > best.score) best = { origin, destination, commodity: option.commodity, score };
             });
         });
     });

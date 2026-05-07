@@ -9,9 +9,10 @@ import { nudgeCaptainRelation, getKnownCaptains } from './captains.js';
 import {
     findShortestSectorPath,
     findShortestCorridorPath as findNavigationCorridorPath,
-    getSectorPathDistance,
-    getCorridorRiskForPath
+    getCorridorRiskForPath,
+    getRelaySurchargeForPath
 } from '../core/navigation.js';
+import { findCheapestCorridorPath, getPathCost, getWorldGraphRevision } from '../core/routePlanner.js';
 
 function nextTradeRouteId() {
     const routeId = state.nextTradeRouteId;
@@ -142,29 +143,24 @@ export function findShortestCorridorPath(start, goal) {
     return findNavigationCorridorPath(start, goal);
 }
 
-export function getRoutePath(route) { return findShortestSectorPath(route.originSector, route.destinationSector); }
+export function getRoutePath(route) {
+    return deriveRouteMetrics(route.originSector, route.destinationSector).path;
+}
+
 export function getRouteDistance(originSector, destinationSector) {
-    return getSectorPathDistance(originSector, destinationSector);
+    return deriveRouteMetrics(originSector, destinationSector).hopCount;
 }
 
 export function getRouteCommodityOptions(originSector, destinationSector) {
-    const origin = getLogisticsNode(originSector);
-    const destination = getLogisticsNode(destinationSector);
-    if (!origin || !destination || originSector === destinationSector) return [];
-    if (!findShortestSectorPath(originSector, destinationSector)) return [];
-    return MARKET_COMMODITIES.filter(c => origin.sells.includes(c) && destination.buys.includes(c));
+    return deriveRouteMetrics(originSector, destinationSector).viableCommodities.slice();
 }
 
 export function getRouteSetupCost(originSector, destinationSector) {
-    const distance = getRouteDistance(originSector, destinationSector);
-    const risk = getRouteRiskForSectors(originSector, destinationSector);
-    if (distance === null || risk === null) return null;
-    return BALANCE.TRADE_ROUTE_BASE_COST + distance * 220 + risk * 130;
+    return deriveRouteMetrics(originSector, destinationSector).setupCost;
 }
 
 export function getRouteRiskForSectors(originSector, destinationSector) {
-    const path = findShortestSectorPath(originSector, destinationSector);
-    return path ? getCorridorRiskForPath(path) : null;
+    return deriveRouteMetrics(originSector, destinationSector).risk;
 }
 
 export function getRouteRisk(route) {
@@ -183,12 +179,12 @@ export function getRouteEscortPower(route) {
 export function getRouteMarketValue(sectorId, commodity, mode) {
     const node = getLogisticsNode(sectorId);
     if (!node) return 0;
-    const stock = Math.max(0, node.stock[commodity] || 0);
-    const maxStock = Math.max(1, node.maxStock[commodity] || 1);
+    const stock = Math.max(0, (node.stock || {})[commodity] || 0);
+    const maxStock = Math.max(1, (node.maxStock || {})[commodity] || 1);
     const ratio = Math.max(0, Math.min(1, stock / maxStock));
     const colonyBasePrices = { ore: 85, org: 160, eq: 320, pulse_canister: 7, heavy_pulse_module: 26 };
     const base = node.kind === "port"
-        ? state.ports[sectorId].basePrices[commodity]
+        ? (state.ports[sectorId].basePrices || {})[commodity]
         : colonyBasePrices[commodity];
     if (typeof base !== "number") return 0;
     if (mode === "buy") return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * (0.72 + (1 - ratio) * 0.65)));
@@ -202,38 +198,133 @@ export function estimateRouteProfit(originSector, destinationSector, commodity, 
     return Math.max(25, Math.floor(spread * amount * 0.38));
 }
 
-function buildRouteMetrics(origin, destination) {
-    const path = findShortestSectorPath(origin.sectorId, destination.sectorId);
-    if (!path) {
+const routeMetricsCache = new Map();
+let routeMetricsMarketSignature = '';
+let routeMetricsRevision = null;
+
+function buildRouteMetricsMarketSignature() {
+    return getAllLogisticsNodes()
+        .map(node => [
+            node.sectorId,
+            node.kind,
+            node.factionId || '',
+            node.sells.join(','),
+            node.buys.join(','),
+            MARKET_COMMODITIES.map(commodity => (node.stock || {})[commodity] || 0).join(','),
+            MARKET_COMMODITIES.map(commodity => (node.maxStock || {})[commodity] || 0).join(',')
+        ].join(':'))
+        .join('|');
+}
+
+function ensureRouteMetricsCacheFresh() {
+    const revision = getWorldGraphRevision();
+    const marketSignature = buildRouteMetricsMarketSignature();
+    if (routeMetricsRevision !== revision || routeMetricsMarketSignature !== marketSignature) {
+        routeMetricsCache.clear();
+        routeMetricsRevision = revision;
+        routeMetricsMarketSignature = marketSignature;
+    }
+}
+
+function routeMetricKey(originSector, destinationSector) {
+    return `${originSector}->${destinationSector}`;
+}
+
+function computeRouteSetupCost(metrics) {
+    if (!metrics.path) return null;
+    const effectiveSpanCost = metrics.totalEffectiveSpan;
+    const surchargeMultiplier = 1 + metrics.surcharge;
+    const physicalCost = metrics.hopCount * 140 + effectiveSpanCost * 24;
+    const riskCost = metrics.risk * 130;
+    return Math.round((BALANCE.TRADE_ROUTE_BASE_COST + physicalCost + riskCost) * surchargeMultiplier);
+}
+
+function getProfitBand(originSector, destinationSector, commodity) {
+    const expected = estimateRouteProfit(originSector, destinationSector, commodity);
+    return {
+        commodity,
+        low: Math.max(0, Math.floor(expected * 0.75)),
+        expected,
+        high: Math.ceil(expected * 1.25),
+        estimatedProfit: expected
+    };
+}
+
+export function deriveRouteMetrics(originSector, destinationSector) {
+    ensureRouteMetricsCacheFresh();
+    const key = routeMetricKey(originSector, destinationSector);
+    if (routeMetricsCache.has(key)) {
+        const cached = routeMetricsCache.get(key);
         return {
-            origin,
-            destination,
-            path: null,
-            distance: null,
-            risk: null,
-            setupCost: null,
-            commodities: [],
-            availableCommodities: []
+            ...cached,
+            path: cached.path ? cached.path.slice() : null,
+            corridorPath: cached.corridorPath ? cached.corridorPath.map(segment => ({ ...segment })) : null,
+            viableCommodities: cached.viableCommodities.slice(),
+            profitBands: cached.profitBands.map(option => ({ ...option }))
         };
     }
-    const distance = Math.max(1, path.length - 1);
-    const risk = getCorridorRiskForPath(path);
-    const setupCost = BALANCE.TRADE_ROUTE_BASE_COST + distance * 220 + risk * 130;
-    const commodities = MARKET_COMMODITIES
-        .filter(commodity => origin.sells.includes(commodity) && destination.buys.includes(commodity))
-        .map(commodity => ({
-            commodity,
-            estimatedProfit: estimateRouteProfit(origin.sectorId, destination.sectorId, commodity)
-        }));
-    const availableCommodities = commodities.filter(option => !routeExists(
+
+    const origin = getLogisticsNode(originSector);
+    const destination = getLogisticsNode(destinationSector);
+    const corridorPath = findCheapestCorridorPath(originSector, destinationSector);
+    const path = corridorPath
+        ? [originSector].concat(corridorPath.map(segment => segment.toSectorId))
+        : null;
+    const hopCount = path ? Math.max(0, path.length - 1) : null;
+    const totalEffectiveSpan = corridorPath
+        ? corridorPath.reduce((sum, segment) => sum + Math.max(0, segment.effectiveSpanCost || 0), 0)
+        : null;
+    const risk = path ? getCorridorRiskForPath(path) : null;
+    const surcharge = path ? getRelaySurchargeForPath(path) : 0;
+    const viableCommodities = origin && destination && originSector !== destinationSector && path
+        ? MARKET_COMMODITIES.filter(commodity => origin.sells.includes(commodity) && destination.buys.includes(commodity))
+        : [];
+    const profitBands = viableCommodities.map(commodity => getProfitBand(originSector, destinationSector, commodity));
+    const metrics = {
+        origin,
+        destination,
+        path,
+        corridorPath,
+        hopCount,
+        distance: hopCount,
+        totalEffectiveSpan,
+        pathCost: corridorPath ? getPathCost(corridorPath) : null,
+        risk,
+        surcharge,
+        setupCost: null,
+        viableCommodities,
+        commodities: profitBands,
+        profitBands
+    };
+    metrics.setupCost = computeRouteSetupCost(metrics);
+    routeMetricsCache.set(key, metrics);
+    return {
+        ...metrics,
+        path: metrics.path ? metrics.path.slice() : null,
+        corridorPath: metrics.corridorPath ? metrics.corridorPath.map(segment => ({ ...segment })) : null,
+        viableCommodities: metrics.viableCommodities.slice(),
+        profitBands: metrics.profitBands.map(option => ({ ...option }))
+    };
+}
+
+function buildRouteMetrics(origin, destination) {
+    const metrics = deriveRouteMetrics(origin.sectorId, destination.sectorId);
+    const availableCommodities = metrics.profitBands.filter(option => !routeExists(
         origin.sectorId,
         destination.sectorId,
         option.commodity,
         "player",
         null
     ));
-    return { origin, destination, path, distance, risk, setupCost, commodities, availableCommodities };
+    return {
+        ...metrics,
+        origin,
+        destination,
+        commodities: metrics.profitBands,
+        availableCommodities
+    };
 }
+
 
 export function buildLogisticsSnapshot(originSector = state.player.currentSector) {
     const nodes = getAllLogisticsNodes();
@@ -256,10 +347,10 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
         .map(route => {
             const routeOrigin = bySector.get(route.originSector) || null;
             const routeDestination = bySector.get(route.destinationSector) || null;
-            const path = findShortestSectorPath(route.originSector, route.destinationSector);
-            const baseRisk = path ? getCorridorRiskForPath(path) : null;
+            const metrics = deriveRouteMetrics(route.originSector, route.destinationSector);
+            const baseRisk = metrics.risk;
             const risk = baseRisk === null ? null : baseRisk + Math.max(0, route.heat || 0) / 12;
-            return { route, origin: routeOrigin, destination: routeDestination, path, risk };
+            return { route, origin: routeOrigin, destination: routeDestination, path: metrics.path, metrics, risk };
         });
     const playerColonies = Object.fromEntries(
         Object.entries(state.planets).filter(([, planet]) => planet.owner === "Player")
@@ -283,10 +374,11 @@ export function createTradeRoute(destinationSector, commodity) {
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     if (!origin || !destination) { log("Trade routes need a port or player colony at both ends."); return; }
-    if (!findShortestSectorPath(originSector, destinationSector)) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
-    if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) { log("That route does not have a useful commodity flow."); return; }
+    const metrics = deriveRouteMetrics(originSector, destinationSector);
+    if (!metrics.path) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
+    if (!metrics.viableCommodities.includes(commodity)) { log("That route does not have a useful commodity flow."); return; }
     if (routeExists(originSector, destinationSector, commodity, "player", null)) { log("You already operate that route."); return; }
-    const cost = getRouteSetupCost(originSector, destinationSector);
+    const cost = metrics.setupCost;
     if (cost === null) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
     if (!spendTime(180)) return;
@@ -314,8 +406,9 @@ export function createCaptainTradeRoute(captain, originSector, destinationSector
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
     if (!captain || !origin || !destination) return null;
-    if (!findShortestSectorPath(originSector, destinationSector)) return null;
-    if (!getRouteCommodityOptions(originSector, destinationSector).includes(commodity)) return null;
+    const metrics = deriveRouteMetrics(originSector, destinationSector);
+    if (!metrics.path) return null;
+    if (!metrics.viableCommodities.includes(commodity)) return null;
     if (routeExists(originSector, destinationSector, commodity, "captain", captain.id)) return null;
     const route = createRouteRecord({
         name: `${captain.callsign || captain.name} ${formatCommodity(commodity)} ${originSector}->${destinationSector}`,

@@ -1,8 +1,7 @@
 import { state } from '../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../constants.js';
 import { formatCommodity, makeStock, random } from '../utils.js';
-import { getAllLogisticsNodes, getRouteMarketValue } from './tradeRoutes.js';
-import { findShortestSectorPath, getSectorPathDistance, getCorridorRiskForPath } from '../core/navigation.js';
+import { getAllLogisticsNodes, getRouteMarketValue, deriveRouteMetrics } from './tradeRoutes.js';
 
 function getNodeSurplus(node, commodity) {
     const stock = node.stock[commodity] || 0;
@@ -48,10 +47,10 @@ export function runAmbientTradeDaily() {
             sources.forEach(sourceItem => {
                 if (sinkRemainingCap <= 0 || sourceItem.surplus <= 0) return;
                 if (sourceItem.node.sectorId === sinkItem.node.sectorId) return;
-                const distance = getSectorPathDistance(sourceItem.node.sectorId, sinkItem.node.sectorId);
+                const metrics = deriveRouteMetrics(sourceItem.node.sectorId, sinkItem.node.sectorId);
+                const distance = metrics.hopCount;
                 if (distance === null || distance > BALANCE.AMBIENT_TRADE.MAX_SEARCH_DISTANCE) return;
-                const path = findShortestSectorPath(sourceItem.node.sectorId, sinkItem.node.sectorId);
-                const risk = getCorridorRiskForPath(path) || 0;
+                const risk = metrics.risk || 0;
                 if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity)) return;
                 const distanceFactor = 1 / (1 + Math.max(0, distance - BALANCE.AMBIENT_TRADE.DISTANCE_BASELINE) * BALANCE.AMBIENT_TRADE.DISTANCE_PENALTY);
                 const riskFactor = 1 / (1 + risk * BALANCE.AMBIENT_TRADE.RISK_PENALTY);
