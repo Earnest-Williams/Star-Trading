@@ -61,7 +61,7 @@ export function getWorldGraphRevision() {
     cachedRevision = state.worldGraphRevision;
     if (!microtaskScheduled) {
         microtaskScheduled = true;
-        Promise.resolve().then(() => { cachedRevision = null; microtaskScheduled = false; });
+        Promise.resolve().then(() => { microtaskScheduled = false; cachedRevision = null; });
     }
     return cachedRevision;
 }
@@ -73,6 +73,9 @@ export function invalidateRoutePlannerCache() {
     cachedRevision = null;
 }
 
+/** Force signature recheck on the next getWorldGraphRevision() call without bumping the revision counter.
+ *  Use this when the universe graph may have changed but you want the signature check to confirm it
+ *  (rather than unconditionally bumping the revision as invalidateRoutePlannerCache() does). */
 export function markGraphDirty() {
     cachedRevision = null;
     lastGraphSignature = '';
@@ -156,6 +159,7 @@ function planWeightedCorridorPath(startSectorId, goalSectorId) {
     const settled = new Set();
 
     while (frontier.length > 0) {
+        // O(N) min-extraction: find lowest-cost frontier entry (ties broken by sectorId for determinism).
         let minIdx = 0;
         for (let i = 1; i < frontier.length; i++) {
             const a = frontier[i], b = frontier[minIdx];
