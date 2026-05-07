@@ -29,7 +29,7 @@ function normalisePlatform(platform) {
     };
 }
 
-const CHARACTER_FIELD_NORMALISERS = Object.freeze({
+const CHARACTER_FIELD_NORMALIZERS = Object.freeze({
     stats: value => normaliseStats(value),
     traits: value => Array.isArray(value) ? value : [],
     originTraitId: value => value || null,
@@ -37,15 +37,16 @@ const CHARACTER_FIELD_NORMALISERS = Object.freeze({
     platform: value => normalisePlatform(value),
     contacts: value => Array.isArray(value) ? value : []
 });
+const IDENTITY_FIELD_NORMALIZER = value => value;
 
 export function normaliseCharacter(character = {}) {
     const source = character && typeof character === "object" ? character : {};
     const normalisedSchemaFields = {};
     CHARACTER_SCHEMA_FIELDS.forEach(field => {
-        const normaliseField = CHARACTER_FIELD_NORMALISERS[field];
-        normalisedSchemaFields[field] = normaliseField
-            ? normaliseField(source[field])
-            : source[field];
+        // Explicit fallback keeps schema iteration resilient if a new manifest field
+        // is introduced before a dedicated normalizer is added.
+        const normalizeField = CHARACTER_FIELD_NORMALIZERS[field] || IDENTITY_FIELD_NORMALIZER;
+        normalisedSchemaFields[field] = normalizeField(source[field]);
     });
     return {
         ...source,

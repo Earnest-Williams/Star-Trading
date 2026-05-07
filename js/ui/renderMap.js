@@ -15,8 +15,6 @@ let mapProjectionCache = {};
 const MAP_HASH_OFFSET_BASIS = 2166136261;
 const MAP_HASH_FNV_PRIME = 16777619;
 const MAP_HASH_SECONDARY_PRIME = 2246822519;
-const NUMBER_HASH_BUFFER = new ArrayBuffer(8);
-const NUMBER_HASH_VIEW = new DataView(NUMBER_HASH_BUFFER);
 
 export function invalidateMapProjectionCache() {
     mapProjectionHashPrimary = 0;
@@ -27,12 +25,11 @@ export function invalidateMapProjectionCache() {
     state.mapNodeCache = {};
 }
 
-function projectedCoord(site, sectorId) {
-    const coord = site.coord || { x: sectorId, y: 0, z: 0 };
-    return {
-        x: coord.x - coord.z * MAP_UI.PROJECTION.Z_TO_X,
-        y: coord.y + coord.z * MAP_UI.PROJECTION.Z_TO_Y
-    };
+function projectedCoord(site, sectorId, target = {}) {
+    const { x = sectorId, y = 0, z = 0 } = site.coord ?? {};
+    target.x = x - z * MAP_UI.PROJECTION.Z_TO_X;
+    target.y = y + z * MAP_UI.PROJECTION.Z_TO_Y;
+    return target;
 }
 
 function getVisibleMapSectorIds(universe) {
@@ -44,23 +41,26 @@ function getVisibleMapSectorIds(universe) {
 function getMapProjectionSignature(universe, ids) {
     let primary = MAP_HASH_OFFSET_BASIS;
     let secondary = MAP_HASH_FNV_PRIME;
+    const projection = { x: 0, y: 0 };
+    const hashProjectedValue = value => {
+        const scaled = Math.round(value * 1000000);
+        const lowBits = scaled | 0;
+        const highBits = (scaled / 0x100000000) | 0;
+        return (lowBits ^ highBits) >>> 0;
+    };
     ids.forEach(id => {
         const site = universe[id];
-        const baseCoord = site.coord;
-        const x = (baseCoord?.x ?? id) - (baseCoord?.z ?? 0) * MAP_UI.PROJECTION.Z_TO_X;
-        const y = (baseCoord?.y ?? 0) + (baseCoord?.z ?? 0) * MAP_UI.PROJECTION.Z_TO_Y;
+        const coord = projectedCoord(site, id, projection);
         const charted = site.charted ? 1 : 0;
-        NUMBER_HASH_VIEW.setFloat64(0, Number.isFinite(x) ? x : 0);
-        const xHash = NUMBER_HASH_VIEW.getUint32(0) ^ NUMBER_HASH_VIEW.getUint32(4);
-        NUMBER_HASH_VIEW.setFloat64(0, Number.isFinite(y) ? y : 0);
-        const yHash = NUMBER_HASH_VIEW.getUint32(0) ^ NUMBER_HASH_VIEW.getUint32(4);
+        const xHash = hashProjectedValue(coord.x);
+        const yHash = hashProjectedValue(coord.y);
 
         primary = Math.imul(primary ^ id, MAP_HASH_FNV_PRIME);
         primary = Math.imul(primary ^ charted, MAP_HASH_FNV_PRIME);
         primary = Math.imul(primary ^ xHash, MAP_HASH_FNV_PRIME);
         primary = Math.imul(primary ^ yHash, MAP_HASH_FNV_PRIME);
 
-        secondary = Math.imul(secondary ^ ((id << 1) ^ charted), MAP_HASH_SECONDARY_PRIME);
+        secondary = Math.imul(secondary ^ (Math.imul(id, 2) ^ charted), MAP_HASH_SECONDARY_PRIME);
         secondary = Math.imul(secondary ^ xHash, MAP_HASH_SECONDARY_PRIME);
         secondary = Math.imul(secondary ^ yHash, MAP_HASH_SECONDARY_PRIME);
     });
