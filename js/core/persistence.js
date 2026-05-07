@@ -307,7 +307,7 @@ function normaliseCurrentLoadedGame() {
         if (!sector.coord) sector.coord = { x: sector.id, y: 0, z: 0 };
         sector.coordKey = sector.coordKey || `${sector.coord.x},${sector.coord.y},${sector.coord.z}`;
         state.siteIdByCoord[sector.coordKey] = sector.id;
-        if (!sector.siteType) sector.siteType = sector.id === (state.world.roles.shipyardSiteId || 1) ? "stellar_system" : "stellar_system";
+        if (!sector.siteType) sector.siteType = "stellar_system";
         if (!sector.richness) sector.richness = sector.id === (state.world.roles.shipyardSiteId || 1) ? "hub" : "developing";
         if (typeof sector.charted !== "boolean") sector.charted = true;
         if (typeof sector.reachable !== "boolean") sector.reachable = true;
