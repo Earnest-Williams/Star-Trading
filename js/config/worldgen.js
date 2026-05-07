@@ -79,7 +79,11 @@ export const PORT_DEFAULTS = Object.freeze({
         ORG_BASE: 1200,
         ORG_SPAN: 3000,
         EQ_BASE: 800,
-        EQ_SPAN: 2400
+        EQ_SPAN: 2400,
+        PULSE_CANISTER_FILL_BASE: 0.35,
+        PULSE_CANISTER_FILL_SPAN: 0.45,
+        HEAVY_PULSE_MODULE_FILL_BASE: 0.20,
+        HEAVY_PULSE_MODULE_FILL_SPAN: 0.35
     }),
     MAX_STOCK: Object.freeze({
         ore: 6000,
@@ -95,6 +99,36 @@ export const PORT_DEFAULTS = Object.freeze({
         pulse_canister: 7,
         heavy_pulse_module: 26
     })
+});
+
+export const PLANET_DEFAULTS = Object.freeze({
+    COLONISTS: 0,
+    SATISFACTION: 60,
+    BUILDINGS: Object.freeze({ habitat: 0, mine: 0, farm: 0, factory: 0, defense: 0 })
+});
+
+export const WORLDGEN_ANCHORS = Object.freeze({
+    CENTER_COUNT_MIN: 5,
+    SITES_PER_CLUSTER_CENTER: 12,
+    WAY_STATION_SPARSE_CHANCE: 0.65,
+    RICHNESS_SCORE: Object.freeze({ hub: 0, settled: 1, strategic: 2, developing: 3, sparse: 4, barren: 5 }),
+    DEFAULT_RICHNESS_SCORE: 6,
+    TYPE_SCORE: Object.freeze({
+        stellar_system: 0,
+        multiple_star_system: 1,
+        circumbinary_system: 2
+    }),
+    DEFAULT_TYPE_SCORE: 3,
+    RICHNESS_SCORE_MULTIPLIER: 12,
+    TYPE_SCORE_MULTIPLIER: 5,
+    SHEAR_SCORE_MULTIPLIER: 4,
+    IDEAL_PLANE_DISTANCE: 14,
+    PLANE_DISTANCE_MULTIPLIER: 0.05,
+    ID_TIEBREAKER_MULTIPLIER: 0.0001
+});
+
+export const GATE_DEFAULTS = Object.freeze({
+    STABILITY: 100
 });
 
 export const STARFIELD = Object.freeze({
