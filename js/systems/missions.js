@@ -1,5 +1,6 @@
 import { state } from '../state.js';
 import { FACTIONS, BALANCE, PORT_TYPES, COMMODITIES } from '../constants.js';
+import { MISSION_TUNING } from '../config/missions.js';
 import { formatCommodity, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
@@ -17,15 +18,15 @@ export function makeBaseMission(title, originSector, rewardCredits, expiresInDay
     const port = state.ports[originSector];
     const dominant = getDominantInfluence(originSector);
     let factionId = port && port.factionId ? port.factionId : dominant;
-    if (random() < 0.25) factionId = dominant;
-    if (port && port.hiddenFactionId && random() < 0.12) factionId = port.hiddenFactionId;
+    if (random() < MISSION_TUNING.BASE.DOMINANT_FACTION_CHANCE) factionId = dominant;
+    if (port && port.hiddenFactionId && random() < MISSION_TUNING.BASE.HIDDEN_FACTION_CHANCE) factionId = port.hiddenFactionId;
     return {
         id: state.nextMissionId++,
         title, originSector, factionId,
-        rewardCredits, rewardRep: 2,
+        rewardCredits, rewardRep: MISSION_TUNING.BASE.REWARD_REP,
         expiresDay: state.player.time.day + expiresInDays,
         status: "available",
-        operationMinutes: 30
+        operationMinutes: MISSION_TUNING.BASE.OPERATION_MINUTES
     };
 }
 
@@ -37,10 +38,13 @@ export function makeDeliveryMission() {
     const destinations = activePortSectors().filter(s => s !== origin && PORT_TYPES[state.ports[s].typeKey].buys.includes(commodity));
     if (destinations.length < 1) return null;
     const destination = destinations[Math.floor(random() * destinations.length)];
-    const amount = 10 + Math.floor(random() * 3) * 10;
-    const distance = Math.abs(destination - origin) + 1;
-    const reward = amount * state.ports[origin].basePrices[commodity] + distance * 180 + 600;
-    const m = makeBaseMission(`Deliver ${amount} ${formatCommodity(commodity)} to sector ${destination}`, origin, reward, 4 + Math.ceil(distance / 6));
+    const amount = MISSION_TUNING.DELIVERY.AMOUNTS[Math.floor(random() * MISSION_TUNING.DELIVERY.AMOUNTS.length)];
+    const distance = Math.abs(destination - origin) + MISSION_TUNING.DELIVERY.DISTANCE_BASELINE;
+    const reward = amount * state.ports[origin].basePrices[commodity]
+        + distance * MISSION_TUNING.DELIVERY.DISTANCE_REWARD
+        + MISSION_TUNING.DELIVERY.BASE_REWARD;
+    const m = makeBaseMission(`Deliver ${amount} ${formatCommodity(commodity)} to sector ${destination}`, origin, reward, MISSION_TUNING.DELIVERY.EXPIRES_BASE_DAYS
+        + Math.ceil(distance / MISSION_TUNING.DELIVERY.EXPIRES_DISTANCE_DIVISOR));
     m.type = "delivery";
     m.destinationSector = destination;
     m.commodity = commodity;
@@ -50,8 +54,9 @@ export function makeDeliveryMission() {
 
 export function makeMiningMission() {
     const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
-    const amount = 30 + Math.floor(random() * 5) * 10;
-    const m = makeBaseMission(`Mine ${amount} Ore for sector ${origin}`, origin, amount * 95 + 700, 5);
+    const amount = MISSION_TUNING.MINING.AMOUNTS[Math.floor(random() * MISSION_TUNING.MINING.AMOUNTS.length)];
+    const m = makeBaseMission(`Mine ${amount} Ore for sector ${origin}`, origin, amount * MISSION_TUNING.MINING.ORE_REWARD_PER_UNIT
+        + MISSION_TUNING.MINING.BASE_REWARD, MISSION_TUNING.MINING.EXPIRES_DAYS);
     m.factionId = PORT_TYPES[state.ports[origin].typeKey].factionId === "hc" ? "miners" : m.factionId;
     m.type = "mining";
     m.amount = amount;
@@ -64,7 +69,8 @@ export function makeSurveyMission() {
     const candidates = Object.values(state.universe).filter(s => !s.surveyed && s.id !== origin);
     if (candidates.length < 1) return null;
     const target = candidates[Math.floor(random() * candidates.length)].id;
-    const m = makeBaseMission(`Survey sector ${target}`, origin, 1200 + target * 25, 5);
+    const m = makeBaseMission(`Survey sector ${target}`, origin, MISSION_TUNING.SURVEY.BASE_REWARD
+        + target * MISSION_TUNING.SURVEY.TARGET_REWARD_MULTIPLIER, MISSION_TUNING.SURVEY.EXPIRES_DAYS);
     m.type = "survey";
     m.targetSector = target;
     return m;
@@ -75,20 +81,20 @@ export function makeColonyMission() {
     const candidates = Object.keys(state.planets).map(Number).filter(s => !state.planets[s].owner);
     if (candidates.length < 1) return null;
     const target = candidates[Math.floor(random() * candidates.length)];
-    const m = makeBaseMission(`Found a colony in sector ${target}`, origin, 4500, 8);
+    const m = makeBaseMission(`Found a colony in sector ${target}`, origin, MISSION_TUNING.COLONY.REWARD, MISSION_TUNING.COLONY.EXPIRES_DAYS);
     m.type = "colony";
     m.targetSector = target;
     return m;
 }
 
 export function generateMissionPool(count) {
-    const requested = count || 10;
+    const requested = count || MISSION_TUNING.POOL.DEFAULT_COUNT;
     for (let i = 0; i < requested; i++) {
         const typeRoll = random();
         let mission = null;
-        if (typeRoll < 0.45) mission = makeDeliveryMission();
-        else if (typeRoll < 0.70) mission = makeMiningMission();
-        else if (typeRoll < 0.88) mission = makeSurveyMission();
+        if (typeRoll < MISSION_TUNING.POOL.DELIVERY_ROLL) mission = makeDeliveryMission();
+        else if (typeRoll < MISSION_TUNING.POOL.MINING_ROLL) mission = makeMiningMission();
+        else if (typeRoll < MISSION_TUNING.POOL.SURVEY_ROLL) mission = makeSurveyMission();
         else mission = makeColonyMission();
         if (mission) state.missions.push(prepareMissionOpportunity(mission));
     }
@@ -99,16 +105,18 @@ export function missionDescription(m) {
     if (m.type === "mining") return `Mine ${m.amount} Ore, then report back to sector ${m.originSector}.`;
     if (m.type === "survey") return `Survey sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
     if (m.type === "colony") return `Found a colony in sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
-    if (m.type === "contest") return `${m.context || "Political conflict contract."} Travel to sector ${m.targetSector}, spend ${m.operationMinutes || 90} minutes on the operation, then report the result.`;
+    if (m.type === "contest") return `${m.context || "Political conflict contract."} Travel to sector ${m.targetSector}, spend ${m.operationMinutes || MISSION_TUNING.BASE.CONTEST_OPERATION_MINUTES} minutes on the operation, then report the result.`;
     return "Mission details unavailable.";
 }
 
 export function isMissionVisible(m) {
     if (!m.factionId || !FACTIONS[m.factionId]) return true;
     const faction = FACTIONS[m.factionId];
-    if (faction.type === "guild") return getGuildTier(m.factionId) > 0 || getFactionRep(m.factionId) >= 50 || getFactionTrust(m.factionId) >= 25;
-    if (m.factionId === "vc") return getFactionRep("vc") > -250 || getPrivateFactionRep("vc") >= 25 || getGuildTier("smugglers") > 0;
-    return getFactionRep(m.factionId) > -250;
+    if (faction.type === "guild") return getGuildTier(m.factionId) > 0 || getFactionRep(m.factionId) >= MISSION_TUNING.VISIBILITY.GUILD_REP
+        || getFactionTrust(m.factionId) >= MISSION_TUNING.VISIBILITY.GUILD_TRUST;
+    if (m.factionId === "vc") return getFactionRep("vc") > MISSION_TUNING.VISIBILITY.HOSTILE_REP_FLOOR
+        || getPrivateFactionRep("vc") >= MISSION_TUNING.VISIBILITY.PRIVATE_REP || getGuildTier("smugglers") > 0;
+    return getFactionRep(m.factionId) > MISSION_TUNING.VISIBILITY.HOSTILE_REP_FLOOR;
 }
 
 export function expireMissions() {
@@ -126,7 +134,9 @@ export function expireMissions() {
         }
     });
     const openCount = state.missions.filter(m => m.status === "available").length;
-    if (openCount < 6) generateMissionPool(6 - openCount);
+    if (openCount < MISSION_TUNING.POOL.REFILL_TARGET) {
+        generateMissionPool(MISSION_TUNING.POOL.REFILL_TARGET - openCount);
+    }
 }
 
 export function notifyCaptainsPlayerCompletedMission(mission) {
@@ -171,24 +181,24 @@ export function completeMission(id) {
     if (m.type === "delivery") {
         if (state.player.currentSector !== m.destinationSector) { log(`Delivery destination is sector ${m.destinationSector}.`); return; }
         if (state.player.cargo[m.commodity] < m.amount) { log(`You need ${m.amount} ${formatCommodity(m.commodity)} to complete this delivery.`); return; }
-        if (!spendTime(30)) return;
+        if (!spendTime(MISSION_TUNING.DELIVERY.COMPLETION_MINUTES)) return;
         state.player.cargo[m.commodity] -= m.amount;
-        addSectorInfluence(m.destinationSector, m.factionId || "fu", 2, "mission cargo delivery");
+        addSectorInfluence(m.destinationSector, m.factionId || "fu", MISSION_TUNING.DELIVERY.INFLUENCE_REWARD, "mission cargo delivery");
     } else if (m.type === "mining") {
         if (state.player.currentSector !== m.originSector) { log(`Report back to sector ${m.originSector}.`); return; }
         if (m.progress < m.amount) { log(`Mining progress is ${m.progress}/${m.amount} Ore.`); return; }
-        if (!spendTime(30)) return;
+        if (!spendTime(MISSION_TUNING.MINING.COMPLETION_MINUTES)) return;
     } else if (m.type === "survey") {
         if (state.player.currentSector !== m.originSector) { log(`Report back to sector ${m.originSector}.`); return; }
         if (!state.universe[m.targetSector].surveyed) { log(`Sector ${m.targetSector} has not been surveyed yet.`); return; }
-        if (!spendTime(30)) return;
+        if (!spendTime(MISSION_TUNING.SURVEY.COMPLETION_MINUTES)) return;
     } else if (m.type === "colony") {
         if (state.player.currentSector !== m.originSector) { log(`Report back to sector ${m.originSector}.`); return; }
         if (!state.planets[m.targetSector] || state.planets[m.targetSector].owner !== "Player") { log(`No player colony exists in sector ${m.targetSector} yet.`); return; }
-        if (!spendTime(30)) return;
+        if (!spendTime(MISSION_TUNING.COLONY.COMPLETION_MINUTES)) return;
     } else if (m.type === "contest") {
         if (state.player.currentSector !== m.targetSector) { log(`Political operation target is sector ${m.targetSector}.`); return; }
-        if (!spendTime(m.operationMinutes || 90)) return;
+        if (!spendTime(m.operationMinutes || MISSION_TUNING.BASE.CONTEST_OPERATION_MINUTES)) return;
         applyContestMissionOutcome(m, "player");
     }
     m.status = "completed";
@@ -209,12 +219,12 @@ export function completeMission(id) {
             if (relation <= -50) recordFactionMemory(otherId, "helpedEnemies", 1);
         });
     }
-    if (m.type === "survey" && random() < 0.35) {
+    if (m.type === "survey" && random() < MISSION_TUNING.SURVEY.INTEL_CHANCE) {
         addIntel({
             type: "survey", factionId,
             sectorId: m.targetSector,
-            value: 25,
-            expiresDay: state.player.time.day + 7,
+            value: MISSION_TUNING.SURVEY.INTEL_VALUE,
+            expiresDay: state.player.time.day + MISSION_TUNING.SURVEY.INTEL_EXPIRES_DAYS,
             text: `Fresh survey data from sector ${m.targetSector}.`
         });
     }

@@ -19,7 +19,15 @@ export const BALANCE = {
         DISTANCE_PENALTY: 0.45,
         RISK_PENALTY: 0.28,
         JITTER: 0.18,
-        MIN_MARGIN: 10
+        MIN_MARGIN: 10,
+        NODE_TARGETS: {
+            SELLER_SURPLUS_FLOOR: 0.25,
+            NONSELLER_SURPLUS_FLOOR: 0.55,
+            BUYER_SHORTAGE_TARGET: 0.62,
+            NONBUYER_SHORTAGE_TARGET: 0.35
+        },
+        DEFAULT_MAX_STOCK_CAP: 9999,
+        DISTANCE_BASELINE: 1
     },
     CAPTAIN_ROUTE: {
         EVALUATION_INTERVAL_DAYS: 3,
@@ -321,3 +329,8 @@ export const ARCHETYPE_LABELS = {
     trader: "Trader", miner: "Miner", smuggler: "Smuggler",
     mercenary: "Mercenary", colonist: "Colonist", industrialist: "Industrialist", pirate: "Pirate"
 };
+export { MISSION_TUNING } from './config/missions.js';
+export { STARTER_PLAYER, STARTER_SHIP } from './config/player.js';
+export { POLITICS } from './config/politics.js';
+export { MAP_UI } from './config/ui.js';
+export { PORT_DEFAULTS, STARFIELD, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from './config/worldgen.js';

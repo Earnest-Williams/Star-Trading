@@ -1,5 +1,7 @@
 import { state } from '../state.js';
 import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
+import { PORT_DEFAULTS, STARFIELD, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../config/worldgen.js';
+import { STARTER_PLAYER, STARTER_SHIP } from '../config/player.js';
 import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
@@ -43,9 +45,13 @@ export function makePort(typeKey) {
         factionId: PORT_TYPES[typeKey].factionId,
         publicFactionId: PORT_TYPES[typeKey].factionId,
         hiddenFactionId: null,
-        stock: makeStock(1500 + Math.floor(rng() * 3500), 1200 + Math.floor(rng() * 3000), 800 + Math.floor(rng() * 2400)),
-        maxStock: makeStock(6000, 5000, 4000),
-        basePrices: { ore: 80, org: 150, eq: 300 }
+        stock: makeStock(
+            PORT_DEFAULTS.STOCK.ORE_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORE_SPAN),
+            PORT_DEFAULTS.STOCK.ORG_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORG_SPAN),
+            PORT_DEFAULTS.STOCK.EQ_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.EQ_SPAN)
+        ),
+        maxStock: makeStock(PORT_DEFAULTS.MAX_STOCK.ore, PORT_DEFAULTS.MAX_STOCK.org, PORT_DEFAULTS.MAX_STOCK.eq),
+        basePrices: { ...PORT_DEFAULTS.BASE_PRICES }
     };
 }
 
@@ -94,15 +100,21 @@ function distanceBetweenCoords(a, b) {
 function generateClusterCenters(archetype, count) {
     if (archetype.armCount === 0) {
         return Array.from({ length: count }, (_, index) => ({
-            x: Math.round(-16 + rng() * 32 + index * 1.5),
-            y: Math.round(-12 + rng() * 24),
+            x: Math.round(WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_MIN
+                + rng() * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_SPAN
+                + index * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_INDEX_DRIFT),
+            y: Math.round(WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_Y_MIN
+                + rng() * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_Y_SPAN),
             z: Math.round((rng() - 0.5) * archetype.zScale)
         }));
     }
     return Array.from({ length: count }, (_, index) => {
         const arm = index % archetype.armCount;
-        const radius = 10 + index * 3.5 + rng() * 5;
-        const angle = arm * (Math.PI * 2 / archetype.armCount) + radius * 0.16;
+        const radius = WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_BASE
+            + index * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_STEP
+            + rng() * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_JITTER;
+        const angle = arm * (Math.PI * 2 / archetype.armCount)
+            + radius * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_ANGLE_CURVE;
         return {
             x: Math.round(Math.cos(angle) * radius),
             y: Math.round(Math.sin(angle) * radius),
@@ -112,15 +124,19 @@ function generateClusterCenters(archetype, count) {
 }
 
 function metricShearAtCoord(coord) {
+    const shear = WORLDGEN_GEOMETRY.SHEAR;
     const planarDistance = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
-    const centralNoise = Math.max(0, (9 - planarDistance) / 9) * 1.18;
-    const offPlaneRelief = Math.min(0.12, Math.abs(coord.z) * 0.015);
-    const lumpyNoise = (Math.sin(coord.x * 0.31) + Math.cos(coord.y * 0.27) + Math.sin(coord.z * 0.73)) * 0.045;
-    return clamp(0.12 + centralNoise + lumpyNoise - offPlaneRelief, 0, 1.35);
+    const centralNoise = Math.max(0, (shear.CENTRAL_RADIUS - planarDistance) / shear.CENTRAL_RADIUS)
+        * shear.CENTRAL_MULTIPLIER;
+    const offPlaneRelief = Math.min(shear.OFF_PLANE_RELIEF_MAX, Math.abs(coord.z) * shear.OFF_PLANE_RELIEF_MULTIPLIER);
+    const lumpyNoise = (Math.sin(coord.x * shear.LUMPY_X_FREQUENCY)
+        + Math.cos(coord.y * shear.LUMPY_Y_FREQUENCY)
+        + Math.sin(coord.z * shear.LUMPY_Z_FREQUENCY)) * shear.LUMPY_MULTIPLIER;
+    return clamp(shear.BASELINE + centralNoise + lumpyNoise - offPlaneRelief, shear.MIN, shear.MAX);
 }
 
 function sampleCorridorMetric(fromCoord, toCoord) {
-    const samples = 5;
+    const samples = WORLDGEN_GEOMETRY.CORRIDORS.METRIC_SAMPLES;
     let sum = 0;
     let peak = 0;
     for (let index = 0; index <= samples; index++) {
@@ -179,16 +195,19 @@ function createWorldConfig() {
 
 function generateSiteCoordinate(archetype, centers, index) {
     const center = centers[index % centers.length];
-    for (let attempt = 0; attempt < 24; attempt++) {
-        const scale = index < 22 ? 3.8 : index < 45 ? 4.7 : 5.5;
+    for (let attempt = 0; attempt < WORLDGEN_GEOMETRY.SITE_PLACEMENT.MAX_ATTEMPTS; attempt++) {
+        const scale = index < WORLDGEN_GEOMETRY.SITE_PLACEMENT.EARLY_SITE_LIMIT
+            ? WORLDGEN_GEOMETRY.SITE_PLACEMENT.EARLY_SCALE
+            : index < WORLDGEN_GEOMETRY.SITE_PLACEMENT.MID_SITE_LIMIT
+                ? WORLDGEN_GEOMETRY.SITE_PLACEMENT.MID_SCALE : WORLDGEN_GEOMETRY.SITE_PLACEMENT.LATE_SCALE;
         const coord = {
             x: Math.round(center.x + (rng() - 0.5) * archetype.clusterJitter * scale),
             y: Math.round(center.y + (rng() - 0.5) * archetype.clusterJitter * scale),
             z: Math.round(center.z + (rng() - 0.5) * archetype.zScale * 2)
         };
-        if (metricShearAtCoord(coord) < 0.9) return coord;
+        if (metricShearAtCoord(coord) < WORLDGEN_GEOMETRY.SITE_PLACEMENT.ACCEPTABLE_SHEAR) return coord;
     }
-    return { x: center.x + index, y: center.y, z: center.z };
+    return { x: center.x + index * WORLDGEN_GEOMETRY.SITE_PLACEMENT.FALLBACK_X_OFFSET_PER_INDEX, y: center.y, z: center.z };
 }
 
 function createSparseSites(config) {
@@ -205,8 +224,8 @@ function createSparseSites(config) {
         let siteType = pickWeighted(BALANCE.WORLDGEN.SITE_TYPE_MIX);
         let richness = pickWeighted(BALANCE.WORLDGEN.RICHNESS_MIX);
         if (siteType === "way_station") richness = rng() < 0.65 ? "sparse" : "strategic";
-        const region = id <= Math.ceil(config.occupiedSites * 0.30) ? "Core"
-            : id <= Math.ceil(config.occupiedSites * 0.72) ? "Frontier" : "Badlands";
+        const region = id <= Math.ceil(config.occupiedSites * WORLDGEN_GEOMETRY.REGIONS.CORE_FRACTION) ? "Core"
+            : id <= Math.ceil(config.occupiedSites * WORLDGEN_GEOMETRY.REGIONS.FRONTIER_FRACTION) ? "Frontier" : "Badlands";
         sites[id] = {
             id,
             siteId: `site-${id}`,
@@ -220,7 +239,8 @@ function createSparseSites(config) {
             reachable: false,
             surveyed: false,
             jumpGates: [],
-            pirateThreat: id <= 8 ? 0 : Math.floor(rng() * (region === "Badlands" ? 5 : 3)),
+            pirateThreat: id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
+                ? 0 : Math.floor(rng() * WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region]),
             asteroids: null,
             influence: createBaseInfluence(region),
             front: null,
@@ -278,7 +298,7 @@ function buildCorridors(config) {
             }))
             .filter(candidate => candidate.cost <= maxCost)
             .sort((a, b) => a.cost - b.cost)
-            .slice(0, 3);
+            .slice(0, WORLDGEN_GEOMETRY.CORRIDORS.NEAREST_NEIGHBORS);
         candidates.forEach(candidate => addJumpGateCorridor(id, candidate.target, { effectiveSpanCost: candidate.cost }));
     });
     ids.forEach(id => {
@@ -294,7 +314,8 @@ function buildCorridors(config) {
             addJumpGateCorridor(id, nearest.target, {
                 effectiveSpanCost: nearest.cost,
                 relayClass: nearest.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN ? "scheduled_relay" : "direct",
-                scheduleHours: nearest.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN ? 24 : 0
+                scheduleHours: nearest.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN
+                    ? WORLDGEN_GEOMETRY.CORRIDORS.SCHEDULED_RELAY_HOURS : 0
             });
         }
     });
@@ -359,60 +380,68 @@ function seedPortsPlanetsAndResources() {
     const ids = Object.keys(state.universe).map(Number);
     const roles = state.world.roles;
     state.ports[roles.startingPortSiteId] = makePort("stardock");
-    const starterPorts = ["mining", "agricultural", "industrial", "consumer"];
+    const starterPorts = WORLDGEN_SPAWN.STARTER_PORTS;
     const starterCandidates = getNearestSiteIds(roles.homeSiteId, ids)
         .filter(id => id !== roles.startingPortSiteId && state.universe[id].siteType !== "way_station");
     starterPorts.forEach((typeKey, index) => {
         const id = starterCandidates[index];
         if (id && !state.ports[id]) state.ports[id] = makePort(typeKey);
     });
-    const portKeys = ["mining", "agricultural", "industrial", "consumer", "refinery"];
+    const portKeys = WORLDGEN_SPAWN.RANDOM_PORT_TYPES;
     ids.forEach(id => {
         if (state.ports[id]) return;
         const site = state.universe[id];
         if (site.siteType === "way_station") {
-            if (rng() < 0.7) state.ports[id] = makePort("refinery");
+            if (rng() < WORLDGEN_SPAWN.WAY_STATION_REFINERY_CHANCE) state.ports[id] = makePort("refinery");
             return;
         }
-        const chance = site.region === "Core" ? 0.42 : site.region === "Frontier" ? 0.34 : 0.24;
+        const chance = WORLDGEN_SPAWN.PORT_CHANCE_BY_REGION[site.region];
         if (rng() < chance) state.ports[id] = makePort(portKeys[Math.floor(rng() * portKeys.length)]);
     });
     Object.keys(state.ports).forEach(sec => {
         const sectorId = Number(sec);
         const port = state.ports[sectorId];
-        const dominant = state.universe[sectorId].region === "Badlands" && rng() < 0.18 ? "vc" : port.factionId;
+        const dominant = state.universe[sectorId].region === "Badlands"
+            && rng() < WORLDGEN_SPAWN.HIDDEN_BADLANDS_PORT_CHANCE ? "vc" : port.factionId;
         port.publicFactionId = port.factionId;
         port.hiddenFactionId = dominant === port.factionId ? null : dominant;
-        addSectorInfluence(sectorId, port.factionId, 16, "");
+        addSectorInfluence(sectorId, port.factionId, WORLDGEN_SPAWN.PORT_INFLUENCE, "");
         if (port.hiddenFactionId) {
             state.universe[sectorId].front = {
                 publicFactionId: port.factionId,
                 hiddenFactionId: port.hiddenFactionId,
-                suspicion: 10 + Math.floor(rng() * 25)
+                suspicion: WORLDGEN_SPAWN.FRONT_SUSPICION_BASE + Math.floor(rng() * WORLDGEN_SPAWN.FRONT_SUSPICION_SPAN)
             };
-            addSectorInfluence(sectorId, port.hiddenFactionId, 10, "");
+            addSectorInfluence(sectorId, port.hiddenFactionId, WORLDGEN_SPAWN.HIDDEN_PORT_INFLUENCE, "");
         }
     });
     const planetKeys = Object.keys(PLANET_TYPES);
     ids.forEach(id => {
         const site = state.universe[id];
         if (site.siteType === "way_station" || site.siteType === "exotic_remnant") return;
-        const chance = site.region === "Core" ? 0.24 : 0.32;
+        const chance = WORLDGEN_SPAWN.PLANET_CHANCE_BY_REGION[site.region];
         if (rng() < chance) state.planets[id] = makePlanet(planetKeys[Math.floor(rng() * planetKeys.length)]);
     });
     ids.forEach(id => {
         const site = state.universe[id];
-        const chance = site.region === "Badlands" ? 0.55 : site.siteType === "brown_dwarf_system" ? 0.42 : 0.28;
+        const chance = WORLDGEN_SPAWN.ASTEROID_CHANCE_BY_REGION[site.region]
+            || WORLDGEN_SPAWN.ASTEROID_CHANCE_BY_SITE_TYPE[site.siteType]
+            || WORLDGEN_SPAWN.ASTEROID_DEFAULT_CHANCE;
         if (site.siteType !== "way_station" && rng() < chance) {
-            const asteroidOre = 2500 + Math.floor(rng() * 9000);
+            const asteroidOre = WORLDGEN_SPAWN.ASTEROID_ORE_BASE
+                + Math.floor(rng() * WORLDGEN_SPAWN.ASTEROID_ORE_SPAN);
             site.asteroids = {
                 ore: asteroidOre, maxOre: asteroidOre,
-                richness: 0.7 + rng() * 1.1,
-                hazard: site.region === "Badlands" ? 0.12 + rng() * 0.18 : rng() * 0.12,
+                richness: WORLDGEN_SPAWN.ASTEROID_RICHNESS_BASE + rng() * WORLDGEN_SPAWN.ASTEROID_RICHNESS_SPAN,
+                hazard: site.region === "Badlands"
+                    ? WORLDGEN_SPAWN.ASTEROID_BADLANDS_HAZARD_BASE + rng() * WORLDGEN_SPAWN.ASTEROID_BADLANDS_HAZARD_SPAN
+                    : rng() * WORLDGEN_SPAWN.ASTEROID_HAZARD_SPAN,
                 surveyed: false
             };
-            addSectorInfluence(id, "hc", 5, "");
-            if (site.region === "Badlands" && rng() < 0.4) addSectorInfluence(id, "vc", 5, "");
+            addSectorInfluence(id, "hc", WORLDGEN_SPAWN.ASTEROID_HC_INFLUENCE, "");
+            if (site.region === "Badlands" && rng() < WORLDGEN_SPAWN.ASTEROID_BADLANDS_VC_CHANCE) {
+                addSectorInfluence(id, "vc", WORLDGEN_SPAWN.ASTEROID_BADLANDS_VC_INFLUENCE, "");
+            }
         }
         if (site.siteType === "way_station") {
             const station = BALANCE.GATE_PHYSICS.WAY_STATION;
@@ -453,23 +482,27 @@ export function generateUniverse() {
 export function generateStars() {
     initRng(state.player.seed);
     state.starField = [];
-    for (let i = 0; i < 100; i++) {
-        state.starField.push({ x: rng() * 700, y: rng() * 420, size: rng() < 0.85 ? 1 : 2 });
+    for (let i = 0; i < STARFIELD.COUNT; i++) {
+        state.starField.push({
+            x: rng() * STARFIELD.WIDTH,
+            y: rng() * STARFIELD.HEIGHT,
+            size: rng() < STARFIELD.SMALL_STAR_CHANCE ? STARFIELD.SMALL_SIZE : STARFIELD.LARGE_SIZE
+        });
     }
 }
 
 export function createPlayer() {
     return {
-        credits: 5000,
-        currentSector: 1,
+        credits: STARTER_PLAYER.CREDITS,
+        currentSector: STARTER_PLAYER.CURRENT_SECTOR,
         time: { day: 1, minuteOfDay: BALANCE.DEFAULT_WAKE, wakeMinute: BALANCE.DEFAULT_WAKE, sleepMinute: BALANCE.DEFAULT_SLEEP },
-        ship: { name: "Merchant Cruiser", maxHolds: 75, travelMinutesPerCorridor: 45, miningPower: 25, scannerLevel: 1, maxFighters: 2500, maxShields: 400, maxHull: 100 },
-        cargo: { ore: 0, org: 0, eq: 0 },
+        ship: { name: STARTER_SHIP.NAME, maxHolds: STARTER_SHIP.MAX_HOLDS, travelMinutesPerCorridor: STARTER_SHIP.TRAVEL_MINUTES_PER_CORRIDOR, miningPower: STARTER_SHIP.MINING_POWER, scannerLevel: STARTER_SHIP.SCANNER_LEVEL, maxFighters: STARTER_SHIP.MAX_FIGHTERS, maxShields: STARTER_SHIP.MAX_SHIELDS, maxHull: STARTER_SHIP.MAX_HULL },
+        cargo: { ...STARTER_PLAYER.CARGO },
         contrabandHold: [],
-        fighters: 30,
-        shields: 400,
-        hull: 100,
-        reputation: 0,
+        fighters: STARTER_PLAYER.FIGHTERS,
+        shields: STARTER_SHIP.MAX_SHIELDS,
+        hull: STARTER_SHIP.MAX_HULL,
+        reputation: STARTER_PLAYER.REPUTATION,
         seed: Date.now(),
         factionRelations: JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS)),
         factions: createFactionState()
