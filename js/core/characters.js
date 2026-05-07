@@ -29,18 +29,27 @@ function normalisePlatform(platform) {
     };
 }
 
+const CHARACTER_FIELD_NORMALISERS = Object.freeze({
+    stats: value => normaliseStats(value),
+    traits: value => Array.isArray(value) ? value : [],
+    originTraitId: value => value || null,
+    careerTraitIds: value => Array.isArray(value) ? value : [],
+    platform: value => normalisePlatform(value),
+    contacts: value => Array.isArray(value) ? value : []
+});
+
 export function normaliseCharacter(character = {}) {
     const source = character && typeof character === "object" ? character : {};
+    const normalisedSchemaFields = {};
+    CHARACTER_SCHEMA_FIELDS.forEach(field => {
+        const normaliseField = CHARACTER_FIELD_NORMALISERS[field];
+        normalisedSchemaFields[field] = normaliseField
+            ? normaliseField(source[field])
+            : source[field];
+    });
     return {
         ...source,
-        stats: normaliseStats(source.stats),
-        traits: Array.isArray(source.traits) ? source.traits : [],
-        originTraitId: source.originTraitId || null,
-        careerTraitIds: Array.isArray(source.careerTraitIds)
-            ? source.careerTraitIds
-            : [],
-        platform: normalisePlatform(source.platform),
-        contacts: Array.isArray(source.contacts) ? source.contacts : []
+        ...normalisedSchemaFields
     };
 }
 

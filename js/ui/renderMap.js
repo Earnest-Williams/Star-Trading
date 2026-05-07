@@ -7,12 +7,21 @@ import { getSectorNeighbors } from "../core/navigation.js";
 import { MAP_UI } from "../config/ui.js";
 
 const mapInteractionUnsubscribers = new WeakMap();
-let mapProjectionSignature = "";
+let mapProjectionHashPrimary = 0;
+let mapProjectionHashSecondary = 0;
+let mapProjectionVisibleCount = 0;
 let mapProjectionUniverseRef = null;
 let mapProjectionCache = {};
+const MAP_HASH_OFFSET_BASIS = 2166136261;
+const MAP_HASH_FNV_PRIME = 16777619;
+const MAP_HASH_SECONDARY_PRIME = 2246822519;
+const NUMBER_HASH_BUFFER = new ArrayBuffer(8);
+const NUMBER_HASH_VIEW = new DataView(NUMBER_HASH_BUFFER);
 
 export function invalidateMapProjectionCache() {
-    mapProjectionSignature = "";
+    mapProjectionHashPrimary = 0;
+    mapProjectionHashSecondary = 0;
+    mapProjectionVisibleCount = 0;
     mapProjectionUniverseRef = null;
     mapProjectionCache = {};
     state.mapNodeCache = {};
@@ -33,19 +42,45 @@ function getVisibleMapSectorIds(universe) {
 }
 
 function getMapProjectionSignature(universe, ids) {
-    return ids.map(id => {
+    let primary = MAP_HASH_OFFSET_BASIS;
+    let secondary = MAP_HASH_FNV_PRIME;
+    ids.forEach(id => {
         const site = universe[id];
-        const coord = projectedCoord(site, id);
+        const baseCoord = site.coord;
+        const x = (baseCoord?.x ?? id) - (baseCoord?.z ?? 0) * MAP_UI.PROJECTION.Z_TO_X;
+        const y = (baseCoord?.y ?? 0) + (baseCoord?.z ?? 0) * MAP_UI.PROJECTION.Z_TO_Y;
         const charted = site.charted ? 1 : 0;
-        return `${id}:${charted}:${coord.x}:${coord.y}`;
-    }).join("|");
+        NUMBER_HASH_VIEW.setFloat64(0, Number.isFinite(x) ? x : 0);
+        const xHash = NUMBER_HASH_VIEW.getUint32(0) ^ NUMBER_HASH_VIEW.getUint32(4);
+        NUMBER_HASH_VIEW.setFloat64(0, Number.isFinite(y) ? y : 0);
+        const yHash = NUMBER_HASH_VIEW.getUint32(0) ^ NUMBER_HASH_VIEW.getUint32(4);
+
+        primary = Math.imul(primary ^ id, MAP_HASH_FNV_PRIME);
+        primary = Math.imul(primary ^ charted, MAP_HASH_FNV_PRIME);
+        primary = Math.imul(primary ^ xHash, MAP_HASH_FNV_PRIME);
+        primary = Math.imul(primary ^ yHash, MAP_HASH_FNV_PRIME);
+
+        secondary = Math.imul(secondary ^ ((id << 1) ^ charted), MAP_HASH_SECONDARY_PRIME);
+        secondary = Math.imul(secondary ^ xHash, MAP_HASH_SECONDARY_PRIME);
+        secondary = Math.imul(secondary ^ yHash, MAP_HASH_SECONDARY_PRIME);
+    });
+    return {
+        primary: primary >>> 0,
+        secondary: secondary >>> 0,
+        visibleCount: ids.length
+    };
 }
 
 export function getMapNodes() {
     const universe = state.universe;
     const ids = getVisibleMapSectorIds(universe);
     const signature = getMapProjectionSignature(universe, ids);
-    if (mapProjectionUniverseRef === universe && signature === mapProjectionSignature) {
+    if (
+        mapProjectionUniverseRef === universe
+        && signature.primary === mapProjectionHashPrimary
+        && signature.secondary === mapProjectionHashSecondary
+        && signature.visibleCount === mapProjectionVisibleCount
+    ) {
         state.mapNodeCache = mapProjectionCache;
         return mapProjectionCache;
     }
@@ -72,7 +107,9 @@ export function getMapNodes() {
     }
 
     mapProjectionUniverseRef = universe;
-    mapProjectionSignature = signature;
+    mapProjectionHashPrimary = signature.primary;
+    mapProjectionHashSecondary = signature.secondary;
+    mapProjectionVisibleCount = signature.visibleCount;
     mapProjectionCache = nodes;
     state.mapNodeCache = nodes;
     return nodes;
