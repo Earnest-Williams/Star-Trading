@@ -13,6 +13,7 @@ import {
     getRelaySurchargeForPath
 } from '../core/navigation.js';
 import { findCheapestCorridorPath, getPathCost, getWorldGraphRevision } from '../core/routePlanner.js';
+import { getRouteReliabilityAdjustment, getRouteRiskAdjustment } from '../core/characterChecks.js';
 
 function nextTradeRouteId() {
     const routeId = state.nextTradeRouteId;
@@ -166,7 +167,8 @@ export function getRouteRiskForSectors(originSector, destinationSector) {
 export function getRouteRisk(route) {
     const risk = getRouteRiskForSectors(route.originSector, route.destinationSector);
     if (risk === null) return null;
-    return risk + Math.max(0, route.heat || 0) / 12;
+    const actorCharacter = route.ownerType === "player" ? state.player.character : state.captains?.[route.ownerId]?.character;
+    return Math.max(0, risk + Math.max(0, route.heat || 0) / 12 + getRouteRiskAdjustment(actorCharacter));
 }
 
 export function getRouteEscortPower(route) {
@@ -568,12 +570,13 @@ export function runTradeRoute(route) {
         return;
     }
     const escortPower = getRouteEscortPower(route);
-    const failureChance = Math.max(0.02, Math.min(0.55, 0.04 + risk * 0.035 - escortPower * 0.025));
+    const reliabilityAdjustment = getRouteReliabilityAdjustment(route.ownerType === "player" ? state.player.character : state.captains?.[route.ownerId]?.character);
+    const failureChance = Math.max(0.02, Math.min(0.55, 0.04 + risk * 0.035 - escortPower * 0.025 - reliabilityAdjustment * 0.003));
     const escortCaptain = route.escortCaptainId ? state.captains[route.escortCaptainId] : null;
     if (random() < failureChance) {
         route.failures += 1;
         route.heat = Math.min(100, route.heat + 3 + Math.floor(risk));
-        route.reliability = clampRange(route.reliability - 8, 0, 100);
+        route.reliability = clampRange(route.reliability - Math.max(3, 8 - reliabilityAdjustment), 0, 100);
         const path = getRoutePath(route);
         const hotSector = path ? path.sort((a, b) => (state.universe[b].pirateThreat || 0) - (state.universe[a].pirateThreat || 0))[0] || route.destinationSector : route.destinationSector;
         if (state.universe[hotSector]) state.universe[hotSector].pirateThreat = Math.min(6, (state.universe[hotSector].pirateThreat || 0) + 1);
@@ -599,7 +602,7 @@ export function runTradeRoute(route) {
     route.runs += 1;
     route.starvedDays = 0;
     route.heat = Math.max(0, route.heat - 1);
-    route.reliability = clampRange(route.reliability + 2, 0, 100);
+    route.reliability = clampRange(route.reliability + 2 + Math.max(0, Math.floor(reliabilityAdjustment / 4)), 0, 100);
     addFactionRep("traders", 1, "route income");
     addSectorInfluence(route.originSector, getFactionPoliticalPole(origin.factionId || "traders"), 1, "regular logistics traffic");
     addSectorInfluence(route.destinationSector, getFactionPoliticalPole(destination.factionId || route.factionId || "traders"), 1, "regular logistics traffic");

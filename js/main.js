@@ -2,7 +2,7 @@ import { resetState, state } from './state.js';
 import { EventBus } from './events.js';
 import { Renderer, updateUI } from './ui/renderer.js';
 import { BALANCE } from './constants.js';
-import { createPlayer, generateUniverse, generateStars } from './core/universe.js';
+import { createPlayerFromBuild, generateUniverse, generateStars } from './core/universe.js';
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters } from './core/persistence.js';
@@ -16,6 +16,8 @@ import { generateMissionPool } from './systems/missions.js';
 import { executeAction } from './core/commands.js';
 import { registerSimulationTickHooks } from './core/worldTick.js';
 import { normaliseTradeRoutes } from './systems/tradeRoutes.js';
+import { renderChargenControls } from './ui/renderChargen.js';
+import { getChargenBuild, readChargenBuildFromDom, validateChargenDraft } from './ui/chargenState.js';
 
 // =====================================================
 // APP BOOTSTRAP
@@ -37,7 +39,8 @@ export const App = (() => {
         initUI();
         registerSimulationTickHooks();
         registerRendererSubscriptions();
-        startSimulation(readWorldgenSettingsFromDom());
+        renderChargen();
+        startSimulation(readWorldgenSettingsFromDom(), getChargenBuild());
         bindAppShellDom();
         postStartupNotifications();
         updateUI();
@@ -77,9 +80,9 @@ export const App = (() => {
         };
     }
 
-    function startSimulation(worldgenSettings = null) {
+    function startSimulation(worldgenSettings = null, buildSpec = getChargenBuild()) {
         state.worldgenSettings = worldgenSettings;
-        state.player = createPlayer();
+        state.player = createPlayerFromBuild(buildSpec);
         initSessionRng(state.player.seed);
         generateStars();
         generateUniverse();
@@ -111,14 +114,32 @@ export const App = (() => {
         addTopbarListener('btn-load', () => executeAction({ type: 'loadGame' }));
         addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
         addTopbarListener('btn-new-game', () => {
+            const buildSpec = readChargenBuildFromDom();
+            const validation = validateChargenDraft();
+            if (!validation.valid) {
+                Notifications.show(validation.reason, 4);
+                renderChargen();
+                return;
+            }
             resetState();
             disposeUI();
             resetTimeHooks();
             initUI();
             registerSimulationTickHooks();
-            startSimulation(readWorldgenSettingsFromDom());
+            startSimulation(readWorldgenSettingsFromDom(), buildSpec);
             updateUI();
         });
+        ['chargenPanel'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', () => { readChargenBuildFromDom(); renderChargen(); });
+            el.addEventListener('change', () => { readChargenBuildFromDom(); renderChargen(); });
+        });
+    }
+
+    function renderChargen() {
+        const panel = document.getElementById('chargenPanel');
+        if (panel) panel.innerHTML = renderChargenControls();
     }
 
     function addTopbarListener(id, fn) {

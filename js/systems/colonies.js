@@ -7,6 +7,7 @@ import { getGuildTier, getFactionRep, addFactionRep, addFactionTrust, addFaction
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { updateFactionAskProgress } from './guilds.js';
+import { getTraitBonus } from '../core/traitHooks.js';
 
 export function foundColony() {
     const planet = state.planets[state.player.currentSector];
@@ -27,8 +28,9 @@ export function foundColony() {
         security: "local_militia",
         hiddenInfluence: { vc: 0 }
     };
-    planet.colonists = 100;
+    planet.colonists = 100 + getTraitBonus(state.player.character, "colonyStability");
     planet.buildings.habitat = 1;
+    planet.satisfaction = clampRange((planet.satisfaction || 60) + getTraitBonus(state.player.character, "colonyStability"), 0, 100);
     applyPoliticalEffect({ factionId: "colonists", publicRep: 5, trust: 2, sectorId: state.player.currentSector, influence: 4, reason: "new colony founded", memoryKey: "reliableJobs" });
     applyPoliticalEffect({ factionId: "fu", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 7, reason: "frontier settlement" });
     addFactionHeat("sda", planet.policy.registration === "registered" ? 0 : 3, "informal colony paperwork");
@@ -160,7 +162,8 @@ export function updateColonyNeedsDaily() {
             if (planet.satisfaction >= 80 && random() < 0.18) addFactionRep("colonists", 1, "well-supplied colony");
             return;
         }
-        planet.satisfaction = clampRange(planet.satisfaction - shortageCount * 7, 0, 100);
+        const shortageRelief = getTraitBonus(state.player.character, "shortageReliefPercent") / 100;
+        planet.satisfaction = clampRange(planet.satisfaction - shortageCount * Math.max(3, Math.round(7 * (1 - shortageRelief))), 0, 100);
         if (planet.satisfaction < 25) {
             const lost = Math.max(1, Math.floor(planet.colonists * 0.02));
             planet.colonists = Math.max(20, planet.colonists - lost);

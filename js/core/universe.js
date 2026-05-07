@@ -1,11 +1,13 @@
 import { state } from '../state.js';
 import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
 import { GATE_DEFAULTS, PLANET_DEFAULTS, PORT_DEFAULTS, STARFIELD, WORLDGEN_ANCHORS, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../config/worldgen.js';
-import { STARTER_PLAYER, STARTER_SHIP } from '../config/player.js';
+import { STARTER_PLAYER } from '../config/player.js';
+import { DEFAULT_BUILD_SPEC, DEFAULT_EMPLOYER_LANE_ID, EMPLOYER_LANES, PLATFORM_PACKAGES, createStarterShipFromPlatform, getStarterCredits } from '../config/chargen.js';
 import { makeStock, seededRng } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
+import { buildCharacterFromSpec, validateBuild } from './characterBuild.js';
 
 export { makeStock };
 
@@ -503,21 +505,51 @@ export function generateStars() {
     }
 }
 
-export function createPlayer() {
+function makePlayerBase(ship, credits, character, platformPackage, employerLane) {
     return {
-        credits: STARTER_PLAYER.CREDITS,
+        credits,
         currentSector: STARTER_PLAYER.CURRENT_SECTOR,
         time: { day: 1, minuteOfDay: BALANCE.DEFAULT_WAKE, wakeMinute: BALANCE.DEFAULT_WAKE, sleepMinute: BALANCE.DEFAULT_SLEEP },
-        ship: { name: STARTER_SHIP.NAME, maxHolds: STARTER_SHIP.MAX_HOLDS, travelMinutesPerCorridor: STARTER_SHIP.TRAVEL_MINUTES_PER_CORRIDOR, miningPower: STARTER_SHIP.MINING_POWER, scannerLevel: STARTER_SHIP.SCANNER_LEVEL, maxFighters: STARTER_SHIP.MAX_FIGHTERS, maxShields: STARTER_SHIP.MAX_SHIELDS, maxHull: STARTER_SHIP.MAX_HULL },
+        ship,
         cargo: { ...STARTER_PLAYER.CARGO },
         contrabandHold: [],
-        fighters: STARTER_PLAYER.FIGHTERS,
-        shields: STARTER_SHIP.MAX_SHIELDS,
-        hull: STARTER_SHIP.MAX_HULL,
+        fighters: Math.min(STARTER_PLAYER.FIGHTERS, ship.maxFighters),
+        shields: ship.maxShields,
+        hull: ship.maxHull,
         reputation: STARTER_PLAYER.REPUTATION,
         seed: Date.now(),
         factionRelations: JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS)),
         factions: createFactionState(),
-        character: createCharacter()
+        character,
+        employment: employerLane ? {
+            laneId: employerLane.id,
+            factionId: employerLane.factionId,
+            rank: employerLane.rank,
+            access: employerLane.access.slice(),
+            ...(platformPackage.employment || {})
+        } : platformPackage.employment ? { ...platformPackage.employment } : null
     };
+}
+
+export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
+    const validation = validateBuild(buildSpec);
+    if (!validation.valid) {
+        throw new Error(`Invalid character build: ${validation.reason}`);
+    }
+    const { character, leftoverPoints } = buildCharacterFromSpec(buildSpec);
+    const platformType = character.platform.type;
+    const platformPackage = PLATFORM_PACKAGES[platformType] || PLATFORM_PACKAGES.ship_owned;
+    const isEmployed = platformType === "employed_salary" || platformType === "employed_commission";
+    const laneId = isEmployed
+        ? character.platform.employerLaneId || DEFAULT_EMPLOYER_LANE_ID
+        : null;
+    const employerLane = laneId ? EMPLOYER_LANES.find(lane => lane.id === laneId) || null : null;
+    if (isEmployed) character.platform.employerLaneId = laneId;
+    const ship = createStarterShipFromPlatform(platformPackage);
+    const credits = getStarterCredits(leftoverPoints, platformPackage);
+    return makePlayerBase(ship, credits, createCharacter(character), platformPackage, employerLane);
+}
+
+export function createPlayer() {
+    return createPlayerFromBuild(DEFAULT_BUILD_SPEC);
 }

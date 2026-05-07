@@ -9,6 +9,7 @@ import { getFactionPoliticalPole } from '../core/factions.js';
 import { getSectorNeighbors, getSectorPathDistance, canTransitDirectCorridor } from '../core/navigation.js';
 import { createCaptainTradeRoute, getAllLogisticsNodes, deriveRouteMetrics } from './tradeRoutes.js';
 import { createCharacter, normaliseCharacter } from '../core/characters.js';
+import { getCaptainMissionScore } from '../core/characterChecks.js';
 
 export function createCaptains() {
     state.captains = {};
@@ -496,7 +497,7 @@ function evaluateCaptainRouteOpenings(captain) {
                 const margin = profit / physicalSpan;
                 if (margin < captain.economy.minimumExpectedMargin) return;
                 const homeBias = origin.sectorId === captain.homeSector || destination.sectorId === captain.homeSector ? 20 : 0;
-                const score = profit + homeBias - physicalSpan * 3 - metrics.risk * 22 - metrics.surcharge * 100;
+                const score = profit + homeBias + getCaptainMissionScore(captain.character, { type: "delivery" }) - physicalSpan * 3 - metrics.risk * 22 - metrics.surcharge * 100;
                 if (!best || score > best.score) best = { origin, destination, commodity: option.commodity, score };
             });
         });
