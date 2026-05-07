@@ -8,7 +8,7 @@ import { updateUI } from "./renderer.js";
 
 export function renderShipyardPanel() {
     const { player } = state;
-    if (player.currentSector !== 1) { console.log("Shipyard services are only available at StarDock."); return; }
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId) { console.log("Shipyard services are only available at StarDock."); return; }
     let html = `<h4>StarDock Shipyard</h4>`;
     html += `<button data-action="repairShip">Repair Hull/Shields</button>`;
     html += `<button data-action="buyFighters">Buy 10 Fighters</button>`;
@@ -23,7 +23,7 @@ export function renderShipyardPanel() {
 export function buyUpgrade(key) {
     const { player } = state;
     const up = UPGRADE_DEFS[key];
-    if (player.currentSector !== 1 || !up) return;
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId || !up) return;
     let finalCost = up.credits;
     if (key === "mining") finalCost = Math.round(finalCost * (1 - getGuildTier("miners") * 0.05));
     if (key === "cargo" || key === "engine") finalCost = Math.round(finalCost * (1 - getGuildTier("traders") * 0.04));
@@ -36,7 +36,7 @@ export function buyUpgrade(key) {
     else if (key === "mining") player.ship.miningPower += 15;
     else if (key === "shields") { player.ship.maxShields += 100; player.shields = player.ship.maxShields; }
     else if (key === "fighters") player.ship.maxFighters += 500;
-    applyPoliticalEffect({ factionId: "sda", publicRep: 1, trust: 1, sectorId: 1, influence: 1, reason: "licensed shipyard purchase" });
+    applyPoliticalEffect({ factionId: "sda", publicRep: 1, trust: 1, sectorId: state.world?.roles?.shipyardSiteId || player.currentSector, influence: 1, reason: "licensed shipyard purchase" });
     if (key === "mining") addFactionRep("miners", 2, "mining upgrade purchase");
     if (key === "cargo" || key === "engine") addFactionRep("traders", 1, "commercial ship upgrade");
     log(`Installed upgrade: ${up.name}.`);
@@ -45,7 +45,7 @@ export function buyUpgrade(key) {
 
 export function repairShip() {
     const { player } = state;
-    if (player.currentSector !== 1) return;
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId) return;
     const shieldMissing = player.ship.maxShields - player.shields;
     const hullMissing = player.ship.maxHull - player.hull;
     const cost = Math.ceil(shieldMissing * BALANCE.REPAIR_SHIELD_COST + hullMissing * BALANCE.REPAIR_HULL_COST);
@@ -62,7 +62,7 @@ export function repairShip() {
 
 export function buyFighters() {
     const { player } = state;
-    if (player.currentSector !== 1) return;
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId) return;
     const amount = Math.min(10, player.ship.maxFighters - player.fighters);
     if (amount <= 0) { log("Your fighter bay is full."); return; }
     const cost = amount * BALANCE.FIGHTER_COST;

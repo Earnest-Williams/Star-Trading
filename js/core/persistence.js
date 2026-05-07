@@ -1,5 +1,5 @@
 import { createInitialState, state } from '../state.js';
-import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_VERSION, COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
@@ -113,6 +113,10 @@ function buildLoadedState(data) {
     const loadedState = createInitialState();
     loadedState.player = data.player;
     loadedState.universe = data.universe;
+    loadedState.sitesById = data.sitesById || data.universe;
+    loadedState.siteIdByCoord = data.siteIdByCoord || {};
+    loadedState.world = data.world || loadedState.world;
+    loadedState.worldgenSettings = data.worldgenSettings || null;
     loadedState.ports = data.ports;
     loadedState.planets = data.planets;
     loadedState.missions = Array.isArray(data.missions) ? data.missions : [];
@@ -207,6 +211,10 @@ export function saveGame() {
         version: SAVE_VERSION,
         player: state.player,
         universe: state.universe,
+        sitesById: state.sitesById,
+        siteIdByCoord: state.siteIdByCoord,
+        world: state.world,
+        worldgenSettings: state.worldgenSettings,
         ports: state.ports,
         planets: state.planets,
         missions: state.missions,
@@ -241,6 +249,10 @@ export function loadGame() {
     let saved = storage.getItem(SAVE_KEY);
     if (!saved && SAVE_KEY_LEGACY) {
         saved = storage.getItem(SAVE_KEY_LEGACY);
+        if (saved) writeLog("Migrating save from previous Star-Trading key.");
+    }
+    if (!saved && SAVE_KEY_CLASSIC) {
+        saved = storage.getItem(SAVE_KEY_CLASSIC);
         if (saved) writeLog("Migrating save from legacy key.");
     }
     if (!saved) { writeLog("No saved game found."); return false; }
@@ -277,7 +289,9 @@ function normaliseCurrentLoadedGame() {
     if (!state.player.ship) state.player.ship = createPlayer().ship;
     migrateShipTransitFields(state.player);
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
-    if (!state.player.currentSector) state.player.currentSector = 1;
+    if (!state.world) state.world = { saveModel: "sparse-3d-sites", roles: {} };
+    if (!state.world.roles) state.world.roles = {};
+    if (!state.player.currentSector) state.player.currentSector = state.world.roles.homeSiteId || 1;
     ensureContrabandHold();
     if (!state.player.seed) state.player.seed = Date.now();
     if (!state.player.factionRelations) {
@@ -286,7 +300,18 @@ function normaliseCurrentLoadedGame() {
     ensureFactionState();
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
     COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
+    state.sitesById = state.universe;
+    if (!state.siteIdByCoord) state.siteIdByCoord = {};
     Object.values(state.universe).forEach(sector => {
+        if (!sector.siteId) sector.siteId = `site-${sector.id}`;
+        if (!sector.coord) sector.coord = { x: sector.id, y: 0, z: 0 };
+        sector.coordKey = sector.coordKey || `${sector.coord.x},${sector.coord.y},${sector.coord.z}`;
+        state.siteIdByCoord[sector.coordKey] = sector.id;
+        if (!sector.siteType) sector.siteType = sector.id === (state.world.roles.shipyardSiteId || 1) ? "stellar_system" : "stellar_system";
+        if (!sector.richness) sector.richness = sector.id === (state.world.roles.shipyardSiteId || 1) ? "hub" : "developing";
+        if (typeof sector.charted !== "boolean") sector.charted = true;
+        if (typeof sector.reachable !== "boolean") sector.reachable = true;
+        if (typeof sector.metricShear !== "number") sector.metricShear = 0.25;
         if (!Array.isArray(sector.jumpGates)) sector.jumpGates = [];
         delete sector.warps;
         if (typeof sector.surveyed !== "boolean") sector.surveyed = false;
@@ -318,6 +343,9 @@ function normaliseCurrentLoadedGame() {
             planet.policy = { registration: "registered", economy: "free_trade", security: "local_militia", hiddenInfluence: { vc: 0 } };
         }
     });
+    if (!state.world.roles.homeSiteId) state.world.roles.homeSiteId = state.player.currentSector;
+    if (!state.world.roles.shipyardSiteId) state.world.roles.shipyardSiteId = state.world.roles.homeSiteId;
+    if (!state.world.roles.startingPortSiteId) state.world.roles.startingPortSiteId = state.world.roles.homeSiteId;
     normaliseCaptains();
     normaliseTradeRoutes();
     if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };

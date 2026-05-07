@@ -60,7 +60,7 @@ export function getPriorityItems() {
         items.push({
             text: `Hull damaged: ${player.hull}/${player.ship.maxHull}`,
             urgent: player.hull < player.ship.maxHull * 0.15,
-            action: () => { if (player.currentSector === 1) showScreen("shipyard"); else console.log("Return to StarDock for repairs."); },
+            action: () => { if (player.currentSector === state.world?.roles?.shipyardSiteId) showScreen("shipyard"); else console.log("Return to StarDock for repairs."); },
             priority: 9
         });
     }
@@ -179,7 +179,7 @@ export function renderSectorActionMenu() {
     if (sector.asteroids) html += `<div class="card"><strong>Asteroids</strong><br>Mine ore and shift industrial influence.<br><button data-action="mineAsteroids">Mine Asteroids (120m)</button></div>`;
     if (hasPlanet) html += `<div class="card"><strong>Planet</strong><br>Found or manage colony politics and production.<br><button data-action="showScreen" data-arg0="colony">Open Colony Menu</button></div>`;
     if (sector.pirateThreat > 0) html += `<div class="card"><strong>Pirates</strong><br>Clear threats, gain SDA favor, anger the Cartel.<br><button data-action="fightPirates">Fight Pirates (60m)</button></div>`;
-    if (player.currentSector === 1) html += `<div class="card"><strong>Shipyard</strong><br>Upgrade, repair, and resupply.<br><button data-action="showScreen" data-arg0="shipyard">Open Shipyard</button></div>`;
+    if (player.currentSector === state.world?.roles?.shipyardSiteId) html += `<div class="card"><strong>Shipyard</strong><br>Upgrade, repair, and resupply.<br><button data-action="showScreen" data-arg0="shipyard">Open Shipyard</button></div>`;
 
     // Lazy import for logistics check to avoid circular
     const { getLogisticsNode } = _logisticsModule;

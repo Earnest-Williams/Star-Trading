@@ -3,7 +3,8 @@ import { FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
-import { getOutboundJumpGates, getSectorNeighbors } from "../core/navigation.js";
+import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } from "../core/navigation.js";
+import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
 
 export function renderSectorContents() {
     const { player, universe, ports, planets, tradeRoutes } = state;
@@ -11,17 +12,22 @@ export function renderSectorContents() {
     const port = ports[player.currentSector];
     const planet = planets[player.currentSector];
     const influence = FACTIONS[getSectorFactionId(player.currentSector)];
-    let html = `<div><strong>Region:</strong> ${escapeHtml(sector.region)} | <strong>Status:</strong> ${escapeHtml(getSectorStatusLabel(player.currentSector))}</div>`;
+    let html = `<div><strong>Site:</strong> ${escapeHtml(getSiteTypeLabel(sector.siteType))} | <strong>Richness:</strong> ${escapeHtml(getRichnessLabel(sector.richness))}</div>`;
+    if (sector.coord) html += `<div><strong>Coordinate:</strong> (${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z}) | <strong>Metric shear:</strong> ${(sector.metricShear || 0).toFixed(2)}</div>`;
+    html += `<div><strong>Region:</strong> ${escapeHtml(sector.region)} | <strong>Status:</strong> ${escapeHtml(getSectorStatusLabel(player.currentSector))}</div>`;
     if (influence) html += `<div><strong>Dominant Influence:</strong> <span style="color:${influence.color}">${influence.icon} ${escapeHtml(influence.name)}</span></div>`;
     html += `<div class="small muted">${getInfluenceSpread(player.currentSector).map(item => `${FACTIONS[item.id].short}:${item.value}`).join(" | ")}</div>`;
     const outboundGates = getOutboundJumpGates(player.currentSector);
     const gateLabels = outboundGates.map(gate => {
         const gateId = escapeHtml(gate.id || "unknown gate");
         const corridorId = escapeHtml(gate.corridorId || "unknown corridor");
-        return `${gateId} to sector ${gate.destinationSectorId} (${corridorId})`;
+        const span = typeof gate.effectiveSpanCost === "number" ? `, span ${gate.effectiveSpanCost.toFixed(2)}` : "";
+        return `${gateId} to site ${gate.destinationSectorId} (${corridorId}${span})`;
     });
     html += `<div><strong>Local Jump Gates:</strong> ${gateLabels.join(" | ") || "None"}</div>`;
-    html += `<div><strong>Survey:</strong> ${sector.surveyed ? "Complete" : "Not surveyed"}</div>`;
+    html += `<div><strong>Chart:</strong> ${sector.charted ? "Charted" : "Uncharted"} | <strong>Reach:</strong> ${sector.reachable ? "Scheduled" : "Not in regular service"} | <strong>Survey:</strong> ${sector.surveyed ? "Complete" : "Not surveyed"}</div>`;
+    const reserveState = getWayStationReserveState(sector);
+    if (reserveState) html += `<div class="amber"><strong>Way station reserve:</strong> ${escapeHtml(reserveState)} (${Math.floor(sector.station.pulseReserveCredits)}/${sector.station.pulseReserveMaxCredits} pulse credits)</div>`;
     const localRoutes = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === player.currentSector || r.destinationSector === player.currentSector));
     if (localRoutes.length > 0) html += `<div><strong>Routes:</strong> ${localRoutes.map(r => `${escapeHtml(r.name)} (${r.status})`).join(" | ")}</div>`;
     html += renderCaptainChipsForSector(player.currentSector);
@@ -82,14 +88,15 @@ export function renderMenuPanel() {
         const target = gate.destinationSectorId;
         const s = universe[target];
         const dominant = FACTIONS[getSectorFactionId(target)];
-        html += `<div class="nav-card"><strong>Sector ${target}</strong> <span class="muted">${escapeHtml(s.region)}</span><br>`;
+        html += `<div class="nav-card"><strong>Site ${target}</strong> <span class="muted">${escapeHtml(getSiteTypeLabel(s.siteType))} / ${escapeHtml(s.region)}</span><br>`;
         if (dominant) html += `<span style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span> `;
         if (ports[target]) html += `Port `;
         if (planets[target]) html += `Planet `;
         if (s.asteroids) html += `Asteroids `;
         if (s.pirateThreat > 0) html += `<span class="red">Pirates ${s.pirateThreat}</span>`;
         const gateLabel = escapeHtml(gate.id || gate.corridorId || `gate to ${target}`);
-        html += `<br><span class="muted">Gate ${gateLabel}</span><br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`;
+        const span = typeof gate.effectiveSpanCost === "number" ? ` | span ${gate.effectiveSpanCost.toFixed(2)}` : "";
+        html += `<br><span class="muted">Gate ${gateLabel}${span}</span><br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`;
     });
     html += `<div class="commodity-row"><strong>Menus</strong><div class="menu-grid">`;
     html += `<button data-action="showScreen" data-arg0="sector">Sector</button>`;
@@ -98,7 +105,7 @@ export function renderMenuPanel() {
     html += `<button data-action="showScreen" data-arg0="reputation">Reputation</button>`;
     if (ports[player.currentSector]) html += `<button data-action="showScreen" data-arg0="market">Market</button>`;
     if (planets[player.currentSector]) html += `<button data-action="showScreen" data-arg0="colony">Colony</button>`;
-    if (player.currentSector === 1) html += `<button data-action="showScreen" data-arg0="shipyard">Shipyard</button>`;
+    if (state.world?.roles?.shipyardSiteId === player.currentSector) html += `<button data-action="showScreen" data-arg0="shipyard">Shipyard</button>`;
     html += `</div></div>`;
     document.getElementById("commandList").innerHTML = html;
 }
@@ -115,8 +122,9 @@ export function renderMapInspector() {
     }
     const dominant = FACTIONS[getSectorFactionId(id)];
     const adjacent = getSectorNeighbors(player.currentSector).includes(id);
-    let html = `<strong>Selected Sector ${id}</strong> - ${escapeHtml(sector.name)}<br>`;
-    html += `<span class="sector-chip">${escapeHtml(sector.region)}</span><span class="sector-chip">${escapeHtml(getSectorStatusLabel(id))}</span>`;
+    let html = `<strong>Selected Site ${id}</strong> - ${escapeHtml(sector.name)}<br>`;
+    if (sector.coord) html += `<span class="sector-chip">(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})</span>`;
+    html += `<span class="sector-chip">${escapeHtml(getSiteTypeLabel(sector.siteType))}</span><span class="sector-chip">${escapeHtml(sector.region)}</span><span class="sector-chip">${escapeHtml(getSectorStatusLabel(id))}</span>`;
     if (dominant) html += `<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span>`;
     if (ports[id]) html += `<span class="sector-chip">Port: ${escapeHtml(PORT_TYPES[ports[id].typeKey].name)}</span>`;
     if (getSectorStatusLabel(id) === "Contested") html += `<span class="sector-chip amber">Political contest</span>`;

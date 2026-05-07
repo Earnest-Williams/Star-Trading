@@ -1,4 +1,5 @@
 import { state } from '../state.js';
+import { BALANCE } from '../constants.js';
 import { getDominantInfluence } from './influence.js';
 
 export function getOutboundJumpGates(sectorId) {
@@ -8,6 +9,9 @@ export function getOutboundJumpGates(sectorId) {
         .filter(gate => gate && gate.status !== "closed" && state.universe[gate.destinationSectorId])
         .slice()
         .sort((a, b) => {
+            const aCost = typeof a.effectiveSpanCost === "number" ? a.effectiveSpanCost : 0;
+            const bCost = typeof b.effectiveSpanCost === "number" ? b.effectiveSpanCost : 0;
+            if (aCost !== bCost) return aCost - bCost;
             if (a.destinationSectorId !== b.destinationSectorId) return a.destinationSectorId - b.destinationSectorId;
             return String(a.id || "").localeCompare(String(b.id || ""));
         });
@@ -82,4 +86,29 @@ export function getCorridorRiskForPath(path) {
 
 export function canTransitDirectCorridor(startSectorId, goalSectorId) {
     return Boolean(getDirectCorridor(startSectorId, goalSectorId));
+}
+
+
+export function getWayStationReserveState(site) {
+    if (!site || site.siteType !== "way_station" || !site.station) return null;
+    const max = site.station.pulseReserveMaxCredits || 0;
+    const reserve = site.station.pulseReserveCredits || 0;
+    if (max <= 0) return "Depleted";
+    const fraction = reserve / max;
+    const thresholds = BALANCE.GATE_PHYSICS.WAY_STATION.RESERVE_STATE_THRESHOLDS;
+    if (fraction >= thresholds.full) return "Full";
+    if (fraction >= thresholds.stable) return "Stable";
+    if (fraction >= thresholds.strained) return "Strained";
+    if (fraction >= thresholds.low) return "Low Reserve";
+    return "Depleted";
+}
+
+export function getRelaySurchargeForPath(path) {
+    if (!Array.isArray(path)) return 0;
+    const wayStationCount = path.reduce((count, sectorId) => {
+        const site = state.universe[sectorId];
+        return count + (site && site.siteType === "way_station" ? 1 : 0);
+    }, 0);
+    const surcharges = BALANCE.GATE_PHYSICS.ROUTE_SURCHARGE_BY_WAY_STATIONS;
+    return surcharges[Math.min(wayStationCount, surcharges.length - 1)] || 0;
 }
