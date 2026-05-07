@@ -11,7 +11,7 @@ import { prepareMissionOpportunity } from '../systems/missions.js';
 import { createContactState } from './factions.js';
 import { makeStock, restoreSessionRng } from '../utils.js';
 import { log } from '../utils.js';
-
+import { createCharacter } from './characters.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -194,6 +194,17 @@ export function migrateSave(data) {
     normaliseRouteOwnership(data);
     migrateShipTransitFields(data.player);
     if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
+    // v14: character block added to player and captains
+    if (v < 14) {
+        if (data.player && !data.player.character) {
+            data.player.character = createCharacter();
+        }
+        if (data.captains && typeof data.captains === "object") {
+            Object.values(data.captains).forEach(captain => {
+                if (!captain.character) captain.character = createCharacter();
+            });
+        }
+    }
     data.version = SAVE_VERSION;
     return data;
 }
@@ -303,6 +314,7 @@ function normaliseCurrentLoadedGame() {
     }
     ensureFactionState();
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
+    if (!state.player.character) state.player.character = createCharacter();
     CARGO_COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
     state.sitesById = state.universe;
     if (!state.siteIdByCoord) state.siteIdByCoord = {};

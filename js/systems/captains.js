@@ -8,6 +8,7 @@ import { Notifications } from '../ui/notifications.js';
 import { getFactionPoliticalPole } from '../core/factions.js';
 import { getSectorNeighbors, getSectorPathDistance, canTransitDirectCorridor } from '../core/navigation.js';
 import { createCaptainTradeRoute, getAllLogisticsNodes, deriveRouteMetrics } from './tradeRoutes.js';
+import { createCharacter } from '../core/characters.js';
 
 export function createCaptains() {
     state.captains = {};
@@ -69,6 +70,7 @@ export function normaliseCaptains() {
         if (!captain.economy) captain.economy = createCaptainEconomy(captain);
         if (!captain.economy.capabilities) captain.economy = createCaptainEconomy(captain);
         if (typeof captain.economy.nextRouteEvaluationDay !== "number") captain.economy.nextRouteEvaluationDay = 1;
+        if (!captain.character) captain.character = createCharacter();
     });
 }
 
