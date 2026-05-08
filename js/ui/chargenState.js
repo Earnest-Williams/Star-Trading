@@ -56,15 +56,14 @@ function shuffled(values) {
 
 function randomUnit() {
     const cryptoRef = globalThis.crypto;
-    if (cryptoRef?.getRandomValues) {
-        cryptoRef.getRandomValues(RANDOM_BUFFER);
-        return RANDOM_BUFFER[0] / 0x100000000;
-    }
-    return (Date.now() % 0x100000000) / 0x100000000;
+    if (!cryptoRef?.getRandomValues) throw new Error("Secure random source unavailable for chargen generation.");
+    cryptoRef.getRandomValues(RANDOM_BUFFER);
+    return RANDOM_BUFFER[0] / 0x100000000;
 }
 
 function randomInt(min, max) {
-    if (max <= min) return min;
+    if (max < min) throw new RangeError(`randomInt expected min <= max, got ${min} > ${max}`);
+    if (max === min) return min;
     return min + Math.floor(randomUnit() * (max - min + 1));
 }
 
@@ -105,10 +104,12 @@ export function setRandomValidBuild() {
     const platformIds = Object.keys(PLATFORM_PACKAGES);
     const packageIds = Object.keys(START_PACKAGES);
     const platformType = randomChoice(platformIds);
+    const platformPackage = PLATFORM_PACKAGES[platformType];
+    if (!platformPackage) return setRandomPresetBuild();
     const employerLaneId = isPlatformEmployed(platformType)
         ? randomChoice(EMPLOYER_LANES).id
         : null;
-    let remainingBudget = CHAR_DEFAULTS.CHARGEN_POINTS - (PLATFORM_PACKAGES[platformType]?.cost || 0);
+    let remainingBudget = CHAR_DEFAULTS.CHARGEN_POINTS - platformPackage.cost;
     const careerTraitIds = [];
     const maxCareerTraits = Math.min(2, Math.floor(remainingBudget / CHAR_DEFAULTS.CAREER_TRAIT_COST));
     const careerTarget = randomInt(0, maxCareerTraits);
