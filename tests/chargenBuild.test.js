@@ -163,12 +163,14 @@ describe('expanded chargen packages and regression coverage', () => {
 
     it('can acquire a career trait during play from a run milestone', async () => {
         const { acquireCareerTrait, canUnlockCareerTrait } = await import('../js/core/characterBuild.js');
-        const character = { stats: { nerve: 99, tradecraft: 50, fieldcraft: 99, command: 50 }, traits: [], careerTraitIds: [] };
+        const character = { stats: { nerve: 99, tradecraft: -5, fieldcraft: 99, command: 0 }, traits: [], careerTraitIds: [] };
         assert.equal(canUnlockCareerTrait(character, 'veteran_miner', { minedOre: 99 }), false);
         assert.equal(acquireCareerTrait(character, 'veteran_miner', { minedOre: 100 }), true);
         assert.ok(character.traits.includes('veteran_miner'));
         assert.equal(character.stats.fieldcraft, CHAR_DEFAULTS.STAT_CAP);
         assert.equal(character.stats.nerve, CHAR_DEFAULTS.STAT_CAP);
+        assert.equal(character.stats.tradecraft, CHAR_DEFAULTS.STAT_CHARGEN_MIN);
+        assert.equal(character.stats.command, CHAR_DEFAULTS.STAT_CHARGEN_MIN);
     });
 
     it('keeps early archetype presets inside budget with different starts', async () => {

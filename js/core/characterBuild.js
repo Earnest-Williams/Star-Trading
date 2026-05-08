@@ -34,6 +34,21 @@ function addNumbers(target, source) {
     });
 }
 
+function clampStat(value) {
+    return Math.max(CHAR_DEFAULTS.STAT_CHARGEN_MIN, Math.min(CHAR_DEFAULTS.STAT_CAP, value));
+}
+
+/**
+ * Ensures character.stats exists and has numeric values for every stat key.
+ * Missing or invalid values are initialized to the base stat value.
+ */
+function ensureCharacterStats(character) {
+    if (!character.stats || typeof character.stats !== "object") character.stats = {};
+    CHAR_STATS.forEach(stat => {
+        if (typeof character.stats[stat] !== "number") character.stats[stat] = CHAR_DEFAULTS.STAT_BASE;
+    });
+}
+
 export function calcStatGain(points) {
     let gain = 0;
     let spent = 0;
@@ -231,7 +246,7 @@ export function buildCharacterFromSpec(buildSpec) {
         if (trait) addNumbers(stats, trait.statShifts);
     });
     CHAR_STATS.forEach(stat => {
-        stats[stat] = Math.max(CHAR_DEFAULTS.STAT_CHARGEN_MIN, Math.min(CHAR_DEFAULTS.STAT_CAP, stats[stat]));
+        stats[stat] = clampStat(stats[stat]);
     });
     const spend = getBuildSpend(spec);
     return {
@@ -264,14 +279,13 @@ export function acquireCareerTrait(character, traitId, runProgress = {}) {
     if (!canUnlockCareerTrait(character, traitId, runProgress)) return false;
     if (!Array.isArray(character.traits)) character.traits = [];
     if (!Array.isArray(character.careerTraitIds)) character.careerTraitIds = [];
-    if (!character.stats || typeof character.stats !== "object") character.stats = {};
+    ensureCharacterStats(character);
     character.traits.push(traitId);
     character.careerTraitIds.push(traitId);
     const trait = getTraitDefinition(traitId);
     if (trait) addNumbers(character.stats, trait.statShifts);
     CHAR_STATS.forEach(stat => {
-        const value = typeof character.stats[stat] === "number" ? character.stats[stat] : CHAR_DEFAULTS.STAT_BASE;
-        character.stats[stat] = Math.max(CHAR_DEFAULTS.STAT_CHARGEN_MIN, Math.min(CHAR_DEFAULTS.STAT_CAP, value));
+        character.stats[stat] = clampStat(character.stats[stat]);
     });
     return true;
 }
