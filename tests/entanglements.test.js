@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { state, resetState } from '../js/state.js';
 import {
     addOrNudgeEntanglement,
+    canDeepenRomanceWithCaptain,
+    deepenRomanceWithCaptain,
     getCaptainEntanglements,
     normaliseEntanglements,
     startRomanceWithCaptain,
@@ -105,6 +107,19 @@ describe('entanglements', () => {
         assert.equal(state.worldEvents.length, 0);
     });
 
+    it('does not allow deepening romance before a romance exists', () => {
+        const result = canDeepenRomanceWithCaptain('mara');
+        assert.equal(result.ok, false);
+        assert.match(result.reason, /no personal bond exists yet/i);
+    });
+
+    it('does not let deepenRomanceWithCaptain start a new romance', () => {
+        const result = deepenRomanceWithCaptain('mara');
+        assert.equal(result, false);
+        assert.equal(getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.ROMANCE).length, 0);
+        assert.equal(state.worldEvents.length, 0);
+    });
+
     it('normalises next entanglement id above restored ids', () => {
         state.entanglements = [{
             id: 42,
@@ -158,5 +173,31 @@ describe('entanglements', () => {
             mission.kind === 'entanglement_event'
             && mission.eventType === 'conflicted_loyalties'
         ));
+    });
+
+    it('does not merge two-party entanglement into an existing three-party one', () => {
+        addOrNudgeEntanglement({
+            kind: ENTANGLEMENTS.KINDS.FAVOR,
+            parties: [
+                { type: 'player', id: 'player' },
+                { type: 'captain', id: 'mara' },
+                { type: 'contact', id: 'broker-1' }
+            ],
+            strength: 10,
+            pressure: 5
+        });
+
+        addOrNudgeEntanglement({
+            kind: ENTANGLEMENTS.KINDS.FAVOR,
+            parties: [
+                { type: 'player', id: 'player' },
+                { type: 'captain', id: 'mara' }
+            ],
+            strength: 4,
+            pressure: 3
+        });
+
+        const favorEntanglements = state.entanglements.filter(entanglement => entanglement.kind === ENTANGLEMENTS.KINDS.FAVOR);
+        assert.equal(favorEntanglements.length, 2);
     });
 });

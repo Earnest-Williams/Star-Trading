@@ -91,7 +91,8 @@ export function addOrNudgeEntanglement({
 
     const existing = state.entanglements.find(entanglement => {
         if (entanglement.kind !== kind) return false;
-        return parties.every(party => hasParty(entanglement, party));
+        return entanglement.parties.length === parties.length
+            && parties.every(party => hasParty(entanglement, party));
     });
 
     if (existing) {
@@ -205,7 +206,7 @@ export function canDeepenRomanceWithCaptain(captainId) {
         makeCaptainParty(captainId)
     );
 
-    if (!entanglement) return canStartRomanceWithCaptain(captainId);
+    if (!entanglement) return { ok: false, reason: "No personal bond exists yet." };
 
     if (entanglement.cooldownUntilDay > getCurrentDay()) {
         return { ok: false, reason: `${captain.name} needs time before this goes further.` };
@@ -228,7 +229,7 @@ export function deepenRomanceWithCaptain(captainId) {
         makeCaptainParty(captainId)
     );
 
-    if (!entanglement) return startRomanceWithCaptain(captainId);
+    if (!entanglement) return false;
 
     entanglement.strength = clampRange(entanglement.strength + 12, 0, 100);
     entanglement.pressure = clampRange(entanglement.pressure + 3, 0, 100);
@@ -563,12 +564,15 @@ export function maybeSpawnEntanglementEvents() {
         }
 
         if (didSpawn) {
+            const captainParty = entanglement.parties.find(party => party.type === "captain");
+            const captain = captainParty ? state.captains[captainParty.id] : null;
+            const eventSectorId = captain?.currentSector ?? state.player.currentSector;
             spawned += 1;
             entanglement.pressure = Math.max(15, Math.floor(entanglement.pressure * 0.45));
             entanglement.cooldownUntilDay = getCurrentDay() + 4;
             addWorldEvent({
                 type: "entanglement_event",
-                sectorId: state.player.currentSector,
+                sectorId: eventSectorId,
                 text: `A social entanglement created a new opportunity: ${entanglement.lastPressureReason || entanglement.kind}.`,
                 importance: ENTANGLEMENTS.MISSION.IMPORTANCE,
                 alert: true
