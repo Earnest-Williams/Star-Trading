@@ -10,6 +10,7 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { nudgeCaptainRelation, prepareMissionOpportunity, normaliseCaptains, applyContestMissionOutcome } from '../systems/captains.js';
 import { getMissionOutcomeBand } from '../core/characterChecks.js';
+import { ENTANGLEMENTS } from '../config/entanglements.js';
 
 export { prepareMissionOpportunity };
 
@@ -107,6 +108,9 @@ export function missionDescription(m) {
     if (m.type === "survey") return `Survey sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
     if (m.type === "colony") return `Found a colony in sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
     if (m.type === "contest") return `${m.context || "Political conflict contract."} Travel to sector ${m.targetSector}, spend ${m.operationMinutes || MISSION_TUNING.BASE.CONTEST_OPERATION_MINUTES} minutes on the operation, then report the result.`;
+    if (m.type === "social") {
+        return m.context || "A social entanglement needs personal attention.";
+    }
     return "Mission details unavailable.";
 }
 
@@ -201,6 +205,14 @@ export function completeMission(id) {
         if (state.player.currentSector !== m.targetSector) { log(`Political operation target is sector ${m.targetSector}.`); return; }
         if (!spendTime(m.operationMinutes || MISSION_TUNING.BASE.CONTEST_OPERATION_MINUTES)) return;
         applyContestMissionOutcome(m, "player");
+    } else if (m.type === "social") {
+        const targetSector = m.targetSector || m.originSector;
+        if (state.player.currentSector !== targetSector) {
+            log(`This matter must be handled in sector ${targetSector}.`);
+            return;
+        }
+        if (!spendTime(m.operationMinutes || ENTANGLEMENTS.MISSION.SOCIAL_OPERATION_MINUTES)) return;
+        m.socialResolved = true;
     }
     const outcome = getMissionOutcomeBand(state.player.character, m);
     m.outcomeBand = outcome.band;

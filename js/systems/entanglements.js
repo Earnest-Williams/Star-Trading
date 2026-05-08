@@ -4,6 +4,7 @@ import { clampRange } from '../utils.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { getFactionRep, getFactionHeat } from '../core/factions.js';
 import { getSectorStatusLabel } from '../core/influence.js';
+import { nudgeCaptainRelation } from './captains.js';
 import { makeBaseMission, prepareMissionOpportunity } from './missions.js';
 import { ENTANGLEMENTS } from '../config/entanglements.js';
 
@@ -179,6 +180,12 @@ export function startRomanceWithCaptain(captainId) {
         }
     });
 
+    nudgeCaptainRelation(
+        captainId,
+        ENTANGLEMENTS.ROMANCE.OVERTURE_RELATION_BUMP,
+        "the conversation with you turned personal"
+    );
+
     addWorldEvent({
         type: "entanglement",
         captainId,
@@ -248,6 +255,12 @@ export function deepenRomanceWithCaptain(captainId) {
     }
 
     entanglement.data = data;
+
+    nudgeCaptainRelation(
+        captainId,
+        ENTANGLEMENTS.ROMANCE.DEEPEN_RELATION_BUMP,
+        "grew more personally entangled with you"
+    );
 
     addWorldEvent({
         type: "entanglement",
@@ -326,8 +339,10 @@ function updateFavorPressure(entanglement) {
     if (!captain) return;
 
     let pressureDelta = -ENTANGLEMENTS.PRESSURE.PRESSURE_DECAY;
-    if (captain.currentPlan) pressureDelta += 3;
-    if ((captain.credits || 0) < 1000) pressureDelta += 2;
+    if ((entanglement.strength || 0) > 0) {
+        if (captain.currentPlan) pressureDelta += 3;
+        if ((captain.credits || 0) < 1000) pressureDelta += 2;
+    }
 
     entanglement.pressure = clampRange((entanglement.pressure || 0) + pressureDelta, 0, 100);
 }
@@ -345,6 +360,27 @@ function updateRivalryPressure(entanglement) {
     if (captain.currentSector === state.player.currentSector) pressureDelta += 2;
 
     entanglement.pressure = clampRange((entanglement.pressure || 0) + pressureDelta, 0, 100);
+}
+
+function decayOrRetireCaptainEntanglement(
+    kind,
+    captainId,
+    strengthDelta = ENTANGLEMENTS.PRESSURE.FAVOR_STRENGTH_DECAY
+) {
+    const entanglement = findEntanglement(kind, PLAYER_PARTY, makeCaptainParty(captainId));
+    if (!entanglement) return;
+
+    entanglement.strength = clampRange((entanglement.strength || 0) - strengthDelta, -100, 100);
+    entanglement.pressure = clampRange(
+        (entanglement.pressure || 0) - ENTANGLEMENTS.PRESSURE.FAVOR_PRESSURE_DECAY,
+        0,
+        100
+    );
+    entanglement.lastTouchedDay = getCurrentDay();
+
+    if ((entanglement.strength || 0) <= 0 && (entanglement.pressure || 0) <= 0) {
+        state.entanglements = state.entanglements.filter(item => item !== entanglement);
+    }
 }
 
 function syncCaptainEntanglementFromRelationship({
@@ -392,6 +428,8 @@ export function syncRelationshipEntanglements() {
                 pressure: 1,
                 source: "relationship_debt"
             });
+        } else {
+            decayOrRetireCaptainEntanglement(ENTANGLEMENTS.KINDS.FAVOR, captain.id);
         }
 
         if ((rel.rivalry || 0) >= ENTANGLEMENTS.PRESSURE.RIVALRY_MIN) {
@@ -403,6 +441,12 @@ export function syncRelationshipEntanglements() {
                 publicKnown: true,
                 source: "relationship_rivalry"
             });
+        } else {
+            decayOrRetireCaptainEntanglement(
+                ENTANGLEMENTS.KINDS.RIVALRY,
+                captain.id,
+                ENTANGLEMENTS.PRESSURE.RIVALRY_STRENGTH_DECAY
+            );
         }
     });
 }
@@ -439,11 +483,25 @@ function activeEntanglementEventExists(entanglementId, eventType) {
     );
 }
 
+function getNearestBoardSector(preferredSectorId) {
+    if (state.ports[preferredSectorId]) return preferredSectorId;
+    if (state.ports[state.player.currentSector]) return state.player.currentSector;
+
+    const portSectors = Object.keys(state.ports).map(Number);
+    if (portSectors.length === 0) return preferredSectorId;
+
+    return portSectors.reduce((best, current) => {
+        const bestDistance = Math.abs(best - preferredSectorId);
+        const currentDistance = Math.abs(current - preferredSectorId);
+        return currentDistance < bestDistance ? current : best;
+    });
+}
+
 function makeEntanglementMission(entanglement, eventType, title, context, sectorId, factionId = null) {
-    const origin = sectorId || state.player.currentSector;
+    const boardSector = getNearestBoardSector(sectorId || state.player.currentSector);
     const mission = makeBaseMission(
         title,
-        origin,
+        boardSector,
         ENTANGLEMENTS.MISSION.BASE_REWARD + Math.floor((entanglement.pressure || 0) * 8),
         ENTANGLEMENTS.MISSION.EXPIRES_DAYS
     );
@@ -453,7 +511,8 @@ function makeEntanglementMission(entanglement, eventType, title, context, sector
     mission.eventType = eventType;
     mission.entanglementId = entanglement.id;
     mission.factionId = factionId;
-    mission.targetSector = origin;
+    mission.targetSector = sectorId || boardSector;
+    mission.operationMinutes = ENTANGLEMENTS.MISSION.SOCIAL_OPERATION_MINUTES;
     mission.visibility = entanglement.publicKnown ? "public" : "quiet";
     mission.risk = entanglement.publicKnown ? "political" : "personal";
     mission.rewardRep = 1;
