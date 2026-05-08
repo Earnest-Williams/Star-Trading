@@ -55,10 +55,11 @@ export function normaliseEntanglements() {
         if (!Array.isArray(entanglement.tags)) entanglement.tags = [];
         if (!entanglement.data || typeof entanglement.data !== "object" || Array.isArray(entanglement.data)) entanglement.data = {};
     });
+
+    state.nextEntanglementId = Math.max(state.nextEntanglementId, getHighestEntanglementId() + 1);
 }
 
 export function getEntanglementsForParty(party, kind = null) {
-    normaliseEntanglements();
     return state.entanglements.filter(entanglement => {
         if (kind && entanglement.kind !== kind) return false;
         return hasParty(entanglement, party);
@@ -70,7 +71,6 @@ export function getCaptainEntanglements(captainId, kind = null) {
 }
 
 export function findEntanglement(kind, partyA, partyB) {
-    normaliseEntanglements();
     return state.entanglements.find(entanglement => {
         if (entanglement.kind !== kind) return false;
         return hasParty(entanglement, partyA) && hasParty(entanglement, partyB);
@@ -580,6 +580,7 @@ export function getCaptainMissionEntanglementModifier(captain, mission) {
     if (!captain || !mission) return 0;
 
     const entanglements = getCaptainEntanglements(captain.id);
+    const playerFaction = getPlayerPrimaryMajorFaction();
     let score = 0;
 
     entanglements.forEach(entanglement => {
@@ -591,7 +592,6 @@ export function getCaptainMissionEntanglementModifier(captain, mission) {
                 score -= Math.floor(strength / 8);
             }
 
-            const playerFaction = getPlayerPrimaryMajorFaction();
             if (playerFaction && mission.factionId && mission.factionId !== playerFaction) {
                 score -= stage === ENTANGLEMENTS.ROMANCE_STAGES.COMMITTED ? 18 : 8;
             }
