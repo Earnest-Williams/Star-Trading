@@ -206,7 +206,7 @@ export function canDeepenRomanceWithCaptain(captainId) {
         makeCaptainParty(captainId)
     );
 
-    if (!entanglement) return { ok: false, reason: "No personal bond exists yet." };
+    if (!entanglement) return { ok: false, reason: "no personal bond exists yet." };
 
     if (entanglement.cooldownUntilDay > getCurrentDay()) {
         return { ok: false, reason: `${captain.name} needs time before this goes further.` };
