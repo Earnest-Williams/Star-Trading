@@ -106,7 +106,8 @@ describe('platform start packages', () => {
     it('supports owned, rented, salary, and commission starts', () => {
         const rented = createPlayerFromBuild({ ...baseBuild, platform: { type: 'rental_cutter_no_ship', employerLaneId: null } });
         assert.equal(rented.ship.name, 'Rented Merchant Cutter');
-        assert.equal(rented.employment.leaseDaily, 120);
+        const expectedLease = 120 - 4; // base lease for rental_cutter_no_ship - tradecraft stat delta
+        assert.equal(rented.employment.leaseDaily, expectedLease);
 
         const salary = createPlayerFromBuild({
             ...baseBuild,
@@ -121,7 +122,7 @@ describe('platform start packages', () => {
             platform: { type: 'employer_commission_no_ship', employerLaneId: 'vc_runner' }
         });
         assert.equal(commission.employment.factionId, 'vc');
-        assert.equal(commission.employment.commissionShare, 0.12);
+        assert.ok(Math.abs(commission.employment.commissionShare - 0.14) < 0.000001);
     });
 });
 
@@ -165,6 +166,7 @@ describe('expanded chargen packages and regression coverage', () => {
         const { acquireCareerTrait, canUnlockCareerTrait } = await import('../js/core/characterBuild.js');
         const character = { stats: { nerve: 99, tradecraft: -5, fieldcraft: 99, command: 0 }, traits: [], careerTraitIds: [] };
         assert.equal(canUnlockCareerTrait(character, 'veteran_miner', { minedOre: 99 }), false);
+        assert.equal(canUnlockCareerTrait(character, 'freight_dispatcher', { completedFreight: 8 }), true);
         assert.equal(acquireCareerTrait(character, 'veteran_miner', { minedOre: 100 }), true);
         assert.ok(character.traits.includes('veteran_miner'));
         assert.equal(character.stats.fieldcraft, CHAR_DEFAULTS.STAT_CAP);

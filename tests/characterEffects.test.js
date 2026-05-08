@@ -50,7 +50,9 @@ describe('expanded character effects', () => {
     it('adjusts captain, employment, colony, and political actions', async () => {
         const checks = await import('../js/core/characterChecks.js');
         assert.ok(checks.getCaptainRelationshipActionAdjustment(specialist) > checks.getCaptainRelationshipActionAdjustment(baseline));
-        assert.ok(checks.getEmploymentTerms(specialist, { wageDaily: 100, commissionShare: 0.1, leaseDaily: 120 }).leaseDaily < 120);
+        const terms = checks.getEmploymentTerms(specialist, { wageDaily: 100, commissionShare: 0.1, leaseDaily: 120 });
+        assert.ok(terms.leaseDaily < 120);
+        assert.ok(terms.commissionShare > 0.1);
         assert.ok(checks.getColonyActionAdjustment(specialist) > checks.getColonyActionAdjustment(baseline));
         assert.ok(checks.getPoliticalActionAdjustment(specialist) > checks.getPoliticalActionAdjustment(baseline));
     });

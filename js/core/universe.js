@@ -8,6 +8,7 @@ import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
 import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from './characterBuild.js';
+import { getEmploymentTerms } from './characterChecks.js';
 import { getTraitDefinition } from '../config/traits.js';
 
 export { makeStock };
@@ -623,6 +624,9 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
     const ship = createStarterShipFromPlatform(platformPackage);
     const credits = getStarterCredits(leftoverPoints, platformPackage, startBenefits);
     const player = makePlayerBase(ship, credits, builtCharacter, platformPackage, employerLane);
+    if (player.employment) {
+        player.employment = getEmploymentTerms(player.character, player.employment);
+    }
     applyStartBenefitsToPlayer(player, startBenefits);
     return player;
 }
