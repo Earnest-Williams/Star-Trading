@@ -56,7 +56,8 @@ export function normaliseEntanglements() {
         if (!entanglement.data || typeof entanglement.data !== "object" || Array.isArray(entanglement.data)) entanglement.data = {};
     });
 
-    state.nextEntanglementId = Math.max(state.nextEntanglementId, getHighestEntanglementId() + 1);
+    const nextEntanglementId = Number.isFinite(state.nextEntanglementId) ? state.nextEntanglementId : 0;
+    state.nextEntanglementId = Math.max(nextEntanglementId, getHighestEntanglementId() + 1);
 }
 
 export function getEntanglementsForParty(party, kind = null) {
