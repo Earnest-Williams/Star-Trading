@@ -22,6 +22,8 @@ const MAP_VIEWPORT_MAX_SCALE = 2.6;
 const MAP_CORRIDOR_HIT_RADIUS = 7;
 const MAP_STAR_DEPTH_RATES = [0.08, 0.18, 0.32];
 const MAP_TOOLTIP_OFFSET = 14;
+let mapAnimationFrameId = 0;
+let mapAnimationTime = 0;
 
 export function invalidateMapProjectionCache() {
     mapProjectionHashPrimary = 0;
@@ -125,6 +127,23 @@ export function getMapNodes() {
 function getViewport() {
     if (!state.mapViewport) state.mapViewport = { scale: 1, offsetX: 0, offsetY: 0 };
     return state.mapViewport;
+}
+
+function scheduleMapAnimationFrame() {
+    if (mapAnimationFrameId) return;
+    const raf = globalThis.requestAnimationFrame || (fn => globalThis.setTimeout(() => fn(Date.now()), 16));
+    mapAnimationFrameId = raf(timestamp => {
+        mapAnimationFrameId = 0;
+        mapAnimationTime = typeof timestamp === "number" ? timestamp : Date.now();
+        Renderer.invalidate("map");
+    });
+}
+
+export function stopMapAnimation() {
+    if (!mapAnimationFrameId) return;
+    const cancel = globalThis.cancelAnimationFrame || globalThis.clearTimeout;
+    cancel?.(mapAnimationFrameId);
+    mapAnimationFrameId = 0;
 }
 
 function transformNode(node, target = {}) {
@@ -318,12 +337,13 @@ export function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#112233";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const twinkleTime = mapAnimationTime || Date.now();
     starField.forEach(star => {
         const depth = Number.isInteger(star.depth) ? star.depth : 0;
         const rate = MAP_STAR_DEPTH_RATES[depth] || MAP_STAR_DEPTH_RATES[0];
         const x = ((star.x + viewport.offsetX * rate) % canvas.width + canvas.width) % canvas.width;
         const y = ((star.y + viewport.offsetY * rate) % canvas.height + canvas.height) % canvas.height;
-        const pulse = 0.12 * Math.sin(Date.now() / 900 + (star.twinkle || 0));
+        const pulse = 0.12 * Math.sin(twinkleTime / 900 + (star.twinkle || 0));
         ctx.globalAlpha = Math.max(0.25, Math.min(0.95, (star.alpha || 0.7) + pulse));
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(x, y, star.size, star.size);
@@ -394,6 +414,7 @@ export function drawMap() {
             ctx.fillText("C" + localCaptains.length, node.x + MAP_UI.LABELS.CAPTAIN_OFFSET_X, node.y + MAP_UI.LABELS.CAPTAIN_OFFSET_Y);
         }
     });
+    if (starField.length > 0) scheduleMapAnimationFrame();
 }
 
 export function setupMapInteraction() {

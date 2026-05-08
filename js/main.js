@@ -6,7 +6,7 @@ import { createPlayerFromBuild, generateUniverse, generateStars } from './core/u
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters } from './core/persistence.js';
-import { centerMapOnSector, resetMapViewport, setupMapInteraction } from './ui/renderMap.js';
+import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
 import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
@@ -183,6 +183,7 @@ export const App = (() => {
     }
 
     function dispose() {
+        stopMapAnimation();
         resetTimeHooks();
         _unsubs.forEach(unsub => unsub());
         _unsubs = [];
