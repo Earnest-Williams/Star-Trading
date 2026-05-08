@@ -55,6 +55,7 @@ describe('jump-gate corridor navigation', () => {
     it('direct corridor vs multi-corridor distance is correct', () => {
         addJumpGateCorridor(1, 2);
         addJumpGateCorridor(2, 3);
+        assert.equal(getSectorPathDistance(1, 1), 0);
         assert.equal(getSectorPathDistance(1, 2), 1);
         assert.equal(getSectorPathDistance(1, 3), 2);
     });
