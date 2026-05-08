@@ -14,6 +14,8 @@ export function createInitialState() {
         nextCaptainEventId: 1,
         worldEvents: [],
         nextWorldEventId: 1,
+        entanglements: [],
+        nextEntanglementId: 1,
         tradeRoutes: [],
         nextTradeRouteId: 1,
         starField: [],

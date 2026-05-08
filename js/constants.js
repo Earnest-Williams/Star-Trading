@@ -217,7 +217,7 @@ export const BALANCE = {
     REPAIR_HULL_COST: 35,
 };
 
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 export const SAVE_KEY = "starTradingSaveV14";
 export const SAVE_KEY_LEGACY = "starTradingSaveV13";
 export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";

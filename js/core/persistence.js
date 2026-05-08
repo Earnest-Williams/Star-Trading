@@ -6,6 +6,7 @@ import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
 import { normaliseCaptains } from '../systems/captains.js';
 import { normaliseTradeRoutes } from '../systems/tradeRoutes.js';
+import { normaliseEntanglements } from '../systems/entanglements.js';
 import { ensureContrabandHold } from '../systems/contraband.js';
 import { prepareMissionOpportunity } from '../systems/missions.js';
 import { createContactState } from './factions.js';
@@ -122,6 +123,8 @@ function buildLoadedState(data) {
     loadedState.nextCaptainEventId = data.nextCaptainEventId || (loadedState.captainEventLog.length + 1);
     loadedState.worldEvents = Array.isArray(data.worldEvents) ? data.worldEvents : [];
     loadedState.nextWorldEventId = data.nextWorldEventId || (loadedState.worldEvents.length + 1);
+    loadedState.entanglements = Array.isArray(data.entanglements) ? data.entanglements : [];
+    loadedState.nextEntanglementId = data.nextEntanglementId || (loadedState.entanglements.length + 1);
     loadedState.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
     loadedState.nextTradeRouteId = data.nextTradeRouteId || (loadedState.tradeRoutes.length + 1);
     loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
@@ -238,6 +241,8 @@ export const SAVE_STATE_FIELDS = [
     "nextCaptainEventId",
     "worldEvents",
     "nextWorldEventId",
+    "entanglements",
+    "nextEntanglementId",
     "tradeRoutes",
     "nextTradeRouteId",
     "nextMissionId",
@@ -392,6 +397,11 @@ function normaliseCurrentLoadedGame() {
     if (!state.world.roles.shipyardSiteId) state.world.roles.shipyardSiteId = state.world.roles.homeSiteId;
     if (!state.world.roles.startingPortSiteId) state.world.roles.startingPortSiteId = state.world.roles.homeSiteId;
     normaliseCaptains();
+    if (!Array.isArray(state.entanglements)) state.entanglements = [];
+    if (typeof state.nextEntanglementId !== "number") {
+        state.nextEntanglementId = state.entanglements.length + 1;
+    }
+    normaliseEntanglements();
     normaliseTradeRoutes();
     if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(0, 0, 0), flows: 0 };
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];

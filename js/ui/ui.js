@@ -22,7 +22,8 @@ import { renderCharacterSheet } from './renderCharacterSheet.js';
 // Captain UI (needs dependency injection)
 import {
     hailCaptain, offerHelpToCaptain, tradeRumorsWithCaptain,
-    supportCaptainJob, buyOffCaptain, provokeCaptain, injectCaptainUIDeps
+    supportCaptainJob, buyOffCaptain, provokeCaptain, injectCaptainUIDeps,
+    startRomanceWithCaptainAction, deepenRomanceWithCaptainAction
 } from './renderCaptains.js';
 
 // System actions
@@ -231,6 +232,8 @@ export function registerUIActions() {
     registerAction('supportCaptainJob', supportCaptainJob);
     registerAction('buyOffCaptain', buyOffCaptain);
     registerAction('provokeCaptain', provokeCaptain);
+    registerAction('startRomanceWithCaptain', startRomanceWithCaptainAction);
+    registerAction('deepenRomanceWithCaptain', deepenRomanceWithCaptainAction);
 
     // Reputation
     registerAction('setReputationTab', setReputationTab);

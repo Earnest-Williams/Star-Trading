@@ -15,13 +15,14 @@ describe('world tick phase order', () => {
             [
                 'colony_production',
                 'explicit_trade_route_runs',
-            'ambient_trade_response',
+                'ambient_trade_response',
                 'colony_needs',
                 'port_markets',
                 'sector_threats',
                 'faction_politics',
                 'mission_expiry',
                 'captain_daily_actions',
+                'social_entanglements',
                 'daily_world_event'
             ]
         );
