@@ -212,7 +212,6 @@ function distanceToSegment(point, a, b) {
 }
 
 function findNearestCorridorAt(x, y) {
-    const { universe } = state;
     const nodes = getTransformedNodes();
     const point = { x, y };
     let closest = null;

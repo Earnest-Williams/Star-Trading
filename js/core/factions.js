@@ -1,8 +1,7 @@
 import { state } from '../state.js';
-import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, CARGO_COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, MAJOR_FACTIONS, PORT_TYPES } from '../constants.js';
-import { clampRange, hasCargo, log, formatCredits } from '../utils.js';
-import { addSectorInfluence, getInfluenceSpread, getDominantInfluence } from './influence.js';
-import { addWorldEvent } from './worldEvents.js';
+import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, CARGO_COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, PORT_TYPES } from '../constants.js';
+import { clampRange, hasCargo, log } from '../utils.js';
+import { addSectorInfluence, getInfluenceSpread } from './influence.js';
 import { EventBus } from '../events.js';
 import { Notifications } from '../ui/notifications.js';
 

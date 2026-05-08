@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS, BALANCE, PORT_TYPES, COMMODITIES } from '../constants.js';
+import { FACTIONS, PORT_TYPES } from '../constants.js';
 import { MISSION_TUNING } from '../config/missions.js';
 import { formatCommodity, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';

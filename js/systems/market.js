@@ -1,8 +1,7 @@
 import { state } from '../state.js';
-import { BALANCE, PORT_TYPES, FACTIONS } from '../constants.js';
+import { BALANCE, PORT_TYPES } from '../constants.js';
 import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
-import { getInfluenceSpread, addSectorInfluence } from '../core/influence.js';
-import { getFactionPriceMultiplier, getFactionLabel, getFactionRep, addFactionRep, addFactionHeat, applyPoliticalEffect } from '../core/factions.js';
+import { getFactionPriceMultiplier, addFactionRep, addFactionHeat, applyPoliticalEffect } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
 import { updatePoliticalAsksForTrade } from './guilds.js';
 

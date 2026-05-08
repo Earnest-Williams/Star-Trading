@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { getSectorNeighbors } from "../core/navigation.js";
-import { FACTIONS, MAJOR_FACTIONS, BALANCE, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
-import { escapeHtml, formatCredits, formatTime, formatCommodity } from "../utils.js";
+import { FACTIONS, MAJOR_FACTIONS, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
+import { escapeHtml, formatTime, formatCommodity } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import {
     ensureFactionState, getKnownFactionIds, getFactionRep, getPrivateFactionRep, getFactionTrust, getFactionHeat,
@@ -9,7 +9,6 @@ import {
     getKnownContacts, getContactScore
 } from "../core/factions.js";
 import { renderCaptainsTab } from "./renderCaptains.js";
-import { updateUI } from "./renderer.js";
 import { getActiveIntel } from '../core/intel.js';
 
 export function renderReputationScreen() {
@@ -139,7 +138,7 @@ function renderSectorInfluenceDetails(sectorId) {
 }
 
 function renderPoliticalWebTab() {
-    const { universe, missions } = state;
+    const { universe } = state;
     let html = `<h4>Political Web</h4>`;
     html += `<div class="commodity-row"><strong>Current Sector Politics</strong><br>${renderSectorInfluenceDetails(state.player.currentSector)}</div>`;
     html += renderPoliticalSimulationSummary();

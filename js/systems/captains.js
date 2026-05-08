@@ -607,7 +607,7 @@ function resolveCaptainMeetings() {
     });
 }
 
-export function updateCaptainsDaily(reason = "daily frontier cycle") {
+export function updateCaptainsDaily(_reason = "daily frontier cycle") {
     normaliseCaptains();
     Object.values(state.captains).forEach(c => {
         if (c.status !== "active") return;

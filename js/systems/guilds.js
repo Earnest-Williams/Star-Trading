@@ -1,8 +1,6 @@
 import { state } from '../state.js';
-import { FACTIONS, FACTION_ASK_TYPES, GUILD_REQUIREMENTS, GUILD_TIER_NAMES, COMMODITIES } from '../constants.js';
-import { clampRange, formatCredits, describeCost, hasCargo, removeCargo, log, random } from '../utils.js';
-import { addSectorInfluence } from '../core/influence.js';
-import { addWorldEvent } from '../core/worldEvents.js';
+import { FACTIONS, FACTION_ASK_TYPES, GUILD_REQUIREMENTS, GUILD_TIER_NAMES } from '../constants.js';
+import { formatCredits, describeCost, removeCargo, log, random } from '../utils.js';
 import { ensureFactionState, addFactionRep, addFactionTrust, addFactionHeat, addFactionLeverage, getGuildTier, applyPoliticalEffect, getFactionRep, hasGuildJoinAccess, canAffordGuildRequirement } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
