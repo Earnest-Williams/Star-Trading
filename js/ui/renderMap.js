@@ -175,7 +175,7 @@ function findNearestSectorAt(x, y) {
             closestId = Number(id);
         }
     });
-    return closestId && closestDistance <= MAP_UI.NODES.CLICK_RADIUS
+    return closestId !== null && closestDistance <= MAP_UI.NODES.CLICK_RADIUS
         ? { id: closestId, distance: closestDistance }
         : null;
 }
