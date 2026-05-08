@@ -80,8 +80,8 @@ function hasExclusiveConflict(selectedIds, candidateId, getDefinition) {
 
 function buildRandomStatSpend(budget) {
     const statSpend = Object.fromEntries(CHAR_STATS.map(stat => [stat, 0]));
-    const maxTotal = Math.min(CHAR_STATS.length * MAX_CHARGEN_STAT_SPEND, Math.max(0, budget));
-    let remaining = randomInt(0, maxTotal);
+    const maxStatBudget = Math.min(CHAR_STATS.length * MAX_CHARGEN_STAT_SPEND, Math.max(0, budget));
+    let remaining = randomInt(0, maxStatBudget);
     const stats = shuffled(CHAR_STATS);
     stats.forEach((stat, index) => {
         const remainingSlots = stats.length - index - 1;
@@ -112,9 +112,9 @@ export function setRandomValidBuild() {
     let remainingBudget = CHAR_DEFAULTS.CHARGEN_POINTS - platformPackage.cost;
     const careerTraitIds = [];
     const maxCareerTraits = Math.min(2, Math.floor(remainingBudget / CHAR_DEFAULTS.CAREER_TRAIT_COST));
-    const careerTarget = randomInt(0, maxCareerTraits);
+    const targetCareerTraitCount = randomInt(0, maxCareerTraits);
     shuffled(CAREER_TRAITS).forEach(traitId => {
-        if (careerTraitIds.length >= careerTarget) return;
+        if (careerTraitIds.length >= targetCareerTraitCount) return;
         if (hasExclusiveConflict(careerTraitIds, traitId, getTraitDefinition)) return;
         careerTraitIds.push(traitId);
         remainingBudget -= CHAR_DEFAULTS.CAREER_TRAIT_COST;
