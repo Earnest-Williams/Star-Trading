@@ -1,5 +1,5 @@
 // Core character factory and helpers for player + captains.
-import { CHAR_STATS, CHAR_DEFAULTS, DEFAULT_PLATFORM_TYPE } from '../config/characters.js';
+import { CHAR_STATS, CHAR_DEFAULTS, DEFAULT_PLATFORM_TYPE, normalisePlatformType } from '../config/characters.js';
 
 export const CHARACTER_SCHEMA_FIELDS = Object.freeze([
     "stats",
@@ -23,15 +23,8 @@ function normaliseStats(stats) {
 }
 
 function normalisePlatform(platform) {
-    const legacyTypes = {
-        ship_owned: DEFAULT_PLATFORM_TYPE,
-        ship_rented: "rental_cutter_no_ship",
-        employed_salary: "employer_salary_no_ship",
-        employed_commission: "employer_commission_no_ship"
-    };
-    const rawType = platform?.type || DEFAULT_PLATFORM_TYPE;
     return {
-        type: legacyTypes[rawType] || rawType,
+        type: normalisePlatformType(platform?.type),
         employerLaneId: typeof platform?.employerLaneId === "undefined"
             ? null
             : platform.employerLaneId

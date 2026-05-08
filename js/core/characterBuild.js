@@ -3,8 +3,8 @@ import {
     CHAR_STATS,
     DEBUG_FALLBACK_BUILD_SPEC,
     DEFAULT_EMPLOYER_LANE_ID,
-    DEFAULT_PLATFORM_TYPE,
     EMPLOYER_LANES,
+    normalisePlatformType,
     PLATFORM_PACKAGES,
     START_PACKAGES,
     STAT_BUY_CURVE
@@ -26,16 +26,6 @@ function isObject(value) {
 
 function unique(values) {
     return [...new Set(values)];
-}
-
-function normalisePlatformType(platformType) {
-    const legacyTypes = {
-        ship_owned: DEFAULT_PLATFORM_TYPE,
-        ship_rented: "rental_cutter_no_ship",
-        employed_salary: "employer_salary_no_ship",
-        employed_commission: "employer_commission_no_ship"
-    };
-    return legacyTypes[platformType] || platformType || DEFAULT_PLATFORM_TYPE;
 }
 
 function addNumbers(target, source) {
@@ -274,9 +264,14 @@ export function acquireCareerTrait(character, traitId, runProgress = {}) {
     if (!canUnlockCareerTrait(character, traitId, runProgress)) return false;
     if (!Array.isArray(character.traits)) character.traits = [];
     if (!Array.isArray(character.careerTraitIds)) character.careerTraitIds = [];
+    if (!character.stats || typeof character.stats !== "object") character.stats = {};
     character.traits.push(traitId);
     character.careerTraitIds.push(traitId);
     const trait = getTraitDefinition(traitId);
     if (trait) addNumbers(character.stats, trait.statShifts);
+    CHAR_STATS.forEach(stat => {
+        const value = typeof character.stats[stat] === "number" ? character.stats[stat] : CHAR_DEFAULTS.STAT_BASE;
+        character.stats[stat] = Math.max(CHAR_DEFAULTS.STAT_CHARGEN_MIN, Math.min(CHAR_DEFAULTS.STAT_CAP, value));
+    });
     return true;
 }

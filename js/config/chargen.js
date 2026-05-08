@@ -19,6 +19,16 @@ export const STAT_BUY_CURVE = Object.freeze([
 
 export const DEFAULT_PLATFORM_TYPE = "ship_tier1_tramp";
 export const DEFAULT_EMPLOYER_LANE_ID = "sda_auxiliary";
+export const LEGACY_PLATFORM_TYPE_MAP = Object.freeze({
+    ship_owned: DEFAULT_PLATFORM_TYPE,
+    ship_rented: "rental_cutter_no_ship",
+    employed_salary: "employer_salary_no_ship",
+    employed_commission: "employer_commission_no_ship"
+});
+
+export function normalisePlatformType(platformType) {
+    return LEGACY_PLATFORM_TYPE_MAP[platformType] || platformType || DEFAULT_PLATFORM_TYPE;
+}
 
 export const PLATFORM_PACKAGES = Object.freeze({
     ship_tier1_tramp: Object.freeze({

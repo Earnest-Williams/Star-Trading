@@ -9,7 +9,6 @@ import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
 import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from './characterBuild.js';
 import { getTraitDefinition } from '../config/traits.js';
-import { getEmploymentTerms } from './characterChecks.js';
 
 export { makeStock };
 
@@ -575,7 +574,6 @@ function applyStartBenefitsToPlayer(player, benefits) {
     if (player.employment) {
         player.employment.wageDaily = (player.employment.wageDaily || 0) + benefits.wageBonus;
         player.employment.commissionShare = (player.employment.commissionShare || 0) + benefits.commissionBonus;
-        player.employment = getEmploymentTerms(player.character, player.employment);
     }
 }
 
