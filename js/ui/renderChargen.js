@@ -1,6 +1,6 @@
 import { ARCHETYPE_PRESETS, CHAR_DEFAULTS, CHAR_STATS, EMPLOYER_LANES, PLATFORM_PACKAGES, START_PACKAGES } from '../config/chargen.js';
 import { CAREER_TRAITS, ORIGIN_TRAITS, getTraitDefinition } from '../config/traits.js';
-import { calcStatGain, getBuildSpend, maxStatSpend, validateBuild } from '../core/characterBuild.js';
+import { calcStatGain, getBuildSpend, isPlatformEmployed, maxStatSpend, validateBuild } from '../core/characterBuild.js';
 import { getChargenBuild } from './chargenState.js';
 
 function option(value, label, selected) {
@@ -33,10 +33,12 @@ export function renderChargenControls() {
     const employerOptions = EMPLOYER_LANES.map(lane => (
         option(lane.id, lane.label, build.platform.employerLaneId === lane.id)
     )).join("");
+    const fieldError = field => validation.errors.some(error => error.toLowerCase().includes(field));
     const statControls = CHAR_STATS.map(stat => {
         const spent = Number(build.statSpend[stat] || 0);
         const value = CHAR_DEFAULTS.STAT_BASE + calcStatGain(spent);
-        return `<label>${stat} <input id="chargen-${stat}" type="number" min="0" max="${maxStatSpend()}" value="${spent}"> <span>${value}</span></label>`;
+        const invalidClass = fieldError(stat) ? " field-invalid" : "";
+        return `<label class="chargen-field${invalidClass}">${stat} <input id="chargen-${stat}" type="number" min="0" max="${maxStatSpend()}" value="${spent}"> <span>${value}</span></label>`;
     }).join("");
     const careerControls = CAREER_TRAITS.map(traitId => {
         const trait = getTraitDefinition(traitId);
@@ -54,20 +56,28 @@ export function renderChargenControls() {
     const drawbacks = selectedTraits.flatMap(trait => trait.drawbacks || []);
     const conflicts = validation.errors.filter(error => error.includes("exclusive"));
     const presetOptions = Object.entries(ARCHETYPE_PRESETS).map(([id, preset]) => option(id, preset.label, false)).join("");
+    const employedPlatform = isPlatformEmployed(build.platform.type);
+    const employerDisabled = employedPlatform ? "" : " disabled";
+    const employerClass = employedPlatform ? "" : " muted";
+    const validationList = validation.errors.length
+        ? `<ul class="chargen-errors">${validation.errors.map(error => `<li>${error}</li>`).join("")}</ul>`
+        : "";
     return `
         <div class="chargen-grid">
             <div><strong>Character Build</strong>${statControls}</div>
             <label>Archetype Preset <select id="chargen-preset"><option value="">Custom</option>${presetOptions}</select></label>
-            <label>Origin <select id="chargen-origin">${originOptions}</select>${describeTrait(getTraitDefinition(build.originTraitId))}</label>
+            <div class="chargen-random-actions"><button type="button" id="btn-random-preset">Random Preset</button><button type="button" id="btn-random-valid-build">Random Valid Build</button></div>
+            <label class="chargen-field${fieldError("origin") ? " field-invalid" : ""}">Origin <select id="chargen-origin">${originOptions}</select>${describeTrait(getTraitDefinition(build.originTraitId))}</label>
             <fieldset><legend>Career traits</legend>${careerControls}</fieldset>
             <fieldset><legend>Starting packages</legend>${packageControls}</fieldset>
-            <label>Start Ship / Employer Package <select id="chargen-platform">${platformOptions}</select></label>
-            <label>Employer Lane <select id="chargen-employer"><option value="">None</option>${employerOptions}</select></label>
+            <label class="chargen-field${fieldError("platform") ? " field-invalid" : ""}">Start Ship / Employer Package <select id="chargen-platform">${platformOptions}</select></label>
+            <label class="chargen-field${employerClass}${fieldError("employer") ? " field-invalid" : ""}">Employer Lane <select id="chargen-employer"${employerDisabled}><option value="">None</option>${employerOptions}</select></label>
             <div class="small">Point breakdown: stats ${spend.statPoints}, careers ${spend.careerPoints}, ship/employer ${spend.platformPoints}, packages ${spend.packagePoints}; spent ${spend.total}/${CHAR_DEFAULTS.CHARGEN_POINTS}; leftover ${spend.leftoverPoints}.</div>
             <div class="small">Start preview: ${platform.label}; ship ${platform.ship?.name || "none"}; cash modifier ${platform.creditModifier}; rank ${build.platform.employerLaneId || "independent"}; runtime ${platform.runtimeType}.</div>
             <div class="small">Summary: ${selectedTraits.map(trait => trait.name).join(", ") || "No traits"}; packages ${build.packageIds.join(", ") || "none"}.</div>
             ${drawbacks.length ? `<div class="small red">Drawbacks: ${drawbacks.join(" ")}</div>` : ""}
             ${conflicts.length ? `<div class="small red">Trait conflicts: ${conflicts.join(" ")}</div>` : ""}
-            <div class="small ${validation.valid ? "green" : "red"}">${validation.valid ? "Build valid." : validation.reason}</div>
+            ${validationList}
+            <div class="small ${validation.valid ? "green" : "red"}">${validation.valid ? "Build valid." : "Build invalid — fix the highlighted fields before launch."}</div>
         </div>`;
 }

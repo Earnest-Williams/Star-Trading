@@ -7,7 +7,6 @@ import { renderCaptainEntanglementChips, renderCaptainEntanglementDetail } from 
 import { addIntel } from '../core/intel.js';
 import { updateUI } from "./renderer.js";
 import { getTraitBonus } from '../core/traitHooks.js';
-import { missionDescription } from "./renderMissions.js";
 
 export function renderCaptainChipsForSector(sectorId) {
     const { player, captains: allCaptains } = state;
