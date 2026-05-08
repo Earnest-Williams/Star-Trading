@@ -10,6 +10,7 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { nudgeCaptainRelation, prepareMissionOpportunity, normaliseCaptains, applyContestMissionOutcome } from '../systems/captains.js';
 import { getMissionOutcomeBand } from '../core/characterChecks.js';
+import { ENTANGLEMENTS } from '../config/entanglements.js';
 
 export { prepareMissionOpportunity };
 
@@ -210,7 +211,7 @@ export function completeMission(id) {
             log(`This matter must be handled in sector ${targetSector}.`);
             return;
         }
-        if (!spendTime(m.operationMinutes || 60)) return;
+        if (!spendTime(m.operationMinutes || ENTANGLEMENTS.MISSION.SOCIAL_OPERATION_MINUTES)) return;
         m.socialResolved = true;
     }
     const outcome = getMissionOutcomeBand(state.player.character, m);

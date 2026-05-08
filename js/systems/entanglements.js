@@ -182,7 +182,7 @@ export function startRomanceWithCaptain(captainId) {
 
     nudgeCaptainRelation(
         captainId,
-        { opinion: 2, trust: 1 },
+        ENTANGLEMENTS.ROMANCE.OVERTURE_RELATION_BUMP,
         "the conversation with you turned personal"
     );
 
@@ -258,7 +258,7 @@ export function deepenRomanceWithCaptain(captainId) {
 
     nudgeCaptainRelation(
         captainId,
-        { opinion: 1, trust: 2 },
+        ENTANGLEMENTS.ROMANCE.DEEPEN_RELATION_BUMP,
         "grew more personally entangled with you"
     );
 
@@ -339,8 +339,10 @@ function updateFavorPressure(entanglement) {
     if (!captain) return;
 
     let pressureDelta = -ENTANGLEMENTS.PRESSURE.PRESSURE_DECAY;
-    if (captain.currentPlan) pressureDelta += 3;
-    if ((captain.credits || 0) < 1000) pressureDelta += 2;
+    if ((entanglement.strength || 0) > 0) {
+        if (captain.currentPlan) pressureDelta += 3;
+        if ((captain.credits || 0) < 1000) pressureDelta += 2;
+    }
 
     entanglement.pressure = clampRange((entanglement.pressure || 0) + pressureDelta, 0, 100);
 }
@@ -360,12 +362,20 @@ function updateRivalryPressure(entanglement) {
     entanglement.pressure = clampRange((entanglement.pressure || 0) + pressureDelta, 0, 100);
 }
 
-function decayOrRetireCaptainEntanglement(kind, captainId, strengthDelta = 8) {
+function decayOrRetireCaptainEntanglement(
+    kind,
+    captainId,
+    strengthDelta = ENTANGLEMENTS.PRESSURE.FAVOR_STRENGTH_DECAY
+) {
     const entanglement = findEntanglement(kind, PLAYER_PARTY, makeCaptainParty(captainId));
     if (!entanglement) return;
 
     entanglement.strength = clampRange((entanglement.strength || 0) - strengthDelta, -100, 100);
-    entanglement.pressure = clampRange((entanglement.pressure || 0) - 4, 0, 100);
+    entanglement.pressure = clampRange(
+        (entanglement.pressure || 0) - ENTANGLEMENTS.PRESSURE.FAVOR_PRESSURE_DECAY,
+        0,
+        100
+    );
     entanglement.lastTouchedDay = getCurrentDay();
 
     if ((entanglement.strength || 0) <= 0 && (entanglement.pressure || 0) <= 0) {
@@ -432,7 +442,11 @@ export function syncRelationshipEntanglements() {
                 source: "relationship_rivalry"
             });
         } else {
-            decayOrRetireCaptainEntanglement(ENTANGLEMENTS.KINDS.RIVALRY, captain.id, 10);
+            decayOrRetireCaptainEntanglement(
+                ENTANGLEMENTS.KINDS.RIVALRY,
+                captain.id,
+                ENTANGLEMENTS.PRESSURE.RIVALRY_STRENGTH_DECAY
+            );
         }
     });
 }
@@ -476,18 +490,11 @@ function getNearestBoardSector(preferredSectorId) {
     const portSectors = Object.keys(state.ports).map(Number);
     if (portSectors.length === 0) return preferredSectorId;
 
-    let best = portSectors[0];
-    let bestDistance = Math.abs(best - preferredSectorId);
-
-    portSectors.forEach(sectorId => {
-        const distance = Math.abs(sectorId - preferredSectorId);
-        if (distance < bestDistance) {
-            best = sectorId;
-            bestDistance = distance;
-        }
+    return portSectors.reduce((best, current) => {
+        const bestDistance = Math.abs(best - preferredSectorId);
+        const currentDistance = Math.abs(current - preferredSectorId);
+        return currentDistance < bestDistance ? current : best;
     });
-
-    return best;
 }
 
 function makeEntanglementMission(entanglement, eventType, title, context, sectorId, factionId = null) {
@@ -505,7 +512,7 @@ function makeEntanglementMission(entanglement, eventType, title, context, sector
     mission.entanglementId = entanglement.id;
     mission.factionId = factionId;
     mission.targetSector = sectorId || boardSector;
-    mission.operationMinutes = 60;
+    mission.operationMinutes = ENTANGLEMENTS.MISSION.SOCIAL_OPERATION_MINUTES;
     mission.visibility = entanglement.publicKnown ? "public" : "quiet";
     mission.risk = entanglement.publicKnown ? "political" : "personal";
     mission.rewardRep = 1;

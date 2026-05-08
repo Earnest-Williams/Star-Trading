@@ -211,13 +211,15 @@ describe('entanglements', () => {
 
     it('retires favor entanglements when debt is cleared', () => {
         state.captains.mara.relationshipToPlayer.debt = 2;
+        state.captains.mara.credits = 0;
+        state.captains.mara.currentPlan = { type: 'mission', missionId: 99 };
         updateEntanglementsDaily();
 
         let items = getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.FAVOR);
         assert.equal(items.length, 1);
 
         state.captains.mara.relationshipToPlayer.debt = 0;
-        for (let i = 0; i < 6; i++) updateEntanglementsDaily();
+        for (let i = 0; i < 8; i++) updateEntanglementsDaily();
 
         items = getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.FAVOR);
         assert.equal(items.length, 0);

@@ -1,19 +1,8 @@
 import { state } from "../state.js";
 import { FACTIONS } from "../constants.js";
-import { escapeHtml, formatCredits, formatCommodity } from "../utils.js";
+import { escapeHtml, formatCredits } from "../utils.js";
 import { getFactionRep, getPrivateFactionRep, getFactionTrust, getGuildTier } from "../core/factions.js";
-
-export function missionDescription(m) {
-    if (m.type === "delivery") return `Pickup/source: sector ${m.originSector}. Deliver ${m.amount} ${formatCommodity(m.commodity)} to sector ${m.destinationSector}.`;
-    if (m.type === "mining") return `Mine ${m.amount} Ore, then report back to sector ${m.originSector}.`;
-    if (m.type === "survey") return `Survey sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
-    if (m.type === "colony") return `Found a colony in sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
-    if (m.type === "contest") return `${m.context || "Political conflict contract."} Travel to sector ${m.targetSector}, spend ${m.operationMinutes || 90} minutes on the operation, then report the result.`;
-    if (m.type === "social") {
-        return m.context || "A social entanglement needs personal attention.";
-    }
-    return "Mission details unavailable.";
-}
+import { missionDescription } from "../systems/missions.js";
 
 function isMissionVisible(m) {
     if (!m.factionId || !FACTIONS[m.factionId]) return true;
