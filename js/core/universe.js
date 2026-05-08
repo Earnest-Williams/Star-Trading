@@ -499,10 +499,14 @@ export function generateStars() {
     initRng(state.player.seed);
     state.starField = [];
     for (let i = 0; i < STARFIELD.COUNT; i++) {
+        const depth = rng() < 0.55 ? 0 : (rng() < 0.78 ? 1 : 2);
         state.starField.push({
             x: rng() * STARFIELD.WIDTH,
             y: rng() * STARFIELD.HEIGHT,
-            size: rng() < STARFIELD.SMALL_STAR_CHANCE ? STARFIELD.SMALL_SIZE : STARFIELD.LARGE_SIZE
+            size: rng() < STARFIELD.SMALL_STAR_CHANCE ? STARFIELD.SMALL_SIZE : STARFIELD.LARGE_SIZE,
+            depth,
+            alpha: 0.42 + rng() * 0.45,
+            twinkle: rng() * Math.PI * 2
         });
     }
 }

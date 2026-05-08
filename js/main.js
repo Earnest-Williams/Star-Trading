@@ -6,7 +6,7 @@ import { createPlayerFromBuild, generateUniverse, generateStars } from './core/u
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters } from './core/persistence.js';
-import { setupMapInteraction } from './ui/renderMap.js';
+import { centerMapOnSector, resetMapViewport, setupMapInteraction } from './ui/renderMap.js';
 import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
@@ -18,7 +18,7 @@ import { registerSimulationTickHooks } from './core/worldTick.js';
 import { normaliseTradeRoutes } from './systems/tradeRoutes.js';
 import { ARCHETYPE_PRESETS } from './config/chargen.js';
 import { renderChargenControls } from './ui/renderChargen.js';
-import { getChargenBuild, readChargenBuildFromDom, setChargenBuild, validateChargenDraft } from './ui/chargenState.js';
+import { getChargenBuild, readChargenBuildFromDom, setChargenBuild, setRandomPresetBuild, setRandomValidBuild, validateChargenDraft } from './ui/chargenState.js';
 
 // =====================================================
 // APP BOOTSTRAP
@@ -93,6 +93,7 @@ export const App = (() => {
         generateMissionPool();
         generateFactionAsks();
         state.selectedSectorId = state.player.currentSector;
+        resetMapViewport();
     }
 
     function bindAppShellDom() {
@@ -114,6 +115,7 @@ export const App = (() => {
         addTopbarListener('btn-save', () => executeAction({ type: 'saveGame' }));
         addTopbarListener('btn-load', () => executeAction({ type: 'loadGame' }));
         addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
+        addTopbarListener('btn-center-map', () => centerMapOnSector());
         addTopbarListener('btn-new-game', () => {
             const buildSpec = readChargenBuildFromDom();
             const validation = validateChargenDraft();
@@ -134,6 +136,16 @@ export const App = (() => {
             const el = document.getElementById(id);
             if (!el) return;
             el.addEventListener('input', () => { readChargenBuildFromDom(); renderChargen(); });
+            el.addEventListener('click', event => {
+                if (!event.target) return;
+                if (event.target.id === 'btn-random-preset') {
+                    setRandomPresetBuild();
+                    renderChargen();
+                } else if (event.target.id === 'btn-random-valid-build') {
+                    setRandomValidBuild();
+                    renderChargen();
+                }
+            });
             el.addEventListener('change', event => {
                 if (event.target && event.target.id === 'chargen-preset' && event.target.value && ARCHETYPE_PRESETS[event.target.value]) {
                     setChargenBuild(ARCHETYPE_PRESETS[event.target.value].build);
@@ -148,6 +160,8 @@ export const App = (() => {
     function renderChargen() {
         const panel = document.getElementById('chargenPanel');
         if (panel) panel.innerHTML = renderChargenControls();
+        const startButton = document.getElementById('btn-new-game');
+        if (startButton) startButton.disabled = !validateChargenDraft().valid;
     }
 
     function addTopbarListener(id, fn) {

@@ -243,3 +243,159 @@ input { width: 100%; }
     display: inline-block;
     margin: 6px 10px 6px 0;
 }
+
+.map-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+}
+.map-toolbar button { margin: 0; }
+#map {
+    aspect-ratio: 5 / 3;
+    height: auto;
+    min-height: 300px;
+}
+#map.panning { cursor: grabbing; }
+.map-tooltip {
+    position: fixed;
+    z-index: 200;
+    max-width: 320px;
+    padding: 8px 10px;
+    background: rgba(0, 8, 17, 0.95);
+    border: 2px solid rgba(0, 255, 204, 0.85);
+    box-shadow: 0 0 14px rgba(0, 255, 204, 0.45);
+    color: var(--cyan);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.08s ease, transform 0.08s ease;
+}
+.map-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.chargen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+    align-items: start;
+}
+.chargen-grid label,
+.chargen-grid fieldset {
+    margin: 0;
+}
+.chargen-field {
+    display: block;
+    border: 1px solid transparent;
+    padding: 4px;
+}
+.chargen-field.field-invalid {
+    border-color: var(--red);
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.35);
+}
+.chargen-field.muted {
+    opacity: 0.55;
+}
+.chargen-random-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.chargen-random-actions button { margin: 0; }
+.chargen-errors {
+    margin: 0;
+    padding-left: 22px;
+    color: var(--red);
+}
+
+@media (max-width: 900px) {
+    body {
+        padding: 14px;
+        font-size: 19px;
+    }
+    #game {
+        grid-template-columns: 1fr;
+    }
+    #game > .panel:first-child {
+        order: 1;
+    }
+    #game > div:nth-child(2) {
+        order: 0;
+    }
+    #game > .panel:last-child {
+        order: 2;
+    }
+    #map {
+        min-height: 340px;
+    }
+}
+
+@media (max-width: 700px) {
+    body {
+        padding: 10px;
+        font-size: 18px;
+    }
+    h1 {
+        font-size: 1.6em;
+        letter-spacing: 1px;
+    }
+    .topbar {
+        justify-content: flex-start;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 8px;
+    }
+    .topbar button,
+    .tab-button {
+        min-width: 104px;
+        flex: 0 0 auto;
+    }
+    #newGamePanel label,
+    #newGamePanel .advanced-settings {
+        display: block;
+        margin: 8px 0;
+    }
+    #map {
+        min-height: 300px;
+    }
+    .relationship-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    body {
+        padding: 8px;
+        font-size: 17px;
+    }
+    .panel,
+    .subpanel {
+        padding: 10px;
+    }
+    #map {
+        min-height: 240px;
+    }
+    button,
+    input,
+    select {
+        min-height: 42px;
+        font-size: 17px;
+    }
+    .menu-grid,
+    .screen-tabs,
+    .chargen-grid {
+        grid-template-columns: 1fr;
+    }
+    .nav-card button {
+        width: 100%;
+    }
+    .map-toolbar {
+        justify-content: stretch;
+    }
+    .map-toolbar button {
+        width: 100%;
+    }
+    .map-tooltip {
+        max-width: calc(100vw - 30px);
+    }
+}

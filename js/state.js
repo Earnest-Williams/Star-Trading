@@ -25,6 +25,8 @@ export function createInitialState() {
         reputationTab: "factions",
         selectedCaptainId: null,
         mapNodeCache: {},
+        hoveredSectorId: null,
+        mapViewport: { scale: 1, offsetX: 0, offsetY: 0 },
         worldGraphRevision: 0,
         ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
         rng: null
