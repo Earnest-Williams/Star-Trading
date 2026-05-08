@@ -45,6 +45,13 @@ describe('jump-gate corridor navigation', () => {
         assert.equal(areSectorsConnected(1, 4), false);
     });
 
+    it('invalidates cached no-path routes when a corridor is added', () => {
+        assert.equal(findShortestSectorPath(1, 4), null);
+        addJumpGateCorridor(1, 4);
+        assert.deepEqual(findShortestSectorPath(1, 4), [1, 4]);
+        assert.equal(areSectorsConnected(1, 4), true);
+    });
+
     it('direct corridor vs multi-corridor distance is correct', () => {
         addJumpGateCorridor(1, 2);
         addJumpGateCorridor(2, 3);

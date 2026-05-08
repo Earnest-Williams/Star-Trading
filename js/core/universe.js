@@ -9,6 +9,7 @@ import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
 import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from './characterBuild.js';
 import { getEmploymentTerms } from './characterChecks.js';
+import { markGraphDirty } from './routePlanner.js';
 import { getTraitDefinition } from '../config/traits.js';
 
 export { makeStock };
@@ -301,6 +302,7 @@ export function addJumpGateCorridor(a, b, options = {}) {
     };
     state.universe[a].jumpGates.push({ ...common, id: gateAId, destinationSectorId: b, destinationGateId: gateBId });
     state.universe[b].jumpGates.push({ ...common, id: gateBId, destinationSectorId: a, destinationGateId: gateAId });
+    markGraphDirty();
     return corridorId;
 }
 
