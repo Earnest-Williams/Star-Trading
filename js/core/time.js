@@ -75,7 +75,7 @@ export function spendTime(minutes, reason = "player action") {
 }
 
 export function advanceTime(minutes, reason = "time passes") {
-    if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) return;
+    if (!Number.isInteger(minutes) || minutes <= 0) return;
     const startAbsolute = getAbsoluteMinute();
     const endAbsolute = startAbsolute + minutes;
     let boundary;
