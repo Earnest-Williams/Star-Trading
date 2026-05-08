@@ -53,8 +53,8 @@ export function setTimeFromAbsoluteMinute(absoluteMinute) {
 }
 
 export function canSpendTime(minutes) {
-    if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) {
-        log("Time cost must be a positive number of minutes.");
+    if (!Number.isInteger(minutes) || minutes <= 0) {
+        log("Time cost must be a positive integer number of minutes.");
         return false;
     }
     if (state.player.time.minuteOfDay < state.player.time.wakeMinute || state.player.time.minuteOfDay >= state.player.time.sleepMinute) {
