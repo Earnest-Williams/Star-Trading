@@ -254,6 +254,105 @@ describe('entanglements', () => {
         ));
     });
 
+    it('routes entanglement missions to a board sector while preserving the real target sector', () => {
+        state.player.currentSector = 9;
+        state.player.character = { stats: {}, traits: [], contacts: [] };
+
+        state.universe = {
+            2: { id: 2, region: 'Core', pirateThreat: 0, surveyed: true, influence: { sda: 50, fu: 20, hc: 10, vc: 20 }, jumpGates: [] },
+            4: { id: 4, region: 'Core', pirateThreat: 0, surveyed: true, influence: { sda: 50, fu: 20, hc: 10, vc: 20 }, jumpGates: [] },
+            5: { id: 5, region: 'Core', pirateThreat: 0, surveyed: true, influence: { sda: 50, fu: 20, hc: 10, vc: 20 }, jumpGates: [] },
+            9: { id: 9, region: 'Core', pirateThreat: 0, surveyed: true, influence: { sda: 50, fu: 20, hc: 10, vc: 20 }, jumpGates: [] }
+        };
+
+        state.ports = {
+            2: { typeKey: 'starport', factionId: 'sda', stock: {}, maxStock: {}, basePrices: {} },
+            5: { typeKey: 'starport', factionId: 'sda', stock: {}, maxStock: {}, basePrices: {} }
+        };
+
+        state.captains.mara.currentSector = state.player.currentSector;
+        const romance = startRomanceWithCaptain('mara');
+        assert.ok(romance);
+
+        state.captains.mara.currentSector = 4;
+        romance.pressure = 80;
+
+        state.missions.push({
+            id: 1,
+            title: 'VC Quiet Job',
+            status: 'captain_taken',
+            takenBy: 'mara',
+            factionId: 'vc',
+            originSector: 4,
+            expiresDay: 8
+        });
+
+        state.captains.mara.currentPlan = {
+            type: 'mission',
+            missionId: 1,
+            completionDay: 4,
+            targetSector: 4
+        };
+
+        updateEntanglementsDaily();
+
+        const spawned = state.missions.find(mission =>
+            mission.kind === 'entanglement_event'
+            && mission.eventType === 'conflicted_loyalties'
+        );
+
+        assert.ok(spawned);
+        assert.equal(spawned.originSector, 5);
+        assert.equal(spawned.targetSector, 4);
+    });
+
+    it('prefers the player current sector for board routing when it has a port', () => {
+        state.player.currentSector = 1;
+        state.ports = {
+            1: { typeKey: 'starport', factionId: 'sda', stock: {}, maxStock: {}, basePrices: {} },
+            5: { typeKey: 'starport', factionId: 'sda', stock: {}, maxStock: {}, basePrices: {} }
+        };
+
+        state.universe = {
+            1: { id: 1, region: 'Core', pirateThreat: 0, surveyed: true, influence: { sda: 50, fu: 20, hc: 10, vc: 20 }, jumpGates: [] },
+            4: { id: 4, region: 'Core', pirateThreat: 0, surveyed: true, influence: { sda: 50, fu: 20, hc: 10, vc: 20 }, jumpGates: [] }
+        };
+
+        const romance = startRomanceWithCaptain('mara');
+        assert.ok(romance);
+
+        state.captains.mara.currentSector = 4;
+        romance.pressure = 80;
+
+        state.missions.push({
+            id: 1,
+            title: 'VC Quiet Job',
+            status: 'captain_taken',
+            takenBy: 'mara',
+            factionId: 'vc',
+            originSector: 4,
+            expiresDay: 8
+        });
+
+        state.captains.mara.currentPlan = {
+            type: 'mission',
+            missionId: 1,
+            completionDay: 4,
+            targetSector: 4
+        };
+
+        updateEntanglementsDaily();
+
+        const spawned = state.missions.find(mission =>
+            mission.kind === 'entanglement_event'
+            && mission.eventType === 'conflicted_loyalties'
+        );
+
+        assert.ok(spawned);
+        assert.equal(spawned.originSector, 1);
+        assert.equal(spawned.targetSector, 4);
+    });
+
     it('does not merge two-party entanglement into an existing three-party one', () => {
         addOrNudgeEntanglement({
             kind: ENTANGLEMENTS.KINDS.FAVOR,
