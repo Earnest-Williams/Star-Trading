@@ -321,8 +321,8 @@ export function drawMap() {
     starField.forEach(star => {
         const depth = Number.isInteger(star.depth) ? star.depth : 0;
         const rate = MAP_STAR_DEPTH_RATES[depth] || MAP_STAR_DEPTH_RATES[0];
-        const x = (star.x + viewport.offsetX * rate + canvas.width * 4) % canvas.width;
-        const y = (star.y + viewport.offsetY * rate + canvas.height * 4) % canvas.height;
+        const x = ((star.x + viewport.offsetX * rate) % canvas.width + canvas.width) % canvas.width;
+        const y = ((star.y + viewport.offsetY * rate) % canvas.height + canvas.height) % canvas.height;
         const pulse = 0.12 * Math.sin(Date.now() / 900 + (star.twinkle || 0));
         ctx.globalAlpha = Math.max(0.25, Math.min(0.95, (star.alpha || 0.7) + pulse));
         ctx.fillStyle = "#ffffff";
