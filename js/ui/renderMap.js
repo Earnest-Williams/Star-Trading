@@ -339,7 +339,7 @@ export function drawMap() {
     ctx.lineWidth = MAP_UI.LINKS.WIDTH;
     ids.forEach(id => {
         getSectorNeighbors(id).forEach(target => {
-            if (id < target && screenNodes[target] && universe[target].charted) {
+            if (id < target && screenNodes[target]) {
                 ctx.beginPath();
                 ctx.moveTo(screenNodes[id].x, screenNodes[id].y);
                 ctx.lineTo(screenNodes[target].x, screenNodes[target].y);
