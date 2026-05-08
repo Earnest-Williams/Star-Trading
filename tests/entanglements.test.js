@@ -68,6 +68,20 @@ function setup() {
     };
 }
 
+
+function captureConsoleMessages(action) {
+    const originalLog = console.log;
+    const messages = [];
+    console.log = message => {
+        messages.push(String(message));
+    };
+    try {
+        return { result: action(), messages };
+    } finally {
+        console.log = originalLog;
+    }
+}
+
 beforeEach(setup);
 
 describe('entanglements', () => {
@@ -162,9 +176,10 @@ describe('entanglements', () => {
     it('rejects romance when relationship thresholds are not met', () => {
         state.captains.mara.relationshipToPlayer.opinion = 10;
 
-        const result = startRomanceWithCaptain('mara');
+        const { result, messages } = captureConsoleMessages(() => startRomanceWithCaptain('mara'));
 
         assert.equal(result, false);
+        assert.ok(messages.includes('They do not know you well enough.'));
         assert.equal(getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.ROMANCE).length, 0);
         assert.equal(state.worldEvents.length, 0);
     });
@@ -176,8 +191,9 @@ describe('entanglements', () => {
     });
 
     it('does not let deepenRomanceWithCaptain start a new romance', () => {
-        const result = deepenRomanceWithCaptain('mara');
+        const { result, messages } = captureConsoleMessages(() => deepenRomanceWithCaptain('mara'));
         assert.equal(result, false);
+        assert.ok(messages.includes('no personal bond exists yet'));
         assert.equal(getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.ROMANCE).length, 0);
         assert.equal(state.worldEvents.length, 0);
     });

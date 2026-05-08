@@ -9,7 +9,7 @@ import { updateUI } from "./renderer.js";
 import { getTraitBonus } from '../core/traitHooks.js';
 
 export function renderCaptainChipsForSector(sectorId) {
-    const { player, captains: allCaptains } = state;
+    const { player } = state;
     const localCaptains = getCaptainsInSector(sectorId, true);
     if (localCaptains.length === 0) return "";
     let html = `<div><strong>Known Captains:</strong> `;
@@ -29,7 +29,7 @@ export function renderCaptainChipsForSector(sectorId) {
 }
 
 export function renderCaptainsTab() {
-    const { captains, captainEventLog, missions } = state;
+    const { captainEventLog, missions } = state;
     const known = getKnownCaptains().sort((a, b) => a.name.localeCompare(b.name));
     let html = `<h4>Known Captains</h4>`;
     html += `<div class="small muted">These captains behave like other players: they move, trade, mine, accept opportunities, join guilds, and develop loyalties.</div>`;

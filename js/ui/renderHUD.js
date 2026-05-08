@@ -1,9 +1,8 @@
 import { state } from "../state.js";
 import { getSectorNeighbors } from "../core/navigation.js";
-import { FACTIONS, BALANCE, CARGO_COMMODITIES, GUILD_FACTIONS, PORT_TYPES, PLANET_TYPES, GUILD_TIER_NAMES } from "../constants.js";
-import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed, getFreeHolds } from "../utils.js";
-import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
-import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getPrivateFactionRep, getFactionHeat, getFactionTrust, getFactionFavors, getFactionLeverage, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
+import { FACTIONS, BALANCE, CARGO_COMMODITIES, GUILD_FACTIONS, GUILD_TIER_NAMES } from "../constants.js";
+import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed } from "../utils.js";
+import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getFactionHeat, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
 import { showScreen, setReputationTab } from "./ui.js";
 
 export function getPriorityItems() {
@@ -118,7 +117,7 @@ export function renderFactionPanel() {
 }
 
 export function renderAcceptedMissions() {
-    const { missions, player } = state;
+    const { missions } = state;
     const accepted = missions.filter(m => m.status === "accepted");
     const target = document.getElementById("acceptedMissions");
     if (!target) return;

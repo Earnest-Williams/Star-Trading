@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { state } from '../js/state.js';
 import { createPlayer, addJumpGateCorridor } from '../js/core/universe.js';
 import { expireMissions } from '../js/systems/missions.js';
-import { PORT_TYPES, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
+import { DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
 // Minimal state for mission tests (no universe generation needed).
 function resetMissionState(dayOverride = 5) {

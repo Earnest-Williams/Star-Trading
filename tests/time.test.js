@@ -1,5 +1,5 @@
 // Smoke tests for core/time.js — time advancement and hook firing.
-import { describe, it, before, beforeEach } from 'node:test';
+import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { state } from '../js/state.js';
 import {

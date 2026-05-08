@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { FACTIONS, PORT_TYPES, BALANCE, MARKET_COMMODITIES } from "../constants.js";
-import { escapeHtml, formatCredits, formatCommodity } from "../utils.js";
+import { escapeHtml, formatCommodity } from "../utils.js";
 import { getFactionRep, getFactionLabel } from "../core/factions.js";
 import { getPortPrice } from "../systems/market.js";
 import { renderMissionBoard } from "./renderMissions.js";

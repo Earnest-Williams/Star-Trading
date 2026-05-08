@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { FACTIONS, BALANCE, COMMODITIES, GUILD_FACTIONS, PLANET_TYPES, BUILDING_DEFS } from "../constants.js";
-import { escapeHtml, formatCredits, formatCommodity } from "../utils.js";
+import { escapeHtml, formatCommodity } from "../utils.js";
 import { getGuildTier } from "../core/factions.js";
 import { renderPlanetSummary } from "./renderSector.js";
 

@@ -3,8 +3,7 @@ import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, MARKET_COMMODITIES, 
 import { clampRange, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, normaliseSectorInfluence, addSectorInfluence, getInfluenceSpread, getSectorStatusLabel } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
-import { ensureFactionState, getFactionRep, getFactionHeat, getFactionLeverage, getFactionTrust, addFactionRep, addFactionHeat, addFactionLeverage, addFactionTrust, getGuildTier, recordFactionMemory, applyPoliticalEffect, getFactionPoliticalPole, getPirateIncidentMultiplier } from '../core/factions.js';
-import { spendTime } from '../core/time.js';
+import { ensureFactionState, getFactionRep, getFactionHeat, getFactionLeverage, getFactionTrust, addFactionHeat, addFactionLeverage, recordFactionMemory, getPirateIncidentMultiplier } from '../core/factions.js';
 import { Notifications } from '../ui/notifications.js';
 import { prepareMissionOpportunity, activePortSectors, makeBaseMission } from '../systems/missions.js';
 import { generateFactionAsks } from '../systems/guilds.js';

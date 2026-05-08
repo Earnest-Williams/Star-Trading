@@ -21,7 +21,7 @@ export function getActiveBounties() {
  * Issues a new bounty (SDA warrant or private contract).
  * @param {Object} bountyDef - { targetId, type, reward, issuedBy, expiresDay }
  */
-export function issueBounty(bountyDef) {
+export function issueBounty(_bountyDef) {
     // TODO: implement
 }
 
@@ -29,7 +29,7 @@ export function issueBounty(bountyDef) {
  * Claims a bounty reward after defeating or capturing the target.
  * @param {string} bountyId
  */
-export function claimBounty(bountyId) {
+export function claimBounty(_bountyId) {
     // TODO: implement
 }
 

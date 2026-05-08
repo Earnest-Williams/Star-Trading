@@ -1,10 +1,9 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, COMMODITIES } from '../constants.js';
-import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
+import { FACTIONS } from '../constants.js';
+import { getFreeHolds, log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addSectorInfluence } from '../core/influence.js';
-import { addWorldEvent } from '../core/worldEvents.js';
-import { addFactionRep, addFactionTrust, addFactionHeat, applyPoliticalEffect, getMiningYieldMultiplier, ensureFactionState } from '../core/factions.js';
+import { addFactionTrust, addFactionHeat, applyPoliticalEffect, getMiningYieldMultiplier, ensureFactionState } from '../core/factions.js';
 import { addIntel } from '../core/intel.js';
 import { spendTime } from '../core/time.js';
 import { applyShipDamage } from './combat.js';
