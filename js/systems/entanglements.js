@@ -55,11 +55,6 @@ export function normaliseEntanglements() {
         if (!Array.isArray(entanglement.tags)) entanglement.tags = [];
         if (!entanglement.data || typeof entanglement.data !== "object" || Array.isArray(entanglement.data)) entanglement.data = {};
     });
-
-    state.nextEntanglementId = Math.max(
-        state.nextEntanglementId,
-        getHighestEntanglementId() + 1
-    );
 }
 
 export function getEntanglementsForParty(party, kind = null) {
