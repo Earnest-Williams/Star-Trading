@@ -66,6 +66,14 @@ describe('canSpendTime', () => {
         resetPlayer(1300);
         assert.equal(canSpendTime(60), false);
     });
+
+    it('returns false for invalid or non-positive durations', () => {
+        resetPlayer(480);
+        assert.equal(canSpendTime(0), false);
+        assert.equal(canSpendTime(-5), false);
+        assert.equal(canSpendTime(Number.NaN), false);
+        assert.equal(canSpendTime('30'), false);
+    });
 });
 
 describe('advanceTime — hourly hooks', () => {
@@ -96,6 +104,13 @@ describe('advanceTime — daily hook', () => {
         advanceTime(60);
         assert.equal(state.player.time.day, 2);
     });
+
+    it('ignores invalid durations without corrupting time', () => {
+        resetPlayer(480);
+        advanceTime(Number.NaN);
+        assert.equal(state.player.time.day, 1);
+        assert.equal(state.player.time.minuteOfDay, 480);
+    });
 });
 
 describe('spendTime', () => {
@@ -111,5 +126,13 @@ describe('spendTime', () => {
         const result = spendTime(30);
         assert.equal(result, false);
         assert.equal(state.player.time.minuteOfDay, 1320);
+    });
+
+    it('returns false and does not advance time for invalid durations', () => {
+        resetPlayer(480);
+        const result = spendTime(Number.NaN);
+        assert.equal(result, false);
+        assert.equal(state.player.time.day, 1);
+        assert.equal(state.player.time.minuteOfDay, 480);
     });
 });

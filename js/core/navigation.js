@@ -52,7 +52,7 @@ export function findShortestSectorPath(startSectorId, goalSectorId) {
 
 export function getSectorPathDistance(startSectorId, goalSectorId) {
     const path = findShortestSectorPath(startSectorId, goalSectorId);
-    return path ? Math.max(1, path.length - 1) : null;
+    return path ? path.length - 1 : null;
 }
 
 export function areSectorsConnected(startSectorId, goalSectorId) {
