@@ -624,10 +624,10 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
     const ship = createStarterShipFromPlatform(platformPackage);
     const credits = getStarterCredits(leftoverPoints, platformPackage, startBenefits);
     const player = makePlayerBase(ship, credits, builtCharacter, platformPackage, employerLane);
-    applyStartBenefitsToPlayer(player, startBenefits);
     if (player.employment) {
         player.employment = getEmploymentTerms(player.character, player.employment);
     }
+    applyStartBenefitsToPlayer(player, startBenefits);
     return player;
 }
 
