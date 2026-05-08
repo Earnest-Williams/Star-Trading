@@ -2,6 +2,8 @@ import { state } from "../state.js";
 import { FACTIONS, ARCHETYPE_LABELS, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, random } from "../utils.js";
 import { getCaptainsInSector, getCaptain, getCaptainDominantFaction, getCaptainRelationshipLabel, captainDisplayName, nudgeCaptainRelation, getKnownCaptains } from "../systems/captains.js";
+import { startRomanceWithCaptain, deepenRomanceWithCaptain, canStartRomanceWithCaptain, canDeepenRomanceWithCaptain } from "../systems/entanglements.js";
+import { renderCaptainEntanglementChips, renderCaptainEntanglementDetail } from "./renderEntanglements.js";
 import { addIntel } from '../core/intel.js';
 import { updateUI } from "./renderer.js";
 import { getTraitBonus } from '../core/traitHooks.js';
@@ -42,6 +44,7 @@ export function renderCaptainsTab() {
         html += `<span class="muted">${escapeHtml(ARCHETYPE_LABELS[captain.archetype] || captain.archetype)} / ${escapeHtml(captain.ship.name)}</span><br>`;
         html += `Last known sector: ${captain.currentSector} | Relationship: ${getCaptainRelationshipLabel(captain)}<br>`;
         html += `Opinion ${rel.opinion || 0} / Trust ${rel.trust || 0} / Rivalry ${rel.rivalry || 0} / Debt ${rel.debt || 0}<br>`;
+        html += renderCaptainEntanglementChips(captain.id);
         html += `<span class="small muted">${escapeHtml(captain.blurb)}</span><br>`;
         html += `Loyalties: ${Object.entries(captain.factionStanding).filter(([, v]) => v > 50).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, v]) => `${FACTIONS[id].short} ${v}`).join(" | ") || "unclear"}<br>`;
         html += `Guilds: ${Object.keys(captain.memberships || {}).map(id => `${FACTIONS[id].short} ${GUILD_TIER_NAMES[captain.memberships[id]]}`).join(" | ") || "none"}<br>`;
@@ -83,6 +86,7 @@ export function hailCaptain(id) {
     html += `<div class="stat-pill">Rivalry: ${rel.rivalry || 0}</div>`;
     html += `<div class="stat-pill">Debt: ${rel.debt || 0}</div>`;
     html += `</div>`;
+    html += renderCaptainEntanglementDetail(captain.id);
     if (captain.currentPlan) {
         const mission = missions.find(m => m.id === captain.currentPlan.missionId);
         if (mission) html += `<div class="amber">Current job: ${escapeHtml(mission.title)}. Estimated completion: Day ${captain.currentPlan.completionDay}.</div>`;
@@ -93,6 +97,14 @@ export function hailCaptain(id) {
     if (captain.currentPlan) html += `<button data-action="supportCaptainJob" data-arg0="${captain.id}">Support Current Job (60m)</button>`;
     if (captain.currentPlan) html += `<button data-action="buyOffCaptain" data-arg0="${captain.id}">Buy Them Off</button>`;
     html += `<button data-action="provokeCaptain" data-arg0="${captain.id}">Provoke Rivalry</button>`;
+    const romanceCheck = canStartRomanceWithCaptain(captain.id);
+    if (romanceCheck.ok) {
+        html += `<button data-action="startRomanceWithCaptain" data-arg0="${captain.id}">Personal Overture (45m)</button>`;
+    }
+    const deepenCheck = canDeepenRomanceWithCaptain(captain.id);
+    if (deepenCheck.ok) {
+        html += `<button data-action="deepenRomanceWithCaptain" data-arg0="${captain.id}">Deepen Bond (60m)</button>`;
+    }
     html += `</div>`;
     html += `<div class="commodity-row"><strong>Recent history</strong>`;
     (captain.history || []).slice(0, 6).forEach(entry => {
@@ -188,6 +200,38 @@ export function provokeCaptain(id) {
     nudgeCaptainRelation(id, { opinion: -12 + Math.floor(relationBonus / 2), rivalry: Math.max(4, 14 - relationBonus) }, "you deliberately needled them in open comms");
     updateUI();
     hailCaptain(id);
+}
+
+export function startRomanceWithCaptainAction(id) {
+    const captain = getCaptain(id);
+    if (!captain || captain.currentSector !== state.player.currentSector) return false;
+    const romanceCheck = canStartRomanceWithCaptain(id);
+    if (!romanceCheck.ok) {
+        console.log(romanceCheck.reason);
+        return false;
+    }
+    const { spendTime } = _deps;
+    if (!spendTime(45)) return false;
+    const result = startRomanceWithCaptain(id);
+    updateUI();
+    hailCaptain(id);
+    return result;
+}
+
+export function deepenRomanceWithCaptainAction(id) {
+    const captain = getCaptain(id);
+    if (!captain || captain.currentSector !== state.player.currentSector) return false;
+    const deepenCheck = canDeepenRomanceWithCaptain(id);
+    if (!deepenCheck.ok) {
+        console.log(deepenCheck.reason);
+        return false;
+    }
+    const { spendTime } = _deps;
+    if (!spendTime(60)) return false;
+    const result = deepenRomanceWithCaptain(id);
+    updateUI();
+    hailCaptain(id);
+    return result;
 }
 
 const _deps = { spendTime: null, addFactionRep: null };

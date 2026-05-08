@@ -7,6 +7,7 @@ import { runAmbientTradeDaily } from '../systems/ambientTrade.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../systems/politics.js';
 import { expireMissions, prepareMissionOpportunity } from '../systems/missions.js';
 import { updateCaptainsDaily, updateCaptainsHourly } from '../systems/captains.js';
+import { updateEntanglementsDaily } from '../systems/entanglements.js';
 import { expireIntel } from './intel.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
@@ -19,6 +20,7 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'faction_politics', run: () => updateFactionsDaily() },
     { id: 'mission_expiry', run: () => expireMissions() },
     { id: 'captain_daily_actions', run: reason => updateCaptainsDaily(reason) },
+    { id: 'social_entanglements', run: () => updateEntanglementsDaily() },
     { id: 'daily_world_event', run: () => recordDailyWorldEvent() }
 ]);
 
@@ -59,7 +61,7 @@ export function expireFactionIntel() {
 function recordDailyWorldEvent() {
     addWorldEvent({
         type: 'daily_tick',
-        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, ambient trade responded, markets shifted, captains acted, factions moved, and sector threats advanced.`,
+        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, ambient trade responded, markets shifted, captains acted, entanglements shifted, factions moved, and sector threats advanced.`,
         importance: 2,
         alert: false
     });

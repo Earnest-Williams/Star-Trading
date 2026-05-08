@@ -10,6 +10,7 @@ import { getSectorNeighbors, getSectorPathDistance, canTransitDirectCorridor } f
 import { createCaptainTradeRoute, getAllLogisticsNodes, deriveRouteMetrics } from './tradeRoutes.js';
 import { createCharacter, normaliseCharacter } from '../core/characters.js';
 import { getCaptainMissionScore, getCaptainRelationshipActionAdjustment, getPoliticalActionAdjustment } from '../core/characterChecks.js';
+import { getCaptainMissionEntanglementModifier } from './entanglements.js';
 
 
 const CAPTAIN_CHARACTER_TEMPLATES = Object.freeze({
@@ -205,7 +206,7 @@ export function captainMissionScore(captain, mission) {
     const distance = captainDistanceScore(captain.currentSector, mission.originSector);
     if (distance > 3 && random() < 0.75) return -9999;
     let score = mission.rewardCredits / 220 - distance * 14;
-    const standing = captain.factionStanding[mission.factionId] || 0;
+    const standing = (captain.factionStanding || {})[mission.factionId] || 0;
     score += standing / 9;
     if (mission.type === "delivery" && ["trader", "industrialist", "smuggler"].includes(captain.archetype)) score += 35;
     if (mission.type === "mining" && captain.archetype === "miner") score += 55;
@@ -220,10 +221,11 @@ export function captainMissionScore(captain, mission) {
         if (mission.factionId === "hc" && ["miner", "industrialist"].includes(captain.archetype)) score += 30;
         if (mission.factionId === "fu" && ["colonist", "trader", "fixer"].includes(captain.archetype)) score += 25;
     }
-    if (mission.factionId === "vc" || mission.factionId === "smugglers") score += (captain.ethics.smuggling || 0) / 3;
+    if (mission.factionId === "vc" || mission.factionId === "smugglers") score += ((captain.ethics || {}).smuggling || 0) / 3;
     const destination = mission.destinationSector || mission.targetSector || mission.originSector;
     const danger = state.universe[destination] ? state.universe[destination].pirateThreat || 0 : 0;
-    score -= danger * (18 - captain.riskTolerance * 18);
+    score -= danger * (18 - (captain.riskTolerance || 0.5) * 18);
+    score += getCaptainMissionEntanglementModifier(captain, mission);
     return score;
 }
 
