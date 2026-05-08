@@ -115,6 +115,7 @@ export const TRAITS = Object.freeze({
         description: "You can make routine lanes run a little cleaner.",
         statShifts: { command: 2, tradecraft: 2 },
         bonuses: { routeReliabilityBonus: 4, routeRiskMod: -0.15, employerCommissionBonus: 0.03 },
+        unlock: { type: "career_milestone", metric: "completedFreight", amount: 8 },
         tags: ["career", "freight", "earnable"]
     }),
     quiet_hands: traitPackage({
@@ -127,6 +128,7 @@ export const TRAITS = Object.freeze({
         exclusiveWith: ["union_paperwork"],
         bonuses: { inspectionChanceMod: -0.08, captainRelationBonus: -2 },
         drawbacks: ["Lawful employers are slower to trust your paperwork."],
+        unlock: { type: "career_milestone", metric: "smugglingRuns", amount: 5 },
         tags: ["career", "smuggling", "earnable"]
     }),
     long_range_ears: traitPackage({
@@ -137,6 +139,7 @@ export const TRAITS = Object.freeze({
         description: "Signal patience and a knack for finding what others miss.",
         statShifts: { fieldcraft: 3 },
         bonuses: { surveyIntelChance: 0.15, routeRiskMod: -0.1, missionOutcomeBonus: 1 },
+        unlock: { type: "career_milestone", metric: "surveyFinds", amount: 6 },
         tags: ["career", "survey", "earnable"]
     }),
     settlement_organizer: traitPackage({
@@ -147,6 +150,7 @@ export const TRAITS = Object.freeze({
         description: "People, habitats, schedules, and stability.",
         statShifts: { command: 3, fieldcraft: 1 },
         bonuses: { colonyStability: 8, shortageReliefPercent: 10, colonyActionBonus: 2 },
+        unlock: { type: "career_milestone", metric: "colonySupport", amount: 4 },
         tags: ["career", "colony", "earnable"]
     }),
     manifest_forger: traitPackage({
@@ -159,6 +163,7 @@ export const TRAITS = Object.freeze({
         exclusiveWith: ["union_paperwork"],
         bonuses: { inspectionChanceMod: -0.1, askQualityBonus: 1 },
         drawbacks: ["Legal offices react badly if the forgery is exposed."],
+        unlock: { type: "career_milestone", metric: "paperworkJobs", amount: 4 },
         tags: ["career", "paperwork", "earnable"]
     }),
     rival_handler: traitPackage({
@@ -169,6 +174,7 @@ export const TRAITS = Object.freeze({
         description: "You know when to placate, pressure, or redirect hostile operators.",
         statShifts: { command: 3, nerve: 1 },
         bonuses: { captainRelationBonus: 5, factionAskBonus: 1, captainActionBonus: 2 },
+        unlock: { type: "career_milestone", metric: "captainDeals", amount: 5 },
         tags: ["career", "captains", "earnable"]
     }),
     union_paperwork: traitPackage({
@@ -180,6 +186,7 @@ export const TRAITS = Object.freeze({
         statShifts: { command: 2, tradecraft: 1 },
         exclusiveWith: ["quiet_hands", "manifest_forger"],
         bonuses: { colonyStability: 4, factionAskBonus: 1, shortageReliefPercent: 6, legalPaperworkHeatMod: -2 },
+        unlock: { type: "career_milestone", metric: "legalContracts", amount: 5 },
         tags: ["career", "legal", "earnable"]
     })
 });
