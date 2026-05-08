@@ -3,9 +3,10 @@ import {
     CHAR_STATS,
     DEBUG_FALLBACK_BUILD_SPEC,
     DEFAULT_EMPLOYER_LANE_ID,
-    DEFAULT_PLATFORM_TYPE,
     EMPLOYER_LANES,
+    normalisePlatformType,
     PLATFORM_PACKAGES,
+    START_PACKAGES,
     STAT_BUY_CURVE
 } from '../config/chargen.js';
 import { TRAIT_CATEGORIES, getTraitDefinition } from '../config/traits.js';
@@ -15,7 +16,8 @@ export function maxStatSpend() {
 }
 
 export function isPlatformEmployed(platformType) {
-    return platformType === "employed_salary" || platformType === "employed_commission";
+    const platform = PLATFORM_PACKAGES[platformType];
+    return Boolean(platform && platform.employment && (platform.runtimeType === "employed_salary" || platform.runtimeType === "employed_commission"));
 }
 
 function isObject(value) {
@@ -24,6 +26,27 @@ function isObject(value) {
 
 function unique(values) {
     return [...new Set(values)];
+}
+
+function addNumbers(target, source) {
+    Object.entries(source || {}).forEach(([key, value]) => {
+        if (typeof value === "number") target[key] = (target[key] || 0) + value;
+    });
+}
+
+function clampStat(value) {
+    return Math.max(CHAR_DEFAULTS.STAT_CHARGEN_MIN, Math.min(CHAR_DEFAULTS.STAT_CAP, value));
+}
+
+/**
+ * Ensures character.stats exists and has numeric values for every stat key.
+ * Missing or invalid values are initialized to the base stat value.
+ */
+function ensureCharacterStats(character) {
+    if (!character.stats || typeof character.stats !== "object") character.stats = {};
+    CHAR_STATS.forEach(stat => {
+        if (typeof character.stats[stat] !== "number") character.stats[stat] = CHAR_DEFAULTS.STAT_BASE;
+    });
 }
 
 export function calcStatGain(points) {
@@ -71,13 +94,15 @@ export function normaliseBuildSpec(buildSpec = DEBUG_FALLBACK_BUILD_SPEC) {
     const careerTraitIds = Array.isArray(source.careerTraitIds)
         ? source.careerTraitIds.slice()
         : [];
+    const packageIds = Array.isArray(source.packageIds) ? source.packageIds.slice() : [];
     const platform = isObject(source.platform) ? source.platform : {};
     return {
         statSpend,
         originTraitId: source.originTraitId || DEBUG_FALLBACK_BUILD_SPEC.originTraitId,
         careerTraitIds,
+        packageIds,
         platform: {
-            type: platform.type || DEFAULT_PLATFORM_TYPE,
+            type: normalisePlatformType(platform.type),
             employerLaneId: typeof platform.employerLaneId === "undefined"
                 ? null
                 : platform.employerLaneId
@@ -92,10 +117,14 @@ export function getBuildSpend(buildSpec) {
         statPoints += Number(spec.statSpend[stat] || 0);
     });
     const careerPoints = spec.careerTraitIds.length * CHAR_DEFAULTS.CAREER_TRAIT_COST;
-    const total = statPoints + careerPoints;
+    const platformPoints = PLATFORM_PACKAGES[spec.platform.type]?.cost || 0;
+    const packagePoints = spec.packageIds.reduce((sum, packageId) => sum + (START_PACKAGES[packageId]?.cost || 0), 0);
+    const total = statPoints + careerPoints + platformPoints + packagePoints;
     return {
         statPoints,
         careerPoints,
+        platformPoints,
+        packagePoints,
         total,
         leftoverPoints: CHAR_DEFAULTS.CHARGEN_POINTS - total
     };
@@ -105,7 +134,7 @@ function validateTraitRules(spec, errors) {
     const origin = getTraitDefinition(spec.originTraitId);
     if (!origin) {
         errors.push(`Origin trait '${spec.originTraitId}' is not defined.`);
-    } else if (origin.category !== TRAIT_CATEGORIES.ORIGIN || !origin.chargenOnly) {
+    } else if (origin.category !== TRAIT_CATEGORIES.ORIGIN || !origin.selectableInChargen) {
         errors.push(`Trait '${spec.originTraitId}' is not a valid Origin trait for character generation.`);
     }
 
@@ -119,7 +148,7 @@ function validateTraitRules(spec, errors) {
             errors.push(`Career trait '${traitId}' is not defined.`);
             return;
         }
-        if (trait.category !== TRAIT_CATEGORIES.CAREER || !trait.chargenOnly) {
+        if (trait.category !== TRAIT_CATEGORIES.CAREER || !trait.selectableInChargen) {
             errors.push(`Trait '${traitId}' is not a valid Career trait for character generation.`);
         }
         const exclusiveWith = trait.exclusiveWith || [];
@@ -148,13 +177,33 @@ function validatePlatformRules(spec, errors) {
     }
 }
 
+function validateStartPackages(spec, errors) {
+    if (unique(spec.packageIds).length !== spec.packageIds.length) {
+        errors.push("Starting packages must not contain duplicates.");
+    }
+    spec.packageIds.forEach(packageId => {
+        const startPackage = START_PACKAGES[packageId];
+        if (!startPackage) {
+            errors.push(`Starting package '${packageId}' is not defined.`);
+            return;
+        }
+        (startPackage.exclusiveWith || []).forEach(otherId => {
+            if (spec.packageIds.includes(otherId)) {
+                errors.push(`Starting package '${packageId}' is exclusive with '${otherId}'.`);
+            }
+        });
+        if (startPackage.category === "rank" && !isPlatformEmployed(spec.platform.type)) {
+            errors.push(`Starting package '${packageId}' requires an employer platform.`);
+        }
+    });
+}
+
 export function validateBuild(buildSpec) {
     if (!isObject(buildSpec)) {
         return { valid: false, reason: "buildSpec must be an object", errors: ["buildSpec must be an object"] };
     }
     const spec = normaliseBuildSpec(buildSpec);
     const errors = [];
-    let totalStatPoints = 0;
     CHAR_STATS.forEach(stat => {
         const spent = Number(spec.statSpend[stat] || 0);
         if (!Number.isInteger(spent) || spent < 0) {
@@ -169,15 +218,15 @@ export function validateBuild(buildSpec) {
         if (resultStat > CHAR_DEFAULTS.STAT_CAP) {
             errors.push(`Stat '${stat}' would exceed the hard cap of ${CHAR_DEFAULTS.STAT_CAP}.`);
         }
-        totalStatPoints += spent;
     });
 
     validateTraitRules(spec, errors);
     validatePlatformRules(spec, errors);
+    validateStartPackages(spec, errors);
 
-    const totalSpend = totalStatPoints + spec.careerTraitIds.length * CHAR_DEFAULTS.CAREER_TRAIT_COST;
-    if (totalSpend > CHAR_DEFAULTS.CHARGEN_POINTS) {
-        errors.push(`Total spend ${totalSpend} exceeds the chargen budget of ${CHAR_DEFAULTS.CHARGEN_POINTS}.`);
+    const spend = getBuildSpend(spec);
+    if (spend.total > CHAR_DEFAULTS.CHARGEN_POINTS) {
+        errors.push(`Total spend ${spend.total} exceeds the chargen budget of ${CHAR_DEFAULTS.CHARGEN_POINTS}.`);
     }
 
     return errors.length === 0
@@ -192,6 +241,13 @@ export function buildCharacterFromSpec(buildSpec) {
         const spent = Number(spec.statSpend[stat] || 0);
         stats[stat] = CHAR_DEFAULTS.STAT_BASE + calcStatGain(spent);
     });
+    [spec.originTraitId, ...spec.careerTraitIds].forEach(traitId => {
+        const trait = getTraitDefinition(traitId);
+        if (trait) addNumbers(stats, trait.statShifts);
+    });
+    CHAR_STATS.forEach(stat => {
+        stats[stat] = clampStat(stats[stat]);
+    });
     const spend = getBuildSpend(spec);
     return {
         character: {
@@ -199,9 +255,37 @@ export function buildCharacterFromSpec(buildSpec) {
             traits: [spec.originTraitId, ...spec.careerTraitIds],
             originTraitId: spec.originTraitId,
             careerTraitIds: spec.careerTraitIds.slice(),
+            packageIds: spec.packageIds.slice(),
             platform: { ...spec.platform },
             contacts: []
         },
         leftoverPoints: spend.leftoverPoints
     };
+}
+
+export function canUnlockCareerTrait(character, traitId, runProgress = {}) {
+    const trait = getTraitDefinition(traitId);
+    if (!trait || trait.category !== TRAIT_CATEGORIES.CAREER || trait.chargenOnly) return false;
+    if (character && Array.isArray(character.traits) && character.traits.includes(traitId)) return false;
+    const unlock = trait.unlock;
+    if (!unlock) return false;
+    if (unlock.type === "career_milestone") {
+        return Number(runProgress[unlock.metric] || 0) >= unlock.amount;
+    }
+    return false;
+}
+
+export function acquireCareerTrait(character, traitId, runProgress = {}) {
+    if (!canUnlockCareerTrait(character, traitId, runProgress)) return false;
+    if (!Array.isArray(character.traits)) character.traits = [];
+    if (!Array.isArray(character.careerTraitIds)) character.careerTraitIds = [];
+    ensureCharacterStats(character);
+    character.traits.push(traitId);
+    character.careerTraitIds.push(traitId);
+    const trait = getTraitDefinition(traitId);
+    if (trait) addNumbers(character.stats, trait.statShifts);
+    CHAR_STATS.forEach(stat => {
+        character.stats[stat] = clampStat(character.stats[stat]);
+    });
+    return true;
 }

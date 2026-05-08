@@ -1,5 +1,5 @@
 // Core character factory and helpers for player + captains.
-import { CHAR_STATS, CHAR_DEFAULTS, DEFAULT_PLATFORM_TYPE } from '../config/characters.js';
+import { CHAR_STATS, CHAR_DEFAULTS, DEFAULT_PLATFORM_TYPE, normalisePlatformType } from '../config/characters.js';
 
 export const CHARACTER_SCHEMA_FIELDS = Object.freeze([
     "stats",
@@ -7,7 +7,9 @@ export const CHARACTER_SCHEMA_FIELDS = Object.freeze([
     "originTraitId",
     "careerTraitIds",
     "platform",
-    "contacts"
+    "contacts",
+    "packageIds",
+    "equipment"
 ]);
 
 function normaliseStats(stats) {
@@ -22,7 +24,7 @@ function normaliseStats(stats) {
 
 function normalisePlatform(platform) {
     return {
-        type: platform?.type || DEFAULT_PLATFORM_TYPE,
+        type: normalisePlatformType(platform?.type),
         employerLaneId: typeof platform?.employerLaneId === "undefined"
             ? null
             : platform.employerLaneId
@@ -35,7 +37,9 @@ const CHARACTER_FIELD_NORMALIZERS = Object.freeze({
     originTraitId: value => value || null,
     careerTraitIds: value => Array.isArray(value) ? value : [],
     platform: value => normalisePlatform(value),
-    contacts: value => Array.isArray(value) ? value : []
+    contacts: value => Array.isArray(value) ? value : [],
+    packageIds: value => Array.isArray(value) ? value : [],
+    equipment: value => Array.isArray(value) ? value : []
 });
 const IDENTITY_FIELD_NORMALIZER = value => value;
 
@@ -68,6 +72,8 @@ export function createCharacter(overrides = {}) {
         careerTraitIds: [],
         platform: { type: DEFAULT_PLATFORM_TYPE, employerLaneId: null },
         contacts: [],
+        packageIds: [],
+        equipment: [],
         ...overrides
     });
 }

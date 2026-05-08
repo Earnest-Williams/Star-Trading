@@ -8,6 +8,7 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { updateFactionAskProgress } from './guilds.js';
 import { getTraitBonus } from '../core/traitHooks.js';
+import { getColonyActionAdjustment, getPoliticalActionAdjustment } from '../core/characterChecks.js';
 
 export function foundColony() {
     const planet = state.planets[state.player.currentSector];
@@ -28,9 +29,10 @@ export function foundColony() {
         security: "local_militia",
         hiddenInfluence: { vc: 0 }
     };
-    planet.colonists = 100 + getTraitBonus(state.player.character, "colonyStability");
+    const colonyAdjustment = getColonyActionAdjustment(state.player.character);
+    planet.colonists = 100 + getTraitBonus(state.player.character, "colonyStability") + Math.max(0, colonyAdjustment);
     planet.buildings.habitat = 1;
-    planet.satisfaction = clampRange((planet.satisfaction || 60) + getTraitBonus(state.player.character, "colonyStability"), 0, 100);
+    planet.satisfaction = clampRange((planet.satisfaction || 60) + getTraitBonus(state.player.character, "colonyStability") + Math.max(0, colonyAdjustment), 0, 100);
     applyPoliticalEffect({ factionId: "colonists", publicRep: 5, trust: 2, sectorId: state.player.currentSector, influence: 4, reason: "new colony founded", memoryKey: "reliableJobs" });
     applyPoliticalEffect({ factionId: "fu", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 7, reason: "frontier settlement" });
     addFactionHeat("sda", planet.policy.registration === "registered" ? 0 : 3, "informal colony paperwork");
@@ -68,7 +70,8 @@ export function setColonyPolicy(key, value) {
     if (!spendTime(60)) return;
     planet.policy[key] = value;
     if (key === "registration" && value === "registered") {
-        applyPoliticalEffect({ factionId: "sda", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 3, reason: "registered colony charter" });
+        const politicalAdjustment = getPoliticalActionAdjustment(state.player.character);
+        applyPoliticalEffect({ factionId: "sda", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 3 + Math.max(0, politicalAdjustment), reason: "registered colony charter" });
     }
     if (key === "registration" && value === "informal") {
         applyPoliticalEffect({ factionId: "fu", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 2, reason: "informal frontier autonomy" });

@@ -38,3 +38,20 @@ describe('character effects', () => {
         assert.ok(getRouteRiskAdjustment(specialist) < getRouteRiskAdjustment(baseline));
     });
 });
+
+describe('expanded character effects', () => {
+    it('adjusts mission outcome bands and faction ask quality', async () => {
+        const checks = await import('../js/core/characterChecks.js');
+        assert.equal(checks.getMissionOutcomeBand(baseline, { type: 'delivery' }).band, 'standard');
+        assert.notEqual(checks.getMissionOutcomeBand(specialist, { type: 'contest' }).band, 'rough');
+        assert.ok(checks.getFactionAskCompletionQuality(specialist, { type: 'ore_quota' }).score > checks.getFactionAskCompletionQuality(baseline, { type: 'ore_quota' }).score);
+    });
+
+    it('adjusts captain, employment, colony, and political actions', async () => {
+        const checks = await import('../js/core/characterChecks.js');
+        assert.ok(checks.getCaptainRelationshipActionAdjustment(specialist) > checks.getCaptainRelationshipActionAdjustment(baseline));
+        assert.ok(checks.getEmploymentTerms(specialist, { wageDaily: 100, commissionShare: 0.1, leaseDaily: 120 }).leaseDaily < 120);
+        assert.ok(checks.getColonyActionAdjustment(specialist) > checks.getColonyActionAdjustment(baseline));
+        assert.ok(checks.getPoliticalActionAdjustment(specialist) > checks.getPoliticalActionAdjustment(baseline));
+    });
+});

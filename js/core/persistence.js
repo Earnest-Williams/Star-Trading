@@ -205,6 +205,15 @@ export function migrateSave(data) {
             });
         }
     }
+    // v15: chargen platforms became explicit ship/employer packages; normalisers map legacy ids.
+    if (v < 15) {
+        if (data.player) data.player.character = normaliseCharacter(data.player.character || createCharacter());
+        if (data.captains && typeof data.captains === "object") {
+            Object.values(data.captains).forEach(captain => {
+                captain.character = normaliseCharacter(captain.character || createCharacter());
+            });
+        }
+    }
     data.version = SAVE_VERSION;
     return data;
 }

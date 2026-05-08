@@ -6,7 +6,7 @@ export const CHAR_DEFAULTS = Object.freeze({
     STAT_BASE: 50,
     STAT_CAP: 100,
     STAT_CHARGEN_MIN: 50,
-    CHARGEN_POINTS: 100,
+    CHARGEN_POINTS: 150,
     CAREER_TRAIT_COST: 50,
     CASH_PER_LEFTOVER_POINT: 100
 });
@@ -17,41 +17,103 @@ export const STAT_BUY_CURVE = Object.freeze([
     { from: 16, to: 25, gain: 1 }
 ]);
 
-export const DEFAULT_PLATFORM_TYPE = "ship_owned";
+export const DEFAULT_PLATFORM_TYPE = "ship_tier1_tramp";
 export const DEFAULT_EMPLOYER_LANE_ID = "sda_auxiliary";
+export const LEGACY_PLATFORM_TYPE_MAP = Object.freeze({
+    ship_owned: DEFAULT_PLATFORM_TYPE,
+    ship_rented: "rental_cutter_no_ship",
+    employed_salary: "employer_salary_no_ship",
+    employed_commission: "employer_commission_no_ship"
+});
+
+export function normalisePlatformType(platformType) {
+    return LEGACY_PLATFORM_TYPE_MAP[platformType] || platformType || DEFAULT_PLATFORM_TYPE;
+}
 
 export const PLATFORM_PACKAGES = Object.freeze({
-    ship_owned: Object.freeze({
-        id: "ship_owned",
-        label: "Owned Ship",
-        description: "Begin as an independent owner-operator with the standard starter ship.",
+    ship_tier1_tramp: Object.freeze({
+        id: "ship_tier1_tramp",
+        label: "Tier 1 Tramp Freighter",
+        category: "ship",
+        tier: 1,
+        cost: 50,
+        runtimeType: "ship_owned",
+        description: "Buy a modest independent hauler with room for early trading.",
         creditModifier: 0,
-        ship: Object.freeze({}),
+        ship: Object.freeze({ name: "Tramp Freighter", maxHolds: 70, maxFighters: 1400, miningPower: 4 }),
         employment: null
     }),
-    ship_rented: Object.freeze({
-        id: "ship_rented",
-        label: "Rented Ship",
-        description: "Begin with a rented hull, lower cash, and a small daily lease obligation.",
+    ship_tier1_surveyor: Object.freeze({
+        id: "ship_tier1_surveyor",
+        label: "Tier 1 Survey Cutter",
+        category: "ship",
+        tier: 1,
+        cost: 50,
+        runtimeType: "ship_owned",
+        description: "Buy a light cutter with better scanners and weaker cargo capacity.",
+        creditModifier: -300,
+        ship: Object.freeze({ name: "Survey Cutter", maxHolds: 55, scannerLevel: 2, maxFighters: 1200 }),
+        employment: null
+    }),
+    ship_tier2_freighter: Object.freeze({
+        id: "ship_tier2_freighter",
+        label: "Tier 2 Guild Freighter",
+        category: "ship",
+        tier: 2,
+        cost: 100,
+        runtimeType: "ship_owned",
+        description: "Spend heavily for a larger hull and stronger defenses.",
+        creditModifier: -1000,
+        ship: Object.freeze({ name: "Guild Freighter", maxHolds: 105, maxFighters: 2200, maxShields: 140, maxHull: 130 }),
+        employment: null
+    }),
+    ship_tier2_prospector: Object.freeze({
+        id: "ship_tier2_prospector",
+        label: "Tier 2 Belt Prospector",
+        category: "ship",
+        tier: 2,
+        cost: 100,
+        runtimeType: "ship_owned",
+        description: "Spend heavily for a mining-focused independent start.",
+        creditModifier: -1200,
+        ship: Object.freeze({ name: "Belt Prospector", maxHolds: 85, miningPower: 10, scannerLevel: 2, maxFighters: 1800 }),
+        employment: null
+    }),
+    employer_salary_no_ship: Object.freeze({
+        id: "employer_salary_no_ship",
+        label: "No-Ship Salaried Posting",
+        category: "employer",
+        tier: 0,
+        cost: 0,
+        runtimeType: "employed_salary",
+        description: "Start without your own hull, flying assigned company work for a predictable wage.",
+        creditModifier: -800,
+        ship: Object.freeze({ name: "Company Courier", maxHolds: 55, maxFighters: 1200, maxShields: 90, maxHull: 90 }),
+        employment: Object.freeze({ ownsShip: false, wageDaily: 180, commissionShare: 0, leaseDaily: 0 })
+    }),
+    employer_commission_no_ship: Object.freeze({
+        id: "employer_commission_no_ship",
+        label: "No-Ship Commission Posting",
+        category: "employer",
+        tier: 0,
+        cost: 0,
+        runtimeType: "employed_commission",
+        description: "Start without your own hull, taking a low wage and a better cut of completed work.",
+        creditModifier: -500,
+        ship: Object.freeze({ name: "Commission Freight Runner", maxHolds: 65, maxFighters: 1400, maxShields: 95, maxHull: 95 }),
+        employment: Object.freeze({ ownsShip: false, wageDaily: 60, commissionShare: 0.12, leaseDaily: 0 })
+    }),
+    rental_cutter_no_ship: Object.freeze({
+        id: "rental_cutter_no_ship",
+        label: "No-Ship Rental Cutter",
+        category: "rental",
+        tier: 0,
+        cost: 0,
+        runtimeType: "ship_rented",
+        description: "Start without your own hull, renting a cutter with a daily lease obligation.",
         creditModifier: -1200,
         ship: Object.freeze({ name: "Rented Merchant Cutter", maxHolds: 60, maxFighters: 1600 }),
-        employment: Object.freeze({ leaseDaily: 120 })
-    }),
-    employed_salary: Object.freeze({
-        id: "employed_salary",
-        label: "Salaried Employee",
-        description: "Begin attached to an employer lane with a predictable wage.",
-        creditModifier: -800,
-        ship: Object.freeze({ name: "Company Courier", maxHolds: 55, maxFighters: 1200 }),
-        employment: Object.freeze({ wageDaily: 180, commissionShare: 0 })
-    }),
-    employed_commission: Object.freeze({
-        id: "employed_commission",
-        label: "Commission Employee",
-        description: "Begin attached to an employer lane with lower base cash but a better share.",
-        creditModifier: -500,
-        ship: Object.freeze({ name: "Commission Freight Runner", maxHolds: 65, maxFighters: 1400 }),
-        employment: Object.freeze({ wageDaily: 60, commissionShare: 0.12 })
+        employment: Object.freeze({ ownsShip: false, leaseDaily: 120, wageDaily: 0, commissionShare: 0 })
     })
 });
 
@@ -68,11 +130,27 @@ export const EMPLOYER_LANES = Object.freeze([
     { id: "vc_runner", label: "VC Runner", factionId: "vc", rank: "Runner", access: ["black_route", "smuggling"] }
 ]);
 
+export const START_PACKAGES = Object.freeze({
+    guild_sponsorship_traders: Object.freeze({ id: "guild_sponsorship_traders", category: "sponsorship", label: "Traders Guild Sponsorship", cost: 25, benefits: Object.freeze({ memberships: { traders: 1 }, publicRep: { traders: 25 }, contacts: ["traders_suri"] }) }),
+    trusted_contact_sda: Object.freeze({ id: "trusted_contact_sda", category: "contacts", label: "Trusted SDA Contact", cost: 15, benefits: Object.freeze({ contacts: ["sda_harrow"], contactTrust: 2 }) }),
+    employer_rank_bump: Object.freeze({ id: "employer_rank_bump", category: "rank", label: "Employer Rank Bump", cost: 20, benefits: Object.freeze({ employerRankBonus: 1, wageBonus: 30, commissionBonus: 0.02 }) }),
+    starter_equipment_cache: Object.freeze({ id: "starter_equipment_cache", category: "equipment", label: "Starter Equipment Cache", cost: 20, benefits: Object.freeze({ cargo: { org: 8, eq: 8 }, equipment: ["repair_kit", "survey_beacon"] }) }),
+    legal_paperwork: Object.freeze({ id: "legal_paperwork", category: "paperwork", label: "Legal Paperwork", cost: 15, benefits: Object.freeze({ publicRep: { sda: 10 }, heat: { sda: -2 }, paperwork: "legal" }), exclusiveWith: ["illegal_paperwork"] }),
+    illegal_paperwork: Object.freeze({ id: "illegal_paperwork", category: "paperwork", label: "Illegal Paperwork", cost: 15, benefits: Object.freeze({ privateRep: { vc: 8 }, heat: { sda: 3 }, paperwork: "illegal" }), exclusiveWith: ["legal_paperwork"] })
+});
+
+export const ARCHETYPE_PRESETS = Object.freeze({
+    independent_hauler: Object.freeze({ label: "Independent Hauler", build: Object.freeze({ statSpend: { nerve: 0, tradecraft: 10, fieldcraft: 0, command: 5 }, originTraitId: "dockside_brokers_apprentice", careerTraitIds: ["freight_dispatcher"], platform: { type: "ship_tier1_tramp", employerLaneId: null }, packageIds: ["starter_equipment_cache"] }) }),
+    belt_prospector: Object.freeze({ label: "Belt Prospector", build: Object.freeze({ statSpend: { nerve: 5, tradecraft: 0, fieldcraft: 10, command: 0 }, originTraitId: "raised_in_an_asteroid_mine", careerTraitIds: ["veteran_miner"], platform: { type: "ship_tier1_surveyor", employerLaneId: null }, packageIds: ["trusted_contact_sda"] }) }),
+    company_operator: Object.freeze({ label: "Company Operator", build: Object.freeze({ statSpend: { nerve: 0, tradecraft: 5, fieldcraft: 0, command: 10 }, originTraitId: "quartermasters_child", careerTraitIds: ["union_paperwork"], platform: { type: "employer_salary_no_ship", employerLaneId: "traders_guild_freight" }, packageIds: ["employer_rank_bump"] }) })
+});
+
 export const DEFAULT_BUILD_SPEC = Object.freeze({
     statSpend: Object.freeze({ nerve: 0, tradecraft: 0, fieldcraft: 0, command: 0 }),
     originTraitId: "dockside_brokers_apprentice",
     careerTraitIds: Object.freeze([]),
-    platform: Object.freeze({ type: DEFAULT_PLATFORM_TYPE, employerLaneId: null })
+    platform: Object.freeze({ type: DEFAULT_PLATFORM_TYPE, employerLaneId: null }),
+    packageIds: Object.freeze([])
 });
 
 export const DEBUG_FALLBACK_BUILD_SPEC = DEFAULT_BUILD_SPEC;
@@ -91,11 +169,12 @@ export function createStarterShipFromPlatform(platformPackage) {
     };
 }
 
-export function getStarterCredits(leftoverPoints, platformPackage) {
+export function getStarterCredits(leftoverPoints, platformPackage, startBenefits = {}) {
     return Math.max(
         0,
         STARTER_PLAYER.CREDITS
             + leftoverPoints * CHAR_DEFAULTS.CASH_PER_LEFTOVER_POINT
             + (platformPackage?.creditModifier || 0)
+            + (startBenefits.credits || 0)
     );
 }

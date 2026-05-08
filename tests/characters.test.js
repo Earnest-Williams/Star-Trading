@@ -69,9 +69,9 @@ describe('createCharacter', () => {
         assert.deepEqual(ch.careerTraitIds, []);
     });
 
-    it('defaults platform type to ship_owned', () => {
+    it('defaults platform type to tier 1 tramp package', () => {
         const ch = createCharacter();
-        assert.equal(ch.platform.type, 'ship_owned');
+        assert.equal(ch.platform.type, 'ship_tier1_tramp');
         assert.equal(ch.platform.employerLaneId, null);
     });
 
@@ -183,13 +183,13 @@ describe('validateBuild', () => {
         assert.equal(result.valid, false);
     });
 
-    it('rejects total spend over 100 (2 career traits = 100 pts, no room for stats)', () => {
+    it('rejects total spend over 150', () => {
         const result = validateBuild({
-            statSpend: { nerve: 1, tradecraft: 0, fieldcraft: 0, command: 0 },
+            statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 25, command: 25 },
             careerTraitIds: ['veteran_miner', 'quiet_hands']
         });
         assert.equal(result.valid, false);
-        assert.ok(result.reason.includes('100'));
+        assert.ok(result.reason.includes('150')); 
     });
 
     it('rejects non-object input', () => {
@@ -206,9 +206,9 @@ describe('buildCharacterFromSpec', () => {
             statSpend: { nerve: 10, tradecraft: 5, fieldcraft: 0, command: 0 }
         });
         assert.equal(character.stats.nerve, CHAR_DEFAULTS.STAT_BASE + calcStatGain(10));
-        assert.equal(character.stats.tradecraft, CHAR_DEFAULTS.STAT_BASE + calcStatGain(5));
+        assert.equal(character.stats.tradecraft, CHAR_DEFAULTS.STAT_BASE + calcStatGain(5) + 4);
         assert.equal(character.stats.fieldcraft, CHAR_DEFAULTS.STAT_BASE);
-        assert.equal(character.stats.command, CHAR_DEFAULTS.STAT_BASE);
+        assert.equal(character.stats.command, CHAR_DEFAULTS.STAT_BASE + 1);
     });
 
     it('sets originTraitId and includes it in traits', () => {
@@ -232,9 +232,9 @@ describe('buildCharacterFromSpec', () => {
         assert.deepEqual(character.careerTraitIds, ['veteran_miner', 'quiet_hands']);
     });
 
-    it('calculates leftover points correctly (all zeros → 100 leftover)', () => {
+    it('calculates leftover points correctly for no-cost defaults', () => {
         const { leftoverPoints } = buildCharacterFromSpec({ statSpend: {}, careerTraitIds: [] });
-        assert.equal(leftoverPoints, CHAR_DEFAULTS.CHARGEN_POINTS);
+        assert.equal(leftoverPoints, CHAR_DEFAULTS.CHARGEN_POINTS - 50);
     });
 
     it('calculates leftover after spending 50 points on stats', () => {
@@ -275,7 +275,7 @@ describe('shared character schema', () => {
         assert.deepEqual(normalised.traits, []);
         assert.deepEqual(normalised.careerTraitIds, []);
         assert.equal(normalised.originTraitId, null);
-        assert.equal(normalised.platform.type, 'employed_salary');
+        assert.equal(normalised.platform.type, 'employer_salary_no_ship');
         assert.equal(normalised.platform.employerLaneId, null);
         assert.deepEqual(normalised.contacts, []);
         assert.equal(normalised.legacyNote, 'preserved');
@@ -292,7 +292,7 @@ describe('migrateSave — v14 character block injection', () => {
         assert.ok(result.player.character, 'character block should be present');
         assert.equal(result.player.character.stats.nerve, CHAR_DEFAULTS.STAT_BASE);
         assert.equal(result.player.character.originTraitId, null);
-        assert.equal(result.player.character.platform.type, 'ship_owned');
+        assert.equal(result.player.character.platform.type, 'ship_tier1_tramp');
     });
 
     it('fills missing fields on legacy partial player and captain characters', () => {
@@ -307,7 +307,7 @@ describe('migrateSave — v14 character block injection', () => {
         assert.equal(result.player.character.stats.nerve, 70);
         assert.equal(result.player.character.stats.tradecraft, CHAR_DEFAULTS.STAT_BASE);
         assert.deepEqual(result.player.character.traits, []);
-        assert.equal(result.player.character.platform.type, 'ship_owned');
+        assert.equal(result.player.character.platform.type, 'ship_tier1_tramp');
         assert.equal(result.captains.npc_1.character.stats.command, 66);
         assert.equal(result.captains.npc_1.character.stats.nerve, CHAR_DEFAULTS.STAT_BASE);
         assert.deepEqual(result.captains.npc_1.character.contacts, []);
@@ -374,7 +374,7 @@ describe('old-save compatibility — character defaults', () => {
             assert.equal(ch.stats[stat], CHAR_DEFAULTS.STAT_BASE,
                 `stat ${stat} should be at base for old save`);
         }
-        assert.equal(ch.platform.type, 'ship_owned', 'old saves infer ship_owned platform');
+        assert.equal(ch.platform.type, 'ship_tier1_tramp', 'old saves infer the replacement tier 1 ship package');
         assert.deepEqual(ch.traits, []);
     });
 });

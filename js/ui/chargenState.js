@@ -23,10 +23,13 @@ export function readChargenBuildFromDom(documentRef = document) {
     const employer = documentRef.getElementById("chargen-employer");
     const careerTraitIds = Array.from(documentRef.querySelectorAll('[data-chargen-career]:checked'))
         .map(input => input.value);
+    const packageIds = Array.from(documentRef.querySelectorAll('[data-chargen-package]:checked'))
+        .map(input => input.value);
     return setChargenBuild({
         statSpend,
         originTraitId: origin ? origin.value : DEFAULT_BUILD_SPEC.originTraitId,
         careerTraitIds,
+        packageIds,
         platform: {
             type: platform ? platform.value : DEFAULT_BUILD_SPEC.platform.type,
             employerLaneId: employer && employer.value ? employer.value : null
