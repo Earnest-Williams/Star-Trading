@@ -3,6 +3,9 @@ import { isPlatformEmployed, normaliseBuildSpec, validateBuild } from '../core/c
 import { CAREER_TRAITS, ORIGIN_TRAITS, getTraitDefinition } from '../config/traits.js';
 
 let draftBuild = normaliseBuildSpec(DEFAULT_BUILD_SPEC);
+const MAX_CHARGEN_STAT_SPEND = 25;
+const PACKAGE_SELECTION_CHANCE = 0.5;
+const RANDOM_BUFFER = new Uint32Array(1);
 
 export function getChargenBuild() {
     return normaliseBuildSpec(draftBuild);
@@ -41,19 +44,28 @@ export function readChargenBuildFromDom(documentRef = document) {
 }
 
 function randomChoice(values) {
-    return values[Math.floor(Math.random() * values.length)];
+    return values[Math.floor(randomUnit() * values.length)];
 }
 
 function shuffled(values) {
     return values
-        .map(value => ({ value, rank: Math.random() }))
+        .map(value => ({ value, rank: randomUnit() }))
         .sort((a, b) => a.rank - b.rank)
         .map(item => item.value);
 }
 
+function randomUnit() {
+    const cryptoRef = globalThis.crypto;
+    if (cryptoRef?.getRandomValues) {
+        cryptoRef.getRandomValues(RANDOM_BUFFER);
+        return RANDOM_BUFFER[0] / 0x100000000;
+    }
+    return (Date.now() % 0x100000000) / 0x100000000;
+}
+
 function randomInt(min, max) {
     if (max <= min) return min;
-    return min + Math.floor(Math.random() * (max - min + 1));
+    return min + Math.floor(randomUnit() * (max - min + 1));
 }
 
 function hasExclusiveConflict(selectedIds, candidateId, getDefinition) {
@@ -69,13 +81,13 @@ function hasExclusiveConflict(selectedIds, candidateId, getDefinition) {
 
 function buildRandomStatSpend(budget) {
     const statSpend = Object.fromEntries(CHAR_STATS.map(stat => [stat, 0]));
-    const maxTotal = Math.min(CHAR_STATS.length * 25, Math.max(0, budget));
+    const maxTotal = Math.min(CHAR_STATS.length * MAX_CHARGEN_STAT_SPEND, Math.max(0, budget));
     let remaining = randomInt(0, maxTotal);
     const stats = shuffled(CHAR_STATS);
     stats.forEach((stat, index) => {
         const remainingSlots = stats.length - index - 1;
-        const minSpend = Math.max(0, remaining - remainingSlots * 25);
-        const maxSpend = Math.min(25, remaining);
+        const minSpend = Math.max(0, remaining - remainingSlots * MAX_CHARGEN_STAT_SPEND);
+        const maxSpend = Math.min(MAX_CHARGEN_STAT_SPEND, remaining);
         const spend = randomInt(minSpend, maxSpend);
         statSpend[stat] = spend;
         remaining -= spend;
@@ -113,7 +125,7 @@ export function setRandomValidBuild() {
         if (startPackage.cost > remainingBudget) return;
         if (startPackage.category === "rank" && !isPlatformEmployed(platformType)) return;
         if (hasExclusiveConflict(selectedPackages, packageId, id => START_PACKAGES[id])) return;
-        if (Math.random() >= 0.5) return;
+        if (randomUnit() >= PACKAGE_SELECTION_CHANCE) return;
         selectedPackages.push(packageId);
         remainingBudget -= startPackage.cost;
     });
