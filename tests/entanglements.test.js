@@ -12,13 +12,14 @@ import {
     updateEntanglementsDaily
 } from '../js/systems/entanglements.js';
 import { ENTANGLEMENTS } from '../js/config/entanglements.js';
+import { missionDescription, completeMission } from '../js/systems/missions.js';
 
 function setup() {
     resetState();
 
     state.player = {
         currentSector: 1,
-        time: { day: 3 },
+        time: { day: 3, minuteOfDay: 540, wakeMinute: 480, sleepMinute: 1320 },
         factions: { rep: { sda: 20, fu: 0, hc: 0, vc: 0 }, heat: { sda: 0 } },
         factionRelations: {}
     };
@@ -55,6 +56,7 @@ function setup() {
             factionStanding: {},
             ethics: {},
             riskTolerance: 0.5,
+            history: [],
             relationshipToPlayer: {
                 opinion: 40,
                 trust: 20,
@@ -69,6 +71,66 @@ function setup() {
 beforeEach(setup);
 
 describe('entanglements', () => {
+
+    it('renders social mission descriptions from context', () => {
+        const mission = {
+            type: 'social',
+            context: 'Mara needs a discreet meeting in sector 1.'
+        };
+
+        assert.match(missionDescription(mission), /discreet meeting/i);
+    });
+
+    it('does not complete social missions from the wrong sector', () => {
+        state.player.currentSector = 2;
+        state.player.character = { stats: {}, traits: [], contacts: [] };
+        state.player.credits = 0;
+        state.player.reputation = 0;
+
+        state.missions.push({
+            id: 1,
+            type: 'social',
+            kind: 'entanglement_event',
+            title: 'Private Crossfire',
+            status: 'accepted',
+            originSector: 1,
+            targetSector: 1,
+            expiresDay: 10,
+            rewardCredits: 100,
+            rewardRep: 1
+        });
+
+        completeMission(1);
+
+        assert.equal(state.missions[0].status, 'accepted');
+    });
+
+    it('completes social missions from the target sector', () => {
+        state.player.currentSector = 1;
+        state.player.character = { stats: {}, traits: [], contacts: [] };
+        state.player.credits = 0;
+        state.player.reputation = 0;
+
+        state.missions.push({
+            id: 1,
+            type: 'social',
+            kind: 'entanglement_event',
+            title: 'Private Crossfire',
+            status: 'accepted',
+            originSector: 1,
+            targetSector: 1,
+            operationMinutes: 60,
+            expiresDay: 10,
+            rewardCredits: 100,
+            rewardRep: 1
+        });
+
+        completeMission(1);
+
+        assert.equal(state.missions[0].status, 'completed');
+        assert.equal(state.missions[0].socialResolved, true);
+        assert.equal(state.player.credits, 100);
+    });
     it('creates and nudges durable captain entanglements', () => {
         addOrNudgeEntanglement({
             kind: ENTANGLEMENTS.KINDS.FAVOR,
@@ -144,6 +206,21 @@ describe('entanglements', () => {
         const items = getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.FAVOR);
         assert.equal(items.length, 1);
         assert.equal(items[0].strength, 16);
+    });
+
+
+    it('retires favor entanglements when debt is cleared', () => {
+        state.captains.mara.relationshipToPlayer.debt = 2;
+        updateEntanglementsDaily();
+
+        let items = getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.FAVOR);
+        assert.equal(items.length, 1);
+
+        state.captains.mara.relationshipToPlayer.debt = 0;
+        for (let i = 0; i < 6; i++) updateEntanglementsDaily();
+
+        items = getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.FAVOR);
+        assert.equal(items.length, 0);
     });
 
     it('spawns pressure events from romance conflict', () => {

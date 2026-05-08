@@ -9,6 +9,9 @@ export function missionDescription(m) {
     if (m.type === "survey") return `Survey sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
     if (m.type === "colony") return `Found a colony in sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
     if (m.type === "contest") return `${m.context || "Political conflict contract."} Travel to sector ${m.targetSector}, spend ${m.operationMinutes || 90} minutes on the operation, then report the result.`;
+    if (m.type === "social") {
+        return m.context || "A social entanglement needs personal attention.";
+    }
     return "Mission details unavailable.";
 }
 
@@ -28,7 +31,10 @@ export function renderMissionBoard() {
     available.forEach(m => {
         const faction = FACTIONS[m.factionId] || null;
         const prefix = faction ? `<span class="faction-icon" style="color:${faction.color}">${faction.icon}</span> ` : "";
-        html += `<div class="mission"><strong>${prefix}${escapeHtml(m.title)}</strong><br>${escapeHtml(missionDescription(m))}<br>`;
+        const specialTag = m.kind === "entanglement_event"
+            ? `<span class="small amber">Entanglement</span><br>`
+            : "";
+        html += `<div class="mission"><strong>${prefix}${escapeHtml(m.title)}</strong><br>${specialTag}${escapeHtml(missionDescription(m))}<br>`;
         html += `Expires: Day ${m.expiresDay} | Reward: ${formatCredits(m.rewardCredits)} credits`;
         if (faction) html += ` | ${faction.short} +${m.rewardRep}`;
         if (m.candidates && m.candidates.length > 0) {
