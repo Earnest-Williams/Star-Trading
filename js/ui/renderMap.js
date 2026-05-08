@@ -200,7 +200,7 @@ function findNearestCorridorAt(x, y) {
     let closestDistance = Infinity;
     getVisibleIds().forEach(id => {
         getSectorNeighbors(id).forEach(target => {
-            if (id >= target || !nodes[target] || !universe[target].charted) return;
+            if (id >= target || !nodes[target]) return;
             const distance = distanceToSegment(point, nodes[id], nodes[target]);
             if (distance < closestDistance) {
                 closestDistance = distance;
