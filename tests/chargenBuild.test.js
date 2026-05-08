@@ -106,7 +106,8 @@ describe('platform start packages', () => {
     it('supports owned, rented, salary, and commission starts', () => {
         const rented = createPlayerFromBuild({ ...baseBuild, platform: { type: 'rental_cutter_no_ship', employerLaneId: null } });
         assert.equal(rented.ship.name, 'Rented Merchant Cutter');
-        assert.equal(rented.employment.leaseDaily, 116);
+        const expectedLease = 120 - 4; // base lease for rental_cutter_no_ship - tradecraft stat delta
+        assert.equal(rented.employment.leaseDaily, expectedLease);
 
         const salary = createPlayerFromBuild({
             ...baseBuild,
