@@ -484,8 +484,8 @@ export function getFreshnessLabel(age) {
 export function getFreshnessSummaryForSector(sectorId) {
     const localSectorId = Number(sectorId);
     const currentSectorId = Number(state.player?.currentSector || 0);
-    const nowDay = Number(state.player?.time?.day || 0);
     if (localSectorId === currentSectorId) {
+        const nowDay = Number(state.player?.time?.day || 0);
         return {
             sectorId: localSectorId,
             label: "current",
@@ -498,8 +498,8 @@ export function getFreshnessSummaryForSector(sectorId) {
             known: true
         };
     }
-    const snapshot = state.dataCargo?.sectorKnowledge?.[String(currentSectorId)]?.publicSnapshots?.[String(localSectorId)];
-    if (!snapshot) {
+    const rawSnapshot = state.dataCargo?.sectorKnowledge?.[String(currentSectorId)]?.publicSnapshots?.[String(localSectorId)];
+    if (!rawSnapshot) {
         return {
             sectorId: localSectorId,
             label: "unknown",
@@ -512,6 +512,7 @@ export function getFreshnessSummaryForSector(sectorId) {
             known: false
         };
     }
+    const snapshot = cloneSnapshot(rawSnapshot);
     const age = getPublicSnapshotAge(snapshot);
     return {
         sectorId: localSectorId,
