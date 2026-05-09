@@ -7,6 +7,31 @@ import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } f
 import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 
+
+function renderLocalAuthorityLine(sector) {
+    if (!sector.localAuthority) return "";
+    const authority = sector.localAuthority;
+    const polity = state.polities?.[authority.polityId];
+    const faction = FACTIONS[authority.factionId];
+    const factionLabel = faction ? `${faction.icon} ${escapeHtml(faction.short)}` : escapeHtml(authority.factionId || "Unknown");
+    return `<div><strong>Local Authority:</strong> ${escapeHtml(authority.name)} (${escapeHtml(authority.type)}) | <strong>Polity:</strong> ${escapeHtml(polity?.name || authority.polityId || "Independent")} | ${factionLabel}</div>`;
+}
+
+function renderLocalCompanies(sectorId) {
+    const ids = state.companyIdsBySector?.[sectorId] || [];
+    if (ids.length === 0) return "";
+    const labels = ids.map(id => {
+        const company = state.companies[id];
+        if (!company) return null;
+        const faction = FACTIONS[company.factionId];
+        const contactId = company.contactPersonIds?.[0];
+        const contact = contactId ? state.people?.[contactId] : null;
+        const contactLabel = contact ? ` / ${escapeHtml(contact.name)} (${escapeHtml(contact.role)})` : "";
+        return `${escapeHtml(company.name)} (${escapeHtml(company.type)}${faction ? `, ${faction.short}` : ""}${contactLabel})`;
+    }).filter(Boolean);
+    return `<div><strong>Local Companies:</strong> ${labels.join(" | ")}</div>`;
+}
+
 function renderDataFreshnessLine(sectorId) {
     const freshness = getFreshnessSummaryForSector(sectorId);
     if (freshness.liveLocal) {
@@ -31,6 +56,8 @@ export function renderSectorContents() {
     if (sector.coord) html += `<div><strong>Coordinate:</strong> (${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z}) | <strong>Metric shear:</strong> ${(sector.metricShear || 0).toFixed(2)}</div>`;
     html += `<div><strong>Region:</strong> ${escapeHtml(sector.region)} | <strong>Status:</strong> ${escapeHtml(getSectorStatusLabel(player.currentSector))}</div>`;
     if (influence) html += `<div><strong>Dominant Influence:</strong> <span style="color:${influence.color}">${influence.icon} ${escapeHtml(influence.name)}</span></div>`;
+    html += renderLocalAuthorityLine(sector);
+    html += renderLocalCompanies(player.currentSector);
     html += renderDataFreshnessLine(player.currentSector);
     html += `<div class="small muted">${getInfluenceSpread(player.currentSector).map(item => `${FACTIONS[item.id].short}:${item.value}`).join(" | ")}</div>`;
     const outboundGates = getOutboundJumpGates(player.currentSector);
@@ -142,6 +169,8 @@ export function renderMapInspector() {
     if (sector.coord) html += `<span class="sector-chip">(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})</span>`;
     html += `<span class="sector-chip">${escapeHtml(getSiteTypeLabel(sector.siteType))}</span><span class="sector-chip">${escapeHtml(sector.region)}</span><span class="sector-chip">${escapeHtml(getSectorStatusLabel(id))}</span>`;
     if (dominant) html += `<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span>`;
+    if (sector.localAuthority) html += `<span class="sector-chip">${escapeHtml(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId)}</span>`;
+    if (state.companyIdsBySector?.[id]?.length) html += `<span class="sector-chip">Companies ${state.companyIdsBySector[id].length}</span>`;
     if (ports[id]) html += `<span class="sector-chip">Port: ${escapeHtml(PORT_TYPES[ports[id].typeKey].name)}</span>`;
     if (getSectorStatusLabel(id) === "Contested") html += `<span class="sector-chip amber">Political contest</span>`;
     if (sector.front) html += `<span class="sector-chip amber">Front suspicion ${sector.front.suspicion}</span>`;

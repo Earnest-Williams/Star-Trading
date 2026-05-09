@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 
 import { state, resetState } from '../js/state.js';
 import { BALANCE } from '../js/constants.js';
-import { addJumpGateCorridor } from '../js/core/universe.js';
+import { addJumpGateCorridor, ensureEconomicActivityConnectivity } from '../js/core/universe.js';
 import { getSectorNeighbors, findFewestHopPath, findShortestSectorPath, getSectorPathDistance, areSectorsConnected } from '../js/core/navigation.js';
 
 function sector(id) {
-    return { id, name: `S${id}`, region: 'Core', jumpGates: [], pirateThreat: 0, influence: { sda: 50, fu: 20, hc: 10, vc: 0 } };
+    return { id, name: `S${id}`, coord: { x: id, y: 0, z: 0 }, region: 'Core', jumpGates: [], pirateThreat: 0, influence: { sda: 50, fu: 20, hc: 10, vc: 0 } };
 }
 
 beforeEach(() => {
@@ -58,5 +58,14 @@ describe('jump-gate corridor navigation', () => {
         assert.equal(getSectorPathDistance(1, 1), 0);
         assert.equal(getSectorPathDistance(1, 2), 1);
         assert.equal(getSectorPathDistance(1, 3), 2);
+    });
+
+    it('repairs disconnected economic activity without requiring dead sectors', () => {
+        state.ports[1] = { typeKey: 'stardock', factionId: 'sda' };
+        state.universe[4].asteroids = { ore: 100, maxOre: 100 };
+        addJumpGateCorridor(1, 2);
+        ensureEconomicActivityConnectivity();
+        assert.equal(areSectorsConnected(1, 4), true);
+        assert.equal(areSectorsConnected(2, 3), false);
     });
 });

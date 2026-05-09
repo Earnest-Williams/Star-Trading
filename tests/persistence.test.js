@@ -286,6 +286,15 @@ describe('save serialization', () => {
         state.worldgenSettings = { sectorCount: 12 };
         state.ports = {};
         state.planets = {};
+        state.companies = { 'company-1': { id: 'company-1', sectorId: 1, contactPersonIds: ['person-1'] } };
+        state.companyIdsBySector = { 1: ['company-1'] };
+        state.nextCompanyId = 2;
+        state.people = { 'person-1': { id: 'person-1', sectorId: 1, companyId: 'company-1' } };
+        state.peopleBySector = { 1: ['person-1'] };
+        state.peopleByCompany = { 'company-1': ['person-1'] };
+        state.nextPersonId = 2;
+        state.polities = { polity_1: { id: 'polity_1', sectorIds: [1], type: 'federation' } };
+        state.polityIdsBySector = { 1: 'polity_1' };
         state.missions = [{ id: 7, status: 'completed', rewardRep: 3 }];
         state.captains = { [captain.id]: captain };
         state.captainEventLog = [{ id: 1, text: 'Captain event' }];
@@ -311,6 +320,12 @@ describe('save serialization', () => {
         assert.equal(state.sitesById[99], undefined);
         assert.deepEqual(state.siteIdByCoord, { '2,3,1': 1 });
         assert.equal(state.captains['captain-1'].name, 'Round Trip Captain');
+        assert.equal(state.companies['company-1'].sectorId, 1);
+        assert.deepEqual(state.companyIdsBySector[1], ['company-1']);
+        assert.equal(state.people['person-1'].companyId, 'company-1');
+        assert.deepEqual(state.peopleByCompany['company-1'], ['person-1']);
+        assert.deepEqual(state.polities.polity_1.sectorIds, [1]);
+        assert.equal(state.polityIdsBySector[1], 'polity_1');
         assert.equal(state.selectedSectorId, state.player.currentSector);
         assert.equal(state.currentScreen, 'sector');
         assert.deepEqual(state.starField, []);

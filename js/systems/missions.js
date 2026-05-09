@@ -14,21 +14,29 @@ import { ENTANGLEMENTS } from '../config/entanglements.js';
 import { EventBus } from '../events.js';
 import { getFreshnessSummaryForSector, normaliseDataCargoState } from '../core/dataCargo.js';
 import { areSectorsConnected, getSectorPathDistance } from '../core/navigation.js';
+import { getMissionIssuerCompany } from './companies.js';
+import { getPrimaryCompanyContact } from './people.js';
 
 export { prepareMissionOpportunity };
 
 export function activePortSectors() { return Object.keys(state.ports).map(Number); }
 
-export function makeBaseMission(title, originSector, rewardCredits, expiresInDays) {
+export function makeBaseMission(title, originSector, rewardCredits, expiresInDays, missionType = null) {
     const port = state.ports[originSector];
     const dominant = getDominantInfluence(originSector);
-    let factionId = port && port.factionId ? port.factionId : dominant;
-    if (random() < MISSION_TUNING.BASE.DOMINANT_FACTION_CHANCE) factionId = dominant;
-    if (port && port.hiddenFactionId && random() < MISSION_TUNING.BASE.HIDDEN_FACTION_CHANCE) factionId = port.hiddenFactionId;
+    const company = getMissionIssuerCompany(originSector, missionType);
+    const contact = company ? getPrimaryCompanyContact(company.id) : null;
+    let factionId = company?.factionId || (port && port.factionId ? port.factionId : dominant);
+    if (!company && random() < MISSION_TUNING.BASE.DOMINANT_FACTION_CHANCE) factionId = dominant;
+    if (!company && port && port.hiddenFactionId && random() < MISSION_TUNING.BASE.HIDDEN_FACTION_CHANCE) factionId = port.hiddenFactionId;
+    const relationshipDiscount = contact ? Math.max(0, contact.relationship + contact.trust * 2) : 0;
     return {
         id: state.nextMissionId++,
-        title, originSector, factionId,
-        rewardCredits, rewardRep: MISSION_TUNING.BASE.REWARD_REP,
+        title, originSector: company?.sectorId || originSector, factionId,
+        issuerCompanyId: company?.id || null,
+        issuerPersonId: contact?.id || null,
+        rewardCredits: Math.max(1, Math.round(rewardCredits * (1 - Math.min(0.12, relationshipDiscount / 1000)))),
+        rewardRep: MISSION_TUNING.BASE.REWARD_REP,
         expiresDay: state.player.time.day + expiresInDays,
         status: "available",
         operationMinutes: MISSION_TUNING.BASE.OPERATION_MINUTES
@@ -49,7 +57,7 @@ export function makeDeliveryMission() {
         + distance * MISSION_TUNING.DELIVERY.DISTANCE_REWARD
         + MISSION_TUNING.DELIVERY.BASE_REWARD;
     const m = makeBaseMission(`Deliver ${amount} ${formatCommodity(commodity)} to sector ${destination}`, origin, reward, MISSION_TUNING.DELIVERY.EXPIRES_BASE_DAYS
-        + Math.ceil(distance / MISSION_TUNING.DELIVERY.EXPIRES_DISTANCE_DIVISOR));
+        + Math.ceil(distance / MISSION_TUNING.DELIVERY.EXPIRES_DISTANCE_DIVISOR), "delivery");
     m.type = "delivery";
     m.destinationSector = destination;
     m.commodity = commodity;
@@ -61,8 +69,8 @@ export function makeMiningMission() {
     const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
     const amount = MISSION_TUNING.MINING.AMOUNTS[Math.floor(random() * MISSION_TUNING.MINING.AMOUNTS.length)];
     const m = makeBaseMission(`Mine ${amount} Ore for sector ${origin}`, origin, amount * MISSION_TUNING.MINING.ORE_REWARD_PER_UNIT
-        + MISSION_TUNING.MINING.BASE_REWARD, MISSION_TUNING.MINING.EXPIRES_DAYS);
-    m.factionId = PORT_TYPES[state.ports[origin].typeKey].factionId === "hc" ? "miners" : m.factionId;
+        + MISSION_TUNING.MINING.BASE_REWARD, MISSION_TUNING.MINING.EXPIRES_DAYS, "mining");
+    if (!m.issuerCompanyId) m.factionId = PORT_TYPES[state.ports[origin].typeKey].factionId === "hc" ? "miners" : m.factionId;
     m.type = "mining";
     m.amount = amount;
     m.progress = 0;
@@ -75,7 +83,7 @@ export function makeSurveyMission() {
     if (candidates.length < 1) return null;
     const target = candidates[Math.floor(random() * candidates.length)].id;
     const m = makeBaseMission(`Survey sector ${target}`, origin, MISSION_TUNING.SURVEY.BASE_REWARD
-        + target * MISSION_TUNING.SURVEY.TARGET_REWARD_MULTIPLIER, MISSION_TUNING.SURVEY.EXPIRES_DAYS);
+        + target * MISSION_TUNING.SURVEY.TARGET_REWARD_MULTIPLIER, MISSION_TUNING.SURVEY.EXPIRES_DAYS, "survey");
     m.type = "survey";
     m.targetSector = target;
     return m;
@@ -86,7 +94,7 @@ export function makeColonyMission() {
     const candidates = Object.keys(state.planets).map(Number).filter(s => !state.planets[s].owner);
     if (candidates.length < 1) return null;
     const target = candidates[Math.floor(random() * candidates.length)];
-    const m = makeBaseMission(`Found a colony in sector ${target}`, origin, MISSION_TUNING.COLONY.REWARD, MISSION_TUNING.COLONY.EXPIRES_DAYS);
+    const m = makeBaseMission(`Found a colony in sector ${target}`, origin, MISSION_TUNING.COLONY.REWARD, MISSION_TUNING.COLONY.EXPIRES_DAYS, "colony");
     m.type = "colony";
     m.targetSector = target;
     return m;

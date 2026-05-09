@@ -11,6 +11,8 @@ import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from './cha
 import { getEmploymentTerms } from './characterChecks.js';
 import { markGraphDirty } from './routePlanner.js';
 import { getTraitDefinition } from '../config/traits.js';
+import { assignSectorPolities } from '../systems/polities.js';
+import { seedCompaniesAndPeople } from '../systems/companies.js';
 
 export { makeStock };
 
@@ -115,25 +117,48 @@ function distanceBetweenCoords(a, b) {
 
 function generateClusterCenters(archetype, count) {
     if (archetype.armCount === 0) {
-        return Array.from({ length: count }, (_, index) => ({
-            x: Math.round(WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_MIN
-                + rng() * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_SPAN
-                + index * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_INDEX_DRIFT),
-            y: Math.round(WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_Y_MIN
-                + rng() * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_Y_SPAN),
-            z: Math.round((rng() - 0.5) * archetype.zScale)
-        }));
+        let previous = { x: 0, y: 0, z: 0 };
+        return Array.from({ length: count }, (_, index) => {
+            const newClump = index === 0 || rng() < 0.28;
+            if (newClump) {
+                previous = {
+                    x: Math.round(WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_MIN
+                        + rng() * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_SPAN
+                        + index * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_X_INDEX_DRIFT),
+                    y: Math.round(WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_Y_MIN
+                        + rng() * WORLDGEN_GEOMETRY.CLUSTERS.IRREGULAR_Y_SPAN),
+                    z: Math.round((rng() - 0.5) * archetype.zScale)
+                };
+            } else {
+                previous = {
+                    x: Math.round(previous.x + (rng() - 0.35) * (archetype.chainDrift || 2)),
+                    y: Math.round(previous.y + (rng() - 0.5) * (archetype.chainDrift || 2)),
+                    z: Math.round(previous.z + (rng() - 0.5) * archetype.zScale)
+                };
+            }
+            return previous;
+        });
     }
     return Array.from({ length: count }, (_, index) => {
+        if (archetype.barLength && index < Math.max(6, Math.floor(count * 0.18))) {
+            const t = (index / Math.max(1, Math.floor(count * 0.18) - 1)) * 2 - 1;
+            return {
+                x: Math.round(t * archetype.barLength + (rng() - 0.5) * 3),
+                y: Math.round((rng() - 0.5) * 6),
+                z: Math.round((rng() - 0.5) * archetype.zScale)
+            };
+        }
         const arm = index % archetype.armCount;
-        const radius = WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_BASE
-            + index * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_STEP
-            + rng() * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_JITTER;
-        const angle = arm * (Math.PI * 2 / archetype.armCount)
-            + radius * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_ANGLE_CURVE;
+        const spacing = archetype.armSpacing || WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_STEP;
+        const radiusBase = archetype.ringRadius && index < Math.floor(count * 0.28)
+            ? archetype.ringRadius : WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_BASE;
+        const radius = radiusBase + index * spacing + rng() * WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_RADIUS_JITTER;
+        const curve = archetype.armTwist || WORLDGEN_GEOMETRY.CLUSTERS.SPIRAL_ANGLE_CURVE;
+        const satelliteOffset = archetype.satelliteEvery && index % archetype.satelliteEvery === 0 ? 8 + rng() * 10 : 0;
+        const angle = arm * (Math.PI * 2 / archetype.armCount) + radius * curve;
         return {
-            x: Math.round(Math.cos(angle) * radius),
-            y: Math.round(Math.sin(angle) * radius),
+            x: Math.round(Math.cos(angle) * (radius + satelliteOffset)),
+            y: Math.round(Math.sin(angle) * (radius + satelliteOffset)),
             z: Math.round((rng() - 0.5) * archetype.zScale)
         };
     });
@@ -306,12 +331,43 @@ export function addJumpGateCorridor(a, b, options = {}) {
     return corridorId;
 }
 
+function getCandidateSectorIds(originId, ids, bucketIndex, cellSize) {
+    const origin = state.universe[originId];
+    const cell = {
+        x: Math.floor(origin.coord.x / cellSize),
+        y: Math.floor(origin.coord.y / cellSize),
+        z: Math.floor(origin.coord.z / cellSize)
+    };
+    const candidates = new Set();
+    for (let radius = 0; radius <= 3 && candidates.size < 24; radius++) {
+        for (let x = cell.x - radius; x <= cell.x + radius; x++) {
+            for (let y = cell.y - radius; y <= cell.y + radius; y++) {
+                for (let z = cell.z - radius; z <= cell.z + radius; z++) {
+                    const bucket = bucketIndex.get(`${x},${y},${z}`) || [];
+                    bucket.forEach(id => {
+                        if (id !== originId) candidates.add(id);
+                    });
+                }
+            }
+        }
+    }
+    if (candidates.size === 0) ids.forEach(id => { if (id !== originId) candidates.add(id); });
+    return Array.from(candidates);
+}
+
 function buildCorridors(config) {
     const ids = Object.keys(state.universe).map(Number);
     const maxCost = BALANCE.GATE_PHYSICS.VACUUM_SPAN * config.routeDensity;
+    const cellSize = Math.max(BALANCE.GATE_PHYSICS.VACUUM_SPAN * 3, 12);
+    const bucketIndex = new Map();
     ids.forEach(id => {
-        const candidates = ids
-            .filter(target => target !== id)
+        const coord = state.universe[id].coord;
+        const key = `${Math.floor(coord.x / cellSize)},${Math.floor(coord.y / cellSize)},${Math.floor(coord.z / cellSize)}`;
+        if (!bucketIndex.has(key)) bucketIndex.set(key, []);
+        bucketIndex.get(key).push(id);
+    });
+    ids.forEach(id => {
+        const candidates = getCandidateSectorIds(id, ids, bucketIndex, cellSize)
             .map(target => ({
                 target,
                 cost: calculateEffectiveSpanCost(state.universe[id].coord, state.universe[target].coord)
@@ -323,8 +379,7 @@ function buildCorridors(config) {
     });
     ids.forEach(id => {
         if (state.universe[id].jumpGates.length > 0) return;
-        const nearest = ids
-            .filter(target => target !== id)
+        const nearest = getCandidateSectorIds(id, ids, bucketIndex, cellSize)
             .map(target => ({
                 target,
                 cost: calculateEffectiveSpanCost(state.universe[id].coord, state.universe[target].coord)
@@ -340,6 +395,110 @@ function buildCorridors(config) {
         }
     });
 }
+
+export function hasEconomicActivity(sectorId) {
+    const sector = state.universe[sectorId];
+    return Boolean(state.ports[sectorId] || state.planets[sectorId] || sector?.asteroids || sector?.station);
+}
+
+function getActiveEconomicComponents(activeIds) {
+    const activeSet = new Set(activeIds);
+    const visited = new Set();
+    const components = [];
+    activeIds.forEach(start => {
+        if (visited.has(start)) return;
+        const queue = [start];
+        const component = [];
+        visited.add(start);
+        while (queue.length > 0) {
+            const id = queue.shift();
+            component.push(id);
+            (state.universe[id]?.jumpGates || []).forEach(gate => {
+                const next = gate.destinationSectorId;
+                if (gate.status === "closed" || !activeSet.has(next) || visited.has(next)) return;
+                visited.add(next);
+                queue.push(next);
+            });
+        }
+        components.push(component);
+    });
+    return components;
+}
+
+function makeDisjointSet(ids) {
+    const parent = new Map(ids.map(id => [id, id]));
+    const rank = new Map(ids.map(id => [id, 0]));
+    const find = id => {
+        let root = parent.get(id);
+        while (root !== parent.get(root)) root = parent.get(root);
+        let current = id;
+        while (current !== root) {
+            const next = parent.get(current);
+            parent.set(current, root);
+            current = next;
+        }
+        return root;
+    };
+    const union = (a, b) => {
+        const rootA = find(a);
+        const rootB = find(b);
+        if (rootA === rootB) return false;
+        const rankA = rank.get(rootA) || 0;
+        const rankB = rank.get(rootB) || 0;
+        if (rankA < rankB) {
+            parent.set(rootA, rootB);
+        } else if (rankA > rankB) {
+            parent.set(rootB, rootA);
+        } else {
+            parent.set(rootB, rootA);
+            rank.set(rootA, rankA + 1);
+        }
+        return true;
+    };
+    return { find, union };
+}
+
+export function ensureEconomicActivityConnectivity() {
+    const activeIds = Object.keys(state.universe).map(Number).filter(hasEconomicActivity);
+    const components = getActiveEconomicComponents(activeIds);
+    if (components.length <= 1) return;
+    const componentBySectorId = new Map();
+    components.forEach((component, index) => {
+        component.forEach(sectorId => componentBySectorId.set(sectorId, index));
+    });
+    const disjointSet = makeDisjointSet(components.map((_, index) => index));
+    const candidateEdges = [];
+    for (let aIndex = 0; aIndex < activeIds.length; aIndex++) {
+        const a = activeIds[aIndex];
+        for (let bIndex = aIndex + 1; bIndex < activeIds.length; bIndex++) {
+            const b = activeIds[bIndex];
+            const componentA = componentBySectorId.get(a);
+            const componentB = componentBySectorId.get(b);
+            if (componentA === componentB) continue;
+            candidateEdges.push({
+                a,
+                b,
+                componentA,
+                componentB,
+                cost: calculateEffectiveSpanCost(state.universe[a].coord, state.universe[b].coord)
+            });
+        }
+    }
+    candidateEdges.sort((left, right) => left.cost - right.cost);
+    let connectedEdges = 0;
+    candidateEdges.some(edge => {
+        if (!disjointSet.union(edge.componentA, edge.componentB)) return false;
+        addJumpGateCorridor(edge.a, edge.b, {
+            effectiveSpanCost: edge.cost,
+            relayClass: edge.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN ? "scheduled_relay" : "direct",
+            scheduleHours: edge.cost > BALANCE.GATE_PHYSICS.VACUUM_SPAN
+                ? WORLDGEN_GEOMETRY.CORRIDORS.SCHEDULED_RELAY_HOURS : 0
+        });
+        connectedEdges += 1;
+        return connectedEdges >= components.length - 1;
+    });
+}
+
 
 function scoreAnchorCandidate(id) {
     const site = state.universe[id];
@@ -478,6 +637,9 @@ function seedPortsPlanetsAndResources() {
 export function generateUniverse() {
     initRng(state.player.seed);
     state.universe = {}; state.ports = {}; state.planets = {}; state.missions = []; state.nextMissionId = 1;
+    state.companies = {}; state.companyIdsBySector = {}; state.nextCompanyId = 1;
+    state.people = {}; state.peopleBySector = {}; state.peopleByCompany = {}; state.nextPersonId = 1;
+    state.polities = {}; state.polityIdsBySector = {};
     const config = createWorldConfig();
     const sparse = createSparseSites(config);
     state.universe = sparse.sites;
@@ -494,6 +656,9 @@ export function generateUniverse() {
     assignAnchorsAndVisibility(config);
     buildCorridors(config);
     seedPortsPlanetsAndResources();
+    ensureEconomicActivityConnectivity();
+    assignSectorPolities();
+    seedCompaniesAndPeople(rng);
     // Callers (main.js) are responsible for calling createCaptains, generateMissionPool, generateFactionAsks
 }
 
