@@ -4,7 +4,11 @@ import { escapeHtml, formatCredits } from "../utils.js";
 import { getFactionRep, getPrivateFactionRep, getFactionTrust, getGuildTier } from "../core/factions.js";
 import { missionDescription } from "../systems/missions.js";
 import {
-    canAcceptSecureContract, getAvailableSecureContracts, hasSecureCourierLicense
+    canAcceptSecureContract,
+    getAvailableSecureContracts,
+    hasSecureCourierLicense,
+    SECURE_LICENSE_REP_THRESHOLD,
+    SECURE_LICENSE_TRUST_THRESHOLD
 } from "../systems/secureCourier.js";
 
 function isMissionVisible(m) {
@@ -41,9 +45,9 @@ function renderSecureCourierBoard() {
     const contracts = getAvailableSecureContracts(state.player.currentSector);
     let html = `<div class="commodity-row"><strong>Secure Courier Contracts</strong>`;
     if (!hasSecureCourierLicense()) {
-        const canRequestSdaLicense = getFactionRep("sda") >= 45 || getFactionTrust("sda") >= 25;
+        const canRequestSdaLicense = getFactionRep("sda") >= SECURE_LICENSE_REP_THRESHOLD || getFactionTrust("sda") >= SECURE_LICENSE_TRUST_THRESHOLD;
         html += `<div class="muted">Secure packets require a courier license or trusted faction standing.</div>`;
-        html += `<div class="small muted">SDA license requires SDA rep 45 or trust 25.</div>`;
+        html += `<div class="small muted">SDA license requires SDA rep ${SECURE_LICENSE_REP_THRESHOLD} or trust ${SECURE_LICENSE_TRUST_THRESHOLD}.</div>`;
         html += `<button data-action="grantSecureCourierLicense" data-arg0="sda"${canRequestSdaLicense ? "" : " disabled"}>Request SDA Courier License</button>`;
     }
     if (contracts.length === 0) {

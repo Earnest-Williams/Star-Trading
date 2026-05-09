@@ -11,8 +11,8 @@ import { Notifications } from '../ui/notifications.js';
 
 const SECURE_REP_THRESHOLD = 45;
 const SECURE_TRUST_THRESHOLD = 25;
-const SECURE_LICENSE_REP_THRESHOLD = 45;
-const SECURE_LICENSE_TRUST_THRESHOLD = 25;
+export const SECURE_LICENSE_REP_THRESHOLD = SECURE_REP_THRESHOLD;
+export const SECURE_LICENSE_TRUST_THRESHOLD = SECURE_TRUST_THRESHOLD;
 const MAX_AVAILABLE_CONTRACTS = 8;
 const SECURE_CONTRACT_TYPES = [
     'diplomatic_packet',
@@ -35,8 +35,8 @@ function ensureSecureCargoState() {
     if (!Number.isFinite(nextId) || nextId < 1) state.dataCargo.nextPayloadId = 1;
     state.dataCargo.license = state.dataCargo.license || {};
     if (state.dataCargo.license.secureCourier !== true) state.dataCargo.license.secureCourier = false;
-    if (state.dataCargo.license.issuedByFactionId == null) state.dataCargo.license.issuedByFactionId = null;
-    if (state.dataCargo.license.issuedDay == null) state.dataCargo.license.issuedDay = null;
+    if (!Object.hasOwn(state.dataCargo.license, 'issuedByFactionId')) state.dataCargo.license.issuedByFactionId = null;
+    if (!Object.hasOwn(state.dataCargo.license, 'issuedDay')) state.dataCargo.license.issuedDay = null;
 }
 
 function nextSecureId() {
