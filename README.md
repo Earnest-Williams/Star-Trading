@@ -52,6 +52,13 @@ js/
 tests/              # Node test suite for simulation, persistence, navigation, routes, and systems
 ```
 
+## Design language
+
+Star-Trading uses the Blackline Command interface language: an OLED-black, hard-angle command-surface style built from heavy typography, 2-4px technical borders, dense telemetry, and restrained neon signal colors.
+
+- Design bible: `docs/design/blackline-command.md`
+- Implementation guide: `docs/design/blackline-command-implementation.md`
+
 ## Current world model
 
 The universe is modeled as a **sparse 3D integer lattice**. Any coordinate `(x, y, z)` can exist in the notional galaxy, but most coordinates are empty and are never allocated. Gameplay happens at occupied **sites** stored sparsely by id and coordinate key.
