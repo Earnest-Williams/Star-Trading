@@ -20,9 +20,11 @@ function currentDay() {
 function emptyDataCargoState() {
     return {
         sectorKnowledge: {},
-        playerHold: { publicSnapshots: {}, privatePayloads: [] },
+        playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] },
+        secureContracts: [],
         ambientTransfers: [],
-        nextPayloadId: 1
+        nextPayloadId: 1,
+        license: { secureCourier: false, issuedByFactionId: null, issuedDay: null }
     };
 }
 
@@ -100,7 +102,9 @@ function rememberSnapshot(container, snapshot, deliveredDay) {
 export function normaliseDataCargoState() {
     if (!isObject(state.dataCargo)) state.dataCargo = emptyDataCargoState();
     if (!isObject(state.dataCargo.sectorKnowledge)) state.dataCargo.sectorKnowledge = {};
-    if (!isObject(state.dataCargo.playerHold)) state.dataCargo.playerHold = { publicSnapshots: {}, privatePayloads: [] };
+    if (!isObject(state.dataCargo.playerHold)) {
+        state.dataCargo.playerHold = { publicSnapshots: {}, privatePayloads: [], securePayloads: [] };
+    }
     ensureSnapshotMap(state.dataCargo.playerHold);
     if (!Number.isFinite(Number(state.dataCargo.nextPayloadId))) state.dataCargo.nextPayloadId = 1;
     if (!Array.isArray(state.dataCargo.playerHold.privatePayloads)) {
@@ -109,6 +113,24 @@ export function normaliseDataCargoState() {
     state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
         .filter(isObject)
         .map(normalisePrivatePayload);
+    if (!Array.isArray(state.dataCargo.playerHold.securePayloads)) {
+        state.dataCargo.playerHold.securePayloads = [];
+    }
+    state.dataCargo.playerHold.securePayloads = state.dataCargo.playerHold.securePayloads
+        .filter(isObject)
+        .map(payload => normaliseSecurePayload(payload));
+    if (!Array.isArray(state.dataCargo.secureContracts)) state.dataCargo.secureContracts = [];
+    state.dataCargo.secureContracts = state.dataCargo.secureContracts
+        .filter(isObject)
+        .map(contract => normaliseSecureContract(contract));
+    if (!isObject(state.dataCargo.license)) state.dataCargo.license = {};
+    state.dataCargo.license = {
+        secureCourier: state.dataCargo.license.secureCourier === true,
+        issuedByFactionId: state.dataCargo.license.issuedByFactionId || null,
+        issuedDay: Number.isFinite(Number(state.dataCargo.license.issuedDay))
+            && state.dataCargo.license.issuedDay !== null
+            ? Number(state.dataCargo.license.issuedDay) : null
+    };
     Object.entries(state.dataCargo.sectorKnowledge).forEach(([sectorId, knowledge]) => {
         if (!Number.isFinite(Number(sectorId)) || !isObject(knowledge)) {
             delete state.dataCargo.sectorKnowledge[sectorId];
@@ -117,6 +139,36 @@ export function normaliseDataCargoState() {
         ensureSnapshotMap(knowledge);
     });
     if (!Array.isArray(state.dataCargo.ambientTransfers)) state.dataCargo.ambientTransfers = [];
+}
+
+function normaliseSecureContract(contract) {
+    const originSectorId = Number(contract.originSectorId || contract.sourceSectorId || state.player?.currentSector || 1);
+    const destinationSectorId = Number(contract.destinationSectorId || contract.targetSectorId || state.player?.currentSector || originSectorId);
+    const createdDay = Number(contract.createdDay || contract.acquiredDay || currentDay());
+    const status = ['available', 'accepted', 'failed'].includes(contract.status) ? contract.status : 'available';
+    return {
+        id: String(contract.id || `secure-${state.dataCargo.nextPayloadId++}`),
+        tier: 'secure',
+        type: String(contract.type || 'diplomatic_packet'),
+        originSectorId,
+        destinationSectorId,
+        factionId: contract.factionId || state.ports?.[originSectorId]?.factionId || null,
+        targetFactionId: contract.targetFactionId || state.ports?.[destinationSectorId]?.factionId || null,
+        createdDay,
+        expiresDay: Number(contract.expiresDay || createdDay + 7),
+        value: Math.max(1, Math.round(Number(contract.value) || 100)),
+        risk: Math.max(1, Math.min(5, Math.round(Number(contract.risk) || 1))),
+        status,
+        text: String(contract.text || `Sealed courier packet bound for S${destinationSectorId}.`)
+    };
+}
+
+function normaliseSecurePayload(payload) {
+    return {
+        ...normaliseSecureContract({ ...payload, status: payload.status || 'accepted' }),
+        acquiredDay: Number(payload.acquiredDay || payload.createdDay || currentDay()),
+        status: ['accepted', 'failed'].includes(payload.status) ? payload.status : 'accepted'
+    };
 }
 
 function normalisePrivatePayload(payload) {

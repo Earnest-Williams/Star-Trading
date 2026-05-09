@@ -33,10 +33,17 @@ export function createInitialState() {
             sectorKnowledge: {},
             playerHold: {
                 publicSnapshots: {},
-                privatePayloads: []
+                privatePayloads: [],
+                securePayloads: []
             },
+            secureContracts: [],
             ambientTransfers: [],
-            nextPayloadId: 1
+            nextPayloadId: 1,
+            license: {
+                secureCourier: false,
+                issuedByFactionId: null,
+                issuedDay: null
+            }
         },
         rng: null
     };

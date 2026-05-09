@@ -46,6 +46,9 @@ import {
 } from '../systems/guilds.js';
 import { addFactionRep } from '../core/factions.js';
 import { discardPrivatePayload, releasePrivatePayload, sellPrivatePayload } from '../core/dataCargo.js';
+import {
+    acceptSecureContract, completeSecurePayload, grantSecureCourierLicense
+} from '../systems/secureCourier.js';
 import { spendTime } from '../core/time.js';
 
 // =====================================================
@@ -225,6 +228,9 @@ export function registerUIActions() {
     // Missions
     registerAction('acceptMission', acceptMission);
     registerAction('completeMission', completeMission);
+    registerAction('acceptSecureContract', acceptSecureContract);
+    registerAction('completeSecurePayload', completeSecurePayload);
+    registerAction('grantSecureCourierLicense', grantSecureCourierLicense);
 
     // Captains
     registerAction('hailCaptain', hailCaptain);

@@ -3,6 +3,9 @@ import { FACTIONS } from "../constants.js";
 import { escapeHtml, formatCredits } from "../utils.js";
 import { getFactionRep, getPrivateFactionRep, getFactionTrust, getGuildTier } from "../core/factions.js";
 import { missionDescription } from "../systems/missions.js";
+import {
+    canAcceptSecureContract, getAvailableSecureContracts, hasSecureCourierLicense
+} from "../systems/secureCourier.js";
 
 function isMissionVisible(m) {
     if (!m.factionId || !FACTIONS[m.factionId]) return true;
@@ -34,11 +37,39 @@ export function renderMissionBoard() {
     return html;
 }
 
+function renderSecureCourierBoard() {
+    const contracts = getAvailableSecureContracts(state.player.currentSector);
+    let html = `<div class="commodity-row"><strong>Secure Courier Contracts</strong>`;
+    if (!hasSecureCourierLicense()) {
+        html += `<div class="muted">Secure packets require a courier license or trusted faction standing.</div>`;
+        html += `<button data-action="grantSecureCourierLicense" data-arg0="sda">Request SDA Courier License</button>`;
+    }
+    if (contracts.length === 0) {
+        html += `<div class="muted">No secure courier contracts posted here.</div></div>`;
+        return html;
+    }
+    contracts.forEach(contract => {
+        const faction = FACTIONS[contract.factionId] || null;
+        const target = FACTIONS[contract.targetFactionId] || null;
+        const disabled = canAcceptSecureContract(contract) ? "" : " disabled";
+        html += `<div class="mission"><strong>${faction ? `<span style="color:${faction.color}">${faction.icon}</span> ` : ""}Secure ${escapeHtml(contract.type)}</strong><br>`;
+        html += `${escapeHtml(contract.text || "Sealed courier packet.")}<br>`;
+        html += `S${contract.originSectorId} → S${contract.destinationSectorId} | `;
+        html += `Expires Day ${contract.expiresDay} | Payout ${formatCredits(contract.value)} | Risk ${contract.risk}`;
+        if (target) html += ` | Recipient ${target.short}`;
+        if (!canAcceptSecureContract(contract)) html += `<br><span class="small amber">License or trusted issuer standing required.</span>`;
+        html += `<br><button data-action="acceptSecureContract" data-arg0="${escapeHtml(contract.id)}"${disabled}>Accept Secure Contract</button></div>`;
+    });
+    html += `</div>`;
+    return html;
+}
+
 export function renderAllMissionScreen() {
     const { missions, player, captains } = state;
     let html = `<h4>Mission Board</h4>`;
     if (state.ports[player.currentSector]) html += renderMissionBoard();
     else html += `<div class="muted">No local mission board in this sector. Visit a port or StarDock.</div>`;
+    html += renderSecureCourierBoard();
     html += `<div class="commodity-row"><strong>Accepted Missions</strong>`;
     const accepted = missions.filter(m => m.status === "accepted");
     if (accepted.length === 0) html += `<div class="muted">No accepted missions.</div>`;

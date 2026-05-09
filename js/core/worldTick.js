@@ -10,6 +10,7 @@ import { updateCaptainsDaily, updateCaptainsHourly } from '../systems/captains.j
 import { updateEntanglementsDaily } from '../systems/entanglements.js';
 import { expireIntel } from './intel.js';
 import { expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
+import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../systems/secureCourier.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
@@ -21,6 +22,8 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'sector_threats', run: () => updateThreatsDaily() },
     { id: 'faction_politics', run: () => updateFactionsDaily() },
     { id: 'mission_expiry', run: () => expireMissions() },
+    { id: 'secure_courier_contracts', run: () => generateSecureCourierContracts() },
+    { id: 'secure_payload_expiry', run: () => failExpiredSecurePayloads() },
     { id: 'captain_daily_actions', run: reason => updateCaptainsDaily(reason) },
     { id: 'social_entanglements', run: () => updateEntanglementsDaily() },
     { id: 'daily_world_event', run: () => recordDailyWorldEvent() }

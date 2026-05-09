@@ -12,6 +12,7 @@ import {
     maybeGeneratePrivatePayloadOnArrival,
     mergePublicSnapshotsOnArrival
 } from '../core/dataCargo.js';
+import { maybeSecureDataInterception } from './secureCourier.js';
 
 export function moveTo(target) {
     target = parseInt(target, 10);
@@ -31,6 +32,7 @@ export function moveTo(target) {
     }
     maybeGeneratePrivatePayloadOnArrival(target);
     maybeTravelIncident();
+    maybeSecureDataInterception();
 }
 
 export function maybeTravelIncident() {
