@@ -434,7 +434,7 @@ export function runAmbientDataPropagationDaily() {
         if (route.status !== "active") return;
         mergedCount += propagateRouteSnapshots(route.originSector, route.destinationSector, transfers);
     });
-    const culledCount = cullOldPublicSnapshots();
+    const culledCount = 0;
     if (transfers.length > 0) {
         state.dataCargo.ambientTransfers = state.dataCargo.ambientTransfers.concat(transfers).slice(-50);
         EventBus.emit("data_cargo_changed", { mergedCount, ambientTransfers: transfers.length, culledCount });
