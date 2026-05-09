@@ -402,7 +402,7 @@ export function mergePublicSnapshotsOnArrival(destinationSectorId) {
     if (rememberSnapshot(destination, buildSectorPublicSnapshot(destinationSectorId), currentDay())) {
         mergedCount += 1;
     }
-    const culledCount = cullOldPublicSnapshots();
+    const culledCount = cullOldPublicSnapshots(destinationSectorId);
     if (mergedCount > 0 || culledCount > 0) {
         EventBus.emit("data_cargo_changed", { reason: "public_snapshot_merge", sectorId: Number(destinationSectorId), mergedCount, culledCount });
     }
