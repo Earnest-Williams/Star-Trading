@@ -512,7 +512,7 @@ export function getFreshnessSummaryForSector(sectorId) {
             known: false
         };
     }
-    const age = getPublicSnapshotAge(snapshot, nowDay);
+    const age = getPublicSnapshotAge(snapshot);
     return {
         sectorId: localSectorId,
         label: getFreshnessLabel(age),
@@ -520,7 +520,7 @@ export function getFreshnessSummaryForSector(sectorId) {
         lastObservedDay: snapshot.observedDay,
         deliveredDay: snapshot.deliveredDay,
         knownFromSectorId: currentSectorId,
-        snapshot,
+        snapshot: cloneSnapshot(snapshot),
         liveLocal: false,
         known: true
     };
