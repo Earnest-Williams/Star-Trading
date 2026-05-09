@@ -713,3 +713,53 @@ select:focus-visible {
     font-size: 1.35em;
     letter-spacing: 0.04em;
 }
+
+.comms-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.comms-panel {
+    background: var(--bg-panel-raised);
+    border: var(--border-thin) solid var(--line);
+    padding: 10px;
+}
+
+.comms-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.comms-table th,
+.comms-table td {
+    border-bottom: 1px solid var(--line-dim);
+    padding: 5px 6px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.data-freshness-fresh,
+.data-freshness-current {
+    color: var(--accent-green);
+}
+
+.data-freshness-aging {
+    color: var(--amber);
+}
+
+.data-freshness-stale {
+    color: var(--red);
+}
+
+.data-freshness-cold {
+    color: #a78bfa;
+}
+
+.data-freshness-unknown {
+    color: var(--muted);
+}

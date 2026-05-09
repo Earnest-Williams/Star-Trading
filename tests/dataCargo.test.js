@@ -9,6 +9,10 @@ import {
     createPrivatePayload,
     expirePrivatePayloads,
     getActivePrivatePayloads,
+    getFreshnessLabel,
+    getFreshnessSummaryForSector,
+    getPlayerDataHoldSummary,
+    getPublicSnapshotAge,
     getSectorDataFreshness,
     mergePublicSnapshotsOnArrival,
     normaliseDataCargoState,
@@ -16,6 +20,7 @@ import {
     sellPrivatePayload
 } from '../js/core/dataCargo.js';
 import { buildSaveData, migrateSave, SAVE_STATE_FIELDS } from '../js/core/persistence.js';
+import { renderCommunicationsScreen } from '../js/ui/renderComms.js';
 
 function buildDataCargoWorld() {
     resetState();
@@ -122,6 +127,104 @@ describe('data cargo public snapshots', () => {
         assert.equal(freshness.knownExternalSnapshots, 1);
         assert.equal(freshness.oldestAgeDays, 5);
         assert.equal(freshness.newestAgeDays, 5);
+    });
+});
+
+
+describe('data cargo communications helpers', () => {
+    beforeEach(buildDataCargoWorld);
+
+    it('labels public snapshot freshness by age', () => {
+        assert.equal(getFreshnessLabel(0), 'fresh');
+        assert.equal(getFreshnessLabel(1), 'fresh');
+        assert.equal(getFreshnessLabel(4), 'aging');
+        assert.equal(getFreshnessLabel(8), 'stale');
+        assert.equal(getFreshnessLabel(9), 'cold');
+        assert.equal(getFreshnessLabel(null), 'unknown');
+    });
+
+    it('computes public snapshot age without mutating the snapshot', () => {
+        const snapshot = { ...buildSectorPublicSnapshot(1), observedDay: 2, deliveredDay: 4 };
+        assert.equal(getPublicSnapshotAge(snapshot, 7), 5);
+        assert.equal(snapshot.observedDay, 2);
+    });
+
+    it('summarizes current, known, and unknown sector freshness', () => {
+        state.dataCargo.sectorKnowledge[1] = {
+            publicSnapshots: {
+                2: { ...buildSectorPublicSnapshot(2), observedDay: 1, deliveredDay: 5 }
+            }
+        };
+        const current = getFreshnessSummaryForSector(1);
+        assert.equal(current.liveLocal, true);
+        assert.equal(current.label, 'current');
+
+        const known = getFreshnessSummaryForSector(2);
+        assert.equal(known.label, 'aging');
+        assert.equal(known.lastObservedDay, 1);
+        assert.equal(known.deliveredDay, 5);
+        assert.equal(known.knownFromSectorId, 1);
+
+        const unknown = getFreshnessSummaryForSector(999);
+        assert.equal(unknown.label, 'unknown');
+        assert.equal(unknown.known, false);
+    });
+
+    it('summarizes the player data hold', () => {
+        state.dataCargo.playerHold.publicSnapshots[1] = buildSectorPublicSnapshot(1);
+        addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2, text: 'Private note.' });
+        state.dataCargo.playerHold.securePayloads.push({
+            id: 'secure-test',
+            tier: 'secure',
+            originSectorId: 1,
+            destinationSectorId: 2,
+            factionId: 'sda',
+            acquiredDay: 5,
+            expiresDay: 9,
+            value: 125,
+            risk: 2,
+            status: 'accepted',
+            text: 'Sealed packet.'
+        });
+        const summary = getPlayerDataHoldSummary();
+        assert.equal(summary.publicSnapshotCount, 1);
+        assert.equal(summary.privatePayloadCount, 1);
+        assert.equal(summary.securePayloadCount, 1);
+    });
+
+    it('renders communications entries and empty state without throwing', () => {
+        assert.doesNotThrow(() => renderCommunicationsScreen());
+        let html = renderCommunicationsScreen();
+        assert.match(html, /Communications Console/);
+        assert.match(html, /No private intel/);
+        assert.match(html, /No secure courier packets/);
+
+        state.dataCargo.sectorKnowledge[1] = {
+            publicSnapshots: {
+                2: { ...buildSectorPublicSnapshot(2), observedDay: 3, deliveredDay: 5 }
+            }
+        };
+        addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2, value: 40, text: 'Suppressed report.' });
+        state.dataCargo.playerHold.securePayloads.push({
+            id: 'secure-render',
+            tier: 'secure',
+            originSectorId: 1,
+            destinationSectorId: 1,
+            factionId: 'sda',
+            acquiredDay: 5,
+            expiresDay: 8,
+            value: 150,
+            risk: 3,
+            status: 'accepted',
+            text: 'Sealed SDA packet.'
+        });
+        html = renderCommunicationsScreen();
+        assert.match(html, /S2/);
+        assert.match(html, /aging/);
+        assert.match(html, /Suppressed report/);
+        assert.match(html, /sellPrivatePayload/);
+        assert.match(html, /Sealed SDA packet/);
+        assert.match(html, /completeSecurePayload/);
     });
 });
 

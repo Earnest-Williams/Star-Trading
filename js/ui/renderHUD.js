@@ -4,6 +4,7 @@ import { FACTIONS, BALANCE, CARGO_COMMODITIES, GUILD_FACTIONS, GUILD_TIER_NAMES 
 import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed } from "../utils.js";
 import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getFactionHeat, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
 import { showScreen, setReputationTab } from "./ui.js";
+import { getPlayerDataHoldSummary } from "../core/dataCargo.js";
 
 export function getPriorityItems() {
     const { missions, planets, tradeRoutes, player, universe } = state;
@@ -111,8 +112,11 @@ export function renderFactionPanel() {
     const activeGuilds = GUILD_FACTIONS.filter(id => getGuildTier(id) > 0);
     if (activeGuilds.length > 0) html += `<div class="small muted">Guilds: ${activeGuilds.map(id => `${FACTIONS[id].short} ${GUILD_TIER_NAMES[getGuildTier(id)]}`).join(" | ")}</div>`;
     const openAsks = player.factions.asks.filter(a => a.status === "available" || a.status === "accepted").length;
+    const dataHold = getPlayerDataHoldSummary();
     html += `<div class="small muted">Known factions: ${known.length} | Asks: ${openAsks} | Intel: ${player.factions.intel.length}</div>`;
+    html += `<div class="small muted">Comms: ${dataHold.privatePayloadCount} private / ${dataHold.securePayloadCount} secure / ${dataHold.publicSnapshotCount} public</div>`;
     html += `<button data-action="showScreen" data-arg0="reputation">Open Network</button>`;
+    html += `<button data-action="showCommunications">Comms</button>`;
     document.getElementById("factionPanel").innerHTML = html;
 }
 
