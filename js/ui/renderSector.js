@@ -5,6 +5,16 @@ import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "..
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
 import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } from "../core/navigation.js";
 import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
+import { getSectorDataFreshness } from "../core/dataCargo.js";
+
+function renderDataFreshnessLine(sectorId) {
+    const freshness = getSectorDataFreshness(sectorId);
+    const localLabel = freshness.localDataCurrent ? "current" : "stale";
+    const ageLabel = freshness.knownExternalSnapshots > 0
+        ? `${freshness.oldestAgeDays}/${freshness.newestAgeDays} days`
+        : "none";
+    return `<div class="small muted"><strong>Data Freshness:</strong> Local data: ${localLabel} | Known external snapshots: ${freshness.knownExternalSnapshots} | Oldest/newest: ${ageLabel}</div>`;
+}
 
 export function renderSectorContents() {
     const { player, universe, ports, planets, tradeRoutes } = state;
@@ -16,6 +26,7 @@ export function renderSectorContents() {
     if (sector.coord) html += `<div><strong>Coordinate:</strong> (${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z}) | <strong>Metric shear:</strong> ${(sector.metricShear || 0).toFixed(2)}</div>`;
     html += `<div><strong>Region:</strong> ${escapeHtml(sector.region)} | <strong>Status:</strong> ${escapeHtml(getSectorStatusLabel(player.currentSector))}</div>`;
     if (influence) html += `<div><strong>Dominant Influence:</strong> <span style="color:${influence.color}">${influence.icon} ${escapeHtml(influence.name)}</span></div>`;
+    html += renderDataFreshnessLine(player.currentSector);
     html += `<div class="small muted">${getInfluenceSpread(player.currentSector).map(item => `${FACTIONS[item.id].short}:${item.value}`).join(" | ")}</div>`;
     const outboundGates = getOutboundJumpGates(player.currentSector);
     const gateLabels = outboundGates.map(gate => {
@@ -135,6 +146,7 @@ export function renderMapInspector() {
     const routeCount = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === id || r.destinationSector === id)).length;
     if (routeCount > 0) html += `<span class="sector-chip green">Routes ${routeCount}</span>`;
     html += renderCaptainChipsForSector(id);
+    html += renderDataFreshnessLine(id);
     html += `<div class="compact-actions">`;
     if (id === player.currentSector) html += `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
     else if (adjacent) html += `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;

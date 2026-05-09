@@ -7,6 +7,7 @@ import { spendTime, advanceTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { applyShipDamage } from './combat.js';
 import { canTransitDirectCorridor } from '../core/navigation.js';
+import { carryPublicSnapshotForPlayer, mergePublicSnapshotsOnArrival } from '../core/dataCargo.js';
 
 export function moveTo(target) {
     target = parseInt(target, 10);
@@ -16,9 +17,14 @@ export function moveTo(target) {
     }
     const transitMinutes = state.player.ship.travelMinutesPerCorridor;
     if (!spendTime(transitMinutes)) return;
+    carryPublicSnapshotForPlayer(state.player.currentSector);
     state.player.currentSector = target;
     state.selectedSectorId = target;
+    const mergeResult = mergePublicSnapshotsOnArrival(target);
     log(`Transited to sector ${target} via jump gate corridor. Travel took ${transitMinutes} minutes.`);
+    if (mergeResult.mergedCount > 0) {
+        log(`Updated ${mergeResult.mergedCount} public data snapshot${mergeResult.mergedCount === 1 ? "" : "s"} for sector ${target}.`);
+    }
     maybeTravelIncident();
 }
 
