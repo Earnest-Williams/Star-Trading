@@ -33,13 +33,13 @@ function formatStockSummary(snapshot) {
 function formatFactionSummary(snapshot) {
     const status = snapshot?.factionStatus || {};
     const faction = FACTIONS[status.dominantFactionId];
-    const factionLabel = faction ? `${faction.icon} ${escapeHtml(faction.short)}` : "Unaligned";
+    const factionLabel = faction ? `${escapeHtml(faction.icon)} ${escapeHtml(faction.short)}` : "Unaligned";
     return `${factionLabel}${status.status ? ` / ${escapeHtml(status.status)}` : ""}`;
 }
 
 function payloadFactionLabel(factionId) {
     const faction = FACTIONS[factionId];
-    return faction ? `${faction.icon} ${escapeHtml(faction.short)}` : escapeHtml(factionId || "Unaligned");
+    return faction ? `${escapeHtml(faction.icon)} ${escapeHtml(faction.short)}` : escapeHtml(factionId || "Unaligned");
 }
 
 export function renderDataFreshnessSummary() {
