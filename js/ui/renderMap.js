@@ -10,14 +10,9 @@ import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 import { escapeHtml } from "../utils.js";
 
 const mapInteractionUnsubscribers = new WeakMap();
-let mapProjectionHashPrimary = 0;
-let mapProjectionHashSecondary = 0;
-let mapProjectionVisibleCount = 0;
+let mapProjectionSignature = '';
 let mapProjectionUniverseRef = null;
 let mapProjectionCache = {};
-const MAP_HASH_OFFSET_BASIS = 2166136261;
-const MAP_HASH_FNV_PRIME = 16777619;
-const MAP_HASH_SECONDARY_PRIME = 2246822519;
 const MAP_LOGICAL_WIDTH = 700;
 const MAP_LOGICAL_HEIGHT = 420;
 const MAP_BACKGROUND = "#050b10";
@@ -31,9 +26,7 @@ let mapAnimationFrameId = 0;
 let mapAnimationTime = 0;
 
 export function invalidateMapProjectionCache() {
-    mapProjectionHashPrimary = 0;
-    mapProjectionHashSecondary = 0;
-    mapProjectionVisibleCount = 0;
+    mapProjectionSignature = '';
     mapProjectionUniverseRef = null;
     mapProjectionCache = {};
     state.mapNodeCache = {};
@@ -52,49 +45,11 @@ function getVisibleMapSectorIds(universe) {
         .filter(id => universe[id].charted || id === state.player.currentSector);
 }
 
-function getMapProjectionSignature(universe, ids) {
-    let primary = MAP_HASH_OFFSET_BASIS;
-    let secondary = MAP_HASH_FNV_PRIME;
-    const projection = { x: 0, y: 0 };
-    const hashProjectedValue = value => {
-        const scaled = Math.round(value * 1000000);
-        const lowBits = scaled | 0;
-        const highBits = (scaled / 0x100000000) | 0;
-        return (lowBits ^ highBits) >>> 0;
-    };
-    ids.forEach(id => {
-        const site = universe[id];
-        const coord = projectedCoord(site, id, projection);
-        const charted = site.charted ? 1 : 0;
-        const xHash = hashProjectedValue(coord.x);
-        const yHash = hashProjectedValue(coord.y);
-
-        primary = Math.imul(primary ^ id, MAP_HASH_FNV_PRIME);
-        primary = Math.imul(primary ^ charted, MAP_HASH_FNV_PRIME);
-        primary = Math.imul(primary ^ xHash, MAP_HASH_FNV_PRIME);
-        primary = Math.imul(primary ^ yHash, MAP_HASH_FNV_PRIME);
-
-        secondary = Math.imul(secondary ^ (Math.imul(id, 2) ^ charted), MAP_HASH_SECONDARY_PRIME);
-        secondary = Math.imul(secondary ^ xHash, MAP_HASH_SECONDARY_PRIME);
-        secondary = Math.imul(secondary ^ yHash, MAP_HASH_SECONDARY_PRIME);
-    });
-    return {
-        primary: primary >>> 0,
-        secondary: secondary >>> 0,
-        visibleCount: ids.length
-    };
-}
-
 export function getMapNodes() {
     const universe = state.universe;
     const ids = getVisibleMapSectorIds(universe);
-    const signature = getMapProjectionSignature(universe, ids);
-    if (
-        mapProjectionUniverseRef === universe
-        && signature.primary === mapProjectionHashPrimary
-        && signature.secondary === mapProjectionHashSecondary
-        && signature.visibleCount === mapProjectionVisibleCount
-    ) {
+    const sig = ids.join(',');
+    if (mapProjectionUniverseRef === universe && sig === mapProjectionSignature) {
         state.mapNodeCache = mapProjectionCache;
         return mapProjectionCache;
     }
@@ -121,9 +76,7 @@ export function getMapNodes() {
     }
 
     mapProjectionUniverseRef = universe;
-    mapProjectionHashPrimary = signature.primary;
-    mapProjectionHashSecondary = signature.secondary;
-    mapProjectionVisibleCount = signature.visibleCount;
+    mapProjectionSignature = sig;
     mapProjectionCache = nodes;
     state.mapNodeCache = nodes;
     return nodes;
@@ -176,22 +129,17 @@ function prepareMapCanvas(canvas, ctx) {
         canvas.height = backingHeight;
     }
 
-    if (typeof ctx.setTransform !== "function") return;
-    ctx.setTransform(
-        (rect.width / MAP_LOGICAL_WIDTH) * dpr,
-        0,
-        0,
-        (rect.height / MAP_LOGICAL_HEIGHT) * dpr,
-        0,
-        0
-    );
+    if (typeof ctx.setTransform === "function") {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    return rect;
 }
 
 function getPointerCanvasPosition(canvas, event) {
     const rect = getMapCanvasRect(canvas);
     return {
-        x: (event.clientX - (rect.left || 0)) * (MAP_LOGICAL_WIDTH / rect.width),
-        y: (event.clientY - (rect.top || 0)) * (MAP_LOGICAL_HEIGHT / rect.height),
+        x: event.clientX - (rect.left || 0),
+        y: event.clientY - (rect.top || 0),
         clientX: event.clientX,
         clientY: event.clientY
     };
@@ -391,14 +339,26 @@ export function resetMapViewport() {
     Renderer.invalidate("map");
 }
 
-export function centerMapOnSector(sectorId = state.player?.currentSector) {
+function getVisibleMapCenter() {
     const canvas = document.getElementById("map");
+    const rect = canvas ? getMapCanvasRect(canvas) : null;
+    return {
+        x: (rect?.width || MAP_LOGICAL_WIDTH) / 2,
+        y: (rect?.height || MAP_LOGICAL_HEIGHT) / 2
+    };
+}
+
+export function centerMapOnSector(sectorId = state.player?.currentSector) {
     const nodes = getMapNodes();
     const node = nodes[sectorId];
-    if (!canvas || !node) return;
+    if (!node) return;
+
     const viewport = getViewport();
-    viewport.offsetX = MAP_LOGICAL_WIDTH / 2 - node.x * viewport.scale;
-    viewport.offsetY = MAP_LOGICAL_HEIGHT / 2 - node.y * viewport.scale;
+    const center = getVisibleMapCenter();
+
+    viewport.offsetX = center.x - node.x * viewport.scale;
+    viewport.offsetY = center.y - node.y * viewport.scale;
+
     Renderer.invalidate("map");
 }
 
@@ -408,10 +368,10 @@ export function drawMap() {
     const { universe, planets, ports, player, selectedSectorId, starField, hoveredSectorId } = state;
     const ctx = canvas.getContext("2d");
     const viewport = getViewport();
-    prepareMapCanvas(canvas, ctx);
-    ctx.clearRect(0, 0, MAP_LOGICAL_WIDTH, MAP_LOGICAL_HEIGHT);
+    const rect = prepareMapCanvas(canvas, ctx);
+    ctx.clearRect(0, 0, rect.width, rect.height);
     ctx.fillStyle = MAP_BACKGROUND;
-    ctx.fillRect(0, 0, MAP_LOGICAL_WIDTH, MAP_LOGICAL_HEIGHT);
+    ctx.fillRect(0, 0, rect.width, rect.height);
     const twinkleTime = mapAnimationTime || Date.now();
     starField.forEach(star => {
         const depth = Number.isInteger(star.depth) ? star.depth : 0;

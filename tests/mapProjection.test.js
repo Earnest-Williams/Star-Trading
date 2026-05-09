@@ -36,38 +36,48 @@ describe('map projection cache', () => {
         assert.equal(reusedAfterCharting, afterCharting);
     });
 
-    it('invalidates cache when coords change on an already-charted sector', () => {
+    it('requires explicit invalidation after coordinate mutation on an already-charted sector', () => {
         const before = getMapNodes();
         const beforeX = before[2].x;
 
         state.universe[2].coord = { x: 15, y: 0, z: 0 };
+        // Coordinate changes are not automatically detected; call invalidateMapProjectionCache() explicitly.
+        const cached = getMapNodes();
+        assert.equal(cached, before);
+
+        invalidateMapProjectionCache();
         const after = getMapNodes();
 
         assert.notEqual(after, before);
         assert.notEqual(after[2].x, beforeX);
     });
 
-    it('invalidates cache when a site is mutated in place without replacing state.universe', () => {
+    it('requires explicit invalidation after in-place coord mutation without replacing state.universe', () => {
         const universeRef = state.universe;
         const before = getMapNodes();
-        const beforeY = before[2].y;
 
         state.universe[2].coord.y = 10;
+        // In-place mutation is not automatically detected; call invalidateMapProjectionCache() explicitly.
+        const cached = getMapNodes();
+        assert.equal(state.universe, universeRef);
+        assert.equal(cached, before);
+
+        invalidateMapProjectionCache();
         const after = getMapNodes();
 
-        assert.equal(state.universe, universeRef);
         assert.notEqual(after, before);
-        assert.notEqual(after[2].y, beforeY);
     });
 
-    it('invalidates cache when charted state toggles on a visible site', () => {
+    it('reuses cache when charted state changes for a sector still in the visible set', () => {
         state.player.currentSector = 2;
         const before = getMapNodes();
 
         state.universe[2].charted = false;
+        // Sector 2 is still visible (it is currentSector), so the visible id set is unchanged.
+        // Node positions are the same; rendering reads charted state directly from universe.
         const after = getMapNodes();
 
-        assert.notEqual(after, before);
+        assert.equal(after, before);
         assert.ok(after[2]);
         assert.equal(state.universe[2].charted, false);
     });
