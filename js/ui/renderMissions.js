@@ -41,8 +41,10 @@ function renderSecureCourierBoard() {
     const contracts = getAvailableSecureContracts(state.player.currentSector);
     let html = `<div class="commodity-row"><strong>Secure Courier Contracts</strong>`;
     if (!hasSecureCourierLicense()) {
+        const canRequestSdaLicense = getFactionRep("sda") >= 45 || getFactionTrust("sda") >= 25;
         html += `<div class="muted">Secure packets require a courier license or trusted faction standing.</div>`;
-        html += `<button data-action="grantSecureCourierLicense" data-arg0="sda">Request SDA Courier License</button>`;
+        html += `<div class="small muted">SDA license requires SDA rep 45 or trust 25.</div>`;
+        html += `<button data-action="grantSecureCourierLicense" data-arg0="sda"${canRequestSdaLicense ? "" : " disabled"}>Request SDA Courier License</button>`;
     }
     if (contracts.length === 0) {
         html += `<div class="muted">No secure courier contracts posted here.</div></div>`;

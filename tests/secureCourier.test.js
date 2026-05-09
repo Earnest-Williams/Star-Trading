@@ -80,6 +80,7 @@ describe('secure courier licensing and acceptance', () => {
     });
 
     it('grants secure courier licenses', () => {
+        setFactionRep('sda', 45);
         const granted = grantSecureCourierLicense('sda');
         assert.equal(granted, true);
         assert.equal(hasSecureCourierLicense(), true);
@@ -87,7 +88,14 @@ describe('secure courier licensing and acceptance', () => {
         assert.equal(state.dataCargo.license.issuedDay, 5);
     });
 
+    it('requires issuer standing to grant secure courier licenses', () => {
+        const granted = grantSecureCourierLicense('sda');
+        assert.equal(granted, false);
+        assert.equal(hasSecureCourierLicense(), false);
+    });
+
     it('cannot accept secure contracts from the wrong sector', () => {
+        setFactionRep('sda', 45);
         grantSecureCourierLicense('sda');
         addAvailableSecureContract({ originSectorId: 2 });
         assert.equal(acceptSecureContract('secure-test'), false);
@@ -112,6 +120,7 @@ describe('secure courier licensing and acceptance', () => {
     });
 
     it('accepted secure contracts move into secure payload hold', () => {
+        setFactionRep('sda', 45);
         grantSecureCourierLicense('sda');
         const contract = addAvailableSecureContract();
         const payload = acceptSecureContract(contract.id);
@@ -126,6 +135,7 @@ describe('secure courier delivery, expiry, and interception', () => {
     beforeEach(buildSecureCourierWorld);
 
     it('only delivers secure payloads at their destination sector', () => {
+        setFactionRep('sda', 45);
         grantSecureCourierLicense('sda');
         const contract = addAvailableSecureContract();
         acceptSecureContract(contract.id);
@@ -135,6 +145,7 @@ describe('secure courier delivery, expiry, and interception', () => {
     });
 
     it('delivery pays credits and removes the payload', () => {
+        setFactionRep('sda', 45);
         grantSecureCourierLicense('sda');
         const contract = addAvailableSecureContract();
         acceptSecureContract(contract.id);
@@ -147,6 +158,7 @@ describe('secure courier delivery, expiry, and interception', () => {
     });
 
     it('expires accepted secure payloads and removes them', () => {
+        setFactionRep('sda', 45);
         grantSecureCourierLicense('sda');
         const contract = addAvailableSecureContract({ expiresDay: 4 });
         acceptSecureContract(contract.id);
@@ -156,6 +168,7 @@ describe('secure courier delivery, expiry, and interception', () => {
     });
 
     it('can compromise a secure payload during forced interception', () => {
+        setFactionRep('sda', 45);
         grantSecureCourierLicense('sda');
         const contract = addAvailableSecureContract();
         acceptSecureContract(contract.id);

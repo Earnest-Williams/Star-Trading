@@ -11,6 +11,8 @@ import { Notifications } from '../ui/notifications.js';
 
 const SECURE_REP_THRESHOLD = 45;
 const SECURE_TRUST_THRESHOLD = 25;
+const SECURE_LICENSE_REP_THRESHOLD = 45;
+const SECURE_LICENSE_TRUST_THRESHOLD = 25;
 const MAX_AVAILABLE_CONTRACTS = 8;
 const SECURE_CONTRACT_TYPES = [
     'diplomatic_packet',
@@ -24,8 +26,21 @@ function currentDay() {
     return state.player?.time?.day || 0;
 }
 
+function ensureSecureCargoState() {
+    state.dataCargo = state.dataCargo || {};
+    state.dataCargo.playerHold = state.dataCargo.playerHold || {};
+    if (!Array.isArray(state.dataCargo.playerHold.securePayloads)) state.dataCargo.playerHold.securePayloads = [];
+    if (!Array.isArray(state.dataCargo.secureContracts)) state.dataCargo.secureContracts = [];
+    const nextId = Number(state.dataCargo.nextPayloadId);
+    if (!Number.isFinite(nextId) || nextId < 1) state.dataCargo.nextPayloadId = 1;
+    state.dataCargo.license = state.dataCargo.license || {};
+    if (state.dataCargo.license.secureCourier !== true) state.dataCargo.license.secureCourier = false;
+    if (state.dataCargo.license.issuedByFactionId == null) state.dataCargo.license.issuedByFactionId = null;
+    if (state.dataCargo.license.issuedDay == null) state.dataCargo.license.issuedDay = null;
+}
+
 function nextSecureId() {
-    normaliseDataCargoState();
+    ensureSecureCargoState();
     return `secure-${state.dataCargo.nextPayloadId++}`;
 }
 
@@ -61,7 +76,7 @@ function buildContractText(contract) {
 }
 
 function getSecureHold() {
-    normaliseDataCargoState();
+    ensureSecureCargoState();
     return state.dataCargo.playerHold.securePayloads;
 }
 
@@ -83,13 +98,19 @@ function hasReputationAccess(contract) {
 }
 
 export function hasSecureCourierLicense() {
-    normaliseDataCargoState();
+    ensureSecureCargoState();
     return state.dataCargo.license.secureCourier === true;
 }
 
 export function grantSecureCourierLicense(factionId = 'sda') {
     normaliseDataCargoState();
     const issuer = FACTIONS[factionId] ? factionId : 'sda';
+    const issuerRep = getFactionRep(issuer);
+    const issuerTrust = getFactionTrust(issuer);
+    if (issuerRep < SECURE_LICENSE_REP_THRESHOLD && issuerTrust < SECURE_LICENSE_TRUST_THRESHOLD) {
+        Notifications.show(`${getFactionShort(issuer)} standing too low for a courier license`, 2);
+        return false;
+    }
     state.dataCargo.license = {
         secureCourier: true,
         issuedByFactionId: issuer,
@@ -127,7 +148,6 @@ export function revokeSecureCourierLicense(reason = 'license revoked') {
 }
 
 export function canAcceptSecureContract(contract) {
-    normaliseDataCargoState();
     return hasSecureCourierLicense() || hasReputationAccess(contract);
 }
 
@@ -323,7 +343,7 @@ export function maybeSecureDataInterception(randomUnit = random) {
         Notifications.show('Secure courier packet compromised', 4);
         return { intercepted: true, outcome: 'compromised', payloadId: compromised.id, chance };
     }
-    sector.pirateThreat = pirateThreat + 1;
+    if (state.universe?.[sectorId]) state.universe[sectorId].pirateThreat = pirateThreat + 1;
     Notifications.show('Courier chase stirred up pirate activity', 2);
     return { intercepted: true, outcome: 'pirate_threat', chance };
 }
