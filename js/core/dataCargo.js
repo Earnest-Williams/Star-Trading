@@ -443,11 +443,14 @@ export function runAmbientDataPropagationDaily() {
 }
 
 
-export function cullOldPublicSnapshots() {
+export function cullOldPublicSnapshots(onlySectorId = null) {
     normaliseDataCargoState();
     const maxSnapshots = BALANCE.DATA_CARGO.PUBLIC_MAX_SNAPSHOTS_PER_SECTOR;
     let culledCount = 0;
-    Object.entries(state.dataCargo.sectorKnowledge).forEach(([sectorId, knowledge]) => {
+    const targetEntries = onlySectorId !== null
+        ? [[String(Number(onlySectorId)), state.dataCargo.sectorKnowledge[String(Number(onlySectorId))]]]
+        : Object.entries(state.dataCargo.sectorKnowledge);
+    targetEntries.forEach(([sectorId, knowledge]) => {
         const snapshots = knowledge.publicSnapshots || {};
         const entries = Object.entries(snapshots);
         if (entries.length <= maxSnapshots) return;
