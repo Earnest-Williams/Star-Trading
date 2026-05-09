@@ -18,6 +18,7 @@ import { renderAllMissionScreen } from './renderMissions.js';
 import { renderReputationScreen } from './renderReputation.js';
 import { renderLogisticsScreen } from './renderLogistics.js';
 import { renderCharacterSheet } from './renderCharacterSheet.js';
+import { renderCommunicationsScreen } from './renderComms.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -95,7 +96,7 @@ export function setReputationTab(tab) {
 // SCREEN-LEVEL RENDERERS (registered with Renderer)
 // =====================================================
 function renderTopTabs() {
-    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'shipyard', 'character'].forEach(screen => {
+    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'communications', 'shipyard', 'character'].forEach(screen => {
         const el = document.getElementById(`top-${screen}`);
         if (!el) return;
         if (screen === state.currentScreen) el.classList.add('active-tab');
@@ -129,6 +130,11 @@ function renderCurrentScreen() {
     if (currentScreen === 'reputation') {
         title.innerHTML = 'Network &amp; Intel';
         renderReputationScreen();
+        return;
+    }
+    if (currentScreen === 'communications') {
+        title.innerHTML = 'Communications Console';
+        document.getElementById('actions').innerHTML = renderCommunicationsScreen();
         return;
     }
     if (currentScreen === 'logistics') {
@@ -188,6 +194,7 @@ export function registerUIActions() {
     // Navigation & travel
     registerAction('moveTo', moveTo);
     registerAction('showScreen', showScreen);
+    registerAction('showCommunications', () => showScreen('communications'));
     registerAction('selectSector', id => selectSector(parseInt(id, 10)));
 
     // Exploration

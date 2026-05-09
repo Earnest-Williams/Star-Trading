@@ -67,9 +67,12 @@ export const App = (() => {
         }));
         _unsubs.push(EventBus.on('captain_changed', () => Renderer.invalidate('sector')));
         _unsubs.push(EventBus.on('data_cargo_changed', () => {
+            Renderer.invalidate('screen');
             Renderer.invalidate('sector');
-            Renderer.invalidate('mapInspector');
             Renderer.invalidate('map');
+            Renderer.invalidate('mapInspector');
+            Renderer.invalidate('priority');
+            Renderer.invalidate('factions');
         }));
     }
 

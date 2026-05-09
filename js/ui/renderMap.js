@@ -6,6 +6,7 @@ import { Renderer } from "./renderer.js";
 import { getDirectCorridor, getSectorNeighbors } from "../core/navigation.js";
 import { MAP_UI } from "../config/ui.js";
 import { getSiteTypeLabel } from "../core/universe.js";
+import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 import { escapeHtml } from "../utils.js";
 
 const mapInteractionUnsubscribers = new WeakMap();
@@ -279,6 +280,22 @@ function corridorRisk(fromId, toId) {
     }, 0);
 }
 
+
+function getMapFreshnessColor(label) {
+    if (label === "current") return "#00ff88";
+    if (label === "fresh") return "#66ffcc";
+    if (label === "aging") return "#ffd166";
+    if (label === "stale") return "#ff8844";
+    if (label === "cold") return "#8a6cff";
+    return "rgba(180, 190, 200, 0.55)";
+}
+
+function formatFreshnessTooltip(summary) {
+    if (summary.liveLocal) return "Data: live local observation";
+    if (!summary.known) return "Data: unknown";
+    return `Data: ${summary.label} / observed Day ${summary.lastObservedDay} / delivered Day ${summary.deliveredDay} / known from S${summary.knownFromSectorId}`;
+}
+
 function sectorTooltipHtml(id) {
     const { universe, ports, planets, tradeRoutes } = state;
     const sector = universe[id];
@@ -296,6 +313,8 @@ function sectorTooltipHtml(id) {
     if (sector.asteroids) chips.push("Asteroids");
     if (sector.pirateThreat > 0) chips.push(`Pirates ${sector.pirateThreat}`);
     if (routeCount > 0) chips.push(`Routes ${routeCount}`);
+    const freshness = getFreshnessSummaryForSector(id);
+    chips.push(formatFreshnessTooltip(freshness));
     return `<strong>Site ${id}</strong> ${escapeHtml(sector.name || "Unknown")}<br>${chips.map(chip => `<span class="sector-chip">${escapeHtml(chip)}</span>`).join("")}`;
 }
 
@@ -426,6 +445,7 @@ export function drawMap() {
     const nodeScale = viewport.scale < 1 ? MAP_ZOOMED_OUT_NODE_SCALE : 1;
     const nodeRadius = MAP_UI.NODES.RADIUS * nodeScale;
     const selectedRadius = MAP_UI.NODES.SELECTED_RADIUS * nodeScale;
+    const freshnessBySector = new Map(ids.map(id => [id, getFreshnessSummaryForSector(id)]));
     ids.forEach(id => {
         const node = screenNodes[id];
         let fill = "#8888ff";
@@ -453,6 +473,12 @@ export function drawMap() {
             ctx.arc(node.x, node.y, selectedRadius, 0, Math.PI * 2);
             ctx.stroke();
         }
+        const freshness = freshnessBySector.get(id) || { label: "unknown" };
+        ctx.strokeStyle = getMapFreshnessColor(freshness.label);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 4, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.fillStyle = fill;
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
@@ -466,6 +492,10 @@ export function drawMap() {
             ctx.font = MAP_UI.LABELS.FACTION_FONT;
             ctx.fillText(faction.icon, node.x + MAP_UI.LABELS.FACTION_OFFSET_X, node.y + MAP_UI.LABELS.FACTION_OFFSET_Y);
         }
+        ctx.fillStyle = getMapFreshnessColor(freshness.label);
+        ctx.font = "10px monospace";
+        const freshnessMarker = freshness.label === "current" ? "●" : (freshness.label || "unknown").charAt(0).toUpperCase();
+        ctx.fillText(freshnessMarker, node.x - nodeRadius - 7, node.y - nodeRadius - 5);
         const localCaptains = getCaptainsInSector(id, true);
         if (localCaptains.length > 0) {
             ctx.fillStyle = "#ffffff";

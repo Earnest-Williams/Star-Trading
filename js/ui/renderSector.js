@@ -5,15 +5,17 @@ import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "..
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
 import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } from "../core/navigation.js";
 import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
-import { getSectorDataFreshness } from "../core/dataCargo.js";
+import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 
 function renderDataFreshnessLine(sectorId) {
-    const freshness = getSectorDataFreshness(sectorId);
-    const localLabel = freshness.localDataCurrent ? "current" : "stale";
-    const ageLabel = freshness.knownExternalSnapshots > 0
-        ? `${freshness.oldestAgeDays}/${freshness.newestAgeDays} days`
-        : "none";
-    return `<div class="small muted"><strong>Data Freshness:</strong> Local data: ${localLabel} | Known external snapshots: ${freshness.knownExternalSnapshots} | Oldest/newest: ${ageLabel}</div>`;
+    const freshness = getFreshnessSummaryForSector(sectorId);
+    if (freshness.liveLocal) {
+        return `<div class="small muted"><strong>Data freshness:</strong> live local observation</div>`;
+    }
+    if (!freshness.known) {
+        return `<div class="small muted"><strong>Data freshness:</strong> unknown</div>`;
+    }
+    return `<div class="small muted"><strong>Data freshness:</strong> ${escapeHtml(freshness.label)} | Last observed: Day ${freshness.lastObservedDay} | Delivered here: Day ${freshness.deliveredDay} | Known from: Sector ${freshness.knownFromSectorId}</div>`;
 }
 
 export function renderSectorContents() {
