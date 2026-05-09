@@ -22,6 +22,8 @@ describe('world tick phase order', () => {
                 'sector_threats',
                 'faction_politics',
                 'mission_expiry',
+                'secure_courier_contracts',
+                'secure_payload_expiry',
                 'captain_daily_actions',
                 'social_entanglements',
                 'daily_world_event'

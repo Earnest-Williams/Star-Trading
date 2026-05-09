@@ -51,7 +51,7 @@ function buildDataCargoWorld() {
         }
     };
     state.planets = {};
-    state.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [] }, ambientTransfers: [], nextPayloadId: 1 };
+    state.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] }, secureContracts: [], ambientTransfers: [], nextPayloadId: 1, license: { secureCourier: false, issuedByFactionId: null, issuedDay: null } };
 }
 
 describe('data cargo public snapshots', () => {
@@ -146,19 +146,23 @@ describe('data cargo persistence and normalisation', () => {
         const migrated = migrateSave(save);
         assert.deepEqual(migrated.dataCargo, {
             sectorKnowledge: {},
-            playerHold: { publicSnapshots: {}, privatePayloads: [] },
+            playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] },
+            secureContracts: [],
             ambientTransfers: [],
-            nextPayloadId: 1
+            nextPayloadId: 1,
+            license: { secureCourier: false, issuedByFactionId: null, issuedDay: null }
         });
     });
 
     it('normaliseDataCargoState repairs missing fields', () => {
         state.dataCargo = { sectorKnowledge: { 2: {} }, playerHold: {}, ambientTransfers: null };
         normaliseDataCargoState();
-        assert.deepEqual(state.dataCargo.playerHold, { publicSnapshots: {}, privatePayloads: [] });
+        assert.deepEqual(state.dataCargo.playerHold, { publicSnapshots: {}, privatePayloads: [], securePayloads: [] });
         assert.deepEqual(state.dataCargo.sectorKnowledge[2], { publicSnapshots: {} });
         assert.deepEqual(state.dataCargo.ambientTransfers, []);
         assert.equal(state.dataCargo.nextPayloadId, 1);
+        assert.deepEqual(state.dataCargo.secureContracts, []);
+        assert.deepEqual(state.dataCargo.license, { secureCourier: false, issuedByFactionId: null, issuedDay: null });
     });
 });
 

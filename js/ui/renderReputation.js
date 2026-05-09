@@ -11,6 +11,7 @@ import {
 import { renderCaptainsTab } from "./renderCaptains.js";
 import { getActiveIntel } from '../core/intel.js';
 import { getActivePrivatePayloads } from '../core/dataCargo.js';
+import { getActiveSecurePayloads } from '../systems/secureCourier.js';
 
 export function renderReputationScreen() {
     const { reputationTab } = state;
@@ -258,6 +259,28 @@ function renderIntelPanel() {
     return html;
 }
 
+function renderSecurePayloadPanel() {
+    const payloads = getActiveSecurePayloads();
+    if (payloads.length === 0) return `<div class="muted">No secure courier payloads in your data hold.</div>`;
+    let html = "";
+    payloads.forEach(payload => {
+        const faction = FACTIONS[payload.factionId] || null;
+        const target = FACTIONS[payload.targetFactionId] || null;
+        const atDestination = payload.destinationSectorId === Number(state.player.currentSector);
+        html += `<div class="mission">`;
+        html += `<strong>${faction ? `<span style="color:${faction.color}">${faction.icon}</span> ` : ""}Secure ${escapeHtml(payload.type)}</strong><br>`;
+        html += `${escapeHtml(payload.text)}<br>`;
+        html += `Destination S${payload.destinationSectorId} | Issuer ${faction ? faction.short : escapeHtml(payload.factionId || "Unknown")} | `;
+        html += `Recipient ${target ? target.short : escapeHtml(payload.targetFactionId || "Unknown")} | Expires Day ${payload.expiresDay}<br>`;
+        html += `Risk ${payload.risk} | Payout ${payload.value} | Status ${escapeHtml(payload.status)}`;
+        if (atDestination) {
+            html += `<br><button data-action="completeSecurePayload" data-arg0="${escapeHtml(payload.id)}">Deliver Secure Packet</button>`;
+        }
+        html += `</div>`;
+    });
+    return html;
+}
+
 function renderPrivatePayloadPanel() {
     const payloads = getActivePrivatePayloads();
     if (payloads.length === 0) return `<div class="muted">No private intel payloads in your data hold.</div>`;
@@ -279,6 +302,7 @@ function renderPrivatePayloadPanel() {
 function renderAsksIntelTab() {
     let html = `<h4>Political Asks & Intel</h4>`;
     html += `<div class="commodity-row"><strong>Faction Asks</strong>${renderFactionAsks()}</div>`;
+    html += `<div class="commodity-row"><strong>Secure Courier Hold</strong>${renderSecurePayloadPanel()}</div>`;
     html += `<div class="commodity-row"><strong>Private Data Hold</strong>${renderPrivatePayloadPanel()}</div>`;
     html += `<div class="commodity-row"><strong>Intel</strong>${renderIntelPanel()}</div>`;
     return html;

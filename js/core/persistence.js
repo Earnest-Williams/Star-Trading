@@ -200,7 +200,7 @@ export function migrateSave(data) {
     migrateShipTransitFields(data.player);
     if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
     if (!data.dataCargo) {
-        data.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [] }, ambientTransfers: [], nextPayloadId: 1 };
+        data.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] }, secureContracts: [], ambientTransfers: [], nextPayloadId: 1, license: { secureCourier: false, issuedByFactionId: null, issuedDay: null } };
     }
     // v14: character block added to player and captains
     if (v < 14) {
