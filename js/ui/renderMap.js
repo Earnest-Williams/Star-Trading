@@ -176,22 +176,17 @@ function prepareMapCanvas(canvas, ctx) {
         canvas.height = backingHeight;
     }
 
-    if (typeof ctx.setTransform !== "function") return;
-    ctx.setTransform(
-        (rect.width / MAP_LOGICAL_WIDTH) * dpr,
-        0,
-        0,
-        (rect.height / MAP_LOGICAL_HEIGHT) * dpr,
-        0,
-        0
-    );
+    if (typeof ctx.setTransform === "function") {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    return rect;
 }
 
 function getPointerCanvasPosition(canvas, event) {
     const rect = getMapCanvasRect(canvas);
     return {
-        x: (event.clientX - (rect.left || 0)) * (MAP_LOGICAL_WIDTH / rect.width),
-        y: (event.clientY - (rect.top || 0)) * (MAP_LOGICAL_HEIGHT / rect.height),
+        x: event.clientX - (rect.left || 0),
+        y: event.clientY - (rect.top || 0),
         clientX: event.clientX,
         clientY: event.clientY
     };
@@ -391,14 +386,26 @@ export function resetMapViewport() {
     Renderer.invalidate("map");
 }
 
-export function centerMapOnSector(sectorId = state.player?.currentSector) {
+function getVisibleMapCenter() {
     const canvas = document.getElementById("map");
+    const rect = canvas ? getMapCanvasRect(canvas) : null;
+    return {
+        x: (rect?.width || MAP_LOGICAL_WIDTH) / 2,
+        y: (rect?.height || MAP_LOGICAL_HEIGHT) / 2
+    };
+}
+
+export function centerMapOnSector(sectorId = state.player?.currentSector) {
     const nodes = getMapNodes();
     const node = nodes[sectorId];
-    if (!canvas || !node) return;
+    if (!node) return;
+
     const viewport = getViewport();
-    viewport.offsetX = MAP_LOGICAL_WIDTH / 2 - node.x * viewport.scale;
-    viewport.offsetY = MAP_LOGICAL_HEIGHT / 2 - node.y * viewport.scale;
+    const center = getVisibleMapCenter();
+
+    viewport.offsetX = center.x - node.x * viewport.scale;
+    viewport.offsetY = center.y - node.y * viewport.scale;
+
     Renderer.invalidate("map");
 }
 
@@ -408,10 +415,10 @@ export function drawMap() {
     const { universe, planets, ports, player, selectedSectorId, starField, hoveredSectorId } = state;
     const ctx = canvas.getContext("2d");
     const viewport = getViewport();
-    prepareMapCanvas(canvas, ctx);
-    ctx.clearRect(0, 0, MAP_LOGICAL_WIDTH, MAP_LOGICAL_HEIGHT);
+    const rect = prepareMapCanvas(canvas, ctx);
+    ctx.clearRect(0, 0, rect.width, rect.height);
     ctx.fillStyle = MAP_BACKGROUND;
-    ctx.fillRect(0, 0, MAP_LOGICAL_WIDTH, MAP_LOGICAL_HEIGHT);
+    ctx.fillRect(0, 0, rect.width, rect.height);
     const twinkleTime = mapAnimationTime || Date.now();
     starField.forEach(star => {
         const depth = Number.isInteger(star.depth) ? star.depth : 0;

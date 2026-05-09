@@ -273,6 +273,13 @@ select:focus-visible {
     min-width: 118px;
 }
 
+.topbar button {
+    padding: 4px 5px;
+    min-height: 26px;
+    font-size: 22px;
+    line-height: 1;
+}
+
 .active-tab {
     background: var(--bg-panel-hot) !important;
     color: var(--text-primary) !important;
