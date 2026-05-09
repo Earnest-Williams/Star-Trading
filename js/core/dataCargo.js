@@ -25,7 +25,7 @@ function copyScalars(source) {
     const copy = {};
     if (!isObject(source)) return copy;
     Object.entries(source).forEach(([key, value]) => {
-        if (["string", "number", "boolean"].includes(typeof value) || value === null) {
+        if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
             copy[key] = value;
         }
     });
