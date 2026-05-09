@@ -498,7 +498,7 @@ export function getFreshnessSummaryForSector(sectorId) {
             known: true
         };
     }
-    const snapshot = state.dataCargo?.sectorKnowledge?.[String(currentSectorId)]?.publicSnapshots?.[String(localSectorId)] || null;
+    const snapshot = state.dataCargo?.sectorKnowledge?.[String(currentSectorId)]?.publicSnapshots?.[String(localSectorId)];
     if (!snapshot) {
         return {
             sectorId: localSectorId,
