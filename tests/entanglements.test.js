@@ -69,14 +69,15 @@ function setup() {
 }
 
 
-function captureConsoleMessages(action) {
+async function captureConsoleMessages(action) {
     const originalLog = console.log;
     const messages = [];
     console.log = message => {
         messages.push(String(message));
     };
     try {
-        return { result: action(), messages };
+        const result = await action();
+        return { result, messages };
     } finally {
         console.log = originalLog;
     }
@@ -173,10 +174,10 @@ describe('entanglements', () => {
         assert.equal(result.data.stage, ENTANGLEMENTS.ROMANCE_STAGES.INTEREST);
     });
 
-    it('rejects romance when relationship thresholds are not met', () => {
+    it('rejects romance when relationship thresholds are not met', async () => {
         state.captains.mara.relationshipToPlayer.opinion = 10;
 
-        const { result, messages } = captureConsoleMessages(() => startRomanceWithCaptain('mara'));
+        const { result, messages } = await captureConsoleMessages(() => startRomanceWithCaptain('mara'));
 
         assert.equal(result, false);
         assert.ok(messages.includes('They do not know you well enough.'));
@@ -190,8 +191,8 @@ describe('entanglements', () => {
         assert.match(result.reason, /no personal bond exists yet/i);
     });
 
-    it('does not let deepenRomanceWithCaptain start a new romance', () => {
-        const { result, messages } = captureConsoleMessages(() => deepenRomanceWithCaptain('mara'));
+    it('does not let deepenRomanceWithCaptain start a new romance', async () => {
+        const { result, messages } = await captureConsoleMessages(() => deepenRomanceWithCaptain('mara'));
         assert.equal(result, false);
         assert.ok(messages.includes('no personal bond exists yet'));
         assert.equal(getCaptainEntanglements('mara', ENTANGLEMENTS.KINDS.ROMANCE).length, 0);
