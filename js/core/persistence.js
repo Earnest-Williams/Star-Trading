@@ -1,5 +1,5 @@
 import { createInitialState, state } from '../state.js';
-import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
@@ -415,6 +415,22 @@ function normaliseCurrentLoadedGame() {
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
     state.missions.forEach(m => {
         if (typeof m.rewardRep !== "number") m.rewardRep = 2;
+        if (m.type === "stale_signal") {
+            m.originSectorId = Number(m.originSectorId || m.originSector || state.player.currentSector);
+            m.originSector = Number(m.originSector || m.originSectorId);
+            m.targetSectorId = Number(m.targetSectorId || m.targetSector || m.originSectorId);
+            m.targetSector = Number(m.targetSector || m.targetSectorId);
+            m.returnSectorId = Number(m.returnSectorId || m.originSectorId);
+            if (typeof m.createdDay !== "number") m.createdDay = state.player.time.day;
+            if (typeof m.expiresDay !== "number") {
+                m.expiresDay = m.createdDay + BALANCE.DATA_CARGO.STALE_SIGNAL_EXPIRY_DAYS;
+            }
+            if (typeof m.requiredSnapshotObservedDay === "undefined") m.requiredSnapshotObservedDay = null;
+            if (!m.text) {
+                m.text = `Recover a fresh signal packet from Sector ${m.targetSectorId}.`;
+            }
+            if (!m.title) m.title = `Recover stale signal from sector ${m.targetSectorId}`;
+        }
         if (m.type === "contest" && typeof m.operationMinutes !== "number") m.operationMinutes = 90;
         if (m.status === "available") prepareMissionOpportunity(m);
     });

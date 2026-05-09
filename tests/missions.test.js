@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 
 import { state } from '../js/state.js';
 import { createPlayer, addJumpGateCorridor } from '../js/core/universe.js';
-import { expireMissions } from '../js/systems/missions.js';
-import { DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
+import { buildSectorPublicSnapshot, carryPublicSnapshotForPlayer } from '../js/core/dataCargo.js';
+import { acceptMission, completeMission, expireMissions, makeStaleSignalMission, maybeGenerateStaleSignalMission } from '../js/systems/missions.js';
+import { BALANCE, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
 // Minimal state for mission tests (no universe generation needed).
 function resetMissionState(dayOverride = 5) {
@@ -16,11 +17,11 @@ function resetMissionState(dayOverride = 5) {
     // Minimal universe + ports so expireMissions' pool-refill step can generate missions
     state.universe = {
         1: { id: 1, name: 'StarDock', region: 'Core', jumpGates: [], pirateThreat: 0, surveyed: true,
-             influence: { sda: 60, fu: 20, hc: 10, vc: 5 }, front: null },
+             influence: { sda: 60, fu: 20, hc: 10, vc: 5 }, front: null, charted: true, reachable: true },
         2: { id: 2, name: 'Core Sector 2', region: 'Core', jumpGates: [], pirateThreat: 0, surveyed: false,
-             influence: { sda: 50, fu: 25, hc: 15, vc: 5 }, front: null },
+             influence: { sda: 50, fu: 25, hc: 15, vc: 5 }, front: null, charted: true, reachable: true },
         3: { id: 3, name: 'Core Sector 3', region: 'Core', jumpGates: [], pirateThreat: 0, surveyed: false,
-             influence: { sda: 45, fu: 30, hc: 15, vc: 5 }, front: null },
+             influence: { sda: 45, fu: 30, hc: 15, vc: 5 }, front: null, charted: true, reachable: true },
     };
     addJumpGateCorridor(1, 2);
     addJumpGateCorridor(2, 3);
@@ -48,6 +49,22 @@ function resetMissionState(dayOverride = 5) {
     state.nextWorldEventId = 1;
     state.tradeRoutes = [];
     state.nextTradeRouteId = 1;
+    state.dataCargo = {
+        sectorKnowledge: {},
+        playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] },
+        secureContracts: [],
+        ambientTransfers: [],
+        nextPayloadId: 1,
+        license: { secureCourier: false, issuedByFactionId: null, issuedDay: null }
+    };
+}
+
+function seedStaleSignalKnowledge(age = BALANCE.DATA_CARGO.STALE_SIGNAL_MIN_AGE_DAYS) {
+    state.dataCargo.sectorKnowledge[1] = {
+        publicSnapshots: {
+            3: { ...buildSectorPublicSnapshot(3), observedDay: state.player.time.day - age, deliveredDay: state.player.time.day - age }
+        }
+    };
 }
 
 function makeMission(overrides = {}) {
@@ -126,5 +143,83 @@ describe('expireMissions', () => {
         state.missions.push(makeMission({ expiresDay: 1, status: 'captain_taken' }));
         expireMissions();
         assert.equal(state.missions[0].status, 'expired');
+    });
+});
+
+
+describe('stale signal recovery missions', () => {
+    beforeEach(() => resetMissionState(12));
+
+    it('generates for a stale reachable sector and avoids duplicate active targets', () => {
+        seedStaleSignalKnowledge();
+
+        const mission = makeStaleSignalMission();
+        assert.ok(mission);
+        assert.equal(mission.type, 'stale_signal');
+        assert.equal(mission.targetSectorId, 3);
+        assert.equal(mission.returnSectorId, 1);
+
+        state.missions.push(mission);
+        assert.equal(makeStaleSignalMission(), null);
+    });
+
+    it('scales stale signal rewards by age and route distance', () => {
+        seedStaleSignalKnowledge(BALANCE.DATA_CARGO.STALE_SIGNAL_MIN_AGE_DAYS);
+        const nearMission = makeStaleSignalMission();
+        state.missions = [];
+        state.dataCargo.sectorKnowledge[1].publicSnapshots[3].observedDay -= 4;
+
+        const olderMission = makeStaleSignalMission();
+
+        assert.ok(olderMission.rewardCredits > nearMission.rewardCredits);
+        assert.ok(nearMission.rewardCredits >= BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_BASE
+            + 2 * BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_PER_HOP);
+    });
+
+    it('does not complete without a fresh enough public snapshot', () => {
+        seedStaleSignalKnowledge();
+        const mission = makeStaleSignalMission();
+        state.missions.push(mission);
+        acceptMission(mission.id);
+
+        completeMission(mission.id);
+
+        assert.equal(mission.status, 'accepted');
+        assert.equal(state.player.credits, 15500);
+    });
+
+    it('completes with a carried fresh public snapshot and pays credits', () => {
+        seedStaleSignalKnowledge();
+        const mission = makeStaleSignalMission();
+        state.missions.push(mission);
+        acceptMission(mission.id);
+        state.player.currentSector = 3;
+        carryPublicSnapshotForPlayer(3);
+        state.player.currentSector = 1;
+
+        completeMission(mission.id);
+
+        assert.equal(mission.status, 'completed');
+        assert.ok(state.player.credits > 15500);
+    });
+
+    it('expires stale signal missions through existing mission expiry flow', () => {
+        seedStaleSignalKnowledge();
+        const mission = makeStaleSignalMission();
+        mission.expiresDay = 10;
+        state.missions.push(mission);
+
+        expireMissions();
+
+        assert.equal(mission.status, 'expired');
+    });
+
+    it('posts a low-frequency stale signal mission when one is available', () => {
+        seedStaleSignalKnowledge();
+
+        const mission = maybeGenerateStaleSignalMission();
+
+        assert.ok(mission);
+        assert.equal(state.missions.filter(item => item.type === 'stale_signal').length, 1);
     });
 });

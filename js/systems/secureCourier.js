@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS } from '../constants.js';
+import { BALANCE, FACTIONS } from '../constants.js';
 import { EventBus } from '../events.js';
 import { normaliseDataCargoState } from '../core/dataCargo.js';
 import { getDominantInfluence } from '../core/influence.js';
@@ -148,6 +148,7 @@ export function revokeSecureCourierLicense(reason = 'license revoked') {
 }
 
 export function canAcceptSecureContract(contract) {
+    if (getSecureHold().length >= BALANCE.DATA_CARGO.SECURE_MAX_ACTIVE_PAYLOADS) return false;
     return hasSecureCourierLicense() || hasReputationAccess(contract);
 }
 
@@ -173,7 +174,7 @@ export function generateSecureCourierContracts() {
         const factionId = getFactionForSector(originSectorId);
         const targetFactionId = getFactionForSector(destinationSectorId);
         const risk = Math.max(1, Math.min(5, 1 + Math.floor(random() * 3) + Math.floor((Number(state.universe?.[destinationSectorId]?.pirateThreat) || 0) / 3)));
-        const value = 80 + risk * 35 + Math.floor(random() * 55);
+        const value = BALANCE.DATA_CARGO.SECURE_BASE_VALUE + risk * 35 + Math.floor(random() * 55);
         const contract = {
             id: nextSecureId(),
             tier: 'secure',
@@ -183,7 +184,7 @@ export function generateSecureCourierContracts() {
             factionId,
             targetFactionId,
             createdDay: today,
-            expiresDay: today + 5 + Math.floor(random() * 4),
+            expiresDay: today + BALANCE.DATA_CARGO.SECURE_DEFAULT_EXPIRY_DAYS + Math.floor(random() * 2),
             value,
             risk,
             status: 'available'
@@ -307,7 +308,7 @@ export function maybeSecureDataInterception(randomUnit = random) {
     const totalRisk = payloads.reduce((sum, payload) => sum + (Number(payload.risk) || 1), 0);
     const dominant = getDominantInfluence(sectorId);
     const hostilePressure = dominant === 'vc' ? 0.04 : 0;
-    const chance = Math.min(0.02 + totalRisk * 0.025 + pirateThreat * 0.015 + hostilePressure, 0.28);
+    const chance = Math.min(BALANCE.DATA_CARGO.SECURE_INTERCEPTION_BASE_CHANCE + totalRisk * 0.025 + pirateThreat * 0.015 + hostilePressure, 0.28);
     if (randomUnit() >= chance) return { intercepted: false, outcome: 'none', chance };
 
     const outcomeRoll = randomUnit();

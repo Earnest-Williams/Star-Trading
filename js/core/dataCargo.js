@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { MARKET_COMMODITIES } from '../constants.js';
+import { BALANCE, MARKET_COMMODITIES } from '../constants.js';
 import { EventBus } from '../events.js';
 import { getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
@@ -155,8 +155,8 @@ function normaliseSecureContract(contract) {
         factionId: contract.factionId || state.ports?.[originSectorId]?.factionId || null,
         targetFactionId: contract.targetFactionId || state.ports?.[destinationSectorId]?.factionId || null,
         createdDay,
-        expiresDay: Number(contract.expiresDay || createdDay + 7),
-        value: Math.max(1, Math.round(Number(contract.value) || 100)),
+        expiresDay: Number(contract.expiresDay || createdDay + BALANCE.DATA_CARGO.SECURE_DEFAULT_EXPIRY_DAYS),
+        value: Math.max(1, Math.round(Number(contract.value) || BALANCE.DATA_CARGO.SECURE_BASE_VALUE)),
         risk: Math.max(1, Math.min(5, Math.round(Number(contract.risk) || 1))),
         status,
         text: String(contract.text || `Sealed courier packet bound for S${destinationSectorId}.`)
@@ -185,8 +185,8 @@ function normalisePrivatePayload(payload) {
         factionId: payload.factionId || state.ports?.[sourceSectorId]?.factionId || null,
         targetFactionId: payload.targetFactionId || state.ports?.[targetSectorId]?.factionId || null,
         acquiredDay,
-        expiresDay: Number(payload.expiresDay || acquiredDay + 7),
-        value: Math.max(1, Math.round(Number(payload.value) || 25)),
+        expiresDay: Number(payload.expiresDay || acquiredDay + BALANCE.DATA_CARGO.PRIVATE_DEFAULT_EXPIRY_DAYS),
+        value: Math.max(1, Math.round(Number(payload.value) || BALANCE.DATA_CARGO.PRIVATE_BASE_VALUE)),
         text: String(payload.text || `Private intel from S${sourceSectorId} bound for S${targetSectorId}.`)
     };
 }
@@ -316,6 +316,7 @@ export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
     normaliseDataCargoState();
     const currentSectorId = Number(sectorId);
     if (!state.ports?.[currentSectorId]) return null;
+    if (state.dataCargo.playerHold.privatePayloads.length >= BALANCE.DATA_CARGO.PRIVATE_MAX_PLAYER_PAYLOADS) return null;
     if (random() > 0.12) return null;
     const neighbors = Object.values(state.universe || {})
         .map(sector => Number(sector.id))
@@ -327,7 +328,9 @@ export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
     const type = types[Math.floor(random() * types.length)];
     const sourcePort = state.ports[currentSectorId];
     const targetPort = state.ports[targetSectorId] || {};
-    const value = 20 + Math.floor(random() * 26) + Math.max(0, Number(state.universe?.[targetSectorId]?.pirateThreat) || 0);
+    const value = BALANCE.DATA_CARGO.PRIVATE_BASE_VALUE
+        + Math.floor(random() * 26)
+        + Math.max(0, Number(state.universe?.[targetSectorId]?.pirateThreat) || 0);
     const payload = addPrivatePayloadToPlayerHold({
         type,
         sourceSectorId: currentSectorId,
@@ -335,7 +338,7 @@ export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
         factionId: sourcePort.factionId || sourcePort.publicFactionId || null,
         targetFactionId: targetPort.factionId || targetPort.publicFactionId || null,
         acquiredDay: currentDay(),
-        expiresDay: currentDay() + 6 + Math.floor(random() * 4),
+        expiresDay: currentDay() + BALANCE.DATA_CARGO.PRIVATE_DEFAULT_EXPIRY_DAYS + Math.floor(random() * 2),
         value,
         text: `${getPayloadTypeText(type)} from S${currentSectorId} suggests exploitable conditions in S${targetSectorId}.`
     });
@@ -399,10 +402,11 @@ export function mergePublicSnapshotsOnArrival(destinationSectorId) {
     if (rememberSnapshot(destination, buildSectorPublicSnapshot(destinationSectorId), currentDay())) {
         mergedCount += 1;
     }
-    if (mergedCount > 0) {
-        EventBus.emit("data_cargo_changed", { reason: "public_snapshot_merge", sectorId: Number(destinationSectorId), mergedCount });
+    const culledCount = cullOldPublicSnapshots();
+    if (mergedCount > 0 || culledCount > 0) {
+        EventBus.emit("data_cargo_changed", { reason: "public_snapshot_merge", sectorId: Number(destinationSectorId), mergedCount, culledCount });
     }
-    return { mergedCount };
+    return { mergedCount, culledCount };
 }
 
 function propagateRouteSnapshots(originSectorId, destinationSectorId, transfers) {
@@ -430,13 +434,41 @@ export function runAmbientDataPropagationDaily() {
         if (route.status !== "active") return;
         mergedCount += propagateRouteSnapshots(route.originSector, route.destinationSector, transfers);
     });
+    const culledCount = cullOldPublicSnapshots();
     if (transfers.length > 0) {
         state.dataCargo.ambientTransfers = state.dataCargo.ambientTransfers.concat(transfers).slice(-50);
-        EventBus.emit("data_cargo_changed", { mergedCount, ambientTransfers: transfers.length });
+        EventBus.emit("data_cargo_changed", { mergedCount, ambientTransfers: transfers.length, culledCount });
     }
-    return { mergedCount, transferCount: transfers.length };
+    return { mergedCount, transferCount: transfers.length, culledCount };
 }
 
+
+export function cullOldPublicSnapshots() {
+    normaliseDataCargoState();
+    const maxSnapshots = BALANCE.DATA_CARGO.PUBLIC_MAX_SNAPSHOTS_PER_SECTOR;
+    let culledCount = 0;
+    Object.entries(state.dataCargo.sectorKnowledge).forEach(([sectorId, knowledge]) => {
+        const snapshots = knowledge.publicSnapshots || {};
+        const entries = Object.entries(snapshots);
+        if (entries.length <= maxSnapshots) return;
+        const localKey = String(Number(sectorId));
+        const keep = new Set();
+        if (snapshots[localKey]) keep.add(localKey);
+        entries
+            .filter(([key]) => key !== localKey)
+            .sort(([, a], [, b]) => (Number(b.deliveredDay) || 0) - (Number(a.deliveredDay) || 0)
+                || (Number(b.observedDay) || 0) - (Number(a.observedDay) || 0)
+                || Number(b.sourceSectorId) - Number(a.sourceSectorId))
+            .slice(0, Math.max(0, maxSnapshots - keep.size))
+            .forEach(([key]) => keep.add(key));
+        entries.forEach(([key]) => {
+            if (keep.has(key)) return;
+            delete snapshots[key];
+            culledCount += 1;
+        });
+    });
+    return culledCount;
+}
 
 export function getCurrentSectorKnowledge() {
     const sectorId = Number(state.player?.currentSector || 0);
@@ -475,9 +507,9 @@ export function getPublicSnapshotAge(snapshot, nowDay = state.player?.time?.day 
 export function getFreshnessLabel(age) {
     if (age === null || age === undefined || !Number.isFinite(Number(age))) return "unknown";
     const days = Math.max(0, Number(age));
-    if (days <= 1) return "fresh";
-    if (days <= 4) return "aging";
-    if (days <= 8) return "stale";
+    if (days < BALANCE.DATA_CARGO.PUBLIC_AGING_AFTER_DAYS) return "fresh";
+    if (days < BALANCE.DATA_CARGO.PUBLIC_STALE_AFTER_DAYS) return "aging";
+    if (days < BALANCE.DATA_CARGO.PUBLIC_COLD_AFTER_DAYS) return "stale";
     return "cold";
 }
 
@@ -539,5 +571,26 @@ export function getSectorDataFreshness(sectorId, nowDay = state.player.time.day)
         knownExternalSnapshots: externalSnapshots.length,
         oldestAgeDays: ages.length > 0 ? Math.max(...ages) : null,
         newestAgeDays: ages.length > 0 ? Math.min(...ages) : null
+    };
+}
+
+export function buildDataCargoDebugSummary() {
+    normaliseDataCargoState();
+    const currentSectorId = Number(state.player?.currentSector || 0);
+    const chartedSectorIds = Object.values(state.universe || {})
+        .filter(sector => sector?.charted || sector?.reachable || Number(sector?.id) === currentSectorId)
+        .map(sector => Number(sector.id))
+        .filter(Number.isFinite);
+    const labels = chartedSectorIds.map(sectorId => getFreshnessSummaryForSector(sectorId).label);
+    return {
+        knownSectors: Object.keys(state.dataCargo.sectorKnowledge).length,
+        totalPublicSnapshots: Object.values(state.dataCargo.sectorKnowledge)
+            .reduce((total, knowledge) => total + Object.keys(knowledge.publicSnapshots || {}).length, 0),
+        carriedPublicSnapshots: Object.keys(state.dataCargo.playerHold.publicSnapshots || {}).length,
+        privatePayloads: state.dataCargo.playerHold.privatePayloads.length,
+        securePayloads: state.dataCargo.playerHold.securePayloads.length,
+        secureContracts: state.dataCargo.secureContracts.length,
+        coldSectors: labels.filter(label => label === "cold").length,
+        staleSectors: labels.filter(label => label === "stale").length
     };
 }

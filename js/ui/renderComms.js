@@ -1,12 +1,14 @@
 import { state } from "../state.js";
 import { FACTIONS, MARKET_COMMODITIES } from "../constants.js";
 import {
+    buildDataCargoDebugSummary,
     getCurrentSectorKnowledge,
     getFreshnessLabel,
     getFreshnessSummaryForSector,
     getPlayerDataHoldSummary,
     getPublicSnapshotAge
 } from "../core/dataCargo.js";
+import { getSectorPathDistance } from "../core/navigation.js";
 import { escapeHtml, formatCommodity, formatCredits } from "../utils.js";
 
 function freshnessClass(label) {
@@ -93,6 +95,46 @@ export function renderPublicSnapshotTable() {
         + `<tbody>${rows}</tbody></table></div></div>`;
 }
 
+export function renderStaleSectorsPanel() {
+    const currentSectorId = Number(state.player?.currentSector || 0);
+    const staleSectors = Object.values(state.universe || {})
+        .map(sector => Number(sector?.id))
+        .filter(sectorId => Number.isFinite(sectorId) && sectorId !== currentSectorId)
+        .filter(sectorId => state.universe[sectorId]?.charted || state.universe[sectorId]?.reachable)
+        .map(sectorId => {
+            const freshness = getFreshnessSummaryForSector(sectorId);
+            return { sectorId, freshness, distance: getSectorPathDistance(currentSectorId, sectorId) };
+        })
+        .filter(item => item.freshness.label === "stale" || item.freshness.label === "cold")
+        .sort((a, b) => Number(b.freshness.age) - Number(a.freshness.age) || a.sectorId - b.sectorId)
+        .slice(0, 8);
+    const opportunity = staleSectors.some(item => item.distance !== null)
+        ? `<div class="small amber">Mission opportunity: stale signal recovery likely.</div>`
+        : "";
+    if (staleSectors.length === 0) {
+        return `<div class="comms-panel"><h4>Stale Sectors</h4><div class="muted">No stale or cold reachable sector data from this console.</div></div>`;
+    }
+    const rows = staleSectors.map(item => `<tr>`
+        + `<td>${formatSector(item.sectorId)}</td>`
+        + `<td>${item.freshness.age ?? "—"}</td>`
+        + `<td><span class="${freshnessClass(item.freshness.label)}">${escapeHtml(item.freshness.label)}</span></td>`
+        + `<td>${item.distance === null ? "—" : item.distance}</td>`
+        + `</tr>`).join("");
+    return `<div class="comms-panel"><h4>Stale Sectors</h4>${opportunity}`
+        + `<div class="table-scroll"><table class="comms-table">`
+        + `<thead><tr><th>Sector</th><th>Age</th><th>Freshness</th><th>Route hops</th></tr></thead>`
+        + `<tbody>${rows}</tbody></table></div></div>`;
+}
+
+function renderDataCargoDiagnostics() {
+    const summary = buildDataCargoDebugSummary();
+    return `<div class="small muted">Data cargo diagnostic: `
+        + `${summary.knownSectors} known sectors / ${summary.totalPublicSnapshots} public snapshots / `
+        + `${summary.carriedPublicSnapshots} carried / ${summary.privatePayloads} private / `
+        + `${summary.securePayloads} secure / ${summary.secureContracts} contracts / `
+        + `${summary.staleSectors} stale / ${summary.coldSectors} cold</div>`;
+}
+
 export function renderPrivatePayloadPanel() {
     const payloads = getPlayerDataHoldSummary().privatePayloads;
     if (payloads.length === 0) {
@@ -142,9 +184,11 @@ export function renderCommunicationsScreen() {
     return `<div class="comms-grid">`
         + `<div class="comms-panel"><h4>Communications Console</h4>`
         + `<div class="small muted">Current-sector data freshness: ${currentSummary.liveLocal ? "live local observation" : escapeHtml(currentSummary.label)}</div>`
+        + renderDataCargoDiagnostics()
         + `</div>`
         + renderDataFreshnessSummary()
         + renderPublicSnapshotTable()
+        + renderStaleSectorsPanel()
         + renderPrivatePayloadPanel()
         + renderSecurePayloadPanel()
         + `</div>`;

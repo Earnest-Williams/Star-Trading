@@ -9,7 +9,7 @@ import { expireMissions, prepareMissionOpportunity } from '../systems/missions.j
 import { updateCaptainsDaily, updateCaptainsHourly } from '../systems/captains.js';
 import { updateEntanglementsDaily } from '../systems/entanglements.js';
 import { expireIntel } from './intel.js';
-import { expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
+import { cullOldPublicSnapshots, expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
 import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../systems/secureCourier.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
@@ -17,6 +17,7 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'explicit_trade_route_runs', run: () => runTradeRoutesDaily() },
     { id: 'ambient_trade_response', run: () => runAmbientTradeDaily() },
     { id: 'ambient_data_propagation', run: () => runAmbientDataPropagationDaily() },
+    { id: 'data_cargo_culling', run: () => cullOldPublicSnapshots() },
     { id: 'colony_needs', run: () => updateColonyNeedsDaily() },
     { id: 'port_markets', run: () => updatePortsDaily() },
     { id: 'sector_threats', run: () => updateThreatsDaily() },

@@ -15,7 +15,10 @@ function renderDataFreshnessLine(sectorId) {
     if (!freshness.known) {
         return `<div class="small muted"><strong>Data freshness:</strong> unknown</div>`;
     }
-    return `<div class="small muted"><strong>Data freshness:</strong> ${escapeHtml(freshness.label)} | Last observed: Day ${freshness.lastObservedDay} | Delivered here: Day ${freshness.deliveredDay} | Known from: Sector ${freshness.knownFromSectorId}</div>`;
+    const coldTitle = freshness.label === "stale" || freshness.label === "cold"
+        ? ` title="Public data ${escapeHtml(freshness.label)}: last observed Day ${freshness.lastObservedDay}"`
+        : "";
+    return `<div class="small muted"${coldTitle}><strong>Data freshness:</strong> ${escapeHtml(freshness.label)} | Last observed: Day ${freshness.lastObservedDay} | Delivered here: Day ${freshness.deliveredDay} | Known from: Sector ${freshness.knownFromSectorId}</div>`;
 }
 
 export function renderSectorContents() {
