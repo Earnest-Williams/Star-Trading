@@ -128,7 +128,7 @@ export function makeStaleSignalMission(originSectorId = state.player.currentSect
     const distance = Number(chosen.distance) || 0;
     const rewardCredits = BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_BASE
         + distance * BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_PER_HOP
-        + Math.max(0, age - BALANCE.DATA_CARGO.STALE_SIGNAL_MIN_AGE_DAYS) * 15;
+        + Math.max(0, age - BALANCE.DATA_CARGO.STALE_SIGNAL_MIN_AGE_DAYS) * BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_AGE_BONUS;
     return {
         id: state.nextMissionId++,
         title: `Recover stale signal from sector ${chosen.sectorId}`,
