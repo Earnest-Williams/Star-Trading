@@ -226,6 +226,38 @@ describe('data cargo communications helpers', () => {
         assert.match(html, /Sealed SDA packet/);
         assert.match(html, /completeSecurePayload/);
     });
+
+    it('escapes dynamic faction and status text in communications output', () => {
+        state.dataCargo.sectorKnowledge[1] = {
+            publicSnapshots: {
+                2: {
+                    ...buildSectorPublicSnapshot(2),
+                    observedDay: 3,
+                    deliveredDay: 5,
+                    factionStatus: { dominantFactionId: 'sda', status: '<b>Escalating</b>' }
+                }
+            }
+        };
+        state.dataCargo.playerHold.securePayloads.push({
+            id: 'secure-escape',
+            tier: 'secure',
+            originSectorId: 1,
+            destinationSectorId: 2,
+            factionId: '<img src=x onerror=1>',
+            acquiredDay: 5,
+            expiresDay: 9,
+            value: 100,
+            risk: 1,
+            status: 'accepted',
+            text: 'Escaping test packet.'
+        });
+
+        const html = renderCommunicationsScreen();
+        assert.doesNotMatch(html, /<b>Escalating<\/b>/);
+        assert.match(html, /&lt;b&gt;Escalating&lt;\/b&gt;/);
+        assert.doesNotMatch(html, /<img src=x onerror=1>/);
+        assert.match(html, /&lt;img src=x onerror=1&gt;/);
+    });
 });
 
 describe('data cargo persistence and normalisation', () => {

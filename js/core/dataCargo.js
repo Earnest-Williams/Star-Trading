@@ -439,30 +439,29 @@ export function runAmbientDataPropagationDaily() {
 
 
 export function getCurrentSectorKnowledge() {
-    normaliseDataCargoState();
     const sectorId = Number(state.player?.currentSector || 0);
     return getKnownPublicSnapshotsForSector(sectorId);
 }
 
 export function getKnownPublicSnapshotsForSector(sectorId) {
-    normaliseDataCargoState();
     const key = String(Number(sectorId));
-    const snapshots = state.dataCargo.sectorKnowledge[key]?.publicSnapshots || {};
+    const snapshots = state.dataCargo?.sectorKnowledge?.[key]?.publicSnapshots || {};
     return Object.values(snapshots)
         .map(snapshot => cloneSnapshot(snapshot))
         .sort((a, b) => a.sourceSectorId - b.sourceSectorId);
 }
 
 export function getPlayerDataHoldSummary() {
-    normaliseDataCargoState();
-    const hold = state.dataCargo.playerHold;
+    const hold = state.dataCargo?.playerHold || {};
+    const privatePayloads = Array.isArray(hold.privatePayloads) ? hold.privatePayloads : [];
+    const securePayloads = Array.isArray(hold.securePayloads) ? hold.securePayloads : [];
     return {
         publicSnapshotCount: Object.keys(hold.publicSnapshots || {}).length,
-        privatePayloadCount: hold.privatePayloads.length,
-        securePayloadCount: hold.securePayloads.length,
+        privatePayloadCount: privatePayloads.length,
+        securePayloadCount: securePayloads.length,
         publicSnapshots: Object.values(hold.publicSnapshots || {}).map(snapshot => cloneSnapshot(snapshot)),
-        privatePayloads: hold.privatePayloads.slice(),
-        securePayloads: hold.securePayloads.slice()
+        privatePayloads: privatePayloads.slice(),
+        securePayloads: securePayloads.slice()
     };
 }
 
@@ -483,24 +482,23 @@ export function getFreshnessLabel(age) {
 }
 
 export function getFreshnessSummaryForSector(sectorId) {
-    normaliseDataCargoState();
     const localSectorId = Number(sectorId);
-    if (localSectorId === Number(state.player?.currentSector)) {
+    const currentSectorId = Number(state.player?.currentSector || 0);
+    const nowDay = Number(state.player?.time?.day || 0);
+    if (localSectorId === currentSectorId) {
         return {
             sectorId: localSectorId,
             label: "current",
             age: 0,
-            lastObservedDay: state.player?.time?.day || 0,
-            deliveredDay: state.player?.time?.day || 0,
+            lastObservedDay: nowDay,
+            deliveredDay: nowDay,
             knownFromSectorId: localSectorId,
             snapshot: null,
             liveLocal: true,
             known: true
         };
     }
-    const currentSectorId = Number(state.player?.currentSector || 0);
-    const snapshots = getKnownPublicSnapshotsForSector(currentSectorId);
-    const snapshot = snapshots.find(item => Number(item.sourceSectorId) === localSectorId) || null;
+    const snapshot = state.dataCargo?.sectorKnowledge?.[String(currentSectorId)]?.publicSnapshots?.[String(localSectorId)] || null;
     if (!snapshot) {
         return {
             sectorId: localSectorId,
@@ -514,7 +512,7 @@ export function getFreshnessSummaryForSector(sectorId) {
             known: false
         };
     }
-    const age = getPublicSnapshotAge(snapshot);
+    const age = getPublicSnapshotAge(snapshot, nowDay);
     return {
         sectorId: localSectorId,
         label: getFreshnessLabel(age),
