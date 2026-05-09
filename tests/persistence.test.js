@@ -45,7 +45,8 @@ function minimalSave(version) {
         tradeRoutes: [],
         nextTradeRouteId: 1,
         nextMissionId: 1,
-        ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 }
+        ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
+        dataCargo: { sectorKnowledge: {}, playerHold: { publicSnapshots: {} }, ambientTransfers: [] }
     };
 }
 

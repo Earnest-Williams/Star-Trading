@@ -13,6 +13,7 @@ import { createContactState } from './factions.js';
 import { makeStock, restoreSessionRng } from '../utils.js';
 import { log } from '../utils.js';
 import { createCharacter, normaliseCharacter } from './characters.js';
+import { normaliseDataCargoState } from './dataCargo.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -129,6 +130,7 @@ function buildLoadedState(data) {
     loadedState.nextTradeRouteId = data.nextTradeRouteId || (loadedState.tradeRoutes.length + 1);
     loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
     loadedState.ambientTrade = data.ambientTrade || loadedState.ambientTrade;
+    loadedState.dataCargo = data.dataCargo || loadedState.dataCargo;
     loadedState.rng = data.rng || null;
     normaliseLoadedGame(loadedState);
     loadedState.selectedSectorId = loadedState.player.currentSector;
@@ -197,6 +199,9 @@ export function migrateSave(data) {
     normaliseRouteOwnership(data);
     migrateShipTransitFields(data.player);
     if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
+    if (!data.dataCargo) {
+        data.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {} }, ambientTransfers: [] };
+    }
     // v14: character block added to player and captains
     if (v < 14) {
         if (data.player) {
@@ -247,6 +252,7 @@ export const SAVE_STATE_FIELDS = [
     "nextTradeRouteId",
     "nextMissionId",
     "ambientTrade",
+    "dataCargo",
     "rng"
 ];
 
@@ -404,6 +410,7 @@ function normaliseCurrentLoadedGame() {
     normaliseEntanglements();
     normaliseTradeRoutes();
     if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(0, 0, 0), flows: 0 };
+    normaliseDataCargoState();
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
     state.missions.forEach(m => {
