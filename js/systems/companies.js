@@ -3,14 +3,10 @@ import { COMPANY_ARCHETYPES, COMPANY_NAME_PARTS } from '../config/companies.js';
 import { PORT_TYPES } from '../constants.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { createGeneratedPerson, resetPeopleState } from './people.js';
+import { hasEconomicActivity } from '../utils.js';
 
 function pick(list, rng) {
     return list[Math.floor(rng() * list.length)];
-}
-
-function hasEconomicActivity(sectorId) {
-    const sector = state.universe[sectorId];
-    return Boolean(state.ports[sectorId] || state.planets[sectorId] || sector?.asteroids || sector?.station);
 }
 
 function chooseCompanyType(sectorId) {

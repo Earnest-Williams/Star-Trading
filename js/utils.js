@@ -105,6 +105,11 @@ export function describeCost(cost) {
     return CARGO_COMMODITIES.filter(c => (cost[c] || 0) > 0).map(c => `${cost[c]} ${formatCommodity(c)}`).join(", ") || "none";
 }
 
+export function hasEconomicActivity(sectorId) {
+    const sector = state.universe[sectorId];
+    return Boolean(state.ports[sectorId] || state.planets[sectorId] || sector?.asteroids || sector?.station);
+}
+
 export function log(msg) {
     const doc = globalThis.document;
     if (!doc || typeof doc.getElementById !== "function" || typeof doc.createElement !== "function") {

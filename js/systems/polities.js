@@ -3,11 +3,7 @@ import { FACTIONS } from '../constants.js';
 import { POLITY_DEFS, LOCAL_AUTHORITY_TYPES, POLITY_SETTINGS } from '../config/polities.js';
 import { getSectorNeighbors } from '../core/navigation.js';
 import { getDominantInfluence } from '../core/influence.js';
-
-function hasEconomicActivity(sectorId) {
-    const sector = state.universe[sectorId];
-    return Boolean(state.ports[sectorId] || state.planets[sectorId] || sector?.asteroids || sector?.station);
-}
+import { hasEconomicActivity } from '../utils.js';
 
 function sectorValue(sectorId) {
     const sector = state.universe[sectorId];
@@ -176,8 +172,9 @@ export function assignSectorPolities() {
     Object.values(state.polities).forEach(keepCapitalComponent);
     Object.values(state.polities).forEach(polity => polity.sectorIds.sort((a, b) => a - b));
     activeIds.forEach(assignLocalAuthority);
+    const majorFactionIds = Object.keys(FACTIONS).filter(id => FACTIONS[id].type === 'major');
     Object.values(state.polities).forEach(polity => {
         if (polity.type === 'independent') return;
-        polity.relations = Object.fromEntries(Object.keys(FACTIONS).filter(id => FACTIONS[id].type === 'major').map(id => [id, id === polity.dominantFactionId ? 25 : 0]));
+        polity.relations = Object.fromEntries(majorFactionIds.map(id => [id, id === polity.dominantFactionId ? 25 : 0]));
     });
 }

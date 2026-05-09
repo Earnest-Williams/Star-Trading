@@ -29,13 +29,13 @@ export function makeBaseMission(title, originSector, rewardCredits, expiresInDay
     let factionId = company?.factionId || (port && port.factionId ? port.factionId : dominant);
     if (!company && random() < MISSION_TUNING.BASE.DOMINANT_FACTION_CHANCE) factionId = dominant;
     if (!company && port && port.hiddenFactionId && random() < MISSION_TUNING.BASE.HIDDEN_FACTION_CHANCE) factionId = port.hiddenFactionId;
-    const relationshipDiscount = contact ? Math.max(0, contact.relationship + contact.trust * 2) : 0;
+    const relationshipBonus = contact ? Math.max(0, contact.relationship + contact.trust * 2) : 0;
     return {
         id: state.nextMissionId++,
         title, originSector: company?.sectorId || originSector, factionId,
         issuerCompanyId: company?.id || null,
         issuerPersonId: contact?.id || null,
-        rewardCredits: Math.max(1, Math.round(rewardCredits * (1 - Math.min(0.12, relationshipDiscount / 1000)))),
+        rewardCredits: Math.max(1, Math.round(rewardCredits * (1 + Math.min(0.12, relationshipBonus / 1000)))),
         rewardRep: MISSION_TUNING.BASE.REWARD_REP,
         expiresDay: state.player.time.day + expiresInDays,
         status: "available",

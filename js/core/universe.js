@@ -3,7 +3,7 @@ import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '..
 import { GATE_DEFAULTS, PLANET_DEFAULTS, PORT_DEFAULTS, STARFIELD, WORLDGEN_ANCHORS, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../config/worldgen.js';
 import { STARTER_PLAYER } from '../config/player.js';
 import { DEFAULT_BUILD_SPEC, DEFAULT_EMPLOYER_LANE_ID, EMPLOYER_LANES, PLATFORM_PACKAGES, START_PACKAGES, createStarterShipFromPlatform, getStarterCredits } from '../config/chargen.js';
-import { makeStock, seededRng } from '../utils.js';
+import { makeStock, seededRng, hasEconomicActivity } from '../utils.js';
 import { createBaseInfluence, addSectorInfluence } from './influence.js';
 import { createFactionState } from './factions.js';
 import { createCharacter } from './characters.js';
@@ -394,11 +394,6 @@ function buildCorridors(config) {
             });
         }
     });
-}
-
-export function hasEconomicActivity(sectorId) {
-    const sector = state.universe[sectorId];
-    return Boolean(state.ports[sectorId] || state.planets[sectorId] || sector?.asteroids || sector?.station);
 }
 
 function getActiveEconomicComponents(activeIds) {
