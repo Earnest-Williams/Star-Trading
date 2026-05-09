@@ -72,8 +72,8 @@ function setup() {
 async function captureConsoleMessages(action) {
     const originalLog = console.log;
     const messages = [];
-    console.log = message => {
-        messages.push(String(message));
+    console.log = (...args) => {
+        messages.push(args.map(String).join(' '));
     };
     try {
         const result = await action();
