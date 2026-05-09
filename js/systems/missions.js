@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS, PORT_TYPES } from '../constants.js';
+import { BALANCE, FACTIONS, PORT_TYPES } from '../constants.js';
 import { MISSION_TUNING } from '../config/missions.js';
 import { formatCommodity, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
@@ -11,6 +11,9 @@ import { Notifications } from '../ui/notifications.js';
 import { nudgeCaptainRelation, prepareMissionOpportunity, normaliseCaptains, applyContestMissionOutcome } from '../systems/captains.js';
 import { getMissionOutcomeBand } from '../core/characterChecks.js';
 import { ENTANGLEMENTS } from '../config/entanglements.js';
+import { EventBus } from '../events.js';
+import { getFreshnessSummaryForSector, normaliseDataCargoState } from '../core/dataCargo.js';
+import { areSectorsConnected, getSectorPathDistance } from '../core/navigation.js';
 
 export { prepareMissionOpportunity };
 
@@ -89,6 +92,87 @@ export function makeColonyMission() {
     return m;
 }
 
+function getFactionForMissionSector(sectorId) {
+    const port = state.ports?.[sectorId];
+    return port?.factionId || port?.publicFactionId || getDominantInfluence(sectorId) || "fu";
+}
+
+function hasActiveStaleSignalMission(targetSectorId) {
+    return (state.missions || []).some(mission => mission.type === "stale_signal"
+        && Number(mission.targetSectorId || mission.targetSector) === Number(targetSectorId)
+        && ["available", "accepted", "captain_taken"].includes(mission.status));
+}
+
+export function makeStaleSignalMission(originSectorId = state.player.currentSector) {
+    normaliseDataCargoState();
+    const origin = Number(originSectorId);
+    const candidates = Object.values(state.universe || {})
+        .map(sector => Number(sector?.id))
+        .filter(sectorId => Number.isFinite(sectorId) && sectorId !== origin)
+        .filter(sectorId => state.universe[sectorId]?.charted || state.universe[sectorId]?.reachable)
+        .filter(sectorId => areSectorsConnected(origin, sectorId))
+        .map(sectorId => {
+            const freshness = getFreshnessSummaryForSector(sectorId);
+            const distance = getSectorPathDistance(origin, sectorId);
+            return { sectorId, freshness, distance };
+        })
+        .filter(item => item.distance !== null
+            && Number(item.freshness.age) >= BALANCE.DATA_CARGO.STALE_SIGNAL_MIN_AGE_DAYS)
+        .filter(item => !hasActiveStaleSignalMission(item.sectorId))
+        .sort((a, b) => Number(b.freshness.age) - Number(a.freshness.age)
+            || Number(b.distance) - Number(a.distance)
+            || a.sectorId - b.sectorId);
+    const chosen = candidates[0];
+    if (!chosen) return null;
+    const age = Number(chosen.freshness.age) || 0;
+    const distance = Number(chosen.distance) || 0;
+    const rewardCredits = BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_BASE
+        + distance * BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_PER_HOP
+        + Math.max(0, age - BALANCE.DATA_CARGO.STALE_SIGNAL_MIN_AGE_DAYS) * BALANCE.DATA_CARGO.STALE_SIGNAL_REWARD_AGE_BONUS;
+    return {
+        id: state.nextMissionId++,
+        title: `Recover stale signal from sector ${chosen.sectorId}`,
+        type: "stale_signal",
+        status: "available",
+        originSector: origin,
+        originSectorId: origin,
+        targetSector: chosen.sectorId,
+        targetSectorId: chosen.sectorId,
+        returnSectorId: origin,
+        factionId: getFactionForMissionSector(origin),
+        createdDay: state.player.time.day,
+        expiresDay: state.player.time.day + BALANCE.DATA_CARGO.STALE_SIGNAL_EXPIRY_DAYS,
+        rewardCredits: Math.round(rewardCredits),
+        rewardRep: MISSION_TUNING.BASE.REWARD_REP,
+        operationMinutes: MISSION_TUNING.BASE.OPERATION_MINUTES,
+        text: `Recover a fresh signal packet from Sector ${chosen.sectorId}. Local network data is ${age} days old.`,
+        requiredSnapshotObservedDay: null
+    };
+}
+
+export function maybeGenerateStaleSignalMission() {
+    const activeCount = (state.missions || []).filter(mission => mission.type === "stale_signal"
+        && ["available", "accepted", "captain_taken"].includes(mission.status)).length;
+    if (activeCount >= 2) return null;
+    if (activeCount > 0 && random() > 0.25) return null;
+    const mission = makeStaleSignalMission(state.player.currentSector);
+    if (!mission) return null;
+    state.missions.push(prepareMissionOpportunity(mission));
+    return mission;
+}
+
+function hasFreshEnoughStaleSignalSnapshot(mission) {
+    normaliseDataCargoState();
+    const targetSectorId = Number(mission.targetSectorId || mission.targetSector);
+    const requiredObservedDay = Number(mission.requiredSnapshotObservedDay ?? mission.createdDay);
+    const holdSnapshot = state.dataCargo.playerHold.publicSnapshots?.[String(targetSectorId)];
+    if (holdSnapshot && Number(holdSnapshot.observedDay) >= requiredObservedDay) return true;
+    const currentSectorId = Number(state.player.currentSector);
+    const localSnapshot = state.dataCargo.sectorKnowledge?.[String(currentSectorId)]?.publicSnapshots?.[String(targetSectorId)];
+    if (localSnapshot && Number(localSnapshot.observedDay) >= requiredObservedDay) return true;
+    return targetSectorId === currentSectorId && state.player.time.day >= requiredObservedDay;
+}
+
 export function generateMissionPool(count) {
     const requested = count || MISSION_TUNING.POOL.DEFAULT_COUNT;
     for (let i = 0; i < requested; i++) {
@@ -104,6 +188,7 @@ export function generateMissionPool(count) {
 
 export function missionDescription(m) {
     if (m.type === "delivery") return `Pickup/source: sector ${m.originSector}. Deliver ${m.amount} ${formatCommodity(m.commodity)} to sector ${m.destinationSector}.`;
+    if (m.type === "stale_signal") return m.text || `Recover fresh public signal data from sector ${m.targetSectorId}, then report back to sector ${m.returnSectorId}.`;
     if (m.type === "mining") return `Mine ${m.amount} Ore, then report back to sector ${m.originSector}.`;
     if (m.type === "survey") return `Survey sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
     if (m.type === "colony") return `Found a colony in sector ${m.targetSector}, then report back to sector ${m.originSector}.`;
@@ -142,6 +227,7 @@ export function expireMissions() {
     if (openCount < MISSION_TUNING.POOL.REFILL_TARGET) {
         generateMissionPool(MISSION_TUNING.POOL.REFILL_TARGET - openCount);
     }
+    maybeGenerateStaleSignalMission();
 }
 
 export function notifyCaptainsPlayerCompletedMission(mission) {
@@ -213,6 +299,18 @@ export function completeMission(id) {
         }
         if (!spendTime(m.operationMinutes || ENTANGLEMENTS.MISSION.SOCIAL_OPERATION_MINUTES)) return;
         m.socialResolved = true;
+    } else if (m.type === "stale_signal") {
+        const returnSectorId = Number(m.returnSectorId || m.originSectorId || m.originSector);
+        if (state.player.currentSector !== returnSectorId) {
+            log(`Return the refreshed signal packet to sector ${returnSectorId}.`);
+            return;
+        }
+        if (!hasFreshEnoughStaleSignalSnapshot(m)) {
+            log(`Recover a fresh public snapshot from sector ${m.targetSectorId || m.targetSector} before reporting back.`);
+            return;
+        }
+        if (!spendTime(m.operationMinutes || MISSION_TUNING.BASE.OPERATION_MINUTES)) return;
+        EventBus.emit("data_cargo_changed", { reason: "stale_signal_completed", targetSectorId: Number(m.targetSectorId || m.targetSector) });
     }
     const outcome = getMissionOutcomeBand(state.player.character, m);
     m.outcomeBand = outcome.band;
@@ -222,12 +320,12 @@ export function completeMission(id) {
     addWorldEvent({
         type: "player_mission",
         factionId: m.factionId || "fu",
-        sectorId: m.destinationSector || m.targetSector || m.originSector,
+        sectorId: m.destinationSector || m.targetSector || m.targetSectorId || m.originSector,
         text: `You completed ${m.title}; faction influence and relationships adjusted.`,
         importance: 3, alert: false
     });
     const factionId = m.factionId || "fu";
-    applyPoliticalEffect({ factionId, publicRep: m.rewardRep, trust: 1 + outcome.trustBonus, favors: m.rewardRep >= 3 ? 1 : 0, sectorId: m.destinationSector || m.targetSector || m.originSector, influence: 2 + outcome.influenceBonus, reason: `mission completed (${outcome.band})`, memoryKey: "reliableJobs" });
+    applyPoliticalEffect({ factionId, publicRep: m.rewardRep, trust: 1 + outcome.trustBonus, favors: m.rewardRep >= 3 ? 1 : 0, sectorId: m.destinationSector || m.targetSector || m.targetSectorId || m.originSector, influence: 2 + outcome.influenceBonus, reason: `mission completed (${outcome.band})`, memoryKey: "reliableJobs" });
     if (FACTIONS[factionId] && FACTIONS[factionId].type === "major") {
         const fr = (state.player && state.player.factionRelations) || {};
         Object.entries(fr[factionId] || {}).forEach(([otherId, relation]) => {

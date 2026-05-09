@@ -4,9 +4,11 @@ import assert from 'node:assert/strict';
 import { resetState, state } from '../js/state.js';
 import {
     addPrivatePayloadToPlayerHold,
+    buildDataCargoDebugSummary,
     buildSectorPublicSnapshot,
     carryPublicSnapshotForPlayer,
     createPrivatePayload,
+    cullOldPublicSnapshots,
     expirePrivatePayloads,
     getActivePrivatePayloads,
     getFreshnessLabel,
@@ -19,6 +21,7 @@ import {
     releasePrivatePayload,
     sellPrivatePayload
 } from '../js/core/dataCargo.js';
+import { BALANCE } from '../js/constants.js';
 import { buildSaveData, migrateSave, SAVE_STATE_FIELDS } from '../js/core/persistence.js';
 import { renderCommunicationsScreen } from '../js/ui/renderComms.js';
 
@@ -310,7 +313,7 @@ describe('data cargo private payloads', () => {
         assert.equal(payload.tier, 'private');
         assert.equal(payload.type, 'manifest');
         assert.equal(payload.acquiredDay, 5);
-        assert.equal(payload.expiresDay, 12);
+        assert.equal(payload.expiresDay, 13);
         assert.equal(state.dataCargo.nextPayloadId, 2);
     });
 
@@ -344,5 +347,62 @@ describe('data cargo private payloads', () => {
         const result = expirePrivatePayloads();
         assert.equal(result.expiredCount, 1);
         assert.equal(state.dataCargo.playerHold.privatePayloads.length, 0);
+    });
+});
+
+
+describe('data cargo Phase 5 polish', () => {
+    beforeEach(buildDataCargoWorld);
+
+    it('culls public snapshots to the balance cap while keeping newest and local data', () => {
+        const publicSnapshots = {};
+        for (let id = 1; id <= 30; id++) {
+            publicSnapshots[id] = {
+                sourceSectorId: id,
+                observedDay: id,
+                deliveredDay: id,
+                portStock: {},
+                portPrices: { buy: {}, sell: {} },
+                pirateThreat: 0,
+                factionStatus: {}
+            };
+        }
+        publicSnapshots[2].observedDay = 0;
+        publicSnapshots[2].deliveredDay = 0;
+        state.dataCargo.sectorKnowledge[2] = { publicSnapshots };
+
+        const culledCount = cullOldPublicSnapshots();
+
+        assert.equal(Object.keys(state.dataCargo.sectorKnowledge[2].publicSnapshots).length, BALANCE.DATA_CARGO.PUBLIC_MAX_SNAPSHOTS_PER_SECTOR);
+        assert.ok(culledCount > 0);
+        assert.ok(state.dataCargo.sectorKnowledge[2].publicSnapshots[2], 'local sector snapshot is retained');
+        assert.ok(state.dataCargo.sectorKnowledge[2].publicSnapshots[30], 'newest delivered snapshot is retained');
+    });
+
+    it('builds a compact debug summary and counts stale/cold sectors', () => {
+        state.universe[1].charted = true;
+        state.universe[2].charted = true;
+        state.dataCargo.sectorKnowledge[1] = {
+            publicSnapshots: {
+                2: { ...buildSectorPublicSnapshot(2), observedDay: state.player.time.day - BALANCE.DATA_CARGO.PUBLIC_STALE_AFTER_DAYS, deliveredDay: state.player.time.day }
+            }
+        };
+        state.dataCargo.playerHold.publicSnapshots[2] = buildSectorPublicSnapshot(2);
+        addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2 });
+
+        const summary = buildDataCargoDebugSummary();
+
+        assert.equal(summary.knownSectors, 1);
+        assert.equal(summary.totalPublicSnapshots, 1);
+        assert.equal(summary.carriedPublicSnapshots, 1);
+        assert.equal(summary.privatePayloads, 1);
+        assert.equal(summary.staleSectors, 1);
+    });
+
+    it('uses balance constants for freshness labels', () => {
+        assert.equal(getFreshnessLabel(BALANCE.DATA_CARGO.PUBLIC_AGING_AFTER_DAYS - 1), 'fresh');
+        assert.equal(getFreshnessLabel(BALANCE.DATA_CARGO.PUBLIC_AGING_AFTER_DAYS), 'aging');
+        assert.equal(getFreshnessLabel(BALANCE.DATA_CARGO.PUBLIC_STALE_AFTER_DAYS), 'stale');
+        assert.equal(getFreshnessLabel(BALANCE.DATA_CARGO.PUBLIC_COLD_AFTER_DAYS), 'cold');
     });
 });
