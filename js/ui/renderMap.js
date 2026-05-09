@@ -17,8 +17,12 @@ let mapProjectionCache = {};
 const MAP_HASH_OFFSET_BASIS = 2166136261;
 const MAP_HASH_FNV_PRIME = 16777619;
 const MAP_HASH_SECONDARY_PRIME = 2246822519;
+const MAP_LOGICAL_WIDTH = 700;
+const MAP_LOGICAL_HEIGHT = 420;
+const MAP_BACKGROUND = "#050b10";
 const MAP_VIEWPORT_MIN_SCALE = 0.65;
 const MAP_VIEWPORT_MAX_SCALE = 2.6;
+const MAP_ZOOMED_OUT_NODE_SCALE = 0.85;
 const MAP_CORRIDOR_HIT_RADIUS = 7;
 const MAP_STAR_DEPTH_RATES = [0.08, 0.18, 0.32];
 const MAP_TOOLTIP_OFFSET = 14;
@@ -153,13 +157,40 @@ function transformNode(node, target = {}) {
     return target;
 }
 
+function getMapCanvasRect(canvas) {
+    if (typeof canvas.getBoundingClientRect === "function") {
+        return canvas.getBoundingClientRect();
+    }
+    return { width: canvas.width || MAP_LOGICAL_WIDTH, height: canvas.height || MAP_LOGICAL_HEIGHT };
+}
+
+function prepareMapCanvas(canvas, ctx) {
+    const rect = getMapCanvasRect(canvas);
+    const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
+    const backingWidth = Math.max(1, Math.round(rect.width * dpr));
+    const backingHeight = Math.max(1, Math.round(rect.height * dpr));
+
+    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
+    }
+
+    if (typeof ctx.setTransform !== "function") return;
+    ctx.setTransform(
+        (rect.width / MAP_LOGICAL_WIDTH) * dpr,
+        0,
+        0,
+        (rect.height / MAP_LOGICAL_HEIGHT) * dpr,
+        0,
+        0
+    );
+}
+
 function getPointerCanvasPosition(canvas, event) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const rect = getMapCanvasRect(canvas);
     return {
-        x: (event.clientX - rect.left) * scaleX,
-        y: (event.clientY - rect.top) * scaleY,
+        x: (event.clientX - (rect.left || 0)) * (MAP_LOGICAL_WIDTH / rect.width),
+        y: (event.clientY - (rect.top || 0)) * (MAP_LOGICAL_HEIGHT / rect.height),
         clientX: event.clientX,
         clientY: event.clientY
     };
@@ -296,6 +327,32 @@ function ensureMapTooltip() {
     return tooltip;
 }
 
+
+function setMapExpanded(expanded) {
+    const canvas = document.getElementById("map");
+    const mapWrap = canvas?.closest(".map-wrap");
+    const expandButton = document.getElementById("btn-expand-map");
+    if (!mapWrap) return;
+
+    mapWrap.classList.toggle("map-expanded", expanded);
+    document.body.classList.toggle("map-modal-open", expanded);
+    if (expandButton) {
+        expandButton.textContent = expanded ? "Collapse Map" : "Expand Map";
+        expandButton.setAttribute("aria-label", expanded ? "Collapse map" : "Expand map");
+        expandButton.setAttribute("aria-expanded", expanded ? "true" : "false");
+    }
+
+    const raf = globalThis.requestAnimationFrame || (fn => globalThis.setTimeout(fn, 16));
+    raf(() => Renderer.invalidate("map"));
+}
+
+function toggleMapExpanded() {
+    const canvas = document.getElementById("map");
+    const mapWrap = canvas?.closest(".map-wrap");
+    if (!mapWrap) return;
+    setMapExpanded(!mapWrap.classList.contains("map-expanded"));
+}
+
 function showMapTooltip(html, pointer) {
     const tooltip = ensureMapTooltip();
     tooltip.innerHTML = html;
@@ -322,8 +379,8 @@ export function centerMapOnSector(sectorId = state.player?.currentSector) {
     const node = nodes[sectorId];
     if (!canvas || !node) return;
     const viewport = getViewport();
-    viewport.offsetX = canvas.width / 2 - node.x * viewport.scale;
-    viewport.offsetY = canvas.height / 2 - node.y * viewport.scale;
+    viewport.offsetX = MAP_LOGICAL_WIDTH / 2 - node.x * viewport.scale;
+    viewport.offsetY = MAP_LOGICAL_HEIGHT / 2 - node.y * viewport.scale;
     Renderer.invalidate("map");
 }
 
@@ -333,15 +390,16 @@ export function drawMap() {
     const { universe, planets, ports, player, selectedSectorId, starField, hoveredSectorId } = state;
     const ctx = canvas.getContext("2d");
     const viewport = getViewport();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#112233";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    prepareMapCanvas(canvas, ctx);
+    ctx.clearRect(0, 0, MAP_LOGICAL_WIDTH, MAP_LOGICAL_HEIGHT);
+    ctx.fillStyle = MAP_BACKGROUND;
+    ctx.fillRect(0, 0, MAP_LOGICAL_WIDTH, MAP_LOGICAL_HEIGHT);
     const twinkleTime = mapAnimationTime || Date.now();
     starField.forEach(star => {
         const depth = Number.isInteger(star.depth) ? star.depth : 0;
         const rate = MAP_STAR_DEPTH_RATES[depth] || MAP_STAR_DEPTH_RATES[0];
-        const x = ((star.x + viewport.offsetX * rate) % canvas.width + canvas.width) % canvas.width;
-        const y = ((star.y + viewport.offsetY * rate) % canvas.height + canvas.height) % canvas.height;
+        const x = ((star.x + viewport.offsetX * rate) % MAP_LOGICAL_WIDTH + MAP_LOGICAL_WIDTH) % MAP_LOGICAL_WIDTH;
+        const y = ((star.y + viewport.offsetY * rate) % MAP_LOGICAL_HEIGHT + MAP_LOGICAL_HEIGHT) % MAP_LOGICAL_HEIGHT;
         const pulse = 0.12 * Math.sin(twinkleTime / 900 + (star.twinkle || 0));
         ctx.globalAlpha = Math.max(0.25, Math.min(0.95, (star.alpha || 0.7) + pulse));
         ctx.fillStyle = "#ffffff";
@@ -366,6 +424,9 @@ export function drawMap() {
             }
         });
     });
+    const nodeScale = viewport.scale < 1 ? MAP_ZOOMED_OUT_NODE_SCALE : 1;
+    const nodeRadius = MAP_UI.NODES.RADIUS * nodeScale;
+    const selectedRadius = MAP_UI.NODES.SELECTED_RADIUS * nodeScale;
     ids.forEach(id => {
         const node = screenNodes[id];
         let fill = "#8888ff";
@@ -382,7 +443,7 @@ export function drawMap() {
             ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(node.x, node.y, MAP_UI.NODES.SELECTED_RADIUS + 3, 0, Math.PI * 2);
+            ctx.arc(node.x, node.y, selectedRadius + 3, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
@@ -390,12 +451,12 @@ export function drawMap() {
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = MAP_UI.SELECTION.STROKE_WIDTH;
             ctx.beginPath();
-            ctx.arc(node.x, node.y, MAP_UI.NODES.SELECTED_RADIUS, 0, Math.PI * 2);
+            ctx.arc(node.x, node.y, selectedRadius, 0, Math.PI * 2);
             ctx.stroke();
         }
         ctx.fillStyle = fill;
         ctx.beginPath();
-        ctx.arc(node.x, node.y, MAP_UI.NODES.RADIUS, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#001122";
         ctx.font = MAP_UI.LABELS.ID_FONT;
@@ -511,9 +572,18 @@ export function setupMapInteraction() {
     canvas.addEventListener("mousedown", handleMouseDown);
     globalThis.addEventListener("mouseup", handleMouseUp);
     const handleDoubleClick = () => centerMapOnSector();
+    const expandButton = document.getElementById("btn-expand-map");
+    const handleExpandClick = () => toggleMapExpanded();
+    const handleResize = () => Renderer.invalidate("map");
+    const handleKeyDown = event => {
+        if (event.key === "Escape") setMapExpanded(false);
+    };
 
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     canvas.addEventListener("dblclick", handleDoubleClick);
+    expandButton?.addEventListener("click", handleExpandClick);
+    globalThis.addEventListener("resize", handleResize);
+    globalThis.addEventListener("keydown", handleKeyDown);
 
     const unsubscribe = () => {
         canvas.removeEventListener("click", handleMapClick);
@@ -523,6 +593,10 @@ export function setupMapInteraction() {
         globalThis.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("wheel", handleWheel);
         canvas.removeEventListener("dblclick", handleDoubleClick);
+        expandButton?.removeEventListener("click", handleExpandClick);
+        globalThis.removeEventListener("resize", handleResize);
+        globalThis.removeEventListener("keydown", handleKeyDown);
+        setMapExpanded(false);
         delete canvas.dataset.bound;
         mapInteractionUnsubscribers.delete(canvas);
         hideMapTooltip();

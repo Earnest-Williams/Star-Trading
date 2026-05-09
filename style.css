@@ -47,6 +47,10 @@ body {
     font-size: 20px;
 }
 
+body.map-modal-open {
+    overflow: hidden;
+}
+
 h1 {
     margin: 0 0 14px;
     text-align: center;
@@ -110,12 +114,11 @@ h4 {
 }
 
 #map {
+    display: block;
     width: 100%;
+    height: clamp(180px, 20vw, 320px);
     background: var(--bg-deck);
     border: var(--border-thick) solid var(--line);
-    aspect-ratio: 5 / 3;
-    height: auto;
-    min-height: 300px;
     cursor: crosshair;
 }
 
@@ -280,6 +283,35 @@ select:focus-visible {
 .map-wrap {
     position: relative;
 }
+
+.map-stage {
+    position: relative;
+}
+
+.map-wrap.map-expanded {
+    position: fixed;
+    inset: 10px;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    background: var(--bg-panel);
+    border: var(--border-thick) solid var(--line-strong);
+}
+
+.map-wrap.map-expanded .map-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.map-wrap.map-expanded #map {
+    height: 100%;
+    min-height: 0;
+}
+
+.map-wrap.map-expanded #mapInspector {
+    flex: 0 0 auto;
+}
 #mapInspector {
     margin-top: 10px;
     min-height: 92px;
@@ -421,12 +453,28 @@ select:focus-visible {
 }
 
 .map-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 6px;
 }
-.map-toolbar button {
+.map-toolbar button,
+.map-expand-button {
     margin: 0;
+    background: rgba(13, 19, 24, 0.92);
+}
+
+.map-expand-button {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    z-index: 2;
+}
+
+.map-wrap.map-expanded .map-expand-button {
+    bottom: 8px;
 }
 
 #map.panning {
@@ -556,10 +604,15 @@ select:focus-visible {
         width: 100%;
     }
     .map-toolbar {
+        left: 8px;
         justify-content: stretch;
     }
     .map-toolbar button {
         width: 100%;
+    }
+    .map-expand-button {
+        left: 8px;
+        width: calc(100% - 16px);
     }
     .map-tooltip {
         max-width: calc(100vw - 30px);
