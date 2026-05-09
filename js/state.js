@@ -31,8 +31,12 @@ export function createInitialState() {
         ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
         dataCargo: {
             sectorKnowledge: {},
-            playerHold: { publicSnapshots: {} },
-            ambientTransfers: []
+            playerHold: {
+                publicSnapshots: {},
+                privatePayloads: []
+            },
+            ambientTransfers: [],
+            nextPayloadId: 1
         },
         rng: null
     };

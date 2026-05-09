@@ -3,11 +3,17 @@ import assert from 'node:assert/strict';
 
 import { resetState, state } from '../js/state.js';
 import {
+    addPrivatePayloadToPlayerHold,
     buildSectorPublicSnapshot,
     carryPublicSnapshotForPlayer,
+    createPrivatePayload,
+    expirePrivatePayloads,
+    getActivePrivatePayloads,
     getSectorDataFreshness,
     mergePublicSnapshotsOnArrival,
-    normaliseDataCargoState
+    normaliseDataCargoState,
+    releasePrivatePayload,
+    sellPrivatePayload
 } from '../js/core/dataCargo.js';
 import { buildSaveData, migrateSave, SAVE_STATE_FIELDS } from '../js/core/persistence.js';
 
@@ -16,7 +22,9 @@ function buildDataCargoWorld() {
     state.player = {
         currentSector: 1,
         time: { day: 5, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 },
-        ship: { travelMinutesPerCorridor: 45 }
+        ship: { travelMinutesPerCorridor: 45 },
+        credits: 100,
+        factions: null
     };
     state.universe = {
         1: { id: 1, name: 'One', region: 'Core', pirateThreat: 2, influence: { sda: 60, fu: 20, hc: 10, vc: 5 } },
@@ -43,7 +51,7 @@ function buildDataCargoWorld() {
         }
     };
     state.planets = {};
-    state.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {} }, ambientTransfers: [] };
+    state.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [] }, ambientTransfers: [], nextPayloadId: 1 };
 }
 
 describe('data cargo public snapshots', () => {
@@ -138,16 +146,64 @@ describe('data cargo persistence and normalisation', () => {
         const migrated = migrateSave(save);
         assert.deepEqual(migrated.dataCargo, {
             sectorKnowledge: {},
-            playerHold: { publicSnapshots: {} },
-            ambientTransfers: []
+            playerHold: { publicSnapshots: {}, privatePayloads: [] },
+            ambientTransfers: [],
+            nextPayloadId: 1
         });
     });
 
     it('normaliseDataCargoState repairs missing fields', () => {
         state.dataCargo = { sectorKnowledge: { 2: {} }, playerHold: {}, ambientTransfers: null };
         normaliseDataCargoState();
-        assert.deepEqual(state.dataCargo.playerHold, { publicSnapshots: {} });
+        assert.deepEqual(state.dataCargo.playerHold, { publicSnapshots: {}, privatePayloads: [] });
         assert.deepEqual(state.dataCargo.sectorKnowledge[2], { publicSnapshots: {} });
         assert.deepEqual(state.dataCargo.ambientTransfers, []);
+        assert.equal(state.dataCargo.nextPayloadId, 1);
+    });
+});
+
+describe('data cargo private payloads', () => {
+    beforeEach(buildDataCargoWorld);
+
+    it('creates private payloads with ids and default fields', () => {
+        const payload = createPrivatePayload({ sourceSectorId: 1, targetSectorId: 2, text: 'Quiet manifest.' });
+        assert.equal(payload.id, 'private-1');
+        assert.equal(payload.tier, 'private');
+        assert.equal(payload.type, 'manifest');
+        assert.equal(payload.acquiredDay, 5);
+        assert.equal(payload.expiresDay, 12);
+        assert.equal(state.dataCargo.nextPayloadId, 2);
+    });
+
+    it('private payloads do not auto-merge on arrival', () => {
+        addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2, text: 'Do not publish.' });
+        state.player.currentSector = 2;
+        mergePublicSnapshotsOnArrival(2);
+        assert.equal(state.dataCargo.playerHold.privatePayloads.length, 1);
+        assert.equal(state.dataCargo.sectorKnowledge[2].publicSnapshots[1], undefined);
+    });
+
+    it('selling private payloads removes them and increases credits', () => {
+        const payload = addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2, value: 35, text: 'Valuable note.' });
+        const sold = sellPrivatePayload(payload.id, 'traders');
+        assert.equal(sold, true);
+        assert.equal(state.player.credits, 135);
+        assert.equal(getActivePrivatePayloads().length, 0);
+    });
+
+    it('releasing private payloads removes them and creates local public knowledge', () => {
+        const payload = addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2, text: 'Release note.' });
+        state.player.currentSector = 2;
+        const result = releasePrivatePayload(payload.id);
+        assert.deepEqual(result, { merged: true });
+        assert.equal(getActivePrivatePayloads().length, 0);
+        assert.equal(state.dataCargo.sectorKnowledge[2].publicSnapshots[1].sourceSectorId, 1);
+    });
+
+    it('expired payloads are removed', () => {
+        addPrivatePayloadToPlayerHold({ sourceSectorId: 1, targetSectorId: 2, expiresDay: 4, text: 'Expired note.' });
+        const result = expirePrivatePayloads();
+        assert.equal(result.expiredCount, 1);
+        assert.equal(state.dataCargo.playerHold.privatePayloads.length, 0);
     });
 });

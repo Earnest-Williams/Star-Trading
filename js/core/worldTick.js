@@ -9,7 +9,7 @@ import { expireMissions, prepareMissionOpportunity } from '../systems/missions.j
 import { updateCaptainsDaily, updateCaptainsHourly } from '../systems/captains.js';
 import { updateEntanglementsDaily } from '../systems/entanglements.js';
 import { expireIntel } from './intel.js';
-import { runAmbientDataPropagationDaily } from './dataCargo.js';
+import { expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
@@ -29,7 +29,8 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
 export const HOURLY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'captain_hourly_actions', run: () => updateCaptainsHourly() },
     { id: 'mission_opportunities', run: () => prepareAvailableMissionOpportunities() },
-    { id: 'intel_expiry', run: () => expireIntel() }
+    { id: 'intel_expiry', run: () => expireIntel() },
+    { id: 'private_payload_expiry', run: () => expirePrivatePayloads() }
 ]);
 
 export function runWorldTickPhases(phases, reason) {

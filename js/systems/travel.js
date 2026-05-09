@@ -7,7 +7,11 @@ import { spendTime, advanceTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { applyShipDamage } from './combat.js';
 import { canTransitDirectCorridor } from '../core/navigation.js';
-import { carryPublicSnapshotForPlayer, mergePublicSnapshotsOnArrival } from '../core/dataCargo.js';
+import {
+    carryPublicSnapshotForPlayer,
+    maybeGeneratePrivatePayloadOnArrival,
+    mergePublicSnapshotsOnArrival
+} from '../core/dataCargo.js';
 
 export function moveTo(target) {
     target = parseInt(target, 10);
@@ -25,6 +29,7 @@ export function moveTo(target) {
     if (mergeResult.mergedCount > 0) {
         log(`Updated ${mergeResult.mergedCount} public data snapshot${mergeResult.mergedCount === 1 ? "" : "s"} for sector ${target}.`);
     }
+    maybeGeneratePrivatePayloadOnArrival(target);
     maybeTravelIncident();
 }
 

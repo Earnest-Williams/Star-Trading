@@ -45,6 +45,7 @@ import {
     acceptFactionAsk, completeFactionAsk, sellIntel, joinGuild, promoteGuild
 } from '../systems/guilds.js';
 import { addFactionRep } from '../core/factions.js';
+import { discardPrivatePayload, releasePrivatePayload, sellPrivatePayload } from '../core/dataCargo.js';
 import { spendTime } from '../core/time.js';
 
 // =====================================================
@@ -252,6 +253,9 @@ export function registerUIActions() {
     registerAction('acceptFactionAsk', acceptFactionAsk);
     registerAction('completeFactionAsk', completeFactionAsk);
     registerAction('sellIntel', sellIntel);
+    registerAction('sellPrivatePayload', sellPrivatePayload);
+    registerAction('releasePrivatePayload', releasePrivatePayload);
+    registerAction('discardPrivatePayload', discardPrivatePayload);
     registerAction('joinGuild', joinGuild);
     registerAction('promoteGuild', promoteGuild);
 
