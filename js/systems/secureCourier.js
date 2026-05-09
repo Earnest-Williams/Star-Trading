@@ -103,7 +103,7 @@ export function hasSecureCourierLicense() {
 }
 
 export function grantSecureCourierLicense(factionId = 'sda') {
-    normaliseDataCargoState();
+    ensureSecureCargoState();
     const issuer = FACTIONS[factionId] ? factionId : 'sda';
     const issuerRep = getFactionRep(issuer);
     const issuerTrust = getFactionTrust(issuer);
@@ -129,7 +129,7 @@ export function grantSecureCourierLicense(factionId = 'sda') {
 }
 
 export function revokeSecureCourierLicense(reason = 'license revoked') {
-    normaliseDataCargoState();
+    ensureSecureCargoState();
     const issuer = state.dataCargo.license.issuedByFactionId || null;
     state.dataCargo.license = {
         secureCourier: false,
