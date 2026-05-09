@@ -161,7 +161,7 @@ function getMapCanvasRect(canvas) {
     if (typeof canvas.getBoundingClientRect === "function") {
         return canvas.getBoundingClientRect();
     }
-    return { width: canvas.width || MAP_LOGICAL_WIDTH, height: canvas.height || MAP_LOGICAL_HEIGHT };
+    return { width: canvas.clientWidth || MAP_LOGICAL_WIDTH, height: canvas.clientHeight || MAP_LOGICAL_HEIGHT, left: 0, top: 0 };
 }
 
 function prepareMapCanvas(canvas, ctx) {
