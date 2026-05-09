@@ -521,7 +521,7 @@ export function getFreshnessSummaryForSector(sectorId) {
         lastObservedDay: snapshot.observedDay,
         deliveredDay: snapshot.deliveredDay,
         knownFromSectorId: currentSectorId,
-        snapshot: cloneSnapshot(snapshot),
+        snapshot,
         liveLocal: false,
         known: true
     };
