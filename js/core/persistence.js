@@ -118,6 +118,15 @@ function buildLoadedState(data) {
     loadedState.worldgenSettings = data.worldgenSettings || null;
     loadedState.ports = data.ports;
     loadedState.planets = data.planets;
+    loadedState.companies = isObject(data.companies) ? data.companies : {};
+    loadedState.companyIdsBySector = isObject(data.companyIdsBySector) ? data.companyIdsBySector : {};
+    loadedState.nextCompanyId = data.nextCompanyId || (Object.keys(loadedState.companies).length + 1);
+    loadedState.people = isObject(data.people) ? data.people : {};
+    loadedState.peopleBySector = isObject(data.peopleBySector) ? data.peopleBySector : {};
+    loadedState.peopleByCompany = isObject(data.peopleByCompany) ? data.peopleByCompany : {};
+    loadedState.nextPersonId = data.nextPersonId || (Object.keys(loadedState.people).length + 1);
+    loadedState.polities = isObject(data.polities) ? data.polities : {};
+    loadedState.polityIdsBySector = isObject(data.polityIdsBySector) ? data.polityIdsBySector : {};
     loadedState.missions = Array.isArray(data.missions) ? data.missions : [];
     loadedState.captains = isObject(data.captains) ? data.captains : {};
     loadedState.captainEventLog = Array.isArray(data.captainEventLog) ? data.captainEventLog : [];
@@ -240,6 +249,15 @@ export const SAVE_STATE_FIELDS = [
     "worldgenSettings",
     "ports",
     "planets",
+    "companies",
+    "companyIdsBySector",
+    "nextCompanyId",
+    "people",
+    "peopleBySector",
+    "peopleByCompany",
+    "nextPersonId",
+    "polities",
+    "polityIdsBySector",
     "missions",
     "captains",
     "captainEventLog",
@@ -389,6 +407,15 @@ function normaliseCurrentLoadedGame() {
             }
         });
     });
+    if (!state.companies) state.companies = {};
+    if (!state.companyIdsBySector) state.companyIdsBySector = {};
+    if (typeof state.nextCompanyId !== "number") state.nextCompanyId = Object.keys(state.companies).length + 1;
+    if (!state.people) state.people = {};
+    if (!state.peopleBySector) state.peopleBySector = {};
+    if (!state.peopleByCompany) state.peopleByCompany = {};
+    if (typeof state.nextPersonId !== "number") state.nextPersonId = Object.keys(state.people).length + 1;
+    if (!state.polities) state.polities = {};
+    if (!state.polityIdsBySector) state.polityIdsBySector = {};
     Object.values(state.planets).forEach(planet => {
         if (!planet.stock) planet.stock = makeStock(0, 0, 0);
         if (!planet.shortages) planet.shortages = { ore: 0, org: 0, eq: 0 };

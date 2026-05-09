@@ -127,9 +127,9 @@ export const BALANCE = {
     LEGACY_SECTOR_COUNT: 30,
     SECTOR_COUNT: 60,
     WORLDGEN: {
-        DEFAULT_OCCUPIED_SITES: 60,
-        SITE_COUNT_PRESETS: [60, 90, 120, 150],
-        MAX_OCCUPIED_SITES: 150,
+        DEFAULT_OCCUPIED_SITES: 240,
+        SITE_COUNT_PRESETS: [180, 240, 360, 540, 720],
+        MAX_OCCUPIED_SITES: 720,
         DEFAULT_ARCHETYPE: "barred_spiral",
         DEFAULT_ROUTE_DENSITY: 1.0,
         DEFAULT_CHARTED_FRACTION: 0.28,
@@ -154,9 +154,10 @@ export const BALANCE = {
             strategic: 0.06
         },
         ARCHETYPES: {
-            barred_spiral: { name: "Barred Spiral", armCount: 2, clusterJitter: 3.8, zScale: 3.0 },
-            four_arm_spiral: { name: "Four-Arm Spiral", armCount: 4, clusterJitter: 3.2, zScale: 3.4 },
-            dwarf_irregular: { name: "Dwarf Irregular", armCount: 0, clusterJitter: 5.0, zScale: 4.5 }
+            barred_spiral: { name: "Barred Spiral", armCount: 2, clusterJitter: 2.6, zScale: 2.8, barLength: 22, armSpacing: 4.8, armTwist: 0.22 },
+            four_arm_spiral: { name: "Four-Arm Spiral", armCount: 4, clusterJitter: 2.4, zScale: 3.2, armSpacing: 5.3, armTwist: 0.19, satelliteEvery: 9 },
+            ring_spiral: { name: "Ring Spiral", armCount: 3, clusterJitter: 2.8, zScale: 3.0, ringRadius: 24, armSpacing: 4.4, armTwist: 0.17 },
+            dwarf_irregular: { name: "Dwarf Irregular", armCount: 0, clusterJitter: 4.2, zScale: 4.5, chainDrift: 2.6 }
         }
     },
     GATE_PHYSICS: {
@@ -238,7 +239,7 @@ export const BALANCE = {
     }
 };
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 export const SAVE_KEY = "starTradingSaveV14";
 export const SAVE_KEY_LEGACY = "starTradingSaveV13";
 export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";

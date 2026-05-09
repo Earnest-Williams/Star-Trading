@@ -256,6 +256,8 @@ function sectorTooltipHtml(id) {
     chips.push(sector.region);
     chips.push(getSectorStatusLabel(id));
     if (dominant) chips.push(`${dominant.icon} ${dominant.short}`);
+    if (sector.localAuthority) chips.push(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId);
+    if (state.companyIdsBySector?.[id]?.length) chips.push(`Companies: ${state.companyIdsBySector[id].length}`);
     if (ports[id]) chips.push(`Port: ${PORT_TYPES[ports[id].typeKey].name}`);
     if (planets[id]) chips.push(`Planet: ${PLANET_TYPES[planets[id].typeKey].name}`);
     if (sector.asteroids) chips.push("Asteroids");
@@ -451,6 +453,12 @@ export function drawMap() {
             ctx.fillStyle = faction.color;
             ctx.font = MAP_UI.LABELS.FACTION_FONT;
             ctx.fillText(faction.icon, node.x + MAP_UI.LABELS.FACTION_OFFSET_X, node.y + MAP_UI.LABELS.FACTION_OFFSET_Y);
+        }
+        const polity = universe[id].localAuthority ? state.polities?.[universe[id].localAuthority.polityId] : null;
+        if (polity) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.font = "9px monospace";
+            ctx.fillText(polity.name.split(" ").map(part => part[0]).join("").slice(0, 3), node.x - nodeRadius - 6, node.y + nodeRadius + 12);
         }
         ctx.fillStyle = getMapFreshnessColor(freshness.label);
         ctx.font = "10px monospace";
