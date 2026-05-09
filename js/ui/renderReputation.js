@@ -10,6 +10,7 @@ import {
 } from "../core/factions.js";
 import { renderCaptainsTab } from "./renderCaptains.js";
 import { getActiveIntel } from '../core/intel.js';
+import { getActivePrivatePayloads } from '../core/dataCargo.js';
 
 export function renderReputationScreen() {
     const { reputationTab } = state;
@@ -257,9 +258,28 @@ function renderIntelPanel() {
     return html;
 }
 
+function renderPrivatePayloadPanel() {
+    const payloads = getActivePrivatePayloads();
+    if (payloads.length === 0) return `<div class="muted">No private intel payloads in your data hold.</div>`;
+    let html = "";
+    payloads.forEach(payload => {
+        html += `<div class="mission">`;
+        html += `<strong>Private ${escapeHtml(payload.type)}</strong><br>`;
+        html += `${escapeHtml(payload.text)}<br>`;
+        html += `Origin S${payload.sourceSectorId} → Target S${payload.targetSectorId} | `;
+        html += `Acquired Day ${payload.acquiredDay} | Expires Day ${payload.expiresDay} | Value ${payload.value}<br>`;
+        html += `<button data-action="sellPrivatePayload" data-arg0="${escapeHtml(payload.id)}" data-arg1="traders">Sell to Traders</button>`;
+        html += `<button data-action="releasePrivatePayload" data-arg0="${escapeHtml(payload.id)}">Release Here</button>`;
+        html += `<button data-action="discardPrivatePayload" data-arg0="${escapeHtml(payload.id)}">Discard</button>`;
+        html += `</div>`;
+    });
+    return html;
+}
+
 function renderAsksIntelTab() {
     let html = `<h4>Political Asks & Intel</h4>`;
     html += `<div class="commodity-row"><strong>Faction Asks</strong>${renderFactionAsks()}</div>`;
+    html += `<div class="commodity-row"><strong>Private Data Hold</strong>${renderPrivatePayloadPanel()}</div>`;
     html += `<div class="commodity-row"><strong>Intel</strong>${renderIntelPanel()}</div>`;
     return html;
 }

@@ -4,6 +4,10 @@ import { EventBus } from '../events.js';
 import { getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
 import { getRouteMarketValue } from '../systems/tradeRoutes.js';
+import { random, log } from '../utils.js';
+import { addFactionRep, addFactionTrust } from './factions.js';
+import { addWorldEvent } from './worldEvents.js';
+import { Notifications } from '../ui/notifications.js';
 
 function isObject(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -16,8 +20,9 @@ function currentDay() {
 function emptyDataCargoState() {
     return {
         sectorKnowledge: {},
-        playerHold: { publicSnapshots: {} },
-        ambientTransfers: []
+        playerHold: { publicSnapshots: {}, privatePayloads: [] },
+        ambientTransfers: [],
+        nextPayloadId: 1
     };
 }
 
@@ -95,8 +100,15 @@ function rememberSnapshot(container, snapshot, deliveredDay) {
 export function normaliseDataCargoState() {
     if (!isObject(state.dataCargo)) state.dataCargo = emptyDataCargoState();
     if (!isObject(state.dataCargo.sectorKnowledge)) state.dataCargo.sectorKnowledge = {};
-    if (!isObject(state.dataCargo.playerHold)) state.dataCargo.playerHold = { publicSnapshots: {} };
+    if (!isObject(state.dataCargo.playerHold)) state.dataCargo.playerHold = { publicSnapshots: {}, privatePayloads: [] };
     ensureSnapshotMap(state.dataCargo.playerHold);
+    if (!Number.isFinite(Number(state.dataCargo.nextPayloadId))) state.dataCargo.nextPayloadId = 1;
+    if (!Array.isArray(state.dataCargo.playerHold.privatePayloads)) {
+        state.dataCargo.playerHold.privatePayloads = [];
+    }
+    state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
+        .filter(isObject)
+        .map(normalisePrivatePayload);
     Object.entries(state.dataCargo.sectorKnowledge).forEach(([sectorId, knowledge]) => {
         if (!Number.isFinite(Number(sectorId)) || !isObject(knowledge)) {
             delete state.dataCargo.sectorKnowledge[sectorId];
@@ -105,6 +117,179 @@ export function normaliseDataCargoState() {
         ensureSnapshotMap(knowledge);
     });
     if (!Array.isArray(state.dataCargo.ambientTransfers)) state.dataCargo.ambientTransfers = [];
+}
+
+function normalisePrivatePayload(payload) {
+    const id = payload.id || `private-${state.dataCargo.nextPayloadId++}`;
+    const sourceSectorId = Number(payload.sourceSectorId || state.player?.currentSector || 1);
+    const targetSectorId = Number(payload.targetSectorId || state.player?.currentSector || sourceSectorId);
+    const acquiredDay = Number(payload.acquiredDay || currentDay());
+    return {
+        id: String(id),
+        tier: "private",
+        type: payload.type || "manifest",
+        sourceSectorId,
+        targetSectorId,
+        factionId: payload.factionId || state.ports?.[sourceSectorId]?.factionId || null,
+        targetFactionId: payload.targetFactionId || state.ports?.[targetSectorId]?.factionId || null,
+        acquiredDay,
+        expiresDay: Number(payload.expiresDay || acquiredDay + 7),
+        value: Math.max(1, Math.round(Number(payload.value) || 25)),
+        text: String(payload.text || `Private intel from S${sourceSectorId} bound for S${targetSectorId}.`)
+    };
+}
+
+function takePrivatePayload(payloadId) {
+    normaliseDataCargoState();
+    const id = String(payloadId);
+    const payloads = state.dataCargo.playerHold.privatePayloads;
+    const index = payloads.findIndex(payload => payload.id === id);
+    if (index < 0) return null;
+    const [payload] = payloads.splice(index, 1);
+    EventBus.emit("data_cargo_changed", { privatePayloads: payloads.length });
+    return payload;
+}
+
+export function createPrivatePayload(payload = {}) {
+    normaliseDataCargoState();
+    const id = payload.id || `private-${state.dataCargo.nextPayloadId++}`;
+    return normalisePrivatePayload({ ...payload, id });
+}
+
+export function addPrivatePayloadToPlayerHold(payload) {
+    normaliseDataCargoState();
+    const privatePayload = createPrivatePayload(payload);
+    state.dataCargo.playerHold.privatePayloads.push(privatePayload);
+    addWorldEvent({
+        type: "private_payload_acquired",
+        sectorId: privatePayload.sourceSectorId,
+        text: `Acquired private intel: ${privatePayload.text}`,
+        importance: 1,
+        alert: false
+    });
+    EventBus.emit("data_cargo_changed", { privatePayloads: state.dataCargo.playerHold.privatePayloads.length });
+    return privatePayload;
+}
+
+export function getActivePrivatePayloads() {
+    normaliseDataCargoState();
+    const today = currentDay();
+    return state.dataCargo.playerHold.privatePayloads
+        .filter(payload => payload.expiresDay >= today)
+        .slice()
+        .sort((a, b) => a.expiresDay - b.expiresDay || a.id.localeCompare(b.id));
+}
+
+export function expirePrivatePayloads() {
+    normaliseDataCargoState();
+    const today = currentDay();
+    const before = state.dataCargo.playerHold.privatePayloads.length;
+    state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
+        .filter(payload => payload.expiresDay >= today);
+    const expiredCount = before - state.dataCargo.playerHold.privatePayloads.length;
+    if (expiredCount > 0) {
+        addWorldEvent({
+            type: "private_payload_expired",
+            text: `${expiredCount} private intel payload${expiredCount === 1 ? "" : "s"} expired in your data hold.`,
+            importance: 1,
+            alert: false
+        });
+        EventBus.emit("data_cargo_changed", { expiredCount });
+    }
+    return { expiredCount };
+}
+
+export function sellPrivatePayload(payloadId, factionId = "traders") {
+    const payload = takePrivatePayload(payloadId);
+    if (!payload) return false;
+    const buyerFactionId = String(factionId || "traders");
+    state.player.credits = (Number(state.player.credits) || 0) + payload.value;
+    addFactionRep(buyerFactionId, Math.max(1, Math.floor(payload.value / 25)), "sold private intel", "private");
+    addFactionTrust(buyerFactionId, 1, "sold private intel");
+    addWorldEvent({
+        type: "private_payload_sold",
+        sectorId: state.player.currentSector,
+        factionId: buyerFactionId,
+        text: `Sold private intel for ${payload.value} credits: ${payload.text}`,
+        importance: 1,
+        alert: false
+    });
+    log(`Sold private intel for ${payload.value} credits.`);
+    Notifications.show(`Private intel sold: +${payload.value} credits`, 1);
+    return true;
+}
+
+export function releasePrivatePayload(payloadId) {
+    const payload = takePrivatePayload(payloadId);
+    if (!payload) return false;
+    const currentSectorId = Number(state.player.currentSector);
+    const localKnowledge = ensureSectorKnowledge(currentSectorId);
+    const publicSnapshot = buildSectorPublicSnapshot(payload.sourceSectorId);
+    publicSnapshot.observedDay = payload.acquiredDay;
+    const merged = rememberSnapshot(localKnowledge, publicSnapshot, currentDay());
+    addWorldEvent({
+        type: "private_payload_released",
+        sectorId: currentSectorId,
+        factionId: payload.targetFactionId || null,
+        text: `Released private intel in S${currentSectorId}: ${payload.text}`,
+        importance: 1,
+        alert: false
+    });
+    log(`Released private intel into S${currentSectorId} public knowledge.`);
+    Notifications.show("Private intel released", 1);
+    return { merged };
+}
+
+export function discardPrivatePayload(payloadId) {
+    const payload = takePrivatePayload(payloadId);
+    if (!payload) return false;
+    addWorldEvent({
+        type: "private_payload_discarded",
+        sectorId: state.player.currentSector,
+        text: `Discarded private intel: ${payload.text}`,
+        importance: 1,
+        alert: false
+    });
+    return true;
+}
+
+function getPayloadTypeText(type) {
+    if (type === "contract_tip") return "A quiet contract tip";
+    if (type === "shortage_report") return "A suppressed shortage report";
+    if (type === "faction_note") return "A faction back-channel note";
+    return "A delayed cargo manifest";
+}
+
+export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
+    normaliseDataCargoState();
+    const currentSectorId = Number(sectorId);
+    if (!state.ports?.[currentSectorId]) return null;
+    if (random() > 0.12) return null;
+    const neighbors = Object.values(state.universe || {})
+        .map(sector => Number(sector.id))
+        .filter(id => id && id !== currentSectorId);
+    const targetSectorId = neighbors.length > 0
+        ? neighbors[Math.floor(random() * neighbors.length)]
+        : currentSectorId;
+    const types = ["manifest", "contract_tip", "shortage_report", "faction_note"];
+    const type = types[Math.floor(random() * types.length)];
+    const sourcePort = state.ports[currentSectorId];
+    const targetPort = state.ports[targetSectorId] || {};
+    const value = 20 + Math.floor(random() * 26) + Math.max(0, Number(state.universe?.[targetSectorId]?.pirateThreat) || 0);
+    const payload = addPrivatePayloadToPlayerHold({
+        type,
+        sourceSectorId: currentSectorId,
+        targetSectorId,
+        factionId: sourcePort.factionId || sourcePort.publicFactionId || null,
+        targetFactionId: targetPort.factionId || targetPort.publicFactionId || null,
+        acquiredDay: currentDay(),
+        expiresDay: currentDay() + 6 + Math.floor(random() * 4),
+        value,
+        text: `${getPayloadTypeText(type)} from S${currentSectorId} suggests exploitable conditions in S${targetSectorId}.`
+    });
+    log(`Acquired private intel payload: ${payload.text}`);
+    Notifications.show("Private intel acquired", 1);
+    return payload;
 }
 
 export function buildSectorPublicSnapshot(sectorId) {
