@@ -107,7 +107,12 @@ export const App = (() => {
     function bindAppShellDom() {
         _unsubscribeMapInteraction = setupMapInteraction();
         bindTopbarButtons();
+        document.addEventListener("contextmenu", suppressContextMenu);
         document.body.addEventListener('click', handleActionClick);
+    }
+
+    function suppressContextMenu(event) {
+        event.preventDefault();
     }
 
     function bindTopbarButtons() {
@@ -200,6 +205,7 @@ export const App = (() => {
         _topbarListeners = [];
         _unsubscribeMapInteraction();
         _unsubscribeMapInteraction = () => {};
+        document.removeEventListener("contextmenu", suppressContextMenu);
         document.body.removeEventListener('click', handleActionClick);
         disposeUI();
         resetState();

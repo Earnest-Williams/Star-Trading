@@ -22,6 +22,14 @@ const MAP_ZOOMED_OUT_NODE_SCALE = 0.85;
 const MAP_CORRIDOR_HIT_RADIUS = 7;
 const MAP_STAR_DEPTH_RATES = [0.08, 0.18, 0.32];
 const MAP_TOOLTIP_OFFSET = 14;
+const MAP_CAMERA_YAW_SENSITIVITY = 0.008;
+const MAP_CAMERA_PITCH_SENSITIVITY = 0.006;
+const MAP_CAMERA_MAX_TILT_RADIANS = Math.PI * 0.35;
+const MAP_CAMERA_PITCH_MIN_RADIANS = -MAP_CAMERA_MAX_TILT_RADIANS;
+const MAP_CAMERA_PITCH_MAX_RADIANS = MAP_CAMERA_MAX_TILT_RADIANS;
+const MOUSE_BUTTON_LEFT = 0;
+const MOUSE_BUTTON_MIDDLE = 1;
+const MOUSE_BUTTON_RIGHT = 2;
 let mapAnimationFrameId = 0;
 let mapAnimationTime = 0;
 
@@ -34,8 +42,17 @@ export function invalidateMapProjectionCache() {
 
 function projectedCoord(site, sectorId, target = {}) {
     const { x = sectorId, y = 0, z = 0 } = site.coord ?? {};
-    target.x = x - z * MAP_UI.PROJECTION.Z_TO_X;
-    target.y = y + z * MAP_UI.PROJECTION.Z_TO_Y;
+    const camera = getMapCamera();
+    const yawCos = Math.cos(camera.yaw);
+    const yawSin = Math.sin(camera.yaw);
+    const pitchCos = Math.cos(camera.pitch);
+    const pitchSin = Math.sin(camera.pitch);
+    const yawX = x * yawCos - z * yawSin;
+    const yawZ = x * yawSin + z * yawCos;
+    const pitchY = y * pitchCos - yawZ * pitchSin;
+    const pitchZ = y * pitchSin + yawZ * pitchCos;
+    target.x = yawX - pitchZ * MAP_UI.PROJECTION.Z_TO_X;
+    target.y = pitchY + pitchZ * MAP_UI.PROJECTION.Z_TO_Y;
     return target;
 }
 
@@ -85,6 +102,11 @@ export function getMapNodes() {
 function getViewport() {
     if (!state.mapViewport) state.mapViewport = { scale: 1, offsetX: 0, offsetY: 0 };
     return state.mapViewport;
+}
+
+function getMapCamera() {
+    if (!state.mapCamera) state.mapCamera = { yaw: 0, pitch: 0 };
+    return state.mapCamera;
 }
 
 function scheduleMapAnimationFrame() {
@@ -337,6 +359,7 @@ function hideMapTooltip() {
 
 export function resetMapViewport() {
     state.mapViewport = { scale: 1, offsetX: 0, offsetY: 0 };
+    state.mapCamera = { yaw: 0, pitch: 0 };
     state.hoveredSectorId = null;
     Renderer.invalidate("map");
 }
@@ -375,11 +398,15 @@ export function drawMap() {
     ctx.fillStyle = MAP_BACKGROUND;
     ctx.fillRect(0, 0, rect.width, rect.height);
     const twinkleTime = mapAnimationTime || Date.now();
+    const starfieldWidth = Math.max(1, rect.width);
+    const starfieldHeight = Math.max(1, rect.height);
     starField.forEach(star => {
         const depth = Number.isInteger(star.depth) ? star.depth : 0;
         const rate = MAP_STAR_DEPTH_RATES[depth] || MAP_STAR_DEPTH_RATES[0];
-        const x = ((star.x + viewport.offsetX * rate) % MAP_LOGICAL_WIDTH + MAP_LOGICAL_WIDTH) % MAP_LOGICAL_WIDTH;
-        const y = ((star.y + viewport.offsetY * rate) % MAP_LOGICAL_HEIGHT + MAP_LOGICAL_HEIGHT) % MAP_LOGICAL_HEIGHT;
+        const normalizedX = (star.x / MAP_LOGICAL_WIDTH) * starfieldWidth;
+        const normalizedY = (star.y / MAP_LOGICAL_HEIGHT) * starfieldHeight;
+        const x = ((normalizedX + viewport.offsetX * rate) % starfieldWidth + starfieldWidth) % starfieldWidth;
+        const y = ((normalizedY + viewport.offsetY * rate) % starfieldHeight + starfieldHeight) % starfieldHeight;
         const pulse = 0.12 * Math.sin(twinkleTime / 900 + (star.twinkle || 0));
         ctx.globalAlpha = Math.max(0.25, Math.min(0.95, (star.alpha || 0.7) + pulse));
         ctx.fillStyle = "#ffffff";
@@ -483,6 +510,7 @@ export function setupMapInteraction() {
 
     let dragging = false;
     let dragMoved = false;
+    let dragMode = null;
     let lastPointer = null;
 
     const handleMapClick = event => {
@@ -495,12 +523,21 @@ export function setupMapInteraction() {
     const handleMapMove = event => {
         const pointer = getPointerCanvasPosition(canvas, event);
         if (dragging && lastPointer) {
-            const viewport = getViewport();
             const dx = pointer.x - lastPointer.x;
             const dy = pointer.y - lastPointer.y;
             if (Math.abs(dx) + Math.abs(dy) > 1) dragMoved = true;
-            viewport.offsetX += dx;
-            viewport.offsetY += dy;
+            if (dragMode === "orbit") {
+                const camera = getMapCamera();
+                camera.yaw += dx * MAP_CAMERA_YAW_SENSITIVITY;
+                camera.pitch = Math.max(
+                    MAP_CAMERA_PITCH_MIN_RADIANS,
+                    Math.min(MAP_CAMERA_PITCH_MAX_RADIANS, camera.pitch - dy * MAP_CAMERA_PITCH_SENSITIVITY)
+                );
+            } else if (dragMode === "pan") {
+                const viewport = getViewport();
+                viewport.offsetX += dx;
+                viewport.offsetY += dy;
+            }
             lastPointer = pointer;
             Renderer.invalidate("map");
             return;
@@ -525,6 +562,7 @@ export function setupMapInteraction() {
 
     const handleMapLeave = () => {
         dragging = false;
+        dragMode = null;
         lastPointer = null;
         if (state.hoveredSectorId !== null) {
             state.hoveredSectorId = null;
@@ -534,6 +572,15 @@ export function setupMapInteraction() {
     };
 
     const handleMouseDown = event => {
+        if (event.button === MOUSE_BUTTON_RIGHT) {
+            event.preventDefault();
+            return;
+        }
+        if (event.button !== MOUSE_BUTTON_LEFT && event.button !== MOUSE_BUTTON_MIDDLE) {
+            return;
+        }
+        dragMode = event.button === MOUSE_BUTTON_MIDDLE ? "orbit" : "pan";
+        event.preventDefault();
         dragging = true;
         dragMoved = false;
         lastPointer = getPointerCanvasPosition(canvas, event);
@@ -542,9 +589,12 @@ export function setupMapInteraction() {
 
     const handleMouseUp = () => {
         dragging = false;
+        dragMode = null;
         lastPointer = null;
         canvas.classList.remove("panning");
     };
+
+    const handleContextMenu = event => event.preventDefault();
 
     const handleWheel = event => {
         event.preventDefault();
@@ -567,6 +617,7 @@ export function setupMapInteraction() {
     canvas.addEventListener("mousemove", handleMapMove);
     canvas.addEventListener("mouseleave", handleMapLeave);
     canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("contextmenu", handleContextMenu);
     globalThis.addEventListener("mouseup", handleMouseUp);
     const handleDoubleClick = () => centerMapOnSector();
     const expandButton = document.getElementById("btn-expand-map");
@@ -587,6 +638,7 @@ export function setupMapInteraction() {
         canvas.removeEventListener("mousemove", handleMapMove);
         canvas.removeEventListener("mouseleave", handleMapLeave);
         canvas.removeEventListener("mousedown", handleMouseDown);
+        canvas.removeEventListener("contextmenu", handleContextMenu);
         globalThis.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("wheel", handleWheel);
         canvas.removeEventListener("dblclick", handleDoubleClick);
