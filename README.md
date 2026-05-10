@@ -27,7 +27,7 @@ Unlike a simple buy-low/sell-high trader, Star-Trading models sparse 3D sites, c
 - **Drag:** pans the map; background stars parallax subtly while the node graph moves.
 - **Double-click map / Center on Current Sector:** recenters the viewport on the captain's current site.
 - **Transit Corridor:** appears only in the sticky inspector when the selected site is directly adjacent.
-- **Topbar screens:** Sector, Market, Colonies, Missions, Logistics, Network, Character, and Shipyard expose the main prototype systems.
+- **Topbar screens:** Sector, Market, Colony, Missions, Logistics, Reputation, Communications, Spreadsheet, Shipyard, and Character expose the main prototype systems.
 - **Charted / reachable / surveyed:** a site can be known without full survey detail or routine access; jump corridors determine practical movement.
 - **Color language:** green usually means current/safe/valid, amber means caution or contested pressure, red means threat/invalid/danger, and faction icons show local influence.
 
@@ -36,20 +36,55 @@ Unlike a simple buy-low/sell-high trader, Star-Trading models sparse 3D sites, c
 ```
 index.html          # Shell: HTML and <script type="module" src="js/main.js">
 style.css           # Canonical stylesheet and responsive UI rules
-package.json        # type:module + npm scripts (test, dev, lint)
+package.json        # type:module + npm scripts (test, dev, lint, benchmark:map)
 js/
   constants.js      # BALANCE, worldgen, gate physics, pulse cargo, factions, commodities
   state.js          # Sparse site/world state plus shared runtime UI state
+  events.js         # Pure EventBus (no browser APIs)
+  utils.js          # Shared helpers: log, random, escapeHtml, formatCredits, etc.
+  config/           # Static data tables: chargen, traits, missions, characters, worldgen, polities, etc.
   core/
-    universe.js     # Sparse 3D site generation, route physics helpers, site/port/planet factories
+    universe.js     # Sparse 3D site generation, createPlayer(), route physics helpers
     navigation.js   # Jump-gate topology, shortest paths, reserve labels, relay surcharges
-    persistence.js  # save/load, current SAVE_VERSION, sparse-world normalization and legacy migration
-  systems/          # Economy, captains, colonies, combat, contraband, mining, missions, routes, politics
+    persistence.js  # save/load, SAVE_VERSION, sparse-world normalization and legacy migration
+    characters.js   # Character sheet queries and stat resolution
+    characterBuild.js  # Chargen validation, stat spend, build helpers
+    commands.js     # Action registry and executor (domain command layer)
+    dataCargo.js    # Private payloads, public snapshots, secure cargo intel
+    factions.js     # Faction rep, trust, and relationship helpers
+    influence.js    # Dominant influence queries and front tracking
+    intel.js        # Intel store: add, expire, sell
+    routePlanner.js # Route planning helpers
+    time.js         # Game time: advance, spendTime, restUntilMorning
+    traitHooks.js   # Passive trait effect application
+    worldEvents.js  # World event log
+    worldTick.js    # Daily/hourly simulation tick orchestration
+  systems/          # Economy, captains, colonies, combat, contraband, entanglements, guilds,
+                    # market, mining, missions, people, polities, routes, secure courier, travel
   ui/
-    renderMap.js    # Projects charted 3D sites onto the 2D canvas and applies viewport interaction
-    renderSector.js # Shows site type, coordinates, survey state, local gates, station reserve state
+    renderer.js     # Dirty-tracking RAF scheduler and updateUI()
+    renderMap.js    # Projects charted 3D sites onto the 2D canvas; viewport interaction
+    renderSector.js # Site type, coordinates, survey state, local gates, station reserve
+    renderHUD.js    # Header, faction panel, accepted missions, priority feed, action menu
+    renderMarket.js # Port commodity trading panel
+    renderMissions.js     # Mission board and active mission display
+    renderLogistics.js    # Trade route and logistics overview
+    renderReputation.js   # Reputation screen with guild, faction, and captain tabs
+    renderCaptains.js     # Captain interaction actions and relationship UI
+    renderComms.js        # Communications screen: intel, data cargo snapshots
+    renderSpreadsheet.js  # Ledger spreadsheet screen with formula evaluation
+    renderChargen.js      # Character generation controls
+    renderCharacterSheet.js # In-game character sheet
+    renderColony.js       # Colony management panel
+    renderShipyard.js     # Ship upgrades, repair, and fighter purchases
+    renderEntanglements.js # Relationship and entanglement display
     ui.js           # Action registry, screen routing, Renderer registrations
-tests/              # Node test suite for simulation, persistence, navigation, routes, and systems
+  new/              # Compatibility entry points for planned/legacy imports (bounties, contraband, intel)
+tests/              # 21-file Node test suite: simulation, persistence, navigation, routes, chargen,
+                    # ambient trade, captains, contraband, data cargo, entanglements, secure courier,
+                    # world tick, worldgen gate economy, global registries, time, map projection, and more
+benchmarks/         # Map projection performance benchmark (npm run benchmark:map)
+docs/               # Design and boundary documents
 ```
 
 ## Design language
@@ -58,6 +93,7 @@ Star-Trading uses the Blackline Command interface language: an OLED-black, hard-
 
 - Design bible: `docs/design/blackline-command.md`
 - Implementation guide: `docs/design/blackline-command-implementation.md`
+- Feature boundary: `docs/feature-boundary.md`
 
 ## Current world model
 
@@ -126,14 +162,24 @@ Saves are versioned. Current migration normalizes missing sparse-world fields, c
 
 ### Recently added
 
-- Character generation presets, validation, package selection, and starting platform choices.
+- Guilds, faction asks, intel selling, and reputation tabs.
+- Entanglements: persistent captain relationships, romance arcs, and daily decay/event generation.
+- Data cargo: private payloads, public market snapshots, ambient snapshot propagation, and secure courier contracts.
+- Communications screen exposing intel, data-cargo snapshots, and freshness telemetry.
+- Spreadsheet/ledger screen with formula evaluation.
+- Companies and people: named mission issuers seeded into the world at generation.
+- Polities: regional governance structures layered over faction influence.
+- World-tick orchestration split into daily and hourly phases with registered hooks.
+- World events log for persistent narrative tracking.
+- Character sheet, chargen presets, trait hooks, and starting platform choices.
 - Sparse-world save migration and persistence normalization.
-- Captain economy, ambient trade, contraband, politics, and logistics route test coverage.
 - Interactive map polish: hover tooltips, zoom/pan viewport transforms, parallax starfield, and recentering.
+- 21-file test suite covering all major systems.
 
 ### In progress
 
 - Making the event layer more consistent across travel, captains, factions, missions, colonies, economy, combat, and threat systems.
+- Deepening entanglement consequences and captain-relationship gameplay.
 - Improving first-run onboarding and system discoverability.
 - Continuing responsive UI passes for tablet and phone-sized screens.
 
@@ -142,6 +188,7 @@ Saves are versioned. Current migration normalizes missing sparse-world fields, c
 - Screenshot or short GIF for the README.
 - Deeper contributor docs in `docs/` for world model, gate physics, economy, and save format.
 - More authored map, chargen, and notification feedback.
+- Bounty board once the contraband/legality heat surface is proven.
 
 ## Running it
 
@@ -155,7 +202,7 @@ npm run dev
 
 ## Running the tests
 
-Smoke tests and cross-system simulation tests run with Node.js 18+ and do not require browser DOM stubs:
+Tests run with Node.js 18+ and do not require browser DOM stubs. The suite covers simulation, persistence, navigation, routes, chargen, ambient trade, captains, contraband, data cargo, entanglements, secure courier, world tick, worldgen gate economy, global registries, time, and map projection:
 
 ```bash
 npm test
