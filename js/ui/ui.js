@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
-import { StateSlice } from './stateSlices.js';
+import { StateSlice, stateChanged } from './stateSlices.js';
 import { BALANCE } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 import { executeAction, registerAction, resetActions } from '../core/commands.js';
@@ -78,7 +78,7 @@ export function handleActionClick(event) {
         if (result === false) return;
 
         if (isStateSliceArray(result)) {
-            result.forEach(slice => Renderer.sliceChanged(slice));
+            Renderer.sliceChanged(...result);
             return;
         }
 
@@ -97,25 +97,18 @@ export function showScreen(screen) {
     if (screen === 'market' && !state.ports[state.player.currentSector]) state.currentScreen = 'sector';
     if (screen === 'shipyard' && state.player.currentSector !== state.world?.roles?.shipyardSiteId) state.currentScreen = 'sector';
     if (state.currentScreen !== 'reputation') state.selectedCaptainId = null;
-
-    Renderer.sliceChanged(StateSlice.CURRENT_SCREEN);
-    Renderer.sliceChanged(StateSlice.SELECTED_CAPTAIN);
-    return [StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN];
+    return stateChanged(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN);
 }
 
 export function setReputationTab(tab) {
     state.reputationTab = tab;
     state.currentScreen = 'reputation';
     state.selectedCaptainId = null;
-
-    Renderer.sliceChanged(StateSlice.REPUTATION_TAB);
-    Renderer.sliceChanged(StateSlice.CURRENT_SCREEN);
-    Renderer.sliceChanged(StateSlice.SELECTED_CAPTAIN);
-    return [
+    return stateChanged(
         StateSlice.REPUTATION_TAB,
         StateSlice.CURRENT_SCREEN,
         StateSlice.SELECTED_CAPTAIN
-    ];
+    );
 }
 
 // =====================================================

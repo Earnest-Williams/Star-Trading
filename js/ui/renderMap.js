@@ -3,7 +3,7 @@ import { FACTIONS, PLANET_TYPES, PORT_TYPES } from "../constants.js";
 import { getSectorFactionId, getSectorStatusLabel } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
-import { StateSlice } from "./stateSlices.js";
+import { StateSlice, stateChanged } from "./stateSlices.js";
 import { getDirectCorridor, getSectorNeighbors } from "../core/navigation.js";
 import { MAP_UI } from "../config/ui.js";
 import { getSiteTypeLabel } from "../core/universe.js";
@@ -518,7 +518,9 @@ export function setupMapInteraction() {
         if (dragMoved) return;
         const pointer = getPointerCanvasPosition(canvas, event);
         const hit = findNearestSectorAt(pointer.x, pointer.y);
-        if (hit) selectSector(hit.id);
+        if (!hit) return;
+        const slices = selectSector(hit.id);
+        if (slices) Renderer.sliceChanged(...slices);
     };
 
     const handleMapMove = event => {
@@ -658,6 +660,5 @@ export function setupMapInteraction() {
 export function selectSector(sectorId) {
     if (!state.universe[sectorId]) return false;
     state.selectedSectorId = sectorId;
-    Renderer.sliceChanged(StateSlice.SELECTED_SECTOR);
-    return [StateSlice.SELECTED_SECTOR];
+    return stateChanged(StateSlice.SELECTED_SECTOR);
 }

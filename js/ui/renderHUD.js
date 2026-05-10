@@ -3,6 +3,7 @@ import { getSectorNeighbors } from "../core/navigation.js";
 import { FACTIONS, BALANCE, CARGO_COMMODITIES, GUILD_FACTIONS, GUILD_TIER_NAMES } from "../constants.js";
 import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed } from "../utils.js";
 import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getFactionHeat, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
+import { Renderer } from "./renderer.js";
 import { showScreen, setReputationTab } from "./ui.js";
 import { getPlayerDataHoldSummary } from "../core/dataCargo.js";
 
@@ -15,7 +16,7 @@ export function getPriorityItems() {
             items.push({
                 text: `${m.title} expires ${daysLeft <= 0 ? "today" : "tomorrow"}`,
                 urgent: daysLeft <= 0,
-                action: () => showScreen("missions"),
+                action: () => Renderer.sliceChanged(...showScreen("missions")),
                 priority: 10 - daysLeft
             });
         }
@@ -26,7 +27,10 @@ export function getPriorityItems() {
             items.push({
                 text: `Colony S${sid} satisfaction critical: ${planet.satisfaction}`,
                 urgent: planet.satisfaction < 25,
-                action: () => { player.currentSector = parseInt(sid, 10); showScreen("colony"); },
+                action: () => {
+                    player.currentSector = parseInt(sid, 10);
+                    Renderer.sliceChanged(...showScreen("colony"));
+                },
                 priority: 9
             });
         }
@@ -35,7 +39,7 @@ export function getPriorityItems() {
         items.push({
             text: `Route "${r.name}" failing: ${r.failures}/${r.runs + r.failures}`,
             urgent: false,
-            action: () => showScreen("logistics"),
+            action: () => Renderer.sliceChanged(...showScreen("logistics")),
             priority: 5
         });
     });
@@ -44,7 +48,7 @@ export function getPriorityItems() {
         items.push({
             text: `Ask "${a.title}" expires soon`,
             urgent: a.expiresDay <= player.time.day,
-            action: () => { setReputationTab("asks"); },
+            action: () => Renderer.sliceChanged(...setReputationTab("asks")),
             priority: 8
         });
     });
@@ -52,7 +56,7 @@ export function getPriorityItems() {
         items.push({
             text: `SDA heat ${getFactionHeat("sda")} — inspections likely`,
             urgent: getFactionHeat("sda") >= 80,
-            action: () => setReputationTab("factions"),
+            action: () => Renderer.sliceChanged(...setReputationTab("factions")),
             priority: 7
         });
     }
@@ -60,7 +64,10 @@ export function getPriorityItems() {
         items.push({
             text: `Hull damaged: ${player.hull}/${player.ship.maxHull}`,
             urgent: player.hull < player.ship.maxHull * 0.15,
-            action: () => { if (player.currentSector === state.world?.roles?.shipyardSiteId) showScreen("shipyard"); else console.log("Return to StarDock for repairs."); },
+            action: () => {
+                if (player.currentSector === state.world?.roles?.shipyardSiteId) Renderer.sliceChanged(...showScreen("shipyard"));
+                else console.log("Return to StarDock for repairs.");
+            },
             priority: 9
         });
     }
@@ -69,7 +76,7 @@ export function getPriorityItems() {
         items.push({
             text: `Pirate threat ${sec.pirateThreat} in current sector`,
             urgent: sec.pirateThreat >= 5,
-            action: () => showScreen("sector"),
+            action: () => Renderer.sliceChanged(...showScreen("sector")),
             priority: 6
         });
     }

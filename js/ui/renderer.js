@@ -20,8 +20,6 @@ export const Renderer = (function() {
                 console.error(`Render ${key} failed:`, e);
             }
         });
-
-        if (dirty.size > 0) scheduleFlush();
     }
 
     function scheduleFlush() {
@@ -80,22 +78,29 @@ export const Renderer = (function() {
             scheduleFlush();
         },
 
-        sliceChanged(slice) {
-            const triggered = [];
+        sliceChanged(...slices) {
+            if (slices.length === 0) return;
 
-            Object.entries(handlers).forEach(([key]) => {
-                const deps = dependencies.get(key);
-                if (deps && deps.has(slice)) {
+            const isDev = !!(import.meta.env?.DEV);
+            const triggered = isDev ? [] : null;
+            const uniqueSlices = new Set(slices);
+            let changed = false;
+
+            dependencies.forEach((deps, key) => {
+                for (const slice of uniqueSlices) {
+                    if (!deps.has(slice)) continue;
                     dirty.add(key);
-                    triggered.push(key);
+                    changed = true;
+                    if (isDev) triggered.push(key);
+                    break;
                 }
             });
 
-            if (import.meta.env?.DEV) {
-                console.log(`[UI] sliceChanged(${slice}) -> ${triggered.join(', ')}`);
+            if (isDev && triggered.length > 0) {
+                console.log(`[UI] sliceChanged(${slices.join(', ')}) -> ${triggered.join(', ')}`);
             }
 
-            scheduleFlush();
+            if (changed) scheduleFlush();
         }
     };
 })();
