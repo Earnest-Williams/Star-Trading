@@ -2,16 +2,26 @@ import { escapeHtml } from '../utils.js';
 
 const STORAGE_KEY = 'star-trading.ledger.v1';
 const MIN_ROWS = 20;
+const MAX_ROWS = 500;
 const MIN_COLS = 8;
 const MAX_COLS = 26;
+const DEFAULT_COL_WIDTH = 96;
+const MIN_COL_WIDTH = 48;
+const MAX_COL_WIDTH = 360;
+const DEFAULT_ROW_HEIGHT = 28;
+const MIN_ROW_HEIGHT = 22;
+const MAX_ROW_HEIGHT = 120;
 const MAX_FUNCTION_RESOLUTION_DEPTH = 40;
 const DECIMAL_PRECISION = 4;
 const MAX_RANGE_CELLS = 5000;
+const MAX_CELL_CHARS = 500;
 
 let rowCount = 30;
 let colCount = 10;
 let selectedKey = 'A1';
 let rawData = {};
+let colWidths = {};
+let rowHeights = {};
 let lastStatus = 'Offline ledger ready';
 let computing = new Set();
 
@@ -57,9 +67,33 @@ function getRaw(key) {
     return rawData[normalizeKey(key)] || '';
 }
 
+function clampInteger(value, min, max, fallback) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, Math.round(parsed)));
+}
+
+function getColumnWidth(col) {
+    return clampInteger(colWidths[col], MIN_COL_WIDTH, MAX_COL_WIDTH, DEFAULT_COL_WIDTH);
+}
+
+function getRowHeight(row) {
+    return clampInteger(rowHeights[row], MIN_ROW_HEIGHT, MAX_ROW_HEIGHT, DEFAULT_ROW_HEIGHT);
+}
+
+function setColumnWidth(col, width) {
+    if (!Number.isInteger(col) || col < 0 || col >= MAX_COLS) return;
+    colWidths[col] = clampInteger(width, MIN_COL_WIDTH, MAX_COL_WIDTH, DEFAULT_COL_WIDTH);
+}
+
+function setRowHeight(row, height) {
+    if (!Number.isInteger(row) || row < 1 || row > MAX_ROWS) return;
+    rowHeights[row] = clampInteger(height, MIN_ROW_HEIGHT, MAX_ROW_HEIGHT, DEFAULT_ROW_HEIGHT);
+}
+
 function setRaw(key, value) {
     const normalized = normalizeKey(key);
-    const raw = String(value ?? '');
+    const raw = String(value ?? '').slice(0, MAX_CELL_CHARS);
     if (raw) rawData[normalized] = raw;
     else delete rawData[normalized];
 }
@@ -317,16 +351,23 @@ function renderCell(row, col) {
     if (raw.trim().startsWith('=')) classes.push('has-formula');
     if (typeof value === 'number') classes.push('numeric');
     if (typeof value === 'string' && value.startsWith('#')) classes.push('cell-error');
-    return `<td class="${classes.join(' ')}" data-cell="${key}" title="${escapeHtml(raw)}">${escapeHtml(formatComputed(value))}</td>`;
+    return `<td class="${classes.join(' ')}" data-cell="${key}" title="${escapeHtml(raw)}" style="height:${getRowHeight(row)}px">${escapeHtml(formatComputed(value))}</td>`;
 }
 
 function renderGrid() {
     computing.clear();
-    let html = '<table class="ledger-table"><thead><tr><th class="ledger-corner"></th>';
-    for (let col = 0; col < colCount; col++) html += `<th>${colToLetter(col)}</th>`;
+    let html = '<table class="ledger-table"><colgroup>';
+    html += '<col style="width:48px">';
+    for (let col = 0; col < colCount; col++) {
+        html += `<col style="width:${getColumnWidth(col)}px">`;
+    }
+    html += '</colgroup><thead><tr><th class="ledger-corner"></th>';
+    for (let col = 0; col < colCount; col++) {
+        html += `<th class="ledger-col-header" data-col="${col}">${colToLetter(col)}<span class="ledger-col-resizer" data-ledger-resize="col" data-col="${col}"></span></th>`;
+    }
     html += '</tr></thead><tbody>';
     for (let row = 1; row <= rowCount; row++) {
-        html += `<tr><th class="ledger-row-header">${row}</th>`;
+        html += `<tr style="height:${getRowHeight(row)}px"><th class="ledger-row-header" data-row="${row}">${row}<span class="ledger-row-resizer" data-ledger-resize="row" data-row="${row}"></span></th>`;
         for (let col = 0; col < colCount; col++) html += renderCell(row, col);
         html += '</tr>';
     }
@@ -341,11 +382,41 @@ function currentCellSummary() {
     return raw ? `Raw: ${escapeHtml(raw)} / Value: ${escapeHtml(valueLabel)}` : 'empty cell';
 }
 
+function sanitizeRawData(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const safe = {};
+    for (const [key, raw] of Object.entries(value)) {
+        const parsed = parseCellKey(key);
+        if (!parsed) continue;
+        if (parsed.row > MAX_ROWS || parsed.col >= MAX_COLS) continue;
+        safe[parsed.key] = String(raw ?? '').slice(0, MAX_CELL_CHARS);
+    }
+    return safe;
+}
+
+function sanitizeDimensionMap(value, min, max, fallback, keyMin, keyMax) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const safe = {};
+    for (const [key, size] of Object.entries(value)) {
+        const index = Number(key);
+        if (!Number.isInteger(index) || index < keyMin || index > keyMax) continue;
+        safe[index] = clampInteger(size, min, max, fallback);
+    }
+    return safe;
+}
+
 function persistDraft(showStatus = true) {
     try {
         const storage = globalThis.localStorage;
         if (!storage) return;
-        storage.setItem(STORAGE_KEY, JSON.stringify({ rowCount, colCount, selectedKey, rawData }));
+        storage.setItem(STORAGE_KEY, JSON.stringify({
+            rowCount,
+            colCount,
+            selectedKey,
+            rawData,
+            colWidths,
+            rowHeights
+        }));
         if (showStatus) lastStatus = 'Draft saved';
     } catch (_err) {
         if (showStatus) lastStatus = 'Draft save failed';
@@ -362,9 +433,11 @@ function loadDraft() {
             return;
         }
         const parsed = JSON.parse(payload);
-        rawData = parsed.rawData && typeof parsed.rawData === 'object' ? parsed.rawData : {};
-        rowCount = Math.max(MIN_ROWS, Number(parsed.rowCount) || rowCount);
-        colCount = Math.max(MIN_COLS, Math.min(MAX_COLS, Number(parsed.colCount) || colCount));
+        rawData = sanitizeRawData(parsed.rawData);
+        rowCount = clampInteger(parsed.rowCount, MIN_ROWS, MAX_ROWS, rowCount);
+        colCount = clampInteger(parsed.colCount, MIN_COLS, MAX_COLS, colCount);
+        colWidths = sanitizeDimensionMap(parsed.colWidths, MIN_COL_WIDTH, MAX_COL_WIDTH, DEFAULT_COL_WIDTH, 0, MAX_COLS - 1);
+        rowHeights = sanitizeDimensionMap(parsed.rowHeights, MIN_ROW_HEIGHT, MAX_ROW_HEIGHT, DEFAULT_ROW_HEIGHT, 1, MAX_ROWS);
         selectedKey = normalizeKey(parsed.selectedKey || 'A1');
         lastStatus = 'Draft loaded';
     } catch (_err) {
@@ -377,8 +450,8 @@ function selectCell(key, shouldFocus = true) {
     selectedKey = normalizeKey(key);
     const parsed = parseCellKey(selectedKey);
     if (parsed) {
-        rowCount = Math.max(rowCount, parsed.row);
-        colCount = Math.max(colCount, parsed.col + 1);
+        rowCount = Math.max(rowCount, Math.min(parsed.row, MAX_ROWS));
+        colCount = Math.max(colCount, Math.min(parsed.col + 1, MAX_COLS));
     }
     document.querySelectorAll('.ledger-cell.selected').forEach(cell => cell.classList.remove('selected'));
     const selected = document.querySelector(`[data-cell="${selectedKey}"]`);
@@ -397,6 +470,48 @@ function rerenderLedger(shouldFocus = true) {
     if (!root) return;
     root.outerHTML = renderSpreadsheetScreen();
     bindSpreadsheetScreen(shouldFocus);
+}
+
+function handleResizePointerDown(event) {
+    const handle = event.target.closest('[data-ledger-resize]');
+    if (!handle) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const resizeType = handle.dataset.ledgerResize;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const col = Number(handle.dataset.col);
+    const row = Number(handle.dataset.row);
+    const startWidth = Number.isInteger(col) ? getColumnWidth(col) : DEFAULT_COL_WIDTH;
+    const startHeight = Number.isInteger(row) ? getRowHeight(row) : DEFAULT_ROW_HEIGHT;
+
+    const doc = globalThis.document;
+    if (!doc) return;
+
+    if (resizeType === 'row') doc.body.classList.add('ledger-resizing-row');
+    else doc.body.classList.add('ledger-resizing');
+
+    const onMove = moveEvent => {
+        if (resizeType === 'col' && Number.isInteger(col)) {
+            setColumnWidth(col, startWidth + moveEvent.clientX - startX);
+        } else if (resizeType === 'row' && Number.isInteger(row)) {
+            setRowHeight(row, startHeight + moveEvent.clientY - startY);
+        }
+        rerenderLedger(false);
+    };
+
+    const onUp = () => {
+        doc.body.classList.remove('ledger-resizing');
+        doc.body.classList.remove('ledger-resizing-row');
+        doc.removeEventListener('pointermove', onMove);
+        doc.removeEventListener('pointerup', onUp);
+        persistDraft(false);
+    };
+
+    doc.addEventListener('pointermove', onMove);
+    doc.addEventListener('pointerup', onUp);
 }
 
 function commitFormula() {
@@ -423,6 +538,11 @@ function clearSelection() {
 }
 
 function addRow() {
+    if (rowCount >= MAX_ROWS) {
+        lastStatus = 'Row limit reached';
+        rerenderLedger();
+        return;
+    }
     rowCount += 1;
     lastStatus = `Added row ${rowCount}`;
     persistDraft(false);
@@ -452,6 +572,8 @@ function clearSheet() {
     rawData = {};
     rowCount = 30;
     colCount = 10;
+    colWidths = {};
+    rowHeights = {};
     selectedKey = 'A1';
     lastStatus = 'Ledger cleared';
     persistDraft(false);
@@ -543,6 +665,7 @@ export function renderSpreadsheetScreen() {
 export function bindSpreadsheetScreen(shouldFocus = false) {
     const root = document.getElementById('ledgerSheet');
     if (!root) return;
+    root.addEventListener('pointerdown', handleResizePointerDown);
     root.addEventListener('click', event => {
         const actionButton = event.target.closest('[data-ledger-action]');
         if (actionButton) {
