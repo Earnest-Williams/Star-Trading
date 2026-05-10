@@ -117,6 +117,7 @@ function tokenizeExpression(source) {
 }
 
 function evaluateMathTokens(tokens) {
+    if (tokens === null) return '#ERROR';
     if (!tokens || tokens.length === 0) return 0;
     const output = [];
     const ops = [];
