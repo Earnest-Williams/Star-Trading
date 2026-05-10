@@ -96,7 +96,7 @@ function evaluateMathTokens(tokens) {
     const output = [];
     const ops = [];
     const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2 };
-    const isOperator = token => Object.hasOwn(precedence, token);
+    const isOperator = token => Object.prototype.hasOwnProperty.call(precedence, token);
 
     tokens.forEach(token => {
         if (/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(token)) {
@@ -241,7 +241,7 @@ function evaluateFormulaBody(source, currentKey) {
     if (typeof resolved === 'string' && resolved.startsWith('#')) return resolved;
     const withRefs = String(resolved).replace(/\b([A-Z]+\d+)\b/gi, match => {
         const value = evaluateCellReference(match, currentKey);
-        return typeof value === 'number' ? String(value) : String(value);
+        return String(value);
     });
     if (withRefs.includes('#')) return withRefs.includes('#CYCLE') ? '#CYCLE' : '#ERROR';
     const tokens = tokenizeExpression(withRefs);
@@ -405,7 +405,7 @@ function addColumn() {
 }
 
 function clearSheet() {
-    const confirmFn = globalThis.confirm || (() => true);
+    const confirmFn = globalThis.confirm || (() => false);
     if (!confirmFn('Clear the entire ledger?')) return;
     rawData = {};
     rowCount = 30;
