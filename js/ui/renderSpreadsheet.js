@@ -71,21 +71,40 @@ function ensureSelectionBounds() {
 function tokenizeExpression(source) {
     const tokens = [];
     let i = 0;
+    let expectValue = true;
     while (i < source.length) {
         const ch = source[i];
         if (/\s/.test(ch)) {
             i += 1;
             continue;
         }
+        if ((ch === '-' || ch === '+') && expectValue) {
+            const numberMatch = source.slice(i + 1).match(/^(?:\d+(?:\.\d+)?|\.\d+)/);
+            if (numberMatch) {
+                tokens.push(`${ch === '-' ? '-' : ''}${numberMatch[0]}`);
+                i += numberMatch[0].length + 1;
+                expectValue = false;
+                continue;
+            }
+            if (ch === '-') {
+                tokens.push('0');
+                tokens.push('-');
+            }
+            i += 1;
+            expectValue = true;
+            continue;
+        }
         if (/[+\-*/%()]/.test(ch)) {
             tokens.push(ch);
             i += 1;
+            expectValue = ch !== ')';
             continue;
         }
         const numberMatch = source.slice(i).match(/^(?:\d+(?:\.\d+)?|\.\d+)/);
         if (numberMatch) {
             tokens.push(numberMatch[0]);
             i += numberMatch[0].length;
+            expectValue = false;
             continue;
         }
         return null;
@@ -101,7 +120,7 @@ function evaluateMathTokens(tokens) {
     const isOperator = token => Object.prototype.hasOwnProperty.call(precedence, token);
 
     tokens.forEach(token => {
-        if (/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(token)) {
+        if (/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(token)) {
             output.push(Number(token));
             return;
         }
@@ -493,7 +512,7 @@ export function renderSpreadsheetScreen() {
         + '<button type="button" data-ledger-action="load">Load Draft</button>'
         + '<button type="button" data-ledger-action="clear">Clear</button>'
         + '</div>'
-        + '<div class="small muted">Formulas: SUM, AVERAGE/AVG, MIN, MAX, COUNT, PRODUCT.</div>'
+        + '<div class="small muted">Formulas: SUM, AVERAGE/AVG, MIN, MAX, COUNT, PRODUCT. Example: =SUM(A1:A10)</div>'
         + '</div>'
         + '<div class="comms-panel ledger-formula-panel">'
         + `<div id="ledgerAddress" class="ledger-address">${escapeHtml(selectedKey)}</div>`
