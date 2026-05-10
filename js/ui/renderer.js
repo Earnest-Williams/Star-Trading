@@ -1,6 +1,7 @@
 export const Renderer = (function() {
     let dirty = new Set();
     let scheduled = false;
+    const isDev = !!(import.meta.env?.DEV);
 
     const handlers = {};
     const dependencies = new Map();
@@ -81,7 +82,6 @@ export const Renderer = (function() {
         sliceChanged(...slices) {
             if (slices.length === 0) return;
 
-            const isDev = !!(import.meta.env?.DEV);
             const triggered = isDev ? [] : null;
             const uniqueSlices = new Set(slices);
             let changed = false;
