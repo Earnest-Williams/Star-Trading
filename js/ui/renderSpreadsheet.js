@@ -351,7 +351,7 @@ function renderCell(row, col) {
     if (raw.trim().startsWith('=')) classes.push('has-formula');
     if (typeof value === 'number') classes.push('numeric');
     if (typeof value === 'string' && value.startsWith('#')) classes.push('cell-error');
-    return `<td class="${classes.join(' ')}" data-cell="${key}" title="${escapeHtml(raw)}" style="height:${getRowHeight(row)}px">${escapeHtml(formatComputed(value))}</td>`;
+    return `<td class="${classes.join(' ')}" data-cell="${key}" title="${escapeHtml(raw)}">${escapeHtml(formatComputed(value))}</td>`;
 }
 
 function renderGrid() {
@@ -495,12 +495,18 @@ function handleResizePointerDown(event) {
     else doc.body.classList.add('ledger-resizing');
 
     const onMove = moveEvent => {
+        const root = document.getElementById('ledgerSheet');
+        if (!root) return;
         if (resizeType === 'col' && Number.isInteger(col)) {
             setColumnWidth(col, startWidth + moveEvent.clientX - startX);
+            const colElement = root.querySelector(`colgroup col:nth-child(${col + 2})`);
+            if (colElement) colElement.style.width = `${getColumnWidth(col)}px`;
         } else if (resizeType === 'row' && Number.isInteger(row)) {
             setRowHeight(row, startHeight + moveEvent.clientY - startY);
+            const rowHeader = root.querySelector(`.ledger-row-header[data-row="${row}"]`);
+            const rowElement = rowHeader ? rowHeader.parentElement : null;
+            if (rowElement) rowElement.style.height = `${getRowHeight(row)}px`;
         }
-        rerenderLedger(false);
     };
 
     const onUp = () => {
@@ -630,6 +636,10 @@ function handleLedgerKeydown(event) {
     }
 }
 
+function handleLedgerContextMenu(event) {
+    event.preventDefault();
+}
+
 export function renderSpreadsheetScreen() {
     ensureSelectionBounds();
     const raw = getRaw(selectedKey);
@@ -667,6 +677,7 @@ export function bindSpreadsheetScreen(shouldFocus = false) {
     const root = document.getElementById('ledgerSheet');
     if (!root) return;
     root.addEventListener('pointerdown', handleResizePointerDown);
+    root.addEventListener('contextmenu', handleLedgerContextMenu);
     root.addEventListener('click', event => {
         const actionButton = event.target.closest('[data-ledger-action]');
         if (actionButton) {

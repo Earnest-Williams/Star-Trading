@@ -30,7 +30,6 @@ export const App = (() => {
     let _unsubs = [];
     let _topbarListeners = [];
     let _unsubscribeMapInteraction = () => {};
-    const _preventContextMenu = event => event.preventDefault();
 
     function init() {
         if (initialized) return;
@@ -109,7 +108,6 @@ export const App = (() => {
         _unsubscribeMapInteraction = setupMapInteraction();
         bindTopbarButtons();
         document.body.addEventListener('click', handleActionClick);
-        document.addEventListener('contextmenu', _preventContextMenu);
     }
 
     function bindTopbarButtons() {
@@ -203,7 +201,6 @@ export const App = (() => {
         _unsubscribeMapInteraction();
         _unsubscribeMapInteraction = () => {};
         document.body.removeEventListener('click', handleActionClick);
-        document.removeEventListener('contextmenu', _preventContextMenu);
         disposeUI();
         resetState();
         initialized = false;
