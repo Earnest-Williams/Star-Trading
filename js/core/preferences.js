@@ -47,7 +47,12 @@ export function normalisePreferences(raw) {
 
 function resolveStorage(storage) {
     if (storage) return storage;
-    return globalThis.localStorage || null;
+    try {
+        return globalThis.localStorage || null;
+    } catch (err) {
+        console.warn('Preferences storage unavailable:', err);
+        return null;
+    }
 }
 
 export function loadPreferences(storage = null) {
@@ -60,6 +65,7 @@ export function loadPreferences(storage = null) {
     try {
         return normalisePreferences(JSON.parse(raw));
     } catch (err) {
+        console.warn('Preferences load failed:', err);
         return getDefaultPreferences();
     }
 }
@@ -73,6 +79,7 @@ export function savePreferences(storage = null, prefs) {
     try {
         targetStorage.setItem(PREFERENCES_KEY, JSON.stringify(normalised));
     } catch (err) {
+        console.warn('Preferences save failed:', err);
         return normalised;
     }
     return normalised;
