@@ -6,6 +6,7 @@ const MIN_COLS = 8;
 const MAX_COLS = 26;
 const MAX_FUNCTION_RESOLUTION_DEPTH = 40;
 const DECIMAL_PRECISION = 4;
+const MAX_RANGE_CELLS = 5000;
 
 let rowCount = 30;
 let colCount = 10;
@@ -204,9 +205,15 @@ function parseRange(token) {
     const start = parseCellKey(match[1]);
     const end = parseCellKey(match[2]);
     if (!start || !end) return null;
+    const rowStart = Math.min(start.row, end.row);
+    const rowEnd = Math.max(start.row, end.row);
+    const colStart = Math.min(start.col, end.col);
+    const colEnd = Math.max(start.col, end.col);
+    const cellCount = (rowEnd - rowStart + 1) * (colEnd - colStart + 1);
+    if (cellCount > MAX_RANGE_CELLS) return null;
     const cells = [];
-    for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row++) {
-        for (let col = Math.min(start.col, end.col); col <= Math.max(start.col, end.col); col++) {
+    for (let row = rowStart; row <= rowEnd; row++) {
+        for (let col = colStart; col <= colEnd; col++) {
             cells.push(cellKey(row, col));
         }
     }
