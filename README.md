@@ -8,6 +8,8 @@ Unlike a simple buy-low/sell-high trader, Star-Trading models sparse 3D sites, c
 
 **Current status:** active solo prototype with chargen, persistence, save migration, tests, CI-ready scripts, and ongoing systems/UI work.
 
+**For contributors**: see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — full module map, data flow, and “how-to” guides.
+
 ## How to play in 60 seconds
 
 1. Open `index.html` directly or run the local dev server with `npm run dev`.
@@ -44,13 +46,15 @@ js/
   utils.js          # Shared helpers: log, random, escapeHtml, formatCredits, etc.
   config/           # Static data tables: chargen, traits, missions, characters, worldgen, polities, etc.
   core/
-    universe.js     # Sparse 3D site generation, createPlayer(), route physics helpers
+    universe.js     # Barrel export for sparse 3D generation and route physics helpers
+    universe/       # Split universe generator, physics, projection, and public API modules
     navigation.js   # Jump-gate topology, shortest paths, reserve labels, relay surcharges
     persistence.js  # save/load, SAVE_VERSION, sparse-world normalization and legacy migration
     characters.js   # Character sheet queries and stat resolution
     characterBuild.js  # Chargen validation, stat spend, build helpers
     commands.js     # Action registry and executor (domain command layer)
-    dataCargo.js    # Private payloads, public snapshots, secure cargo intel
+    dataCargo.js    # Barrel export for data cargo state, private payloads, and snapshots
+    dataCargo/      # Split data cargo types, contraband, mission hooks, and public API modules
     factions.js     # Faction rep, trust, and relationship helpers
     influence.js    # Dominant influence queries and front tracking
     intel.js        # Intel store: add, expire, sell
@@ -61,6 +65,9 @@ js/
     worldTick.js    # Daily/hourly simulation tick orchestration
   systems/          # Economy, captains, colonies, combat, contraband, entanglements, guilds,
                     # market, mining, missions, people, polities, routes, secure courier, travel
+    captains/       # Split captain core, economy, AI, and persistence modules
+    tradeRoutes/    # Split route validation, economics, assignment, and public API modules
+    entanglements/  # Split faction relationship and event modules
   ui/
     renderer.js     # Dirty-tracking RAF scheduler and updateUI()
     renderMap.js    # Projects charted 3D sites onto the 2D canvas; viewport interaction
