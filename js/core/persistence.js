@@ -159,15 +159,7 @@ function readPrimarySave(storage) {
         || (SAVE_KEY_CLASSIC ? storage.getItem(SAVE_KEY_CLASSIC) : null);
 }
 
-function getSaveActionLabel(successMessage) {
-    if (typeof successMessage === "string" && successMessage.toLowerCase().includes("import")) {
-        return "import";
-    }
-    return "load";
-}
-
 function loadSavePayload(saved, successMessage) {
-    const action = getSaveActionLabel(successMessage);
     if (!saved) {
         writeLog("No saved game found.");
         return false;
@@ -177,7 +169,7 @@ function loadSavePayload(saved, successMessage) {
     try {
         data = JSON.parse(saved);
     } catch (err) {
-        writeLog(`Could not ${action} save data. The saved JSON appears to be invalid.`);
+        writeLog("Could not load save data. The saved JSON appears to be invalid.");
         return false;
     }
     if (!validateRawSave(data)) {
@@ -190,15 +182,15 @@ function loadSavePayload(saved, successMessage) {
         const loadedState = buildLoadedState(migrated);
         replaceStateContents(loadedState);
         restoreSessionRng(state.rng, state.player.seed);
-        const notice = typeof successMessage === "string" && successMessage.length > 0
+        const notice = typeof successMessage === "string" && successMessage.trim().length > 0
             ? successMessage
-            : "Game loaded";
+            : "Save loaded";
         writeLog(notice.endsWith(".") ? notice : `${notice}.`);
         notify(notice, 2);
         afterLoad();
         return true;
     } catch (err) {
-        writeLog(`Could not ${action} save data. The save failed validation or normalisation.`);
+        writeLog("Could not load save data. The save failed validation or normalisation.");
         return false;
     }
 }
