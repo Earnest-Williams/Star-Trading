@@ -14,17 +14,20 @@
             <h1>Solo Space Trader</h1>
             <div id="shellContinueInfo" class="shell-continue-info"></div>
             <div class="shell-actions">
-                <button id="btn-continue" hidden>Continue</button>
-                <button id="btn-show-new-game">New Game</button>
+                <button id="btn-menu-continue" hidden>Continue</button>
+                <button id="btn-menu-new-game">New Game</button>
+                <button id="btn-menu-load">Load Game</button>
+                <button id="btn-menu-settings">Settings</button>
             </div>
         </div>
         <div id="newGamePanel" class="panel" hidden>
-            <button id="btn-back-to-menu" class="shell-back">&#8592; Menu</button>
+            <button id="btn-chargen-back" class="shell-back">&#8592; Menu</button>
             <h3>New Game Settings</h3>
             <label>Galaxy Archetype
                 <select id="worldgen-archetype">
                     <option value="barred_spiral" selected>Barred Spiral</option>
                     <option value="four_arm_spiral">Four-Arm Spiral</option>
+                    <option value="ring_spiral">Ring Spiral</option>
                     <option value="dwarf_irregular">Dwarf Irregular</option>
                 </select>
             </label>
@@ -52,7 +55,41 @@
                 </select>
             </label>
             <div id="chargenPanel" class="subpanel"></div>
-            <button id="btn-new-game">Start New Galaxy</button>
+            <button id="btn-chargen-start">Start New Galaxy</button>
+        </div>
+        <div id="loadGamePanel" class="panel" hidden>
+            <button id="btn-load-back" class="shell-back">&#8592; Menu</button>
+            <h3>Load Game</h3>
+            <button id="btn-load-from-storage">Load Saved Game</button>
+            <div>
+                <button id="btn-import-save">Import Save File&hellip;</button>
+                <input type="file" id="import-save-file" accept=".json" style="display:none">
+            </div>
+        </div>
+        <div id="settingsPanel" class="panel" hidden>
+            <button id="btn-settings-back" class="shell-back">&#8592; Menu</button>
+            <h3>Settings</h3>
+            <label><input type="checkbox" id="settings-reduced-motion"> Reduced Motion</label>
+            <label><input type="checkbox" id="settings-compact-ui"> Compact UI</label>
+            <label><input type="checkbox" id="settings-show-boot-tips"> Show Boot Tips</label>
+            <label>Default Galaxy Archetype
+                <select id="settings-default-archetype">
+                    <option value="barred_spiral">Barred Spiral</option>
+                    <option value="four_arm_spiral">Four-Arm Spiral</option>
+                    <option value="ring_spiral">Ring Spiral</option>
+                    <option value="dwarf_irregular">Dwarf Irregular</option>
+                </select>
+            </label>
+            <label>Default Occupied Sites
+                <select id="settings-default-sites">
+                    <option value="180">180</option>
+                    <option value="240">240</option>
+                    <option value="360">360</option>
+                    <option value="540">540</option>
+                    <option value="720">720</option>
+                </select>
+            </label>
+            <button id="btn-settings-save">Save Settings</button>
         </div>
     </div>
 
