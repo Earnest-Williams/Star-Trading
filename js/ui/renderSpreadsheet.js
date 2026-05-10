@@ -359,7 +359,7 @@ function renderGrid() {
     let html = '<table class="ledger-table"><colgroup>';
     html += '<col style="width:48px">';
     for (let col = 0; col < colCount; col++) {
-        html += `<col style="width:${getColumnWidth(col)}px">`;
+        html += `<col data-ledger-col="${col}" style="width:${getColumnWidth(col)}px">`;
     }
     html += '</colgroup><thead><tr><th class="ledger-corner"></th>';
     for (let col = 0; col < colCount; col++) {
@@ -367,7 +367,7 @@ function renderGrid() {
     }
     html += '</tr></thead><tbody>';
     for (let row = 1; row <= rowCount; row++) {
-        html += `<tr style="height:${getRowHeight(row)}px"><th class="ledger-row-header" data-row="${row}">${row}<span class="ledger-row-resizer" data-ledger-resize="row" data-row="${row}"></span></th>`;
+        html += `<tr data-row="${row}" style="height:${getRowHeight(row)}px"><th class="ledger-row-header" data-row="${row}">${row}<span class="ledger-row-resizer" data-ledger-resize="row" data-row="${row}"></span></th>`;
         for (let col = 0; col < colCount; col++) html += renderCell(row, col);
         html += '</tr>';
     }
@@ -499,12 +499,11 @@ function handleResizePointerDown(event) {
         if (!root) return;
         if (resizeType === 'col' && Number.isInteger(col)) {
             setColumnWidth(col, startWidth + moveEvent.clientX - startX);
-            const colElement = root.querySelector(`colgroup col:nth-child(${col + 2})`);
+            const colElement = root.querySelector(`colgroup col[data-ledger-col="${col}"]`);
             if (colElement) colElement.style.width = `${getColumnWidth(col)}px`;
         } else if (resizeType === 'row' && Number.isInteger(row)) {
             setRowHeight(row, startHeight + moveEvent.clientY - startY);
-            const rowHeader = root.querySelector(`.ledger-row-header[data-row="${row}"]`);
-            const rowElement = rowHeader ? rowHeader.parentElement : null;
+            const rowElement = root.querySelector(`tbody tr[data-row="${row}"]`);
             if (rowElement) rowElement.style.height = `${getRowHeight(row)}px`;
         }
     };
