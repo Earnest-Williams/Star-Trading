@@ -24,10 +24,12 @@ const MAP_STAR_DEPTH_RATES = [0.08, 0.18, 0.32];
 const MAP_TOOLTIP_OFFSET = 14;
 const MAP_CAMERA_YAW_SENSITIVITY = 0.008;
 const MAP_CAMERA_PITCH_SENSITIVITY = 0.006;
-const MAP_CAMERA_PITCH_MIN_RADIANS = -1.1;
-const MAP_CAMERA_PITCH_MAX_RADIANS = 1.1;
+const MAP_CAMERA_MAX_TILT_RADIANS = Math.PI * 0.35;
+const MAP_CAMERA_PITCH_MIN_RADIANS = -MAP_CAMERA_MAX_TILT_RADIANS;
+const MAP_CAMERA_PITCH_MAX_RADIANS = MAP_CAMERA_MAX_TILT_RADIANS;
 const MOUSE_BUTTON_LEFT = 0;
 const MOUSE_BUTTON_MIDDLE = 1;
+const MOUSE_BUTTON_RIGHT = 2;
 let mapAnimationFrameId = 0;
 let mapAnimationTime = 0;
 
@@ -531,7 +533,7 @@ export function setupMapInteraction() {
                     MAP_CAMERA_PITCH_MIN_RADIANS,
                     Math.min(MAP_CAMERA_PITCH_MAX_RADIANS, camera.pitch - dy * MAP_CAMERA_PITCH_SENSITIVITY)
                 );
-            } else {
+            } else if (dragMode === "pan") {
                 const viewport = getViewport();
                 viewport.offsetX += dx;
                 viewport.offsetY += dy;
@@ -570,9 +572,15 @@ export function setupMapInteraction() {
     };
 
     const handleMouseDown = event => {
-        if (event.button !== MOUSE_BUTTON_LEFT && event.button !== MOUSE_BUTTON_MIDDLE) return;
+        if (event.button === MOUSE_BUTTON_RIGHT) {
+            event.preventDefault();
+            return;
+        }
+        if (event.button !== MOUSE_BUTTON_LEFT && event.button !== MOUSE_BUTTON_MIDDLE) {
+            return;
+        }
         dragMode = event.button === MOUSE_BUTTON_MIDDLE ? "orbit" : "pan";
-        if (dragMode === "orbit") event.preventDefault();
+        event.preventDefault();
         dragging = true;
         dragMoved = false;
         lastPointer = getPointerCanvasPosition(canvas, event);
