@@ -176,7 +176,6 @@ export const App = (() => {
             startSimulation(readWorldgenSettingsFromDom(), buildSpec);
             setAppMode(APP_MODES.IN_GAME);
             postStartupNotifications();
-            renderChargen();
             updateUI();
             centerMapOnSector();
         });
