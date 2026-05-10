@@ -117,8 +117,8 @@ function tokenizeExpression(source) {
 }
 
 function evaluateMathTokens(tokens) {
-    if (tokens === null) return '#ERROR';
-    if (!tokens || tokens.length === 0) return 0;
+    if (tokens == null) return '#ERROR';
+    if (tokens.length === 0) return 0;
     const output = [];
     const ops = [];
     const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2 };
