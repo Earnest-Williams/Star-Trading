@@ -159,15 +159,15 @@ function readPrimarySave(storage) {
         || (SAVE_KEY_CLASSIC ? storage.getItem(SAVE_KEY_CLASSIC) : null);
 }
 
-function loadSavePayload(saved, successMessage) {
-    if (!saved) {
+function loadSavePayload(savePayload, successMessage) {
+    if (!savePayload) {
         writeLog("No saved game found.");
         return false;
     }
 
     let data;
     try {
-        data = JSON.parse(saved);
+        data = JSON.parse(savePayload);
     } catch (err) {
         writeLog("Could not load save data. The saved JSON appears to be invalid.");
         return false;
@@ -185,8 +185,9 @@ function loadSavePayload(saved, successMessage) {
         const notice = typeof successMessage === "string" && successMessage.trim().length > 0
             ? successMessage
             : "Save loaded";
-        writeLog(notice.endsWith(".") ? notice : `${notice}.`);
-        notify(notice, 2);
+        const normalizedNotice = notice.endsWith(".") ? notice.slice(0, -1) : notice;
+        writeLog(`${normalizedNotice}.`);
+        notify(normalizedNotice, 2);
         afterLoad();
         return true;
     } catch (err) {
