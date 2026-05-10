@@ -39,8 +39,8 @@ export const App = (() => {
 
     function init() {
         if (initialized) return;
-        initialized = true;
         resetState();
+        initialized = true;
         configurePersistence();
         loadStoredPreferences();
         initUI();
