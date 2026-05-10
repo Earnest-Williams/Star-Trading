@@ -450,6 +450,7 @@ function selectCell(key, shouldFocus = true) {
     selectedKey = normalizeKey(key);
     const parsed = parseCellKey(selectedKey);
     if (parsed) {
+        selectedKey = cellKey(Math.min(parsed.row, MAX_ROWS), parsed.col);
         rowCount = Math.max(rowCount, Math.min(parsed.row, MAX_ROWS));
         colCount = Math.max(colCount, Math.min(parsed.col + 1, MAX_COLS));
     }
