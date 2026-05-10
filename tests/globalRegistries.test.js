@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { EventBus } from '../js/events.js';
 import { Renderer } from '../js/ui/renderer.js';
+import { StateSlice } from '../js/ui/stateSlices.js';
 import {
     clearDailyHooks,
     clearHourlyHooks,
@@ -43,6 +44,26 @@ describe('Renderer lifecycle', () => {
         Renderer.clear();
         Renderer.invalidateAll();
         assert.equal(count, 0);
+    });
+
+    it('invalidates only renderers subscribed to the changed slice', async () => {
+        Renderer.clear();
+        let a = 0;
+        let b = 0;
+
+        const fnA = () => { a += 1; };
+        const fnB = () => { b += 1; };
+
+        Renderer.register('a', fnA, [StateSlice.PLAYER]);
+        Renderer.register('b', fnB, [StateSlice.MISSIONS]);
+
+        Renderer.sliceChanged(StateSlice.PLAYER);
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        assert.equal(a, 1);
+        assert.equal(b, 0);
+        Renderer.clear();
     });
 });
 

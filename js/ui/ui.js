@@ -1,5 +1,6 @@
 import { state } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
+import { StateSlice } from './stateSlices.js';
 import { BALANCE } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 import { executeAction, registerAction, resetActions } from '../core/commands.js';
@@ -58,6 +59,11 @@ import { spendTime } from '../core/time.js';
 // All data-action buttons are handled via event delegation, then
 // passed through the domain command layer.
 // =====================================================
+function isStateSliceArray(value) {
+    return Array.isArray(value)
+        && value.every(item => typeof item === 'string');
+}
+
 export function handleActionClick(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
@@ -68,7 +74,15 @@ export function handleActionClick(event) {
     }
     try {
         const result = executeAction({ type: action, args });
-        if (result !== false) updateUI();
+
+        if (result === false) return;
+
+        if (isStateSliceArray(result)) {
+            result.forEach(slice => Renderer.sliceChanged(slice));
+            return;
+        }
+
+        updateUI();
     } catch (e) {
         console.error(`Action ${action} failed:`, e);
     }
@@ -83,14 +97,25 @@ export function showScreen(screen) {
     if (screen === 'market' && !state.ports[state.player.currentSector]) state.currentScreen = 'sector';
     if (screen === 'shipyard' && state.player.currentSector !== state.world?.roles?.shipyardSiteId) state.currentScreen = 'sector';
     if (state.currentScreen !== 'reputation') state.selectedCaptainId = null;
-    Renderer.invalidateAll();
+
+    Renderer.sliceChanged(StateSlice.CURRENT_SCREEN);
+    Renderer.sliceChanged(StateSlice.SELECTED_CAPTAIN);
+    return [StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN];
 }
 
 export function setReputationTab(tab) {
     state.reputationTab = tab;
     state.currentScreen = 'reputation';
     state.selectedCaptainId = null;
-    Renderer.invalidateAll();
+
+    Renderer.sliceChanged(StateSlice.REPUTATION_TAB);
+    Renderer.sliceChanged(StateSlice.CURRENT_SCREEN);
+    Renderer.sliceChanged(StateSlice.SELECTED_CAPTAIN);
+    return [
+        StateSlice.REPUTATION_TAB,
+        StateSlice.CURRENT_SCREEN,
+        StateSlice.SELECTED_CAPTAIN
+    ];
 }
 
 // =====================================================
@@ -163,23 +188,95 @@ function renderCurrentScreen() {
 // REGISTER RENDERERS
 // =====================================================
 const rendererRegistrations = [
-    ['header', renderHeader],
-    ['sector', renderSectorContents],
-    ['screen', renderCurrentScreen],
-    ['menu', renderMenuPanel],
-    ['acceptedMissions', renderAcceptedMissions],
-    ['factions', renderFactionPanel],
-    ['map', drawMap],
-    ['mapInspector', renderMapInspector],
-    ['topTabs', renderTopTabs],
-    ['priority', renderPriorityFeed]
+    ['header', renderHeader, [
+        StateSlice.PLAYER,
+        StateSlice.TIME,
+        StateSlice.UNIVERSE
+    ]],
+
+    ['sector', renderSectorContents, [
+        StateSlice.PLAYER,
+        StateSlice.UNIVERSE,
+        StateSlice.PORTS,
+        StateSlice.PLANETS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.CAPTAINS,
+        StateSlice.DATA_CARGO
+    ]],
+
+    ['screen', renderCurrentScreen, [
+        StateSlice.CURRENT_SCREEN,
+        StateSlice.PLAYER,
+        StateSlice.PORTS,
+        StateSlice.PLANETS,
+        StateSlice.MISSIONS,
+        StateSlice.FACTIONS,
+        StateSlice.CAPTAINS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.DATA_CARGO,
+        StateSlice.REPUTATION_TAB
+    ]],
+
+    ['menu', renderMenuPanel, [
+        StateSlice.PLAYER,
+        StateSlice.UNIVERSE,
+        StateSlice.PORTS,
+        StateSlice.PLANETS
+    ]],
+
+    ['acceptedMissions', renderAcceptedMissions, [
+        StateSlice.MISSIONS
+    ]],
+
+    ['factions', renderFactionPanel, [
+        StateSlice.PLAYER,
+        StateSlice.FACTIONS,
+        StateSlice.DATA_CARGO
+    ]],
+
+    ['map', drawMap, [
+        StateSlice.PLAYER,
+        StateSlice.UNIVERSE,
+        StateSlice.PORTS,
+        StateSlice.PLANETS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.CAPTAINS,
+        StateSlice.SELECTED_SECTOR,
+        StateSlice.MAP_VIEW,
+        StateSlice.DATA_CARGO
+    ]],
+
+    ['mapInspector', renderMapInspector, [
+        StateSlice.PLAYER,
+        StateSlice.UNIVERSE,
+        StateSlice.PORTS,
+        StateSlice.PLANETS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.SELECTED_SECTOR
+    ]],
+
+    ['topTabs', renderTopTabs, [
+        StateSlice.CURRENT_SCREEN
+    ]],
+
+    ['priority', renderPriorityFeed, [
+        StateSlice.PLAYER,
+        StateSlice.TIME,
+        StateSlice.MISSIONS,
+        StateSlice.PLANETS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.UNIVERSE,
+        StateSlice.FACTIONS
+    ]]
 ];
 let rendererUnsubscribers = [];
 let uiInitialized = false;
 
 function registerUIRenderers() {
     if (rendererUnsubscribers.length > 0) return;
-    rendererUnsubscribers = rendererRegistrations.map(([key, fn]) => Renderer.register(key, fn));
+    rendererUnsubscribers = rendererRegistrations.map(([key, fn, deps]) =>
+        Renderer.register(key, fn, deps)
+    );
 }
 
 // =====================================================
