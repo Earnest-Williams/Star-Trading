@@ -81,14 +81,17 @@ function tokenizeExpression(source) {
         if ((ch === '-' || ch === '+') && expectValue) {
             const numberMatch = source.slice(i + 1).match(/^(?:\d+(?:\.\d+)?|\.\d+)/);
             if (numberMatch) {
-                tokens.push(`${ch === '-' ? '-' : ''}${numberMatch[0]}`);
+                tokens.push(ch === '-' ? `-${numberMatch[0]}` : numberMatch[0]);
                 i += numberMatch[0].length + 1;
                 expectValue = false;
                 continue;
             }
             if (ch === '-') {
+                // Normalize unary negation before grouped values, e.g. -(A1), into binary math.
                 tokens.push('0');
                 tokens.push('-');
+            } else {
+                // Unary plus is a no-op, e.g. +(A1), so we intentionally skip emitting a token.
             }
             i += 1;
             expectValue = true;
