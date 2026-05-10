@@ -100,7 +100,7 @@ function withStateTarget(target, fn) {
     }
 }
 
-function validateRawSave(data) {
+export function validateRawSave(data) {
     return isObject(data)
         && isObject(data.player)
         && isObject(data.universe)
@@ -108,7 +108,7 @@ function validateRawSave(data) {
         && isObject(data.planets);
 }
 
-function buildLoadedState(data) {
+export function buildLoadedState(data) {
     const loadedState = createInitialState();
     loadedState.player = data.player;
     loadedState.universe = data.universe;
@@ -147,9 +147,52 @@ function buildLoadedState(data) {
     return loadedState;
 }
 
-function getStorage() {
+export function getPersistenceStorage() {
     if (persistenceAdapters.storage) return persistenceAdapters.storage;
     return globalThis.localStorage || null;
+}
+
+function readPrimarySave(storage) {
+    if (!storage || typeof storage.getItem !== "function") return null;
+    return storage.getItem(SAVE_KEY)
+        || (SAVE_KEY_LEGACY ? storage.getItem(SAVE_KEY_LEGACY) : null)
+        || (SAVE_KEY_CLASSIC ? storage.getItem(SAVE_KEY_CLASSIC) : null);
+}
+
+function loadSavePayload(savePayload, successMessage) {
+    if (!savePayload) {
+        writeLog("No saved game found.");
+        return false;
+    }
+
+    let data;
+    try {
+        data = JSON.parse(savePayload);
+    } catch (err) {
+        writeLog("Could not load save data. The saved JSON appears to be invalid.");
+        return false;
+    }
+    if (!validateRawSave(data)) {
+        writeLog("Save data is missing required fields.");
+        return false;
+    }
+
+    try {
+        const migrated = migrateSave(data);
+        const loadedState = buildLoadedState(migrated);
+        replaceStateContents(loadedState);
+        restoreSessionRng(state.rng, state.player.seed);
+        const notice = typeof successMessage === "string" && successMessage.trim().length > 0
+            ? successMessage.trim()
+            : "Save loaded";
+        writeLog(notice);
+        notify(notice, 2);
+        afterLoad();
+        return true;
+    } catch (err) {
+        writeLog("Could not load save data. The save failed validation or normalisation.");
+        return false;
+    }
 }
 
 function writeLog(message) {
@@ -282,8 +325,47 @@ export function buildSaveData() {
     return data;
 }
 
+export function hasSavedGame(storage = getPersistenceStorage()) {
+    return Boolean(readPrimarySave(storage));
+}
+
+export function getSavedGameSummary(storage = getPersistenceStorage()) {
+    const saved = readPrimarySave(storage);
+    if (!saved) return null;
+    try {
+        const data = JSON.parse(saved);
+        if (!validateRawSave(data)) return null;
+        return {
+            version: Number(data.version) || 0,
+            credits: Number(data.player.credits) || 0,
+            day: Number(data.player.time?.day) || 1,
+            currentSector: Number(data.player.currentSector) || 1,
+            shipName: typeof data.player.ship?.name === "string" ? data.player.ship.name : null
+        };
+    } catch (err) {
+        return null;
+    }
+}
+
+export function exportSaveData() {
+    try {
+        return JSON.stringify(buildSaveData());
+    } catch (err) {
+        writeLog("Save export failed.");
+        return null;
+    }
+}
+
+export function importSavePayload(text) {
+    if (typeof text !== "string") {
+        writeLog("Could not import save data. The saved JSON appears to be invalid.");
+        return false;
+    }
+    return loadSavePayload(text, "Save imported");
+}
+
 export function saveGame() {
-    const storage = getStorage();
+    const storage = getPersistenceStorage();
     if (!storage || typeof storage.setItem !== "function") {
         writeLog("Save failed: no storage adapter is available.");
         return false;
@@ -300,47 +382,12 @@ export function saveGame() {
 }
 
 export function loadGame() {
-    const storage = getStorage();
+    const storage = getPersistenceStorage();
     if (!storage || typeof storage.getItem !== "function") {
         writeLog("Load failed: no storage adapter is available.");
         return false;
     }
-    let saved = storage.getItem(SAVE_KEY);
-    if (!saved && SAVE_KEY_LEGACY) {
-        saved = storage.getItem(SAVE_KEY_LEGACY);
-        if (saved) writeLog("Migrating save from previous Star-Trading key.");
-    }
-    if (!saved && SAVE_KEY_CLASSIC) {
-        saved = storage.getItem(SAVE_KEY_CLASSIC);
-        if (saved) writeLog("Migrating save from legacy key.");
-    }
-    if (!saved) { writeLog("No saved game found."); return false; }
-
-    let data;
-    try {
-        data = JSON.parse(saved);
-    } catch (err) {
-        writeLog("Could not load save data. The saved JSON appears to be invalid.");
-        return false;
-    }
-    if (!validateRawSave(data)) {
-        writeLog("Save data is missing required fields.");
-        return false;
-    }
-
-    try {
-        const migrated = migrateSave(data);
-        const loadedState = buildLoadedState(migrated);
-        replaceStateContents(loadedState);
-        restoreSessionRng(state.rng, state.player.seed);
-        writeLog("Game loaded.");
-        notify("Game loaded", 2);
-        afterLoad();
-        return true;
-    } catch (err) {
-        writeLog("Could not load save data. The save failed validation or normalisation.");
-        return false;
-    }
+    return loadSavePayload(readPrimarySave(storage), "Game loaded");
 }
 
 function normaliseCurrentLoadedGame() {
