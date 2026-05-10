@@ -21,6 +21,7 @@ import { renderLogisticsScreen } from './renderLogistics.js';
 import { renderCharacterSheet } from './renderCharacterSheet.js';
 import { renderCommunicationsScreen } from './renderComms.js';
 import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsheet.js';
+import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -181,6 +182,8 @@ function renderCurrentScreen() {
 // REGISTER RENDERERS
 // =====================================================
 const rendererRegistrations = [
+    ['shell', renderShell, SHELL_RENDERER_DEPS],
+
     ['header', renderHeader, [
         StateSlice.PLAYER,
         StateSlice.TIME,

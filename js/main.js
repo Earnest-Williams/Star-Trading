@@ -1,11 +1,11 @@
-import { resetState, state } from './state.js';
+import { resetState, state, APP_MODES, setAppMode } from './state.js';
 import { EventBus } from './events.js';
 import { Renderer, updateUI } from './ui/renderer.js';
 import { BALANCE } from './constants.js';
 import { createPlayerFromBuild, generateUniverse, generateStars } from './core/universe.js';
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
-import { setPersistenceAdapters } from './core/persistence.js';
+import { setPersistenceAdapters, hasSavedGame, loadGame } from './core/persistence.js';
 import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
 import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
@@ -38,12 +38,8 @@ export const App = (() => {
 
         configurePersistence();
         initUI();
-        registerSimulationTickHooks();
-        registerRendererSubscriptions();
         renderChargen();
-        startSimulation(readWorldgenSettingsFromDom(), getChargenBuild());
         bindAppShellDom();
-        postStartupNotifications();
         updateUI();
     }
 
@@ -107,12 +103,44 @@ export const App = (() => {
     function bindAppShellDom() {
         _unsubscribeMapInteraction = setupMapInteraction();
         bindTopbarButtons();
+        bindShellButtons();
         document.addEventListener("contextmenu", suppressContextMenu);
         document.body.addEventListener('click', handleActionClick);
     }
 
     function suppressContextMenu(event) {
         event.preventDefault();
+    }
+
+    function bindShellButtons() {
+        addTopbarListener('btn-show-new-game', () => {
+            const mainMenu = document.getElementById('mainMenu');
+            const newGamePanel = document.getElementById('newGamePanel');
+            if (mainMenu) mainMenu.hidden = true;
+            if (newGamePanel) newGamePanel.hidden = false;
+        });
+        addTopbarListener('btn-back-to-menu', () => {
+            const mainMenu = document.getElementById('mainMenu');
+            const newGamePanel = document.getElementById('newGamePanel');
+            if (mainMenu) mainMenu.hidden = false;
+            if (newGamePanel) newGamePanel.hidden = true;
+        });
+        addTopbarListener('btn-continue', () => {
+            if (!hasSavedGame()) return;
+            setAppMode(APP_MODES.IN_GAME);
+            registerSimulationTickHooks();
+            registerRendererSubscriptions();
+            const result = loadGame();
+            if (result === false) {
+                resetTimeHooks();
+                _unsubs.forEach(unsub => unsub());
+                _unsubs = [];
+                setAppMode(APP_MODES.MAIN_MENU);
+                updateUI();
+            } else {
+                centerMapOnSector();
+            }
+        });
     }
 
     function bindTopbarButtons() {
@@ -140,10 +168,16 @@ export const App = (() => {
             resetState();
             disposeUI();
             resetTimeHooks();
+            _unsubs.forEach(unsub => unsub());
+            _unsubs = [];
             initUI();
             registerSimulationTickHooks();
+            registerRendererSubscriptions();
             startSimulation(readWorldgenSettingsFromDom(), buildSpec);
+            setAppMode(APP_MODES.IN_GAME);
+            postStartupNotifications();
             updateUI();
+            centerMapOnSector();
         });
         ['chargenPanel'].forEach(id => {
             const el = document.getElementById(id);
