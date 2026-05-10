@@ -4,6 +4,8 @@ const STORAGE_KEY = 'star-trading.ledger.v1';
 const MIN_ROWS = 20;
 const MIN_COLS = 8;
 const MAX_COLS = 26;
+const MAX_FUNCTION_RESOLUTION_DEPTH = 40;
+const DECIMAL_PRECISION = 4;
 
 let rowCount = 30;
 let colCount = 10;
@@ -145,8 +147,13 @@ function evaluateMathTokens(tokens) {
         if (token === '+') stack.push(left + right);
         else if (token === '-') stack.push(left - right);
         else if (token === '*') stack.push(left * right);
-        else if (token === '/') stack.push(right === 0 ? NaN : left / right);
-        else if (token === '%') stack.push(right === 0 ? NaN : left % right);
+        else if (token === '/') {
+            if (right === 0) return '#ERROR';
+            stack.push(left / right);
+        } else if (token === '%') {
+            if (right === 0) return '#ERROR';
+            stack.push(left % right);
+        }
     }
     return stack.length === 1 && Number.isFinite(stack[0]) ? stack[0] : '#ERROR';
 }
@@ -215,7 +222,7 @@ function evaluateFunction(name, argStr, currentKey) {
 function resolveFunctions(source, currentKey) {
     let result = source;
     const callRegex = /\b([A-Z][A-Z0-9_]*)\s*\(([^()]*)\)/i;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < MAX_FUNCTION_RESOLUTION_DEPTH; i++) {
         const match = result.match(callRegex);
         if (!match) return result;
         const name = match[1].toUpperCase();
@@ -268,7 +275,7 @@ function getComputed(key) {
 function formatComputed(value) {
     if (typeof value !== 'number') return value || '';
     if (Number.isInteger(value)) return String(value);
-    return String(Number(value.toFixed(4)));
+    return String(Number(value.toFixed(DECIMAL_PRECISION)));
 }
 
 function renderCell(row, col) {
@@ -405,7 +412,12 @@ function addColumn() {
 }
 
 function clearSheet() {
-    const confirmFn = globalThis.confirm || (() => false);
+    if (typeof globalThis.confirm !== 'function') {
+        lastStatus = 'Clear unavailable in this environment';
+        rerenderLedger();
+        return;
+    }
+    const confirmFn = globalThis.confirm;
     if (!confirmFn('Clear the entire ledger?')) return;
     rawData = {};
     rowCount = 30;
