@@ -1,4 +1,4 @@
-import { state } from '../state.js';
+import { state, APP_MODES } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
 import { StateSlice, stateChanged } from './stateSlices.js';
 import { BALANCE } from '../constants.js';
@@ -92,7 +92,14 @@ export function handleActionClick(event) {
 // =====================================================
 // SCREEN ROUTING
 // =====================================================
+const GAMEPLAY_SCREENS = new Set([
+    'sector', 'market', 'colony', 'missions', 'logistics',
+    'reputation', 'communications', 'spreadsheet', 'shipyard', 'character'
+]);
+
 export function showScreen(screen) {
+    if (!GAMEPLAY_SCREENS.has(screen)) return false;
+    if (state.appMode !== APP_MODES.IN_GAME || !state.player) return false;
     state.currentScreen = screen;
     if (screen === 'colony' && !state.planets[state.player.currentSector]) state.currentScreen = 'sector';
     if (screen === 'market' && !state.ports[state.player.currentSector]) state.currentScreen = 'sector';
@@ -125,8 +132,11 @@ function renderTopTabs() {
 }
 
 function renderCurrentScreen() {
+    if (state.appMode !== APP_MODES.IN_GAME) return;
+    if (!state.player) return;
     const { currentScreen, player, ports, planets } = state;
     const title = document.getElementById('screenTitle');
+    if (!title) return;
     if (currentScreen === 'market' && ports[player.currentSector]) {
         title.innerHTML = `Market - Sector <span id="curSector">${player.currentSector}</span>`;
         renderMarketPanel();

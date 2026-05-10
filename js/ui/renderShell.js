@@ -2,18 +2,21 @@ import { state, APP_MODES } from '../state.js';
 import { getSavedGameSummary } from '../core/persistence.js';
 import { StateSlice } from './stateSlices.js';
 
-export function renderShell() {
+export function syncShellVisibility(appMode) {
     const shellView = document.getElementById('shellView');
     const gameShell = document.getElementById('gameShell');
     if (!shellView || !gameShell) return;
-
-    const inGame = state.appMode === APP_MODES.IN_GAME;
+    const inGame = appMode === APP_MODES.IN_GAME;
     shellView.hidden = inGame;
     gameShell.hidden = !inGame;
+}
 
-    if (inGame) return;
+export function renderShell() {
+    syncShellVisibility(state.appMode);
 
-    const btnContinue = document.getElementById('btn-continue');
+    if (state.appMode === APP_MODES.IN_GAME) return;
+
+    const btnContinue = document.getElementById('btn-menu-continue');
     const continueInfo = document.getElementById('shellContinueInfo');
     if (!btnContinue) return;
 
