@@ -449,6 +449,37 @@ select:focus-visible {
 .priority-item.urgent {
     border-left-color: var(--red);
 }
+.shell-menu {
+    max-width: 480px;
+    margin: 60px auto 0;
+    text-align: center;
+}
+
+.shell-continue-info {
+    color: var(--text-secondary);
+    font-size: 0.82em;
+    letter-spacing: 0.06em;
+    margin-top: 8px;
+    min-height: 1.4em;
+}
+
+.shell-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.shell-actions button {
+    min-width: 220px;
+    margin: 0;
+}
+
+.shell-back {
+    margin-bottom: 12px;
+}
+
 #newGamePanel {
     margin-bottom: 10px;
 }

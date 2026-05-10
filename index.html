@@ -9,103 +9,117 @@
 <body>
     <div id="notificationFeed"></div>
 
-    <details class="panel" id="newGamePanel">
-        <summary>New Game Settings</summary>
-        <label>Galaxy Archetype
-            <select id="worldgen-archetype">
-                <option value="barred_spiral" selected>Barred Spiral</option>
-                <option value="four_arm_spiral">Four-Arm Spiral</option>
-                <option value="dwarf_irregular">Dwarf Irregular</option>
-            </select>
-        </label>
-        <label>Occupied Sites
-            <select id="worldgen-sites">
-                <option value="60" selected>60</option>
-                <option value="90">90</option>
-                <option value="120">120</option>
-                <option value="150">150</option>
-            </select>
-        </label>
-        <span class="advanced-settings">Advanced:</span>
-        <label>Route Density
-            <select id="worldgen-route-density">
-                <option value="0.85">Low</option>
-                <option value="1" selected>Standard</option>
-                <option value="1.15">High</option>
-            </select>
-        </label>
-        <label>Known Space at Start
-            <select id="worldgen-known-space">
-                <option value="0.20">20%</option>
-                <option value="0.28" selected>28%</option>
-                <option value="0.35">35%</option>
-            </select>
-        </label>
-        <div id="chargenPanel" class="subpanel"></div>
-        <button id="btn-new-game">Start New Galaxy</button>
-    </details>
-    <div class="topbar panel">
-        <button id="top-sector" data-screen="sector">Sector</button>
-        <button id="top-market" data-screen="market">Market</button>
-        <button id="top-colony" data-screen="colony">Colonies</button>
-        <button id="top-missions" data-screen="missions">Missions</button>
-        <button id="top-logistics" data-screen="logistics">Logistics</button>
-        <button id="top-reputation" data-screen="reputation">Network</button>
-        <button id="top-communications" data-screen="communications">Comms</button>
-        <button id="top-spreadsheet" data-screen="spreadsheet">Ledger</button>
-        <button id="top-character" data-screen="character">Character</button>
-        <button id="top-shipyard" data-screen="shipyard">Shipyard</button>
+    <div id="shellView">
+        <div id="mainMenu" class="panel shell-menu">
+            <h1>Solo Space Trader</h1>
+            <div id="shellContinueInfo" class="shell-continue-info"></div>
+            <div class="shell-actions">
+                <button id="btn-continue" hidden>Continue</button>
+                <button id="btn-show-new-game">New Game</button>
+            </div>
+        </div>
+        <div id="newGamePanel" class="panel" hidden>
+            <button id="btn-back-to-menu" class="shell-back">&#8592; Menu</button>
+            <h3>New Game Settings</h3>
+            <label>Galaxy Archetype
+                <select id="worldgen-archetype">
+                    <option value="barred_spiral" selected>Barred Spiral</option>
+                    <option value="four_arm_spiral">Four-Arm Spiral</option>
+                    <option value="dwarf_irregular">Dwarf Irregular</option>
+                </select>
+            </label>
+            <label>Occupied Sites
+                <select id="worldgen-sites">
+                    <option value="60" selected>60</option>
+                    <option value="90">90</option>
+                    <option value="120">120</option>
+                    <option value="150">150</option>
+                </select>
+            </label>
+            <span class="advanced-settings">Advanced:</span>
+            <label>Route Density
+                <select id="worldgen-route-density">
+                    <option value="0.85">Low</option>
+                    <option value="1" selected>Standard</option>
+                    <option value="1.15">High</option>
+                </select>
+            </label>
+            <label>Known Space at Start
+                <select id="worldgen-known-space">
+                    <option value="0.20">20%</option>
+                    <option value="0.28" selected>28%</option>
+                    <option value="0.35">35%</option>
+                </select>
+            </label>
+            <div id="chargenPanel" class="subpanel"></div>
+            <button id="btn-new-game">Start New Galaxy</button>
+        </div>
     </div>
-    <div id="game">
-        <div class="panel">
-            <h3>Captain</h3>
-            <div><strong>Ship:</strong> <span id="shipName"></span></div>
-            <div>Credits: <span id="credits" class="green"></span></div>
-            <div>Day/Time: <span id="dayTime" class="green"></span></div>
-            <div>Sector: <span id="sectorNum"></span> (<span id="sectorName"></span>)</div>
-            <hr>
-            <div>Cargo: <span id="cargoSummary"></span></div>
-            <div>Holds: <span id="holds" class="green"></span></div>
-            <div>Fighters: <span id="fighters"></span></div>
-            <div>Shields: <span id="shields"></span></div>
-            <div>Hull: <span id="hull"></span></div>
-            <div id="factionPanel" class="subpanel"></div>
-            <hr>
-            <div class="menu-grid">
-                <button id="btn-rest">Rest</button>
-                <button id="btn-save">Save</button>
-                <button id="btn-load">Load</button>
-                <button id="btn-intel">Intel</button>
-            </div>
-            <div id="planetInfo" class="subpanel" style="display:none"></div>
-            <div id="priorityFeed" class="subpanel">
-                <strong>Attention</strong>
-                <div id="priorityList"></div>
-            </div>
-        </div>
 
-        <div>
-            <div class="map-wrap">
-                <div class="map-stage">
-                    <div class="map-toolbar"><button id="btn-center-map" type="button">Center on Current Sector</button></div>
-                    <canvas id="map" width="700" height="420"></canvas>
-                    <button id="btn-expand-map" class="map-expand-button" type="button" aria-label="Expand map">Expand Map</button>
+    <div id="gameShell" hidden>
+        <div class="topbar panel">
+            <button id="top-sector" data-screen="sector">Sector</button>
+            <button id="top-market" data-screen="market">Market</button>
+            <button id="top-colony" data-screen="colony">Colonies</button>
+            <button id="top-missions" data-screen="missions">Missions</button>
+            <button id="top-logistics" data-screen="logistics">Logistics</button>
+            <button id="top-reputation" data-screen="reputation">Network</button>
+            <button id="top-communications" data-screen="communications">Comms</button>
+            <button id="top-spreadsheet" data-screen="spreadsheet">Ledger</button>
+            <button id="top-character" data-screen="character">Character</button>
+            <button id="top-shipyard" data-screen="shipyard">Shipyard</button>
+        </div>
+        <div id="game">
+            <div class="panel">
+                <h3>Captain</h3>
+                <div><strong>Ship:</strong> <span id="shipName"></span></div>
+                <div>Credits: <span id="credits" class="green"></span></div>
+                <div>Day/Time: <span id="dayTime" class="green"></span></div>
+                <div>Sector: <span id="sectorNum"></span> (<span id="sectorName"></span>)</div>
+                <hr>
+                <div>Cargo: <span id="cargoSummary"></span></div>
+                <div>Holds: <span id="holds" class="green"></span></div>
+                <div>Fighters: <span id="fighters"></span></div>
+                <div>Shields: <span id="shields"></span></div>
+                <div>Hull: <span id="hull"></span></div>
+                <div id="factionPanel" class="subpanel"></div>
+                <hr>
+                <div class="menu-grid">
+                    <button id="btn-rest">Rest</button>
+                    <button id="btn-save">Save</button>
+                    <button id="btn-load">Load</button>
+                    <button id="btn-intel">Intel</button>
                 </div>
-                <div id="mapInspector" class="subpanel"></div>
+                <div id="planetInfo" class="subpanel" style="display:none"></div>
+                <div id="priorityFeed" class="subpanel">
+                    <strong>Attention</strong>
+                    <div id="priorityList"></div>
+                </div>
             </div>
-            <div class="panel" style="margin-top:10px">
-                <h3 id="screenTitle">Current Sector <span id="curSector"></span></h3>
-                <div id="sectorContents"></div>
-                <div id="actions" class="subpanel"></div>
-            </div>
-            <div class="log" id="log"></div>
-        </div>
 
-        <div class="panel">
-            <h3>Navigation</h3>
-            <div id="commandList" class="subpanel"></div>
-            <h3>Accepted Missions</h3>
-            <div id="acceptedMissions" class="subpanel"></div>
+            <div>
+                <div class="map-wrap">
+                    <div class="map-stage">
+                        <div class="map-toolbar"><button id="btn-center-map" type="button">Center on Current Sector</button></div>
+                        <canvas id="map" width="700" height="420"></canvas>
+                        <button id="btn-expand-map" class="map-expand-button" type="button" aria-label="Expand map">Expand Map</button>
+                    </div>
+                    <div id="mapInspector" class="subpanel"></div>
+                </div>
+                <div class="panel" style="margin-top:10px">
+                    <h3 id="screenTitle">Current Sector <span id="curSector"></span></h3>
+                    <div id="sectorContents"></div>
+                    <div id="actions" class="subpanel"></div>
+                </div>
+                <div class="log" id="log"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Navigation</h3>
+                <div id="commandList" class="subpanel"></div>
+                <h3>Accepted Missions</h3>
+                <div id="acceptedMissions" class="subpanel"></div>
+            </div>
         </div>
     </div>
 
