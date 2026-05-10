@@ -19,6 +19,7 @@ import { renderReputationScreen } from './renderReputation.js';
 import { renderLogisticsScreen } from './renderLogistics.js';
 import { renderCharacterSheet } from './renderCharacterSheet.js';
 import { renderCommunicationsScreen } from './renderComms.js';
+import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsheet.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -96,7 +97,7 @@ export function setReputationTab(tab) {
 // SCREEN-LEVEL RENDERERS (registered with Renderer)
 // =====================================================
 function renderTopTabs() {
-    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'communications', 'shipyard', 'character'].forEach(screen => {
+    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'communications', 'spreadsheet', 'shipyard', 'character'].forEach(screen => {
         const el = document.getElementById(`top-${screen}`);
         if (!el) return;
         if (screen === state.currentScreen) el.classList.add('active-tab');
@@ -135,6 +136,12 @@ function renderCurrentScreen() {
     if (currentScreen === 'communications') {
         title.innerHTML = 'Communications Console';
         document.getElementById('actions').innerHTML = renderCommunicationsScreen();
+        return;
+    }
+    if (currentScreen === 'spreadsheet') {
+        title.innerHTML = 'Trade Ledger';
+        document.getElementById('actions').innerHTML = renderSpreadsheetScreen();
+        bindSpreadsheetScreen();
         return;
     }
     if (currentScreen === 'logistics') {
