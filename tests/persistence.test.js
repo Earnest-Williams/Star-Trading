@@ -6,12 +6,14 @@ import {
     migrateSave,
     saveGame,
     loadGame,
+    hasSavedGame,
+    importSavePayload,
     setPersistenceAdapters,
     buildSaveData,
     SAVE_STATE_FIELDS
 } from '../js/core/persistence.js';
 import { state, resetState } from '../js/state.js';
-import { SAVE_VERSION, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
+import { SAVE_VERSION, SAVE_KEY, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
 
 // Build the minimal valid save data that every version should contain.
 function minimalSave(version) {
@@ -233,6 +235,10 @@ describe('save serialization', () => {
         state.selectedCaptainId = 'captain-1';
         state.mapNodeCache = { 1: { x: 10, y: 20 } };
         state.worldGraphRevision = 12;
+        state.appMode = 'settings';
+        state.shellMessage = 'Save shell alert';
+        state.settingsOpenTab = 'display';
+        state.isTransitioning = true;
 
         const data = buildSaveData();
         const expectedKeys = ['version', ...SAVE_STATE_FIELDS].sort();
@@ -246,6 +252,10 @@ describe('save serialization', () => {
         assert.equal(Object.hasOwn(data, 'selectedCaptainId'), false);
         assert.equal(Object.hasOwn(data, 'mapNodeCache'), false);
         assert.equal(Object.hasOwn(data, 'worldGraphRevision'), false);
+        assert.equal(Object.hasOwn(data, 'appMode'), false);
+        assert.equal(Object.hasOwn(data, 'shellMessage'), false);
+        assert.equal(Object.hasOwn(data, 'settingsOpenTab'), false);
+        assert.equal(Object.hasOwn(data, 'isTransitioning'), false);
     });
 
     it('round-trips through JSON save data and rebuilds derived live aliases', () => {
@@ -398,6 +408,27 @@ describe('persistence adapters', () => {
     });
 });
 
+describe('hasSavedGame', () => {
+    it('returns true only when a save exists in available save keys', () => {
+        const storage = {
+            getItem(key) {
+                if (key === SAVE_KEY) return '{"version":17}';
+                return null;
+            }
+        };
+        assert.equal(hasSavedGame(storage), true);
+    });
+
+    it('returns false when no save is present', () => {
+        const storage = {
+            getItem() {
+                return null;
+            }
+        };
+        assert.equal(hasSavedGame(storage), false);
+    });
+});
+
 describe('loadGame — validation before live state swap', () => {
     afterEach(() => {
         setPersistenceAdapters();
@@ -420,6 +451,50 @@ describe('loadGame — validation before live state swap', () => {
         assert.equal(loadGame(), false);
         assert.equal(state.player.credits, 1234);
         assert.ok(messages.includes('Could not load save data. The save failed validation or normalisation.'));
+    });
+});
+
+describe('importSavePayload', () => {
+    afterEach(() => {
+        resetState();
+    });
+
+    it('rejects invalid imported JSON without mutating live state', () => {
+        state.player = minimalSave(SAVE_VERSION).player;
+        state.player.credits = 555;
+
+        assert.equal(importSavePayload('{'), false);
+        assert.equal(state.player.credits, 555);
+    });
+
+    it('rejects malformed imported save content without mutating live state', () => {
+        state.player = minimalSave(SAVE_VERSION).player;
+        state.player.credits = 777;
+        const malformed = JSON.stringify({ version: SAVE_VERSION, player: {}, universe: {}, ports: {} });
+
+        assert.equal(importSavePayload(malformed), false);
+        assert.equal(state.player.credits, 777);
+    });
+
+    it('loads valid imported saves through normalisation path', () => {
+        const imported = minimalSave(SAVE_VERSION);
+        delete imported.player.time;
+        imported.universe = {
+            1: {
+                id: 1,
+                name: 'Import Sector',
+                coord: { x: 1, y: 2, z: 3 },
+                coordKey: '1,2,3',
+                jumpGates: []
+            }
+        };
+        imported.siteIdByCoord = { '1,2,3': 1 };
+
+        assert.equal(importSavePayload(JSON.stringify(imported)), true);
+        assert.equal(state.player.currentSector, 1);
+        assert.equal(state.currentScreen, 'sector');
+        assert.deepEqual(state.player.time, { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 });
+        assert.equal(state.sitesById, state.universe);
     });
 });
 

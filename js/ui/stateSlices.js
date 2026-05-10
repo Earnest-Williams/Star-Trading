@@ -15,6 +15,9 @@ export const StateSlice = {
 
     CURRENT_SCREEN: 'currentScreen',
     REPUTATION_TAB: 'reputationTab',
+    APP_MODE: 'appMode',
+    SHELL_MESSAGE: 'shellMessage',
+    PREFERENCES: 'preferences',
     SELECTED_SECTOR: 'selectedSector',
     SELECTED_CAPTAIN: 'selectedCaptain',
     MAP_VIEW: 'mapView'
