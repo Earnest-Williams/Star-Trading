@@ -28,7 +28,7 @@ describe('preferences', () => {
         assert.deepEqual(normalisePreferences('bad'), defaults);
     });
 
-    it('clamps invalid enum and numeric values', () => {
+    it('clamps invalid enum/numeric values and defaults invalid booleans', () => {
         const normalised = normalisePreferences({
             reducedMotion: true,
             compactUi: 'yes',

@@ -186,7 +186,7 @@ function loadSavePayload(savePayload, successMessage) {
             ? successMessage
             : "Save loaded";
         const normalizedNotice = notice.endsWith(".") ? notice.slice(0, -1) : notice;
-        writeLog(`${normalizedNotice}.`);
+        writeLog(normalizedNotice);
         notify(normalizedNotice, 2);
         afterLoad();
         return true;
