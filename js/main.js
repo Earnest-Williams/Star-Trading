@@ -5,8 +5,8 @@ import { BALANCE } from './constants.js';
 import { createPlayerFromBuild, generateUniverse, generateStars } from './core/universe.js';
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
-import { setPersistenceAdapters, getSavedGameSummary, hasSavedGame, importSavePayload, loadGame } from './core/persistence.js';
-import { getDefaultPreferences, loadPreferences, normalisePreferences, savePreferences } from './core/preferences.js';
+import { setPersistenceAdapters, hasSavedGame, importSavePayload, loadGame } from './core/persistence.js';
+import { getDefaultPreferences, loadPreferences, savePreferences } from './core/preferences.js';
 import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
 import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
@@ -48,9 +48,18 @@ export const App = (() => {
         enterMainMenu();
     }
 
+    function getBrowserStorage() {
+        try {
+            return globalThis.localStorage || null;
+        } catch (err) {
+            console.warn('Browser storage unavailable:', err);
+            return null;
+        }
+    }
+
     function configurePersistence() {
         setPersistenceAdapters({
-            storage: globalThis.localStorage || null,
+            storage: getBrowserStorage(),
             notifier: (message, priority) => Notifications.show(message, priority),
             afterLoad: afterSuccessfulLoad
         });
@@ -108,7 +117,8 @@ export const App = (() => {
             : BALANCE.WORLDGEN.DEFAULT_ARCHETYPE;
         const occupiedSites = validNumberFromSelect(
             "worldgen-sites",
-            BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES
+            BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
+            BALANCE.WORLDGEN.SITE_COUNT_PRESETS
         );
         const routeDensity = validNumberFromSelect(
             "worldgen-route-density",
@@ -157,6 +167,7 @@ export const App = (() => {
 
         if (_shellPanel === 'chargen') renderChargen();
         if (_shellPanel === 'settings') populateSettingsFromPreferences();
+        renderShell();
     }
 
     function transitionTo(mode, message = null) {
@@ -171,6 +182,7 @@ export const App = (() => {
     }
 
     function enterChargen() {
+        applyPreferencesToWorldgenControls();
         transitionTo('chargen');
     }
 
@@ -230,8 +242,8 @@ export const App = (() => {
             case 'btn-load-back': enterMainMenu(); break;
             case 'btn-settings-back': enterMainMenu(); break;
             case 'btn-chargen-start': launchNewGame(); break;
-            case 'btn-random-preset': setRandomPresetBuild(); renderChargen(); break;
-            case 'btn-random-valid-build': setRandomValidBuild(); renderChargen(); break;
+            case 'btn-random-preset': randomiseChargen(setRandomPresetBuild); break;
+            case 'btn-random-valid-build': randomiseChargen(setRandomValidBuild); break;
             case 'btn-load-from-storage': quickLoadGame(); break;
             case 'btn-import-save': document.getElementById('import-save-file')?.click(); break;
             case 'btn-settings-save': saveSettingsFromDom(); enterMainMenu('Settings saved.'); break;
@@ -250,6 +262,16 @@ export const App = (() => {
             setChargenBuild(ARCHETYPE_PRESETS[target.value].build);
         } else {
             readChargenBuildFromDom();
+        }
+        renderChargen();
+    }
+
+    function randomiseChargen(randomiseFn) {
+        try {
+            randomiseFn();
+        } catch (err) {
+            console.error('Chargen randomisation failed:', err);
+            Notifications.show('Random build unavailable in this browser.', 4);
         }
         renderChargen();
     }
@@ -328,6 +350,16 @@ export const App = (() => {
     // =====================================================
     // SETTINGS FLOW
     // =====================================================
+    function applyPreferencesToWorldgenControls() {
+        const prefs = preferences || getDefaultPreferences();
+        const archetype = document.getElementById('worldgen-archetype');
+        const sites = document.getElementById('worldgen-sites');
+        if (archetype) archetype.value = prefs.defaultWorldgenArchetype;
+        if (sites && BALANCE.WORLDGEN.SITE_COUNT_PRESETS.includes(prefs.defaultOccupiedSites)) {
+            sites.value = String(prefs.defaultOccupiedSites);
+        }
+    }
+
     function populateSettingsFromPreferences() {
         const prefs = preferences || getDefaultPreferences();
         const reducedMotion = document.getElementById('settings-reduced-motion');

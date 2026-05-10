@@ -149,7 +149,12 @@ export function buildLoadedState(data) {
 
 export function getPersistenceStorage() {
     if (persistenceAdapters.storage) return persistenceAdapters.storage;
-    return globalThis.localStorage || null;
+    try {
+        return globalThis.localStorage || null;
+    } catch (err) {
+        console.warn('Persistence storage unavailable:', err);
+        return null;
+    }
 }
 
 function readPrimarySave(storage) {
@@ -170,6 +175,7 @@ function loadSavePayload(savePayload, successMessage) {
         data = JSON.parse(savePayload);
     } catch (err) {
         writeLog("Could not load save data. The saved JSON appears to be invalid.");
+        console.error('Save JSON parse failed:', err);
         return false;
     }
     if (!validateRawSave(data)) {
@@ -191,6 +197,7 @@ function loadSavePayload(savePayload, successMessage) {
         return true;
     } catch (err) {
         writeLog("Could not load save data. The save failed validation or normalisation.");
+        console.error('Save load failed during migration or normalisation:', err);
         return false;
     }
 }
@@ -343,6 +350,7 @@ export function getSavedGameSummary(storage = getPersistenceStorage()) {
             shipName: typeof data.player.ship?.name === "string" ? data.player.ship.name : null
         };
     } catch (err) {
+        console.error('Saved game summary failed:', err);
         return null;
     }
 }
@@ -352,6 +360,7 @@ export function exportSaveData() {
         return JSON.stringify(buildSaveData());
     } catch (err) {
         writeLog("Save export failed.");
+        console.error('Save export failed:', err);
         return null;
     }
 }
