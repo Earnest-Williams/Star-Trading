@@ -183,11 +183,10 @@ function loadSavePayload(savePayload, successMessage) {
         replaceStateContents(loadedState);
         restoreSessionRng(state.rng, state.player.seed);
         const notice = typeof successMessage === "string" && successMessage.trim().length > 0
-            ? successMessage
+            ? successMessage.trim()
             : "Save loaded";
-        const normalizedNotice = notice.endsWith(".") ? notice.slice(0, -1) : notice;
-        writeLog(normalizedNotice);
-        notify(normalizedNotice, 2);
+        writeLog(notice);
+        notify(notice, 2);
         afterLoad();
         return true;
     } catch (err) {
