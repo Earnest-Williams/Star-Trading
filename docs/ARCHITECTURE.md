@@ -27,7 +27,7 @@ Players and AI captains operate persistent trade routes across jump-gate network
 
 ## Related design docs
 
-- [Dynamic Dialogue, Memory, Task, and World Simulation](./design/dynamic-dialogue-memory-simulation.md) — proposed architecture for proposal-based NPC dialogue, persistent memory, task delegation, item histories, faction blackboards, sensory intentions, and causal debugging.
+- [Dynamic Dialogue, Memory, Task, and World Simulation](./design/dynamic-dialogue-memory-simulation.md) — integration plan over existing Star-Trading systems for proposal-based NPC dialogue, persistent memory, task delegation, item histories, faction blackboards, sensory intentions, and causal debugging.
 
 ## Key Design Decisions
 - Sparse coordinate keys (`"x,y,z"`) instead of dense grids
