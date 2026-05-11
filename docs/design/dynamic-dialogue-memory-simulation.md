@@ -167,7 +167,7 @@ proposed_outcomes:
       task_type: locate_item
       item: fujiwattit
       interval_hours: 6
-      initial_model: simple_supplier_search
+      initial_model: supplier_network_search
 ```
 
 Every committed or rejected proposal is logged as a first-class event:
@@ -232,7 +232,7 @@ The Proposal Broker is a thin, stateless layer between emitters and domain autho
 Broker responsibilities:
 
 - Deduplicate identical proposals emitted by multiple systems in the same batch.
-- Serialize conflicting mutations on the same item or entity.
+- Serialize conflicting mutations on the same item or entity **within the current batch only**. The broker is stateless across batches: inter-batch or accumulated-state conflicts are the responsibility of the receiving Domain Authority, which holds the authoritative record and rejects or merges proposals accordingly.
 - Prioritize high-urgency proposals such as crime-alert blackboard uploads.
 - Log incoming proposals, rules applied, final stream order, and rationale.
 
@@ -282,6 +282,7 @@ memory:
   last_reinforced_at: 1432.20
   salience: high
   confidence: high
+  is_protected: true
   provenance:
     created_by_event_id: event_1004
     source_interaction_id: dialogue_7844
@@ -377,7 +378,7 @@ task:
   task_type: locate_item
   status: active
   created_at: 1432.20
-  next_check_at: 1432.50
+  next_check_at: 1438.20  # created_at + interval_hours (6); first check is a full interval after creation
   interval_hours: 6
   target:
     item: fujiwattit
@@ -498,7 +499,7 @@ Blackboard entries decay or expire. Expired entries stop influencing faction-lev
 
 ## Sensory-driven passive intentions
 
-When the player enters a Local Registry scope, the Sensory Validation System can run a passive scan. The scan does not commit state. It produces sensory context injections for the next dialogue utility pass.
+When the player enters a Local Registry scope, the Sensory Validation System runs a passive scan. Scans also trigger at the start of each dialogue interaction and run periodically (each simulation tick while the player remains in scope), so NPCs react to mid-session changes such as equipping a new weapon, switching faction badges, or sustaining ship damage. The scan does not commit state. It produces sensory context injections for the next dialogue utility pass.
 
 Example observable facts:
 
