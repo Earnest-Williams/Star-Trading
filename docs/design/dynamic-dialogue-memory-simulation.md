@@ -8,6 +8,22 @@ This document describes a staged architecture for semi-dynamic NPC dialogue in a
 
 Dialogue must not directly mutate inventory, relationships, quests, memories, messages, or world state. Dialogue emits structured proposals or requests. The subsystem that owns the affected domain validates and commits or rejects those proposals.
 
+## How Star-Trading should use this architecture
+
+This document describes how dialogue and memory should extend Star-Trading's existing browser simulation rather than replace it.
+
+In this project, dialogue is not a separate service. It runs inside the same client-side simulation loop that already drives captains, missions, factions, and world updates. Dialogue should emit structured proposals that are validated by existing domain systems and then reflected through the EventBus and UI read models.
+
+This architecture should integrate with:
+
+- `state.people` for sector-local contacts and service NPCs.
+- `state.captains` for persistent named actors and captain history.
+- `state.missions` for deferred player-facing jobs and follow-up actions.
+- `state.player.factions.contacts`, `memory`, `intel`, and `asks` for institutional memory and faction-facing consequences.
+- `state.worldEvents` and `state.captainEventLog` for causal visibility and player feedback.
+
+The first goal is not freeform conversation. The first goal is to make existing contacts, captains, and mission issuers feel persistent, reactive, and traceable.
+
 ## Design goals
 
 The architecture should support:
@@ -23,27 +39,32 @@ The architecture should support:
 - Passive sensory observations that influence dialogue before player input.
 - A narrow playable vertical slice before broad generalization.
 
-## Vertical slice first
+## Vertical slice first: Star-Trading implementation target
 
-The first implementation target should be intentionally narrow:
+The first implementation target should be intentionally narrow and use systems that already exist in Star-Trading:
 
-> Player asks a used-parts dealer for a missing ship component. The dealer promises to look for it. The player leaves. Time passes. The local simulation resolves the search. The dealer either finds the part or fails. The player receives a message or returns later and gets context-aware dialogue.
+> The player speaks to a sector-local factor or fixer. The contact remembers prior business, offers a time-delayed sourcing lead or intel lead, and the world later resolves that promise into a mission update, contact follow-up, or expiration outcome.
 
 The first slice should include only:
 
-- One location.
-- One NPC.
-- One requested item.
+- One sector-local generated `person`, preferably a `factor` or `fixer`.
+- One dialogue topic tied to an existing service: `orders`, `intel`, or `permits`.
 - One memory type.
-- One task type.
-- One message template.
-- One trade request.
-- One inventory transfer.
-- One relationship adjustment.
-- One append-only event log.
-- Basic Proposal Broker arbitration for the single trade, memory, and task proposals emitted.
+- One relationship or trust adjustment.
+- One deferred follow-up represented through the mission or faction-ask pipeline.
+- One EventBus/UI notification path.
+- One append-only interaction/event log.
+- One rejection path for invalid proposals.
 
-After this loop works, expand into richer task classes, memory decay, economy, supplier networks, task delegation, faction blackboards, item histories, passive sensory scanning, procedural quests, lifecycle handling, snapshots, player mirror read models, and narrative coherence gates.
+A good first scenario is:
+
+1. The player asks a factor for a hard-to-find trade lead, permit pull, or stale-signal-style intel lead.
+2. Dialogue emits a memory proposal, a relationship proposal, and a mission/intel/ask proposal.
+3. Existing authority systems validate and commit those effects.
+4. Time passes through the normal simulation loop.
+5. The player returns and the contact references the prior request with context-aware follow-up dialogue.
+
+After this loop works, expand into richer task classes, memory decay, captain dialogue, supplier networks, faction blackboards, item histories, passive sensory scanning, procedural quests, lifecycle handling, snapshots, player mirror read models, and narrative coherence gates.
 
 ## Core systems and responsibilities
 
@@ -67,6 +88,22 @@ After this loop works, expand into richer task classes, memory decay, economy, s
 | Validation / Authority | Domain-specific validation and committed effects. | Accept unbrokered conflicting proposal batches. |
 | Proposal Broker | Batch deduplication, ordering, lightweight conflict resolution, arbitration logs. | Domain-specific validation, state mutation, dialogue generation, or task creation. |
 | NPC Lifecycle | Cascading consistency when NPCs are removed, deceased, or leave factions. | Decide whether an NPC should be removed or render dialogue. |
+
+## Repository integration map
+
+| Proposed concept | Star-Trading integration point |
+| --- | --- |
+| Dialogue interaction layer | New `js/systems/dialogue/` modules. |
+| NPC contact memory | Extend `state.people` with structured memory records and dialogue-facing query helpers. |
+| Captain memory and follow-up | Extend `state.captains` beyond current lightweight history entries. |
+| Relationship deltas | Reuse existing contact and captain relationship/trust fields where possible. |
+| Dialogue-emitted jobs | Start by mapping validated outcomes to `state.missions` or faction `asks` before adding a broader task substrate. |
+| Faction blackboards | Evolve faction `intel` and `memory` into queryable institutional registries. |
+| Event logging | Generalize current world and captain event logging into causal interaction records with proposal and rejection visibility. |
+| Player mirror | Derive from missions, intel, asks, and committed dialogue-relevant memory tied to the player. |
+| UI updates | Publish committed changes through `EventBus` so inspectors and panels redraw consistently. |
+
+This architecture should be treated as an integration layer over existing Star-Trading systems, not a separate simulation stack.
 
 ## Data flow
 
@@ -615,17 +652,17 @@ On load, restore the event log, load latest snapshots, replay differential event
 
 ## Recommended implementation order
 
-1. **Vertical Slice:** one NPC, item request, task type, memory type, local registry, message type, trade flow, event log, basic Proposal Broker, event chain/rejection debug views.
-2. **Validation Hardening:** proposal validation, rejection events, duplicate prevention, memory duplicate checks, trade failures, provenance inspection, broker conflict logs.
-3. **Memory Depth:** salience decay, reinforcement, contradiction handling, query rules, resolved/superseded states.
-4. **Dialogue Variation:** tagged fragments, idiolect libraries, relationship variants, scene-aware fragments, fallback templates.
-5. **Richer Task Simulation:** supplier networks, rarity, economy modifiers, faction access, disruption events, delayed/partial/expensive/damaged/unavailable outcomes.
-6. **Task Delegation:** delegation triggers, sub-task validation, sub-contractor assignment, parent updates, causal-chain debugging, re-entry dialogue context.
-7. **Faction Blackboards:** faction memberships, memory uploads, blackboard schema, queries in utility scoring, urgency multipliers, expiry, inspector.
-8. **Item History:** unique item registry, item histories, history proposals after inventory events, dialogue queries, faction item flags, viewer, flagged-origin templates.
-9. **Sensory Passive Intentions:** passive scans, NPC capability model, sensory context injections, greeting override rules, sensory-to-task proposals, inspector integration.
-10. **Quest and World Expansion:** quest transitions, multi-NPC chains, reputation, global events, regional cascades, cross-faction exchange, lifecycle system, snapshots, Captain's Mirror, Narrative Coherence Gate, expanded debug tools.
+1. **Contact Dialogue Slice:** add a minimal dialogue runtime for `people` contacts in the current sector; support one request type tied to existing services (`intel`, `orders`, or `permits`); store one structured memory record per contact; apply relationship/trust changes through existing contact state.
+2. **Mission / Ask Integration:** allow validated dialogue proposals to create or update `missions` or faction `asks`; reuse existing expiration, visibility, and follow-up timing patterns.
+3. **Causal Logging:** add a generalized interaction event log beside existing `worldEvents` and `captainEventLog`; surface proposal acceptance and rejection in debugging views.
+4. **Validation Hardening:** add duplicate prevention, memory duplicate checks, provenance inspection, rejection reasons, and broker conflict logs for dialogue-emitted proposals.
+5. **Captain Extension:** bring the same dialogue-memory pattern to named captains; upgrade captain history from short text notes to structured interaction facts where needed.
+6. **Memory Depth:** add salience decay, reinforcement, contradiction handling, query rules, and resolved/superseded states.
+7. **Dialogue Variation:** add tagged fragments, idiolect libraries, relationship variants, scene-aware fragments, and fallback templates.
+8. **Faction Blackboards:** promote selected contact and captain observations into faction `intel` and `memory`; let dialogue scoring query those records with urgency and expiry.
+9. **Broader Simulation Hooks:** connect dialogue follow-ups to economy, politics, entanglements, data-cargo systems, delayed outcomes, partial outcomes, and sector-local missed-time resolution.
+10. **Quest and World Expansion:** add quest protections, multi-NPC chains, lifecycle handling, snapshots, Captain's Mirror, Narrative Coherence Gate, and expanded debugging tools.
 
 ## Design philosophy
 
-This architecture prioritizes separation of responsibilities, persistent simulation, traceable causality, context-aware dialogue, structured world state, NPC continuity, validated domain authority, controlled language variation, partially emergent interactions, multi-agent causal chains, institutional memory, object-level provenance, sensory-grounded proactive behavior, lightweight proposal arbitration, graceful lifecycle handling, player-world symmetry, authored narrative protection, and efficient long-term simulation.
+This architecture prioritizes separation of responsibilities, persistent simulation, traceable causality, context-aware dialogue, structured world state, NPC continuity, validated domain authority, controlled language variation, partially emergent interactions, multi-agent causal chains, institutional memory, object-level provenance, sensory-grounded proactive behavior, lightweight proposal arbitration, graceful lifecycle handling, player-world symmetry, authored narrative protection, efficient long-term simulation, and pragmatic reuse of Star-Trading's existing systems before adding broader infrastructure.
