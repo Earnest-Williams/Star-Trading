@@ -25,6 +25,10 @@ Players and AI captains operate persistent trade routes across jump-gate network
 3. `EventBus` → UI renderers (invalidate + redraw)
 4. Persistence layer normalizes & migrates saves automatically.
 
+## Related design docs
+
+- [Dynamic Dialogue, Memory, Task, and World Simulation](./design/dynamic-dialogue-memory-simulation.md) — proposed architecture for proposal-based NPC dialogue, persistent memory, task delegation, item histories, faction blackboards, sensory intentions, and causal debugging.
+
 ## Key Design Decisions
 - Sparse coordinate keys (`"x,y,z"`) instead of dense grids
 - Seeded RNG everywhere → reproducible galaxies & saves
