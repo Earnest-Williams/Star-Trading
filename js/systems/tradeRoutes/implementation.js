@@ -53,7 +53,7 @@ export function hydrateTradeRoute(partial, context = {}) {
     const commodity = partial.commodity || context.commodity || "ore";
     const route = {
         ...partial,
-        id: Number.isFinite(Number(partial.id)) ? finiteInteger(partial.id, 0) : nextTradeRouteId(),
+        id: positiveIntegerOrNull(partial.id) || nextTradeRouteId(),
         name: partial.name || `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
         originSector,
         destinationSector,
