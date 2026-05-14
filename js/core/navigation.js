@@ -12,7 +12,7 @@ export function getOutboundJumpGates(sectorId) {
     const sector = state.universe[sectorId];
     if (!sector || !Array.isArray(sector.jumpGates)) return [];
     return sector.jumpGates
-        .filter(gate => gate && gate.status !== "closed" && state.universe[gate.destinationSectorId])
+        .filter(gate => gate && gate.status !== BALANCE.ROUTE_PLANNER.CLOSED_STATUS && state.universe[gate.destinationSectorId])
         .slice()
         .sort((a, b) => {
             const aCost = typeof a.effectiveSpanCost === "number" ? a.effectiveSpanCost : 0;
@@ -66,9 +66,9 @@ export function getCorridorRiskForPath(path) {
         if (!sector) return sum;
         const dominant = getDominantInfluence(sectorId);
         let risk = sector.pirateThreat || 0;
-        if (sector.region === "Badlands") risk += 1;
-        if (dominant === "vc") risk += 1;
-        if (dominant === "sda") risk -= 1;
+        if (sector.region === "Badlands") risk += BALANCE.ROUTE_PLANNER.BADLANDS_RISK_BONUS;
+        if (dominant === "vc") risk += BALANCE.ROUTE_PLANNER.VC_RISK_BONUS;
+        if (dominant === "sda") risk -= BALANCE.ROUTE_PLANNER.SDA_RISK_REDUCTION;
         return sum + Math.max(0, risk);
     }, 0);
 }

@@ -11,10 +11,12 @@ import {
     deriveRouteMetrics,
     estimateRouteProfit,
     normaliseTradeRoutes,
+    hydrateTradeRoute,
     createTradeRoute,
     createCaptainTradeRoute,
     runTradeRoute,
     closeTradeRoute,
+    toggleTradeRoute,
 } from '../js/systems/tradeRoutes.js';
 import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
@@ -186,6 +188,54 @@ describe('normaliseTradeRoutes', () => {
         state.nextTradeRouteId = 1;
         normaliseTradeRoutes();
         assert.equal(state.tradeRoutes[0].status, 'paused');
+    });
+
+
+    it('normalises numeric route fields and pauses invalid endpoints', () => {
+        const route = hydrateTradeRoute({
+            id: '12',
+            originSector: 'missing',
+            destinationSector: '4x',
+            amount: -5,
+            intervalDays: 0,
+            nextRunDay: '9.7',
+            runs: -2,
+            failures: '3',
+            starvedDays: '2',
+            profit: '15.5',
+            heat: -4,
+            reliability: 140,
+        });
+
+        assert.equal(route.id, 12);
+        assert.equal(route.originSector, 0);
+        assert.equal(route.destinationSector, 0);
+        assert.equal(route.amount, BALANCE.TRADE_ROUTE_BASE_AMOUNT);
+        assert.equal(route.intervalDays, BALANCE.TRADE_ROUTE_INTERVAL_DAYS);
+        assert.equal(route.nextRunDay, 9);
+        assert.equal(route.runs, 0);
+        assert.equal(route.failures, 3);
+        assert.equal(route.starvedDays, 2);
+        assert.equal(route.profit, 15.5);
+        assert.equal(route.heat, 0);
+        assert.equal(route.reliability, 100);
+        assert.equal(route.status, 'paused');
+    });
+
+    it('normalises string route ids without corrupting the next id counter', () => {
+        state.tradeRoutes = [{ id: '12', originSector: 1, destinationSector: 4, commodity: 'ore' }];
+        state.nextTradeRouteId = 1;
+        normaliseTradeRoutes();
+
+        assert.equal(state.tradeRoutes[0].id, 12);
+        assert.equal(state.nextTradeRouteId, 13);
+    });
+
+    it('ignores malformed route action ids instead of partially parsing them', () => {
+        state.tradeRoutes = [{ id: 1, originSector: 1, destinationSector: 4, commodity: 'ore', status: 'active' }];
+        toggleTradeRoute('1x');
+
+        assert.equal(state.tradeRoutes[0].status, 'active');
     });
 });
 

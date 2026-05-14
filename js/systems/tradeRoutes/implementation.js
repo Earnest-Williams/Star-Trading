@@ -1,5 +1,6 @@
 import { state } from '../../state.js';
 import { BALANCE, COMMODITIES, MARKET_COMMODITIES, PORT_TYPES } from '../../constants.js';
+import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../../utils.js';
 import { addSectorInfluence } from '../../core/influence.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
@@ -15,6 +16,27 @@ import {
 import { findCheapestCorridorPath, getPathCost, getWorldGraphRevision } from '../../core/routePlanner.js';
 import { getRouteReliabilityAdjustment, getRouteRiskAdjustment } from '../../core/characterChecks.js';
 
+function finiteNumber(value, fallback) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function finiteInteger(value, fallback) {
+    const numericValue = finiteNumber(value, fallback);
+    return Math.trunc(numericValue);
+}
+
+function positiveNumber(value, fallback) {
+    const numericValue = finiteNumber(value, fallback);
+    return numericValue > 0 ? numericValue : fallback;
+}
+
+function positiveIntegerOrNull(value) {
+    const numericValue = Number(value);
+    if (!Number.isInteger(numericValue) || numericValue <= 0) return null;
+    return numericValue;
+}
+
 function nextTradeRouteId() {
     const routeId = state.nextTradeRouteId;
     state.nextTradeRouteId += 1;
@@ -26,19 +48,19 @@ export function hydrateTradeRoute(partial, context = {}) {
     const ownerId = typeof partial.ownerId === "undefined"
         ? (ownerType === "player" ? null : context.ownerId)
         : partial.ownerId;
-    const originSector = Number(partial.originSector);
-    const destinationSector = Number(partial.destinationSector);
+    const originSector = finiteInteger(partial.originSector, 0);
+    const destinationSector = finiteInteger(partial.destinationSector, 0);
     const commodity = partial.commodity || context.commodity || "ore";
     const route = {
         ...partial,
-        id: typeof partial.id === "number" ? partial.id : nextTradeRouteId(),
+        id: Number.isFinite(Number(partial.id)) ? finiteInteger(partial.id, 0) : nextTradeRouteId(),
         name: partial.name || `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
         originSector,
         destinationSector,
         commodity,
-        amount: typeof partial.amount === "number" ? partial.amount : BALANCE.TRADE_ROUTE_BASE_AMOUNT,
-        intervalDays: typeof partial.intervalDays === "number" ? partial.intervalDays : BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
-        nextRunDay: typeof partial.nextRunDay === "number" ? partial.nextRunDay : state.player.time.day + 1,
+        amount: positiveNumber(partial.amount, BALANCE.TRADE_ROUTE_BASE_AMOUNT),
+        intervalDays: positiveNumber(partial.intervalDays, BALANCE.TRADE_ROUTE_INTERVAL_DAYS),
+        nextRunDay: finiteInteger(partial.nextRunDay, state.player.time.day + BALANCE.TRADE_ROUTE.DEFAULT_DELAY_DAYS),
         factionId: partial.factionId || context.factionId || "traders",
         ownerType,
         ownerId,
@@ -46,14 +68,14 @@ export function hydrateTradeRoute(partial, context = {}) {
         createdBy: partial.createdBy || context.createdBy || ownerType,
         escortCaptainId: typeof partial.escortCaptainId === "undefined" ? null : partial.escortCaptainId,
         status: partial.status || "active",
-        runs: typeof partial.runs === "number" ? partial.runs : 0,
-        failures: typeof partial.failures === "number" ? partial.failures : 0,
-        starvedDays: typeof partial.starvedDays === "number" ? partial.starvedDays : 0,
-        profit: typeof partial.profit === "number" ? partial.profit : 0,
-        heat: typeof partial.heat === "number" ? partial.heat : 0,
-        reliability: typeof partial.reliability === "number" ? partial.reliability : 50
+        runs: Math.max(0, finiteInteger(partial.runs, 0)),
+        failures: Math.max(0, finiteInteger(partial.failures, 0)),
+        starvedDays: Math.max(0, finiteInteger(partial.starvedDays, 0)),
+        profit: finiteNumber(partial.profit, 0),
+        heat: Math.max(0, finiteNumber(partial.heat, 0)),
+        reliability: clampRange(finiteNumber(partial.reliability, BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY), 0, 100)
     };
-    if (route.status !== "closed" && !findShortestSectorPath(route.originSector, route.destinationSector)) {
+    if (route.status !== "closed" && (!state.universe[route.originSector] || !state.universe[route.destinationSector] || !findShortestSectorPath(route.originSector, route.destinationSector))) {
         route.status = "paused";
     }
     return route;
@@ -68,11 +90,11 @@ export function createRouteRecord({
     name = null,
     amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT,
     intervalDays = BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
-    delayDays = 1,
+    delayDays = BALANCE.TRADE_ROUTE.DEFAULT_DELAY_DAYS,
     factionId = "traders",
     operatorType = ownerType,
     createdBy = ownerType,
-    reliability = 50
+    reliability = BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY
 }) {
     return hydrateTradeRoute({
         name: name || `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
@@ -95,7 +117,7 @@ export function createRouteRecord({
 export function normaliseTradeRoutes() {
     if (!Array.isArray(state.tradeRoutes)) state.tradeRoutes = [];
     state.tradeRoutes = state.tradeRoutes.map(route => hydrateTradeRoute(route));
-    state.nextTradeRouteId = Math.max(state.nextTradeRouteId, state.tradeRoutes.reduce((best, r) => Math.max(best, r.id + 1), 1));
+    state.nextTradeRouteId = Math.max(state.nextTradeRouteId, state.tradeRoutes.reduce((best, r) => Math.max(best, finiteInteger(r.id, 0) + 1), 1));
 }
 
 export function getLogisticsNode(sectorId) {
@@ -117,7 +139,7 @@ export function getLogisticsNode(sectorId) {
             name: `Player Colony S${sectorId}`,
             factionId: planet.factionId || "colonists",
             stock: planet.stock,
-            maxStock: makeStock(9000, 9000, 9000),
+            maxStock: makeStock(PORT_DEFAULTS.MAX_STOCK.ore, PORT_DEFAULTS.MAX_STOCK.org, PORT_DEFAULTS.MAX_STOCK.eq),
             sells: COMMODITIES.slice(), buys: COMMODITIES.slice()
         };
     }
@@ -168,14 +190,21 @@ export function getRouteRisk(route) {
     const risk = getRouteRiskForSectors(route.originSector, route.destinationSector);
     if (risk === null) return null;
     const actorCharacter = route.ownerType === "player" ? state.player.character : state.captains?.[route.ownerId]?.character;
-    return Math.max(0, risk + Math.max(0, route.heat || 0) / 12 + getRouteRiskAdjustment(actorCharacter));
+    return Math.max(
+        0,
+        risk
+            + Math.max(0, route.heat || 0) / BALANCE.TRADE_ROUTE.RISK_HEAT_DIVISOR
+            + getRouteRiskAdjustment(actorCharacter)
+    );
 }
 
 export function getRouteEscortPower(route) {
     const captain = route.escortCaptainId ? state.captains[route.escortCaptainId] : null;
     if (!captain || captain.status !== "active") return 0;
     const relation = captain.relationshipToPlayer || { opinion: 0, trust: 0, rivalry: 0 };
-    return (captain.ship.combatRating || 0) / 14 + Math.max(0, relation.trust || 0) / 8 + Math.max(0, relation.opinion || 0) / 25;
+    return (captain.ship.combatRating || 0) / BALANCE.TRADE_ROUTE.ESCORT_COMBAT_DIVISOR
+        + Math.max(0, relation.trust || 0) / BALANCE.TRADE_ROUTE.ESCORT_TRUST_DIVISOR
+        + Math.max(0, relation.opinion || 0) / BALANCE.TRADE_ROUTE.ESCORT_OPINION_DIVISOR;
 }
 
 export function getRouteMarketValue(sectorId, commodity, mode) {
@@ -184,20 +213,28 @@ export function getRouteMarketValue(sectorId, commodity, mode) {
     const stock = Math.max(0, (node.stock || {})[commodity] || 0);
     const maxStock = Math.max(1, (node.maxStock || {})[commodity] || 1);
     const ratio = Math.max(0, Math.min(1, stock / maxStock));
-    const colonyBasePrices = { ore: 85, org: 160, eq: 320, pulse_canister: 7, heavy_pulse_module: 26 };
     const base = node.kind === "port"
         ? (state.ports[sectorId].basePrices || {})[commodity]
-        : colonyBasePrices[commodity];
+        : PORT_DEFAULTS.BASE_PRICES[commodity];
     if (typeof base !== "number") return 0;
-    if (mode === "buy") return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * (0.72 + (1 - ratio) * 0.65)));
-    return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * (0.70 + (1 - ratio) * 1.10)));
+    if (mode === "buy") {
+        const multiplier = BALANCE.TRADE_ROUTE.BUY_PRICE_BASE_MULTIPLIER
+            + (1 - ratio) * BALANCE.TRADE_ROUTE.BUY_PRICE_SCARCITY_MULTIPLIER;
+        return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * multiplier));
+    }
+    const multiplier = BALANCE.TRADE_ROUTE.SELL_PRICE_BASE_MULTIPLIER
+        + (1 - ratio) * BALANCE.TRADE_ROUTE.SELL_PRICE_SCARCITY_MULTIPLIER;
+    return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * multiplier));
 }
 
 export function estimateRouteProfit(originSector, destinationSector, commodity, amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT) {
     const buyValue = getRouteMarketValue(originSector, commodity, "buy");
     const sellValue = getRouteMarketValue(destinationSector, commodity, "sell");
-    const spread = Math.max(8, sellValue - buyValue);
-    return Math.max(25, Math.floor(spread * amount * 0.38));
+    const spread = Math.max(BALANCE.TRADE_ROUTE.PROFIT_SPREAD_FLOOR, sellValue - buyValue);
+    return Math.max(
+        BALANCE.TRADE_ROUTE.PROFIT_FLOOR,
+        Math.floor(spread * amount * BALANCE.TRADE_ROUTE.PROFIT_MULTIPLIER)
+    );
 }
 
 const routePathMetricsCache = new Map();
@@ -279,8 +316,9 @@ function computeRouteSetupCost(metrics) {
     if (!metrics.path) return null;
     const effectiveSpanCost = metrics.totalEffectiveSpan;
     const surchargeMultiplier = 1 + metrics.surcharge;
-    const physicalCost = metrics.hopCount * 140 + effectiveSpanCost * 24;
-    const riskCost = metrics.risk * 130;
+    const physicalCost = metrics.hopCount * BALANCE.TRADE_ROUTE.SETUP_HOP_COST
+        + effectiveSpanCost * BALANCE.TRADE_ROUTE.SETUP_EFFECTIVE_SPAN_COST;
+    const riskCost = metrics.risk * BALANCE.TRADE_ROUTE.SETUP_RISK_COST;
     return Math.round((BALANCE.TRADE_ROUTE_BASE_COST + physicalCost + riskCost) * surchargeMultiplier);
 }
 
@@ -288,9 +326,9 @@ function getProfitBand(originSector, destinationSector, commodity) {
     const expected = estimateRouteProfit(originSector, destinationSector, commodity);
     return {
         commodity,
-        low: Math.max(0, Math.floor(expected * 0.75)),
+        low: Math.max(0, Math.floor(expected * BALANCE.TRADE_ROUTE.PROFIT_BAND_LOW_MULTIPLIER)),
         expected,
-        high: Math.ceil(expected * 1.25),
+        high: Math.ceil(expected * BALANCE.TRADE_ROUTE.PROFIT_BAND_HIGH_MULTIPLIER),
         estimatedProfit: expected
     };
 }
@@ -401,7 +439,9 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
             const routeDestination = bySector.get(route.destinationSector) || null;
             const metrics = deriveRouteMetrics(route.originSector, route.destinationSector);
             const baseRisk = metrics.risk;
-            const risk = baseRisk === null ? null : baseRisk + Math.max(0, route.heat || 0) / 12;
+            const risk = baseRisk === null
+                ? null
+                : baseRisk + Math.max(0, route.heat || 0) / BALANCE.TRADE_ROUTE.RISK_HEAT_DIVISOR;
             return { route, origin: routeOrigin, destination: routeDestination, path: metrics.path, metrics, risk };
         });
     const playerColonies = Object.fromEntries(
@@ -421,7 +461,11 @@ export function buildLogisticsSnapshot(originSector = state.player.currentSector
 }
 
 export function createTradeRoute(destinationSector, commodity) {
-    destinationSector = parseInt(destinationSector, 10);
+    destinationSector = positiveIntegerOrNull(destinationSector);
+    if (destinationSector === null) {
+        log("Choose a valid destination sector before opening a route.");
+        return;
+    }
     const originSector = state.player.currentSector;
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
@@ -433,20 +477,20 @@ export function createTradeRoute(destinationSector, commodity) {
     const cost = metrics.setupCost;
     if (cost === null) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
-    if (!spendTime(180)) return;
+    if (!spendTime(BALANCE.TRADE_ROUTE.OPEN_TIME_MINUTES)) return;
     state.player.credits -= cost;
     const route = createRouteRecord({
         originSector,
         destinationSector,
         commodity,
         factionId: destination.factionId || origin.factionId || "traders",
-        reliability: 55
+        reliability: BALANCE.TRADE_ROUTE.PLAYER_START_RELIABILITY
     });
     state.tradeRoutes.push(route);
-    addFactionRep("traders", 3, "opened a persistent route");
-    addFactionTrust("traders", 1, "route brokerage");
-    addSectorInfluence(originSector, getFactionPoliticalPole(origin.factionId || "traders"), 1, "new logistics route");
-    addSectorInfluence(destinationSector, getFactionPoliticalPole(destination.factionId || "traders"), 1, "new logistics route");
+    addFactionRep("traders", BALANCE.TRADE_ROUTE.OPEN_REPUTATION_GAIN, "opened a persistent route");
+    addFactionTrust("traders", BALANCE.TRADE_ROUTE.OPEN_TRUST_GAIN, "route brokerage");
+    addSectorInfluence(originSector, getFactionPoliticalPole(origin.factionId || "traders"), BALANCE.TRADE_ROUTE.OPEN_INFLUENCE_GAIN, "new logistics route");
+    addSectorInfluence(destinationSector, getFactionPoliticalPole(destination.factionId || "traders"), BALANCE.TRADE_ROUTE.OPEN_INFLUENCE_GAIN, "new logistics route");
     addWorldEvent({
         type: "route_opened", sectorId: destinationSector, factionId: route.factionId,
         text: `You opened an explicit ${formatCommodity(commodity)} trade route from sector ${originSector} to sector ${destinationSector}.`,
@@ -467,22 +511,34 @@ export function createCaptainTradeRoute(captain, originSector, destinationSector
         originSector,
         destinationSector,
         commodity,
-        amount: options.amount || Math.max(6, Math.floor((captain.ship.cargoCapacity || 60) * 0.18)),
-        intervalDays: options.intervalDays || BALANCE.TRADE_ROUTE_INTERVAL_DAYS,
-        delayDays: options.delayDays || 1,
+        amount: positiveNumber(
+            options.amount,
+            Math.max(
+                BALANCE.TRADE_ROUTE.CAPTAIN_MIN_AMOUNT,
+                Math.floor(
+                    positiveNumber(
+                        captain.ship.cargoCapacity,
+                        BALANCE.TRADE_ROUTE.CAPTAIN_DEFAULT_CARGO_CAPACITY
+                    ) * BALANCE.TRADE_ROUTE.CAPTAIN_CARGO_SHARE
+                )
+            )
+        ),
+        intervalDays: positiveNumber(options.intervalDays, BALANCE.TRADE_ROUTE_INTERVAL_DAYS),
+        delayDays: positiveNumber(options.delayDays, BALANCE.TRADE_ROUTE.DEFAULT_DELAY_DAYS),
         factionId: destination.factionId || origin.factionId || captain.preferredFaction || "traders",
         ownerType: "captain",
         ownerId: captain.id,
         operatorType: "captain",
         createdBy: captain.id,
-        reliability: 52
+        reliability: BALANCE.TRADE_ROUTE.CAPTAIN_START_RELIABILITY
     });
     state.tradeRoutes.push(route);
     return route;
 }
 
 export function toggleTradeRoute(routeId) {
-    routeId = parseInt(routeId, 10);
+    routeId = positiveIntegerOrNull(routeId);
+    if (routeId === null) return;
     const route = state.tradeRoutes.find(r => r.id === routeId);
     if (!route || route.status === "closed") return;
     route.status = route.status === "active" ? "paused" : "active";
@@ -490,7 +546,8 @@ export function toggleTradeRoute(routeId) {
 }
 
 export function closeTradeRoute(routeId) {
-    routeId = parseInt(routeId, 10);
+    routeId = positiveIntegerOrNull(routeId);
+    if (routeId === null) return;
     const route = state.tradeRoutes.find(r => r.id === routeId);
     if (!route || route.status === "closed") return;
     route.status = "closed";
@@ -499,19 +556,34 @@ export function closeTradeRoute(routeId) {
 }
 
 export function assignCaptainToRoute(routeId, captainId) {
-    routeId = parseInt(routeId, 10);
+    routeId = positiveIntegerOrNull(routeId);
+    if (routeId === null) return;
     const route = state.tradeRoutes.find(r => r.id === routeId);
     const captain = state.captains[captainId];
     if (!route || !captain || route.status === "closed") return;
     const relation = captain.relationshipToPlayer || { opinion: 0, trust: 0, rivalry: 0 };
-    const cost = Math.max(350, Math.floor(450 + (captain.ship.combatRating || 10) * 8 - Math.max(0, relation.opinion || 0) * 4));
+    const cost = Math.max(
+        BALANCE.TRADE_ROUTE.ESCORT_MIN_COST,
+        Math.floor(
+            BALANCE.TRADE_ROUTE.ESCORT_BASE_COST
+                + positiveNumber(
+                    captain.ship.combatRating,
+                    BALANCE.TRADE_ROUTE.ESCORT_DEFAULT_COMBAT_RATING
+                ) * BALANCE.TRADE_ROUTE.ESCORT_COMBAT_COST_MULTIPLIER
+                - Math.max(0, relation.opinion || 0) * BALANCE.TRADE_ROUTE.ESCORT_OPINION_DISCOUNT
+        )
+    );
     if (state.player.credits < cost) { log(`Hiring ${captain.name} for convoy escort requires ${formatCredits(cost)} credits.`); return; }
-    if (!spendTime(45)) return;
+    if (!spendTime(BALANCE.TRADE_ROUTE.ESCORT_HIRE_TIME_MINUTES)) return;
     state.tradeRoutes.forEach(r => { if (r.escortCaptainId === captainId) r.escortCaptainId = null; });
     state.player.credits -= cost;
     route.escortCaptainId = captainId;
     captain.known = true;
-    nudgeCaptainRelation(captainId, { opinion: 4, trust: 2, debt: 1 }, `took escort duty on ${route.name}`);
+    nudgeCaptainRelation(captainId, {
+        opinion: BALANCE.TRADE_ROUTE.ESCORT_HIRE_OPINION_GAIN,
+        trust: BALANCE.TRADE_ROUTE.ESCORT_HIRE_TRUST_GAIN,
+        debt: BALANCE.TRADE_ROUTE.ESCORT_HIRE_DEBT_GAIN
+    }, `took escort duty on ${route.name}`);
     addWorldEvent({
         type: "route_escort", captainId, sectorId: route.originSector,
         text: `${captain.name} joined the convoy wing for ${route.name}.`,
@@ -520,7 +592,8 @@ export function assignCaptainToRoute(routeId, captainId) {
 }
 
 export function unassignRouteEscort(routeId) {
-    routeId = parseInt(routeId, 10);
+    routeId = positiveIntegerOrNull(routeId);
+    if (routeId === null) return;
     const route = state.tradeRoutes.find(r => r.id === routeId);
     if (!route) return;
     route.escortCaptainId = null;
@@ -545,13 +618,17 @@ export function runTradeRoute(route) {
         return;
     }
     const available = Math.max(0, origin.stock[route.commodity] || 0);
-    const capacity = Math.max(0, (destination.maxStock[route.commodity] || 9999) - (destination.stock[route.commodity] || 0));
+    const capacity = Math.max(
+        0,
+        (destination.maxStock[route.commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP)
+            - (destination.stock[route.commodity] || 0)
+    );
     const amount = Math.min(route.amount, available, capacity);
     if (amount <= 0) {
         route.failures += 1;
         route.starvedDays = (route.starvedDays || 0) + 1;
-        if (route.starvedDays >= 3) route.status = "paused";
-        route.reliability = clampRange(route.reliability - 3, 0, 100);
+        if (route.starvedDays >= BALANCE.TRADE_ROUTE.STARVED_PAUSE_DAYS) route.status = "paused";
+        route.reliability = clampRange(route.reliability - BALANCE.TRADE_ROUTE.STARVED_RELIABILITY_LOSS, 0, 100);
         addWorldEvent({
             type: "route_shortage", sectorId: route.originSector, factionId: route.factionId,
             text: `${route.name} missed a run because ${formatCommodity(route.commodity)} was unavailable or the destination was full.`,
@@ -571,15 +648,36 @@ export function runTradeRoute(route) {
     }
     const escortPower = getRouteEscortPower(route);
     const reliabilityAdjustment = getRouteReliabilityAdjustment(route.ownerType === "player" ? state.player.character : state.captains?.[route.ownerId]?.character);
-    const failureChance = Math.max(0.02, Math.min(0.55, 0.04 + risk * 0.035 - escortPower * 0.025 - reliabilityAdjustment * 0.003));
+    const failureChance = Math.max(
+        BALANCE.TRADE_ROUTE.FAILURE_MIN_CHANCE,
+        Math.min(
+            BALANCE.TRADE_ROUTE.FAILURE_MAX_CHANCE,
+            BALANCE.TRADE_ROUTE.FAILURE_BASE_CHANCE
+                + risk * BALANCE.TRADE_ROUTE.FAILURE_RISK_MULTIPLIER
+                - escortPower * BALANCE.TRADE_ROUTE.FAILURE_ESCORT_MULTIPLIER
+                - reliabilityAdjustment * BALANCE.TRADE_ROUTE.FAILURE_RELIABILITY_MULTIPLIER
+        )
+    );
     const escortCaptain = route.escortCaptainId ? state.captains[route.escortCaptainId] : null;
     if (random() < failureChance) {
         route.failures += 1;
-        route.heat = Math.min(100, route.heat + 3 + Math.floor(risk));
-        route.reliability = clampRange(route.reliability - Math.max(3, 8 - reliabilityAdjustment), 0, 100);
+        route.heat = Math.min(100, route.heat + BALANCE.TRADE_ROUTE.FAILURE_HEAT_BASE + Math.floor(risk));
+        route.reliability = clampRange(
+            route.reliability - Math.max(
+                BALANCE.TRADE_ROUTE.STARVED_RELIABILITY_LOSS,
+                BALANCE.TRADE_ROUTE.FAILURE_RELIABILITY_LOSS - reliabilityAdjustment
+            ),
+            0,
+            100
+        );
         const path = getRoutePath(route);
         const hotSector = path ? path.sort((a, b) => (state.universe[b].pirateThreat || 0) - (state.universe[a].pirateThreat || 0))[0] || route.destinationSector : route.destinationSector;
-        if (state.universe[hotSector]) state.universe[hotSector].pirateThreat = Math.min(6, (state.universe[hotSector].pirateThreat || 0) + 1);
+        if (state.universe[hotSector]) {
+            state.universe[hotSector].pirateThreat = Math.min(
+                BALANCE.TRADE_ROUTE.FAILURE_PIRATE_THREAT_CAP,
+                (state.universe[hotSector].pirateThreat || 0) + 1
+            );
+        }
         if (escortCaptain) nudgeCaptainRelation(escortCaptain.id, { opinion: 1, trust: 1, rivalry: 1 }, `fought through a failed convoy run on ${route.name}`);
         addWorldEvent({
             type: "route_raid", sectorId: hotSector,
@@ -591,7 +689,10 @@ export function runTradeRoute(route) {
         return;
     }
     origin.stock[route.commodity] -= amount;
-    destination.stock[route.commodity] = Math.min(destination.maxStock[route.commodity] || 9999, (destination.stock[route.commodity] || 0) + amount);
+    destination.stock[route.commodity] = Math.min(
+        destination.maxStock[route.commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP,
+        (destination.stock[route.commodity] || 0) + amount
+    );
     const profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
     if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {
         state.captains[route.ownerId].credits = (state.captains[route.ownerId].credits || 0) + profit;
@@ -601,20 +702,32 @@ export function runTradeRoute(route) {
     route.profit += profit;
     route.runs += 1;
     route.starvedDays = 0;
-    route.heat = Math.max(0, route.heat - 1);
-    route.reliability = clampRange(route.reliability + 2 + Math.max(0, Math.floor(reliabilityAdjustment / 4)), 0, 100);
+    route.heat = Math.max(0, route.heat - BALANCE.TRADE_ROUTE.SUCCESS_HEAT_LOSS);
+    route.reliability = clampRange(
+        route.reliability
+            + BALANCE.TRADE_ROUTE.SUCCESS_RELIABILITY_GAIN
+            + Math.max(
+                0,
+                Math.floor(reliabilityAdjustment / BALANCE.TRADE_ROUTE.SUCCESS_RELIABILITY_ADJUSTMENT_DIVISOR)
+            ),
+        0,
+        100
+    );
     addFactionRep("traders", 1, "route income");
     addSectorInfluence(route.originSector, getFactionPoliticalPole(origin.factionId || "traders"), 1, "regular logistics traffic");
     addSectorInfluence(route.destinationSector, getFactionPoliticalPole(destination.factionId || route.factionId || "traders"), 1, "regular logistics traffic");
     maybeRoutePoliticalSideEffect(route, amount, escortCaptain);
-    if (escortCaptain && route.runs % 3 === 0) {
-        nudgeCaptainRelation(escortCaptain.id, { opinion: 2, trust: 1 }, `kept ${route.name} running`);
+    if (escortCaptain && route.runs % BALANCE.TRADE_ROUTE.ESCORT_RELATION_RUN_INTERVAL === 0) {
+        nudgeCaptainRelation(escortCaptain.id, {
+            opinion: BALANCE.TRADE_ROUTE.ESCORT_RELATION_OPINION_GAIN,
+            trust: BALANCE.TRADE_ROUTE.ESCORT_RELATION_TRUST_GAIN
+        }, `kept ${route.name} running`);
     }
     addWorldEvent({
         type: "route_success", sectorId: route.destinationSector,
         captainId: escortCaptain ? escortCaptain.id : null, factionId: route.factionId,
         text: `${route.name} delivered ${amount} ${formatCommodity(route.commodity)} and earned ${formatCredits(profit)} credits.`,
-        importance: route.runs % 3 === 0 ? 2 : 1, alert: false
+        importance: route.runs % BALANCE.TRADE_ROUTE.ESCORT_RELATION_RUN_INTERVAL === 0 ? 2 : 1, alert: false
     });
 }
 
@@ -625,8 +738,10 @@ export function maybeRoutePoliticalSideEffect(route, amount, escortCaptain) {
     if (route.commodity === "eq" && pole === "hc") addFactionTrust("hc", 1, "equipment route reliability");
     if (route.commodity === "org" && state.planets[route.destinationSector]) addFactionTrust("colonists", 1, "colony food route");
     if (route.commodity === "ore" && pole === "hc") addFactionRep("miners", 1, "ore route throughput");
-    if (escortCaptain && escortCaptain.preferredFaction === "smugglers" && random() < 0.15) {
-        route.heat = Math.min(100, route.heat + 2);
+    if (escortCaptain
+        && escortCaptain.preferredFaction === "smugglers"
+        && random() < BALANCE.TRADE_ROUTE.SMUGGLER_SIDE_BUSINESS_CHANCE) {
+        route.heat = Math.min(100, route.heat + BALANCE.TRADE_ROUTE.SMUGGLER_SIDE_BUSINESS_HEAT);
         addFactionRep("vc", 1, "quiet convoy side business", "private");
     }
 }
