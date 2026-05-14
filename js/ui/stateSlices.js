@@ -12,6 +12,7 @@ export const StateSlice = {
     DATA_CARGO: 'dataCargo',
     ENTANGLEMENTS: 'entanglements',
     WORLD_EVENTS: 'worldEvents',
+    DIALOGUE: 'dialogue',
 
     CURRENT_SCREEN: 'currentScreen',
     REPUTATION_TAB: 'reputationTab',

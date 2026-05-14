@@ -61,6 +61,21 @@ That includes:
 - player messages and notifications
 - timestamps needed for missed-time resolution
 
+The first slice should reserve explicit top-level fields on `createInitialState()` and in `SAVE_STATE_FIELDS` so implementation starts from the repo's canonical state and persistence surfaces:
+
+```js
+dialogueMemories: [],
+dialogueTasks: [],
+dialogueMessages: [],
+dialogueEventLog: [],
+nextDialogueMemoryId: 1,
+nextDialogueTaskId: 1,
+nextDialogueMessageId: 1,
+nextDialogueEventId: 1
+```
+
+`dialogueMemories`, `dialogueTasks`, and `dialogueMessages` are the canonical first-slice stores for person-facing memory, deferred work, and inbox-like NPC follow-up. `dialogueEventLog` is the causal/debug record and must not replace those canonical stores.
+
 ### Event log in early phases
 
 A structured dialogue event log should exist from the beginning, but it is supportive, not foundational.
@@ -126,9 +141,9 @@ Use `core` for shared plumbing, persistence boundaries, and tick integration.
 
 Feature logic belongs in `systems`, not `core`.
 
-#### Preferred new subtree: `js/systems/people/`
+#### Preferred new subtree behind `js/systems/people.js`
 
-If the repo continues expanding person-facing simulation, place dialogue logic here.
+Keep `js/systems/people.js` as the barrel and public API for person-facing systems. Add a `js/systems/people/` subtree behind it for the feature internals, then re-export stable entry points from the existing `people.js` module as needed. This aligns dialogue with the existing generated people, role, relationship/trust, and service-tag model rather than creating a parallel top-level social architecture.
 
 Suggested modules:
 
@@ -143,7 +158,7 @@ Suggested modules:
 - `js/systems/people/readModels.js`
   - derive small player-facing summaries of active promises and outcomes
 
-If `people/` is not desired, use a focused `js/systems/dialogue/` subtree instead. The important constraint is separation from `core`.
+Avoid a separate `js/systems/dialogue/` subtree for the first slice unless the people system later stops being the public boundary. The important constraint is separation from `core` while keeping person-facing APIs discoverable through `js/systems/people.js`.
 
 #### Existing systems to extend
 
@@ -172,6 +187,14 @@ Early UX should reuse existing screens.
   - relationship and trust changes
 - `js/ui/renderHUD.js`
   - short notifications or attention-feed summaries
+
+Add one UI invalidation slice for the first implementation:
+
+```js
+DIALOGUE: "dialogue"
+```
+
+Dialogue actions should return `stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN)` when they alter dialogue memory, tasks, messages, or the currently visible interaction surface. If an action also changes existing domains, include their established slices too, such as `WORLD_EVENTS` for timeline summaries, `MISSIONS` for tracked favors, or `CAPTAINS` when captain-facing relationship state changes.
 
 ### `docs/`
 
@@ -427,7 +450,11 @@ Those only become worth building if the loop proves durable value.
 
 ## Messaging examples
 
-Early follow-up should reuse existing message and event patterns.
+Early follow-up should use both canonical dialogue messages and existing world-event summaries:
+
+- `dialogueMessages` is the canonical inbox-like state for NPC follow-up rendered through Communications. It owns delivery/read status, sender/recipient references, task linkage, and message text needed by the follow-up loop.
+- `worldEvents` may receive a concise `type: "dialogue_message"` or related summary record for timeline visibility, notification support, and causal/debug history. It is not the source of truth for the Communications inbox.
+- Communications should render NPC follow-up from `dialogueMessages`, optionally alongside existing data-cargo and intel panels, while notifications and reputation/debug timelines can point at the paired `worldEvents` summary.
 
 Example messages:
 
