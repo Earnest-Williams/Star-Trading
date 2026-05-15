@@ -26,7 +26,7 @@ export function mineAsteroids() {
     const mined = Math.min(estimatedYield, asteroids.ore, getFreeHolds());
     asteroids.ore -= mined;
     state.player.cargo.ore += mined;
-    log(`Mined ${mined} Ore in sector ${sector.id}. Mining took 2 hours.`);
+    log(`Mined ${mined} Ore in sector ${sector.id}. Mining took ${BALANCE.MINING.OPERATION_TIME_MINUTES / 60} hours.`);
     if (mined > 0) {
         applyPoliticalEffect({ factionId: "miners", publicRep: 1, trust: 1, sectorId: state.player.currentSector, influence: 2, reason: "asteroid extraction", memoryKey: "reliableJobs" });
         addSectorInfluence(state.player.currentSector, "hc", 1, "industrial extraction");

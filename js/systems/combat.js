@@ -17,7 +17,7 @@ export function applyShipDamage(amount) {
         state.player.hull = 1;
         state.player.credits = Math.max(0, Math.floor(state.player.credits * BALANCE.COMBAT.EMERGENCY_REPAIR_CREDIT_MULTIPLIER));
         log("Your ship barely survived. Emergency repairs consumed a chunk of your credits.");
-        Notifications.show("Emergency repairs! Lost 25% credits", 4);
+        Notifications.show(`Emergency repairs! Lost ${Math.round((1 - BALANCE.COMBAT.EMERGENCY_REPAIR_CREDIT_MULTIPLIER) * 100)}% credits`, 4);
     }
 }
 

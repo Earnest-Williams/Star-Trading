@@ -137,20 +137,20 @@ export function normaliseDataCargoState() {
     if (!Array.isArray(state.dataCargo.playerHold.privatePayloads)) {
         state.dataCargo.playerHold.privatePayloads = [];
     }
-    state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
-        .filter(isObject)
-        .map(normalisePrivatePayload);
     if (!Array.isArray(state.dataCargo.playerHold.securePayloads)) {
         state.dataCargo.playerHold.securePayloads = [];
     }
+    if (!Array.isArray(state.dataCargo.secureContracts)) state.dataCargo.secureContracts = [];
+    syncNextPayloadId();
+    state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
+        .filter(isObject)
+        .map(normalisePrivatePayload);
     state.dataCargo.playerHold.securePayloads = state.dataCargo.playerHold.securePayloads
         .filter(isObject)
         .map(payload => normaliseSecurePayload(payload));
-    if (!Array.isArray(state.dataCargo.secureContracts)) state.dataCargo.secureContracts = [];
     state.dataCargo.secureContracts = state.dataCargo.secureContracts
         .filter(isObject)
         .map(contract => normaliseSecureContract(contract));
-    syncNextPayloadId();
     if (!isObject(state.dataCargo.license)) state.dataCargo.license = {};
     state.dataCargo.license = {
         secureCourier: state.dataCargo.license.secureCourier === true,
