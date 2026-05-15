@@ -302,6 +302,54 @@ describe('data cargo persistence and normalisation', () => {
         assert.deepEqual(state.dataCargo.secureContracts, []);
         assert.deepEqual(state.dataCargo.license, { secureCourier: false, issuedByFactionId: null, issuedDay: null });
     });
+
+    it('advances nextPayloadId past persisted private and secure ids', () => {
+        state.dataCargo.nextPayloadId = 1;
+        state.dataCargo.playerHold.privatePayloads.push({
+            id: 'private-12',
+            sourceSectorId: 1,
+            targetSectorId: 2,
+            acquiredDay: 5,
+            expiresDay: 9,
+            value: 50,
+            text: 'Persisted private note.'
+        });
+        state.dataCargo.playerHold.securePayloads.push({
+            id: 'secure-7',
+            originSectorId: 1,
+            destinationSectorId: 2,
+            factionId: 'sda',
+            acquiredDay: 5,
+            expiresDay: 9,
+            value: 120,
+            risk: 2,
+            status: 'accepted',
+            text: 'Persisted secure packet.'
+        });
+        state.dataCargo.secureContracts.push({
+            id: 'secure-18',
+            originSectorId: 1,
+            destinationSectorId: 2,
+            factionId: 'sda',
+            createdDay: 5,
+            expiresDay: 9,
+            value: 120,
+            risk: 2,
+            status: 'available',
+            text: 'Persisted secure contract.'
+        });
+
+        normaliseDataCargoState();
+        const payload = createPrivatePayload({ sourceSectorId: 1, targetSectorId: 2 });
+
+        assert.equal(state.dataCargo.nextPayloadId, 20);
+        assert.equal(payload.id, 'private-19');
+    });
+
+    it('ignores missing sector knowledge when culling a single sector', () => {
+        assert.doesNotThrow(() => cullOldPublicSnapshots(99));
+        assert.equal(cullOldPublicSnapshots(99), 0);
+    });
 });
 
 describe('data cargo private payloads', () => {

@@ -11,8 +11,8 @@ export function getPortPrice(port, commodity, mode) {
     const stockRatio = Math.max(0, Math.min(1, stock / maxStock));
     const base = port.basePrices[commodity] || BALANCE.MIN_TRADE_PRICE;
     const marketPrice = mode === "buy"
-        ? base * (0.75 + (1 - stockRatio) * 0.90)
-        : base * (0.65 + (1 - stockRatio) * 1.20);
+        ? base * (BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER + (1 - stockRatio) * BALANCE.MARKET.BUY_PRICE_SCARCITY_MULTIPLIER)
+        : base * (BALANCE.MARKET.SELL_PRICE_BASE_MULTIPLIER + (1 - stockRatio) * BALANCE.MARKET.SELL_PRICE_SCARCITY_MULTIPLIER);
     return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(marketPrice * getFactionPriceMultiplier(port, mode)));
 }
 
@@ -32,11 +32,11 @@ export function tradeCommodity(commodity, mode) {
         port.stock[commodity] = Math.max(0, (port.stock[commodity] || 0) - amount);
         log(`Bought ${amount} ${formatCommodity(commodity)} for ${formatCredits(amount * price)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         if (amount >= BALANCE.TRADE_BATCH) {
-            applyPoliticalEffect({ factionId: port.factionId, publicRep: 1, trust: 1, sectorId: state.player.currentSector, influence: 1, reason: "routine public trade", memoryKey: "reliableJobs" });
-            if (port.hiddenFactionId && random() < 0.18) {
-                addFactionRep(port.hiddenFactionId, 1, "quiet port relationship", "private");
+            applyPoliticalEffect({ factionId: port.factionId, publicRep: BALANCE.MARKET.ROUTINE_PUBLIC_REP_GAIN, trust: BALANCE.MARKET.ROUTINE_TRUST_GAIN, sectorId: state.player.currentSector, influence: BALANCE.MARKET.ROUTINE_BUY_INFLUENCE_GAIN, reason: "routine public trade", memoryKey: "reliableJobs" });
+            if (port.hiddenFactionId && random() < BALANCE.MARKET.HIDDEN_FACTION_RELATION_CHANCE) {
+                addFactionRep(port.hiddenFactionId, BALANCE.MARKET.HIDDEN_FACTION_REP_GAIN, "quiet port relationship", "private");
                 const sector = state.universe[state.player.currentSector];
-                if (sector && sector.front) sector.front.suspicion = Math.min(100, sector.front.suspicion + 2);
+                if (sector && sector.front) sector.front.suspicion = Math.min(BALANCE.MARKET.FRONT_SUSPICION_MAX, sector.front.suspicion + BALANCE.MARKET.FRONT_SUSPICION_TRADE_GAIN);
             }
         }
     } else {
@@ -49,10 +49,10 @@ export function tradeCommodity(commodity, mode) {
         port.stock[commodity] = Math.min(port.maxStock[commodity] || 1, (port.stock[commodity] || 0) + amount);
         log(`Sold ${amount} ${formatCommodity(commodity)} for ${formatCredits(amount * price)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         if (amount >= BALANCE.TRADE_BATCH) {
-            applyPoliticalEffect({ factionId: port.factionId, publicRep: 1, trust: 1, sectorId: state.player.currentSector, influence: 2, reason: "supply-chain support", memoryKey: "reliableJobs" });
+            applyPoliticalEffect({ factionId: port.factionId, publicRep: BALANCE.MARKET.ROUTINE_PUBLIC_REP_GAIN, trust: BALANCE.MARKET.ROUTINE_TRUST_GAIN, sectorId: state.player.currentSector, influence: BALANCE.MARKET.ROUTINE_SELL_INFLUENCE_GAIN, reason: "supply-chain support", memoryKey: "reliableJobs" });
             if (commodity === "eq" && port.hiddenFactionId === "vc") {
-                addFactionRep("vc", 2, "off-ledger equipment supply", "private");
-                addFactionHeat("sda", 2, "unusual equipment routing");
+                addFactionRep("vc", BALANCE.MARKET.VC_EQUIPMENT_REP_GAIN, "off-ledger equipment supply", "private");
+                addFactionHeat("sda", BALANCE.MARKET.SDA_EQUIPMENT_HEAT_GAIN, "unusual equipment routing");
             }
         }
     }

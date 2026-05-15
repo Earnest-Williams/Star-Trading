@@ -9,11 +9,11 @@ import { applyShipDamage } from './combat.js';
 import { log, random } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
 
-const SECURE_REP_THRESHOLD = 45;
-const SECURE_TRUST_THRESHOLD = 25;
+const SECURE_REP_THRESHOLD = BALANCE.DATA_CARGO.SECURE_LICENSE_REP_THRESHOLD;
+const SECURE_TRUST_THRESHOLD = BALANCE.DATA_CARGO.SECURE_LICENSE_TRUST_THRESHOLD;
 export const SECURE_LICENSE_REP_THRESHOLD = SECURE_REP_THRESHOLD;
 export const SECURE_LICENSE_TRUST_THRESHOLD = SECURE_TRUST_THRESHOLD;
-const MAX_AVAILABLE_CONTRACTS = 8;
+const MAX_AVAILABLE_CONTRACTS = BALANCE.DATA_CARGO.SECURE_MAX_AVAILABLE_CONTRACTS;
 const SECURE_CONTRACT_TYPES = [
     'diplomatic_packet',
     'sealed_manifest',
@@ -165,16 +165,16 @@ export function generateSecureCourierContracts() {
     if (sectorIds.length < 2) return { generatedCount: 0 };
 
     const openSlots = MAX_AVAILABLE_CONTRACTS - state.dataCargo.secureContracts.length;
-    const attempts = Math.min(openSlots, Math.max(1, Math.ceil(sectorIds.length / 4)));
+    const attempts = Math.min(openSlots, Math.max(1, Math.ceil(sectorIds.length / BALANCE.DATA_CARGO.SECURE_GENERATION_SECTOR_DIVISOR)));
     let generatedCount = 0;
     for (let i = 0; i < attempts; i++) {
-        if (random() > 0.45 && state.dataCargo.secureContracts.length > 0) continue;
+        if (random() > BALANCE.DATA_CARGO.SECURE_GENERATION_SKIP_CHANCE && state.dataCargo.secureContracts.length > 0) continue;
         const originSectorId = sectorIds[Math.floor(random() * sectorIds.length)];
         const destinationSectorId = chooseDifferentSector(originSectorId, sectorIds);
         const factionId = getFactionForSector(originSectorId);
         const targetFactionId = getFactionForSector(destinationSectorId);
-        const risk = Math.max(1, Math.min(5, 1 + Math.floor(random() * 3) + Math.floor((Number(state.universe?.[destinationSectorId]?.pirateThreat) || 0) / 3)));
-        const value = BALANCE.DATA_CARGO.SECURE_BASE_VALUE + risk * 35 + Math.floor(random() * 55);
+        const risk = Math.max(BALANCE.DATA_CARGO.SECURE_RISK_MIN, Math.min(BALANCE.DATA_CARGO.SECURE_RISK_MAX, BALANCE.DATA_CARGO.SECURE_RISK_MIN + Math.floor(random() * BALANCE.DATA_CARGO.SECURE_RISK_RANDOM_SPAN) + Math.floor((Number(state.universe?.[destinationSectorId]?.pirateThreat) || 0) / BALANCE.DATA_CARGO.SECURE_RISK_PIRATE_DIVISOR)));
+        const value = BALANCE.DATA_CARGO.SECURE_BASE_VALUE + risk * BALANCE.DATA_CARGO.SECURE_VALUE_PER_RISK + Math.floor(random() * BALANCE.DATA_CARGO.SECURE_VALUE_RANDOM_SPAN);
         const contract = {
             id: nextSecureId(),
             tier: 'secure',
@@ -184,7 +184,7 @@ export function generateSecureCourierContracts() {
             factionId,
             targetFactionId,
             createdDay: today,
-            expiresDay: today + BALANCE.DATA_CARGO.SECURE_DEFAULT_EXPIRY_DAYS + Math.floor(random() * 2),
+            expiresDay: today + BALANCE.DATA_CARGO.SECURE_DEFAULT_EXPIRY_DAYS + Math.floor(random() * BALANCE.DATA_CARGO.SECURE_EXPIRY_RANDOM_DAYS),
             value,
             risk,
             status: 'available'
@@ -253,10 +253,10 @@ export function completeSecurePayload(payloadId) {
     if (payload.destinationSectorId !== Number(state.player.currentSector)) return false;
     const delivered = takeSecurePayload(payloadId);
     state.player.credits = (Number(state.player.credits) || 0) + delivered.value;
-    addFactionRep(delivered.factionId, Math.max(2, Math.floor(delivered.value / 50)), 'secure courier delivery');
-    addFactionTrust(delivered.factionId, 2, 'secure courier delivery');
+    addFactionRep(delivered.factionId, Math.max(BALANCE.DATA_CARGO.SECURE_DELIVERY_MIN_REP_GAIN, Math.floor(delivered.value / BALANCE.DATA_CARGO.SECURE_DELIVERY_VALUE_REP_DIVISOR)), 'secure courier delivery');
+    addFactionTrust(delivered.factionId, BALANCE.DATA_CARGO.SECURE_DELIVERY_TRUST_GAIN, 'secure courier delivery');
     if (delivered.targetFactionId && delivered.targetFactionId !== delivered.factionId) {
-        addFactionTrust(delivered.targetFactionId, 1, 'secure courier handoff');
+        addFactionTrust(delivered.targetFactionId, BALANCE.DATA_CARGO.SECURE_HANDOFF_TRUST_GAIN, 'secure courier handoff');
     }
     addWorldEvent({
         type: 'secure_payload_delivered',
@@ -281,7 +281,7 @@ export function failExpiredSecurePayloads() {
         .filter(payload => {
             if (payload.status !== 'accepted' || payload.expiresDay >= today) return true;
             failedCount += 1;
-            addFactionRep(payload.factionId, -1, 'expired secure courier packet');
+            addFactionRep(payload.factionId, -BALANCE.DATA_CARGO.SECURE_EXPIRY_REP_LOSS, 'expired secure courier packet');
             addWorldEvent({
                 type: 'secure_payload_expired',
                 sectorId: payload.destinationSectorId,
@@ -307,12 +307,12 @@ export function maybeSecureDataInterception(randomUnit = random) {
     const pirateThreat = Math.max(0, Number(sector.pirateThreat) || 0);
     const totalRisk = payloads.reduce((sum, payload) => sum + (Number(payload.risk) || 1), 0);
     const dominant = getDominantInfluence(sectorId);
-    const hostilePressure = dominant === 'vc' ? 0.04 : 0;
-    const chance = Math.min(BALANCE.DATA_CARGO.SECURE_INTERCEPTION_BASE_CHANCE + totalRisk * 0.025 + pirateThreat * 0.015 + hostilePressure, 0.28);
+    const hostilePressure = dominant === BALANCE.DATA_CARGO.SECURE_HOSTILE_FACTION_ID ? BALANCE.DATA_CARGO.SECURE_HOSTILE_PRESSURE : 0;
+    const chance = Math.min(BALANCE.DATA_CARGO.SECURE_INTERCEPTION_BASE_CHANCE + totalRisk * BALANCE.DATA_CARGO.SECURE_INTERCEPTION_RISK_MULTIPLIER + pirateThreat * BALANCE.DATA_CARGO.SECURE_INTERCEPTION_PIRATE_MULTIPLIER + hostilePressure, BALANCE.DATA_CARGO.SECURE_INTERCEPTION_MAX_CHANCE);
     if (randomUnit() >= chance) return { intercepted: false, outcome: 'none', chance };
 
     const outcomeRoll = randomUnit();
-    if (outcomeRoll < 0.25) {
+    if (outcomeRoll < BALANCE.DATA_CARGO.SECURE_WARNING_OUTCOME_THRESHOLD) {
         Notifications.show('Encrypted packet probe detected', 2);
         addWorldEvent({
             type: 'secure_interception_warning',
@@ -323,16 +323,16 @@ export function maybeSecureDataInterception(randomUnit = random) {
         });
         return { intercepted: true, outcome: 'warning', chance };
     }
-    if (outcomeRoll < 0.55) {
-        const damage = 4 + Math.floor(randomUnit() * 10) + pirateThreat;
+    if (outcomeRoll < BALANCE.DATA_CARGO.SECURE_DAMAGE_OUTCOME_THRESHOLD) {
+        const damage = BALANCE.DATA_CARGO.SECURE_DAMAGE_BASE + Math.floor(randomUnit() * BALANCE.DATA_CARGO.SECURE_DAMAGE_RANDOM_SPAN) + pirateThreat;
         applyShipDamage(damage);
         Notifications.show(`Courier intercept evasive burn — ${damage} damage`, 3);
         return { intercepted: true, outcome: 'damage', damage, chance };
     }
-    if (outcomeRoll < 0.85) {
+    if (outcomeRoll < BALANCE.DATA_CARGO.SECURE_COMPROMISE_OUTCOME_THRESHOLD) {
         const target = payloads[Math.floor(randomUnit() * payloads.length)];
         const compromised = takeSecurePayload(target.id);
-        addFactionRep(compromised.factionId, -2, 'compromised secure courier packet');
+        addFactionRep(compromised.factionId, -BALANCE.DATA_CARGO.SECURE_COMPROMISE_REP_LOSS, 'compromised secure courier packet');
         addWorldEvent({
             type: 'secure_payload_compromised',
             sectorId,

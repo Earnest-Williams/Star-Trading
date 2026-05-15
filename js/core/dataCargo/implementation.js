@@ -28,6 +28,33 @@ function emptyDataCargoState() {
     };
 }
 
+function getPayloadIdNumber(id) {
+    const text = String(id || "");
+    const parts = text.split("-");
+    if (parts.length < 2) return 0;
+    const value = Number(parts[parts.length - 1]);
+    if (!Number.isInteger(value) || value < 1) return 0;
+    return value;
+}
+
+function syncNextPayloadId() {
+    const currentNextId = Number(state.dataCargo.nextPayloadId);
+    let maxPayloadId = Number.isInteger(currentNextId) && currentNextId > 0
+        ? currentNextId - 1
+        : 0;
+    const payloadCollections = [
+        state.dataCargo.playerHold.privatePayloads,
+        state.dataCargo.playerHold.securePayloads,
+        state.dataCargo.secureContracts
+    ];
+    payloadCollections.forEach(collection => {
+        collection.forEach(payload => {
+            maxPayloadId = Math.max(maxPayloadId, getPayloadIdNumber(payload.id));
+        });
+    });
+    state.dataCargo.nextPayloadId = maxPayloadId + 1;
+}
+
 function copyScalars(source) {
     const copy = {};
     if (!isObject(source)) return copy;
@@ -110,16 +137,17 @@ export function normaliseDataCargoState() {
     if (!Array.isArray(state.dataCargo.playerHold.privatePayloads)) {
         state.dataCargo.playerHold.privatePayloads = [];
     }
-    state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
-        .filter(isObject)
-        .map(normalisePrivatePayload);
     if (!Array.isArray(state.dataCargo.playerHold.securePayloads)) {
         state.dataCargo.playerHold.securePayloads = [];
     }
+    if (!Array.isArray(state.dataCargo.secureContracts)) state.dataCargo.secureContracts = [];
+    syncNextPayloadId();
+    state.dataCargo.playerHold.privatePayloads = state.dataCargo.playerHold.privatePayloads
+        .filter(isObject)
+        .map(normalisePrivatePayload);
     state.dataCargo.playerHold.securePayloads = state.dataCargo.playerHold.securePayloads
         .filter(isObject)
         .map(payload => normaliseSecurePayload(payload));
-    if (!Array.isArray(state.dataCargo.secureContracts)) state.dataCargo.secureContracts = [];
     state.dataCargo.secureContracts = state.dataCargo.secureContracts
         .filter(isObject)
         .map(contract => normaliseSecureContract(contract));
@@ -157,7 +185,7 @@ function normaliseSecureContract(contract) {
         createdDay,
         expiresDay: Number(contract.expiresDay || createdDay + BALANCE.DATA_CARGO.SECURE_DEFAULT_EXPIRY_DAYS),
         value: Math.max(1, Math.round(Number(contract.value) || BALANCE.DATA_CARGO.SECURE_BASE_VALUE)),
-        risk: Math.max(1, Math.min(5, Math.round(Number(contract.risk) || 1))),
+        risk: Math.max(BALANCE.DATA_CARGO.SECURE_RISK_MIN, Math.min(BALANCE.DATA_CARGO.SECURE_RISK_MAX, Math.round(Number(contract.risk) || BALANCE.DATA_CARGO.SECURE_RISK_MIN))),
         status,
         text: String(contract.text || `Sealed courier packet bound for S${destinationSectorId}.`)
     };
@@ -256,8 +284,8 @@ export function sellPrivatePayload(payloadId, factionId = "traders") {
     if (!payload) return false;
     const buyerFactionId = String(factionId || "traders");
     state.player.credits = (Number(state.player.credits) || 0) + payload.value;
-    addFactionRep(buyerFactionId, Math.max(1, Math.floor(payload.value / 25)), "sold private intel", "private");
-    addFactionTrust(buyerFactionId, 1, "sold private intel");
+    addFactionRep(buyerFactionId, Math.max(BALANCE.DATA_CARGO.PRIVATE_SALE_MIN_REP_GAIN, Math.floor(payload.value / BALANCE.DATA_CARGO.PRIVATE_SALE_VALUE_REP_DIVISOR)), "sold private intel", "private");
+    addFactionTrust(buyerFactionId, BALANCE.DATA_CARGO.PRIVATE_SALE_TRUST_GAIN, "sold private intel");
     addWorldEvent({
         type: "private_payload_sold",
         sectorId: state.player.currentSector,
@@ -317,7 +345,7 @@ export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
     const currentSectorId = Number(sectorId);
     if (!state.ports?.[currentSectorId]) return null;
     if (state.dataCargo.playerHold.privatePayloads.length >= BALANCE.DATA_CARGO.PRIVATE_MAX_PLAYER_PAYLOADS) return null;
-    if (random() > 0.12) return null;
+    if (random() > BALANCE.DATA_CARGO.PRIVATE_GENERATION_CHANCE) return null;
     const neighbors = Object.values(state.universe || {})
         .map(sector => Number(sector.id))
         .filter(id => id && id !== currentSectorId);
@@ -329,7 +357,7 @@ export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
     const sourcePort = state.ports[currentSectorId];
     const targetPort = state.ports[targetSectorId] || {};
     const value = BALANCE.DATA_CARGO.PRIVATE_BASE_VALUE
-        + Math.floor(random() * 26)
+        + Math.floor(random() * BALANCE.DATA_CARGO.PRIVATE_VALUE_RANDOM_SPAN)
         + Math.max(0, Number(state.universe?.[targetSectorId]?.pirateThreat) || 0);
     const payload = addPrivatePayloadToPlayerHold({
         type,
@@ -338,7 +366,7 @@ export function maybeGeneratePrivatePayloadOnArrival(sectorId) {
         factionId: sourcePort.factionId || sourcePort.publicFactionId || null,
         targetFactionId: targetPort.factionId || targetPort.publicFactionId || null,
         acquiredDay: currentDay(),
-        expiresDay: currentDay() + BALANCE.DATA_CARGO.PRIVATE_DEFAULT_EXPIRY_DAYS + Math.floor(random() * 2),
+        expiresDay: currentDay() + BALANCE.DATA_CARGO.PRIVATE_DEFAULT_EXPIRY_DAYS + Math.floor(random() * BALANCE.DATA_CARGO.PRIVATE_EXPIRY_RANDOM_DAYS),
         value,
         text: `${getPayloadTypeText(type)} from S${currentSectorId} suggests exploitable conditions in S${targetSectorId}.`
     });
@@ -436,7 +464,7 @@ export function runAmbientDataPropagationDaily() {
     });
     const culledCount = 0;
     if (transfers.length > 0) {
-        state.dataCargo.ambientTransfers = state.dataCargo.ambientTransfers.concat(transfers).slice(-50);
+        state.dataCargo.ambientTransfers = state.dataCargo.ambientTransfers.concat(transfers).slice(-BALANCE.DATA_CARGO.AMBIENT_TRANSFER_LOG_LIMIT);
         EventBus.emit("data_cargo_changed", { mergedCount, ambientTransfers: transfers.length, culledCount });
     }
     return { mergedCount, transferCount: transfers.length, culledCount };
@@ -451,6 +479,7 @@ export function cullOldPublicSnapshots(onlySectorId = null) {
         ? [[String(Number(onlySectorId)), state.dataCargo.sectorKnowledge[String(Number(onlySectorId))]]]
         : Object.entries(state.dataCargo.sectorKnowledge);
     targetEntries.forEach(([sectorId, knowledge]) => {
+        if (!isObject(knowledge)) return;
         const snapshots = knowledge.publicSnapshots || {};
         const entries = Object.entries(snapshots);
         if (entries.length <= maxSnapshots) return;
