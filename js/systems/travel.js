@@ -39,15 +39,15 @@ export function maybeTravelIncident() {
     const sector = state.universe[state.player.currentSector];
     if (sector.pirateThreat <= 0) return;
     const dominant = getDominantInfluence(state.player.currentSector);
-    let chance = Math.min(0.08 * sector.pirateThreat * getPirateIncidentMultiplier(), 0.35);
-    if (dominant === "sda") chance *= 0.65;
-    if (dominant === "vc" && getPrivateFactionRep("vc") > 50) chance *= 0.55;
+    let chance = Math.min(BALANCE.TRAVEL.PIRATE_INCIDENT_BASE_CHANCE * sector.pirateThreat * getPirateIncidentMultiplier(), BALANCE.TRAVEL.PIRATE_INCIDENT_MAX_CHANCE);
+    if (dominant === "sda") chance *= BALANCE.TRAVEL.SDA_INCIDENT_MULTIPLIER;
+    if (dominant === "vc" && getPrivateFactionRep("vc") > BALANCE.TRAVEL.VC_RECOGNITION_REP_THRESHOLD) chance *= BALANCE.TRAVEL.VC_INCIDENT_MULTIPLIER;
     if (random() > chance) return;
-    const damage = 8 + Math.floor(random() * 15) + sector.pirateThreat * 2;
+    const damage = BALANCE.TRAVEL.PIRATE_DAMAGE_BASE + Math.floor(random() * BALANCE.TRAVEL.PIRATE_DAMAGE_RANDOM) + sector.pirateThreat * BALANCE.TRAVEL.PIRATE_DAMAGE_THREAT_MULTIPLIER;
     applyShipDamage(damage);
     log(`Pirates harassed your corridor exit. Shields absorbed ${damage} damage.`);
     Notifications.show(`Pirate attack — ${damage} damage`, 3);
-    if (dominant === "vc" && random() < 0.30) addFactionLeverage("vc", 1, "pirate crew recognized your transponder");
+    if (dominant === "vc" && random() < BALANCE.TRAVEL.VC_LEVERAGE_CHANCE) addFactionLeverage("vc", 1, "pirate crew recognized your transponder");
 }
 
 export function restUntilMorning() {
