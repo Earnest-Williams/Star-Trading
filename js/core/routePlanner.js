@@ -25,7 +25,7 @@ function gateSortKey(gate) {
         gate.status || 'active',
         numeric(gate.effectiveSpanCost),
         numeric(gate.toll),
-        numeric(gate.stability, 100)
+        numeric(gate.stability, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY)
     ].join(':');
 }
 
@@ -94,7 +94,7 @@ function getOpenGates(sectorId) {
     const sector = state.universe[sectorId];
     if (!sector || !Array.isArray(sector.jumpGates)) return [];
     return sector.jumpGates
-        .filter(gate => gate && gate.status !== 'closed' && state.universe[gate.destinationSectorId])
+        .filter(gate => gate && gate.status !== BALANCE.ROUTE_PLANNER.CLOSED_STATUS && state.universe[gate.destinationSectorId])
         .slice()
         .sort((a, b) => {
             const costDelta = edgeCost(sectorId, a) - edgeCost(sectorId, b);
@@ -107,7 +107,7 @@ function getFewestHopGates(sectorId) {
     const sector = state.universe[sectorId];
     if (!sector || !Array.isArray(sector.jumpGates)) return [];
     return sector.jumpGates
-        .filter(gate => gate && gate.status !== 'closed' && state.universe[gate.destinationSectorId])
+        .filter(gate => gate && gate.status !== BALANCE.ROUTE_PLANNER.CLOSED_STATUS && state.universe[gate.destinationSectorId])
         .slice()
         .sort(compareGatesByDestination);
 }
@@ -115,31 +115,31 @@ function getFewestHopGates(sectorId) {
 function reservePressureCost(site) {
     if (!site || site.siteType !== 'way_station' || !site.station) return 0;
     const max = numeric(site.station.pulseReserveMaxCredits);
-    if (max <= 0) return 4;
+    if (max <= 0) return BALANCE.ROUTE_PLANNER.DEPLETED_RESERVE_COST;
     const reserve = numeric(site.station.pulseReserveCredits);
     const fraction = Math.max(0, Math.min(1, reserve / max));
-    return (1 - fraction) * 4;
+    return (1 - fraction) * BALANCE.ROUTE_PLANNER.MAX_RESERVE_PRESSURE_COST;
 }
 
 function sectorRiskCost(sectorId) {
     const sector = state.universe[sectorId];
     if (!sector) return 0;
     let risk = numeric(sector.pirateThreat);
-    if (sector.region === 'Badlands') risk += 1;
+    if (sector.region === 'Badlands') risk += BALANCE.ROUTE_PLANNER.BADLANDS_RISK_BONUS;
     const dominant = getDominantInfluence(sectorId);
-    if (dominant === 'vc') risk += 1;
-    if (dominant === 'sda') risk -= 1;
-    return Math.max(0, risk) * 1.5;
+    if (dominant === 'vc') risk += BALANCE.ROUTE_PLANNER.VC_RISK_BONUS;
+    if (dominant === 'sda') risk -= BALANCE.ROUTE_PLANNER.SDA_RISK_REDUCTION;
+    return Math.max(0, risk) * BALANCE.ROUTE_PLANNER.SECTOR_RISK_MULTIPLIER;
 }
 
 function edgeCost(fromSectorId, gate) {
     const spanBase = numeric(BALANCE.GATE_PHYSICS?.VACUUM_SPAN, 1) || 1;
-    const spanCost = Math.max(0.1, numeric(gate.effectiveSpanCost, spanBase) / spanBase);
-    const tollCost = Math.max(0, numeric(gate.toll)) / 100;
-    const stabilityPenalty = Math.max(0, 100 - numeric(gate.stability, 100)) / 25;
+    const spanCost = Math.max(BALANCE.ROUTE_PLANNER.MIN_SPAN_COST, numeric(gate.effectiveSpanCost, spanBase) / spanBase);
+    const tollCost = Math.max(0, numeric(gate.toll)) / BALANCE.ROUTE_PLANNER.TOLL_DIVISOR;
+    const stabilityPenalty = Math.max(0, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY - numeric(gate.stability, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY)) / BALANCE.ROUTE_PLANNER.STABILITY_PENALTY_DIVISOR;
     const reserveCost = reservePressureCost(state.universe[fromSectorId])
-        + reservePressureCost(state.universe[gate.destinationSectorId]) * 0.5;
-    return 1 + spanCost + tollCost + stabilityPenalty + reserveCost + sectorRiskCost(gate.destinationSectorId);
+        + reservePressureCost(state.universe[gate.destinationSectorId]) * BALANCE.ROUTE_PLANNER.DESTINATION_RESERVE_COST_MULTIPLIER;
+    return BALANCE.ROUTE_PLANNER.BASE_EDGE_COST + spanCost + tollCost + stabilityPenalty + reserveCost + sectorRiskCost(gate.destinationSectorId);
 }
 
 function buildSegment(fromSectorId, gate) {
@@ -152,7 +152,7 @@ function buildSegment(fromSectorId, gate) {
         destinationGateId: gate.destinationGateId,
         effectiveSpanCost: numeric(gate.effectiveSpanCost, spanBase),
         toll: numeric(gate.toll),
-        stability: numeric(gate.stability, 100),
+        stability: numeric(gate.stability, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY),
         cost: edgeCost(fromSectorId, gate)
     };
 }
