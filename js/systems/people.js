@@ -48,7 +48,13 @@ export {
     DIALOGUE_PART_TYPES,
     DIALOGUE_SPEAKER_TYPES,
     addDialogueConversationPart,
+    getConversationPart,
+    getConversationPartCausalChain,
     getConversationParts,
+    getConversationPartsBySpeaker,
+    getConversationPartsByType,
+    getConversationPartsCausedBy,
+    getLatestConversationPart,
     ensureDialogueRuntimeStorage,
     normaliseDialogueConversationParts,
     normaliseDialogueTables
