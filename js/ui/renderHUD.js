@@ -133,7 +133,11 @@ export function renderAcceptedMissions() {
     const target = document.getElementById("acceptedMissions");
     if (!target) return;
     if (accepted.length === 0) {
-        target.innerHTML = `<span class="muted">No accepted missions.</span>`;
+        target.innerHTML = `
+            <div class="muted">No accepted missions.</div>
+            <div class="small muted">Open the Mission Board at ports to pick a destination, earn credits, and build faction reputation.</div>
+            <button data-action="showScreen" data-arg0="missions">Open Mission Board</button>
+        `;
         return;
     }
     let html = "";

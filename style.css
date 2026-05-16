@@ -956,3 +956,25 @@ select:focus-visible {
 .data-freshness-unknown {
     color: var(--muted);
 }
+
+#nextStepsPanel {
+    margin-top: 10px;
+}
+
+.next-step-item {
+    border-left: 3px solid var(--line-strong);
+    padding: 6px 8px;
+    margin: 6px 0;
+    background: var(--bg-panel-raised);
+}
+
+.next-step-item button {
+    margin-top: 5px;
+}
+
+.empty-state {
+    border-left: 3px solid var(--line-strong);
+    background: var(--bg-panel-raised);
+    padding: 8px;
+    margin: 6px 0;
+}
