@@ -3,6 +3,12 @@ import { state } from '../../state.js';
 import { DIALOGUE_CONVERSATION_STATUSES, touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 import { DIALOGUE_MESSAGE_STATUSES } from './messages.js';
+import { DIALOGUE_OFFER_STATUSES } from './offers.js';
+import { DIALOGUE_TASK_STATUSES } from './dialogueTasks.js';
+
+const RESOLVED_CONVERSATION_ARCHIVE_DELAY_DAYS = 1;
+const EVENT_LOG_RETENTION_DAYS = 60;
+const MESSAGE_RETENTION_DAYS = 30;
 
 function asInteger(value, fallback) {
     if (value === null || typeof value === 'undefined') return fallback;
@@ -16,17 +22,23 @@ function currentAbsoluteMinute() {
     return (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay;
 }
 
+function toAbsoluteMinute(day, minuteOfDay) {
+    return (asInteger(day, 1) - 1) * BALANCE.DAY_MINUTES + asInteger(minuteOfDay, 0);
+}
+
 function currentDialogueTimestamp() {
     const absoluteMinute = currentAbsoluteMinute();
     return { day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1, minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES, absoluteMinute };
 }
 
 function hasActiveOffer(conversation) {
-    return (state.dialogueOffers || []).some(offer => offer.conversationId === conversation.conversationId && offer.status === 'active');
+    return (state.dialogueOffers || []).some(offer => offer.conversationId === conversation.conversationId
+        && offer.status === DIALOGUE_OFFER_STATUSES.ACTIVE);
 }
 
 function hasUnresolvedTask(conversation) {
-    return (state.dialogueTasks || []).some(task => task.conversationId === conversation.conversationId && task.status === 'active');
+    return (state.dialogueTasks || []).some(task => task.conversationId === conversation.conversationId
+        && task.status === DIALOGUE_TASK_STATUSES.ACTIVE);
 }
 
 function hasUnreadMessage(conversation) {
@@ -34,7 +46,7 @@ function hasUnreadMessage(conversation) {
 }
 
 export function archiveResolvedConversations(reason = 'daily maintenance') {
-    const cutoff = currentAbsoluteMinute() - BALANCE.DAY_MINUTES;
+    const cutoff = currentAbsoluteMinute() - (BALANCE.DAY_MINUTES * RESOLVED_CONVERSATION_ARCHIVE_DELAY_DAYS);
     const archived = [];
     (state.dialogueConversations || []).filter(conversation => [
         DIALOGUE_CONVERSATION_STATUSES.RESOLVED,
@@ -58,15 +70,15 @@ export function archiveResolvedConversations(reason = 'daily maintenance') {
 }
 
 export function pruneOldDialogueEvents() {
-    const cutoff = currentAbsoluteMinute() - (BALANCE.DAY_MINUTES * 60);
+    const cutoff = currentAbsoluteMinute() - (BALANCE.DAY_MINUTES * EVENT_LOG_RETENTION_DAYS);
     const before = (state.dialogueEventLog || []).length;
-    state.dialogueEventLog = (state.dialogueEventLog || []).filter(event => asInteger(event.day, 1) * BALANCE.DAY_MINUTES + asInteger(event.minute, 0) >= cutoff
+    state.dialogueEventLog = (state.dialogueEventLog || []).filter(event => toAbsoluteMinute(event.day, event.minute) >= cutoff
         || (event.conversationId && (state.dialogueConversations || []).some(conversation => conversation.conversationId === event.conversationId && conversation.status !== DIALOGUE_CONVERSATION_STATUSES.ARCHIVED)));
     return before - state.dialogueEventLog.length;
 }
 
 export function expireOldDialogueMessages() {
-    const cutoff = currentAbsoluteMinute() - (BALANCE.DAY_MINUTES * 30);
+    const cutoff = currentAbsoluteMinute() - (BALANCE.DAY_MINUTES * MESSAGE_RETENTION_DAYS);
     const expired = [];
     (state.dialogueMessages || []).filter(message => message.status === DIALOGUE_MESSAGE_STATUSES.READ)
         .filter(message => asInteger(message.createdAt?.absoluteMinute, 0) <= cutoff)

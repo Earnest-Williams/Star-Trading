@@ -1,4 +1,9 @@
+import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
+import { DIALOGUE_MEMORY_STATUSES } from './memory.js';
+import { DIALOGUE_MESSAGE_STATUSES } from './messages.js';
+import { DIALOGUE_OFFER_STATUSES } from './offers.js';
+import { DIALOGUE_TASK_STATUSES, DIALOGUE_TASK_TYPES } from './dialogueTasks.js';
 
 function asString(value, fallback = '') {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
@@ -17,6 +22,10 @@ function byMinuteThenId(a, b) {
     return asInteger(a.id, 0) - asInteger(b.id, 0);
 }
 
+function toAbsoluteMinute(day, minuteOfDay) {
+    return (asInteger(day, 1) - 1) * BALANCE.DAY_MINUTES + asInteger(minuteOfDay, 0);
+}
+
 export function getConversationSummary(conversationId) {
     const safeConversationId = asString(conversationId, '');
     const conversation = (state.dialogueConversations || []).find(item => item.conversationId === safeConversationId) || null;
@@ -29,9 +38,9 @@ export function getConversationSummary(conversationId) {
     return {
         conversation,
         partCount: parts.length,
-        unreadCount: messages.filter(message => message.status === 'unread').length,
-        activeOfferCount: offers.filter(offer => offer.status === 'active').length,
-        activeTaskCount: tasks.filter(task => task.status === 'active').length,
+        unreadCount: messages.filter(message => message.status === DIALOGUE_MESSAGE_STATUSES.UNREAD).length,
+        activeOfferCount: offers.filter(offer => offer.status === DIALOGUE_OFFER_STATUSES.ACTIVE).length,
+        activeTaskCount: tasks.filter(task => task.status === DIALOGUE_TASK_STATUSES.ACTIVE).length,
         proposalCount: proposals.length,
         latestPart: parts.slice().sort(byMinuteThenId).at(-1) || null
     };
@@ -43,7 +52,15 @@ export function getConversationTimeline(conversationId) {
         ...(state.dialogueConversationParts || []).filter(part => part.conversationId === safeConversationId).map(part => ({ kind: 'part', ...part })),
         ...(state.dialogueMessages || []).filter(message => message.conversationId === safeConversationId).map(message => ({ kind: 'message', timestamp: message.createdAt, ...message })),
         ...(state.dialogueOffers || []).filter(offer => offer.conversationId === safeConversationId).map(offer => ({ kind: 'offer', timestamp: offer.createdAt, ...offer })),
-        ...(state.dialogueEventLog || []).filter(event => event.conversationId === safeConversationId).map(event => ({ kind: 'event', timestamp: { day: event.day, minuteOfDay: event.minute, absoluteMinute: ((event.day || 1) - 1) * 1440 + (event.minute || 0) }, ...event }))
+        ...(state.dialogueEventLog || []).filter(event => event.conversationId === safeConversationId).map(event => ({
+            kind: 'event',
+            timestamp: {
+                day: asInteger(event.day, 1),
+                minuteOfDay: asInteger(event.minute, 0),
+                absoluteMinute: toAbsoluteMinute(event.day, event.minute)
+            },
+            ...event
+        }))
     ].sort(byMinuteThenId);
 }
 
@@ -63,9 +80,9 @@ export function getDialogueDebugTrace(conversationId) {
 
 export function getActiveDialoguePromisesForPlayer() {
     return {
-        tasks: (state.dialogueTasks || []).filter(task => task.requesterId === 'player' && task.status === 'active'),
-        offers: (state.dialogueOffers || []).filter(offer => offer.recipientId === 'player' && offer.status === 'active'),
-        memories: (state.dialogueMemories || []).filter(memory => memory.subjectId === 'player' && memory.status === 'active')
+        tasks: (state.dialogueTasks || []).filter(task => task.requesterId === 'player' && task.status === DIALOGUE_TASK_STATUSES.ACTIVE),
+        offers: (state.dialogueOffers || []).filter(offer => offer.recipientId === 'player' && offer.status === DIALOGUE_OFFER_STATUSES.ACTIVE),
+        memories: (state.dialogueMemories || []).filter(memory => memory.subjectId === 'player' && memory.status === DIALOGUE_MEMORY_STATUSES.ACTIVE)
     };
 }
 
@@ -77,7 +94,7 @@ export function getPersonConversationHistory(personId) {
 }
 
 export function getUnreadDialogueMessageCountByConversation() {
-    return (state.dialogueMessages || []).filter(message => message.status === 'unread').reduce((counts, message) => {
+    return (state.dialogueMessages || []).filter(message => message.status === DIALOGUE_MESSAGE_STATUSES.UNREAD).reduce((counts, message) => {
         counts[message.conversationId] = (counts[message.conversationId] || 0) + 1;
         return counts;
     }, {});
@@ -86,13 +103,27 @@ export function getUnreadDialogueMessageCountByConversation() {
 export function getContactDialogueActionState(personId, itemId) {
     const safePersonId = asString(personId, '');
     const safeItemId = asString(itemId, 'unknown_part');
-    const activeTask = (state.dialogueTasks || []).find(task => task.ownerPersonId === safePersonId && task.requesterId === 'player' && task.taskType === 'locate_item' && task.itemId === safeItemId && task.status === 'active');
+    const activeTask = (state.dialogueTasks || []).find(task => task.ownerPersonId === safePersonId
+        && task.requesterId === 'player'
+        && task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
+        && task.itemId === safeItemId
+        && task.status === DIALOGUE_TASK_STATUSES.ACTIVE);
     if (activeTask) return { state: 'looking', label: `Looking for ${safeItemId.replaceAll('_', ' ')}`, disabled: true, taskId: activeTask.id };
-    const activeOffer = (state.dialogueOffers || []).find(offer => offer.ownerPersonId === safePersonId && offer.recipientId === 'player' && offer.itemId === safeItemId && offer.status === 'active');
+    const activeOffer = (state.dialogueOffers || []).find(offer => offer.ownerPersonId === safePersonId
+        && offer.recipientId === 'player'
+        && offer.itemId === safeItemId
+        && offer.status === DIALOGUE_OFFER_STATUSES.ACTIVE);
     if (activeOffer) return { state: 'offer_ready', label: 'Offer ready', disabled: false, offerId: activeOffer.id };
-    const acceptedOffer = (state.dialogueOffers || []).find(offer => offer.ownerPersonId === safePersonId && offer.recipientId === 'player' && offer.itemId === safeItemId && offer.status === 'accepted');
+    const acceptedOffer = (state.dialogueOffers || []).find(offer => offer.ownerPersonId === safePersonId
+        && offer.recipientId === 'player'
+        && offer.itemId === safeItemId
+        && offer.status === DIALOGUE_OFFER_STATUSES.ACCEPTED);
     if (acceptedOffer) return { state: 'found_already', label: 'Found already', disabled: false, offerId: acceptedOffer.id };
-    const failedTask = (state.dialogueTasks || []).find(task => task.ownerPersonId === safePersonId && task.requesterId === 'player' && task.taskType === 'locate_item' && task.itemId === safeItemId && task.status === 'failed');
+    const failedTask = (state.dialogueTasks || []).find(task => task.ownerPersonId === safePersonId
+        && task.requesterId === 'player'
+        && task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
+        && task.itemId === safeItemId
+        && task.status === DIALOGUE_TASK_STATUSES.FAILED);
     if (failedTask) return { state: 'ask_again', label: 'Ask again', disabled: false, taskId: failedTask.id };
     return { state: 'find', label: `Find ${safeItemId.replaceAll('_', ' ')}`, disabled: false };
 }

@@ -128,12 +128,7 @@ export function normaliseDialogueProposals(target = state) {
     ensureStorage(target);
     target.dialogueProposals = target.dialogueProposals
         .filter(isObject)
-        .map((proposal, index) => {
-            const normalised = normaliseDialogueProposal(proposal, index + 1);
-            Object.keys(proposal).forEach(key => delete proposal[key]);
-            Object.assign(proposal, normalised);
-            return proposal;
-        })
+        .map((proposal, index) => normaliseDialogueProposal(proposal, index + 1))
         .sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
     const nextId = nextNumericIdForTable(target.dialogueProposals);
     if (!Number.isInteger(target.nextDialogueProposalId) || target.nextDialogueProposalId < nextId) {

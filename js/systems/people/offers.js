@@ -2,6 +2,7 @@ import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
 import { touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
+import { DIALOGUE_TASK_STATUSES } from './dialogueTasks.js';
 import { resolveDialogueMemory } from './memory.js';
 import { applyDialogueRelationshipDelta } from './relationships.js';
 
@@ -115,12 +116,9 @@ export function normaliseDialogueOffer(offer, fallbackId = 1) {
 
 export function normaliseDialogueOffers(target = state) {
     ensureStorage(target);
-    target.dialogueOffers = target.dialogueOffers.filter(isObject).map((offer, index) => {
-        const normalised = normaliseDialogueOffer(offer, index + 1);
-        Object.keys(offer).forEach(key => delete offer[key]);
-        Object.assign(offer, normalised);
-        return offer;
-    }).sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
+    target.dialogueOffers = target.dialogueOffers.filter(isObject)
+        .map((offer, index) => normaliseDialogueOffer(offer, index + 1))
+        .sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
     const nextId = nextNumericIdForTable(target.dialogueOffers);
     if (!Number.isInteger(target.nextDialogueOfferId) || target.nextDialogueOfferId < nextId) target.nextDialogueOfferId = nextId;
 }
@@ -195,7 +193,7 @@ export function acceptLocatedItemOffer(offerId) {
         return false;
     }
     const task = (state.dialogueTasks || []).find(item => item.id === offer.taskId) || null;
-    if (!task || task.status !== 'resolved') return false;
+    if (!task || task.status !== DIALOGUE_TASK_STATUSES.RESOLVED) return false;
     if (offer.itemId === 'unknown_part') return false;
     if (Number(state.player?.credits || 0) < offer.price) return false;
     state.player.credits -= offer.price;

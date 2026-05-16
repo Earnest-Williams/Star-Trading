@@ -83,15 +83,7 @@ export function normaliseDialogueMessage(message, fallbackId = 1) {
 export function normaliseDialogueMessages(target = state) {
     normaliseDialogueTables(target);
     target.dialogueMessages = target.dialogueMessages
-        .map((message, index) => {
-            const normalised = normaliseDialogueMessage(message, index + 1);
-            if (isObject(message)) {
-                Object.keys(message).forEach(key => delete message[key]);
-                Object.assign(message, normalised);
-                return message;
-            }
-            return normalised;
-        })
+        .map((message, index) => normaliseDialogueMessage(message, index + 1))
         .sort((a, b) => b.createdAt.absoluteMinute - a.createdAt.absoluteMinute || b.id - a.id);
     const nextId = target.dialogueMessages.reduce((maxId, message) => Math.max(maxId, message.id), 0) + 1;
     if (!Number.isInteger(target.nextDialogueMessageId) || target.nextDialogueMessageId < nextId) {

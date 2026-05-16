@@ -11,8 +11,8 @@ import {
     ensureDialogueConversation,
     touchDialogueConversation
 } from './conversations.js';
-import { createLocateItemDialogueTask } from './dialogueTasks.js';
-import { getActiveDialogueOffersForPlayer } from './offers.js';
+import { DIALOGUE_TASK_STATUSES, DIALOGUE_TASK_TYPES, createLocateItemDialogueTask } from './dialogueTasks.js';
+import { DIALOGUE_OFFER_STATUSES, getActiveDialogueOffersForPlayer } from './offers.js';
 import {
     DIALOGUE_PROPOSAL_AUTHORITIES,
     acceptDialogueProposal,
@@ -78,11 +78,17 @@ export function askNpcToFindPart(personId, itemId) {
     const activeOffer = getActiveDialogueOffersForPlayer()
         .find(offer => offer.ownerPersonId === person.id && offer.itemId === safeItemId);
     const acceptedOffer = (state.dialogueOffers || [])
-        .find(offer => offer.ownerPersonId === person.id && offer.itemId === safeItemId && offer.status === 'accepted');
+        .find(offer => offer.ownerPersonId === person.id
+            && offer.itemId === safeItemId
+            && offer.status === DIALOGUE_OFFER_STATUSES.ACCEPTED);
     const activeTask = (state.dialogueTasks || [])
-        .find(task => task.ownerPersonId === person.id && task.itemId === safeItemId && task.status === 'active');
+        .find(task => task.ownerPersonId === person.id
+            && task.itemId === safeItemId
+            && task.status === DIALOGUE_TASK_STATUSES.ACTIVE);
     const failedTask = (state.dialogueTasks || [])
-        .find(task => task.ownerPersonId === person.id && task.itemId === safeItemId && task.status === 'failed');
+        .find(task => task.ownerPersonId === person.id
+            && task.itemId === safeItemId
+            && task.status === DIALOGUE_TASK_STATUSES.FAILED);
     const remembered = getActiveCustomerRequests({ ownerPersonId: person.id, subjectId: 'player', itemId: safeItemId }).length > 0;
     let responseText = `No stock today, but I can ask around for a ${label}.`;
     if (activeOffer) responseText = `I already found a ${label}; check Communications when you are ready.`;
@@ -160,7 +166,7 @@ export function askNpcToFindPart(personId, itemId) {
         payload: {
             type: 'create_dialogue_task',
             authority: 'dialogue_task',
-            taskType: 'locate_item',
+            taskType: DIALOGUE_TASK_TYPES.LOCATE_ITEM,
             ownerPersonId: person.id,
             requesterId: 'player',
             itemId: safeItemId,

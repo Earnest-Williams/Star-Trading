@@ -157,12 +157,7 @@ export function normaliseDialogueEvents(target = state) {
     if (!Array.isArray(target.dialogueEventLog)) target.dialogueEventLog = [];
     target.dialogueEventLog = target.dialogueEventLog
         .filter(isObject)
-        .map((event, index) => {
-            const normalised = normaliseDialogueEvent(event, index + 1);
-            Object.keys(event).forEach(key => delete event[key]);
-            Object.assign(event, normalised);
-            return event;
-        })
+        .map((event, index) => normaliseDialogueEvent(event, index + 1))
         .sort(compareDialogueEvents);
     const nextId = nextNumericIdForTable(target.dialogueEventLog);
     if (!Number.isInteger(target.nextDialogueEventId) || target.nextDialogueEventId < nextId) {

@@ -20,6 +20,10 @@ export const DIALOGUE_TASK_TYPES = Object.freeze({
 });
 
 const TASK_STATUS_VALUES = Object.values(DIALOGUE_TASK_STATUSES);
+const LOCATE_ITEM_CHECK_INTERVAL_MINUTES = 6 * 60;
+const DEFAULT_LOCATE_ITEM_SUCCESS_CHANCE = 0.65;
+const MIN_LOCATED_ITEM_PRICE = 50;
+const DEFAULT_LOCATED_ITEM_PRICE = 450;
 
 function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -101,11 +105,11 @@ export function normaliseDialogueTask(task, fallbackId = 1) {
         },
         nextCheckAtAbsoluteMinute: asInteger(
             task?.nextCheckAtAbsoluteMinute,
-            currentAbsoluteMinute() + (6 * 60)
+            currentAbsoluteMinute() + LOCATE_ITEM_CHECK_INTERVAL_MINUTES
         ),
         resolutionAttempts: Math.max(0, asInteger(task?.resolutionAttempts, 0)),
         result,
-        intervalMinutes: Math.max(60, asInteger(task?.intervalMinutes, 6 * 60)),
+        intervalMinutes: Math.max(60, asInteger(task?.intervalMinutes, LOCATE_ITEM_CHECK_INTERVAL_MINUTES)),
         resolutionPolicy: isObject(task?.resolutionPolicy) ? task.resolutionPolicy : {}
     };
 }
@@ -113,15 +117,7 @@ export function normaliseDialogueTask(task, fallbackId = 1) {
 export function normaliseDialogueTasks(target = state) {
     ensureDialogueRuntimeStorage(target);
     target.dialogueTasks = target.dialogueTasks
-        .map((task, index) => {
-            const normalised = normaliseDialogueTask(task, index + 1);
-            if (isObject(task)) {
-                Object.keys(task).forEach(key => delete task[key]);
-                Object.assign(task, normalised);
-                return task;
-            }
-            return normalised;
-        })
+        .map((task, index) => normaliseDialogueTask(task, index + 1))
         .sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
     const nextId = target.dialogueTasks.reduce((maxId, task) => Math.max(maxId, task.id), 0) + 1;
     if (!Number.isInteger(target.nextDialogueTaskId) || target.nextDialogueTaskId < nextId) {
@@ -153,10 +149,10 @@ export function createLocateItemDialogueTask({
         causedByPartId: Number.isInteger(causedByPartId) ? causedByPartId : null,
         status: DIALOGUE_TASK_STATUSES.ACTIVE,
         createdAt: currentDialogueTimestamp(),
-        nextCheckAtAbsoluteMinute: currentAbsoluteMinute() + (6 * 60),
+        nextCheckAtAbsoluteMinute: currentAbsoluteMinute() + LOCATE_ITEM_CHECK_INTERVAL_MINUTES,
         resolutionAttempts: 0,
         result: {},
-        intervalMinutes: 6 * 60,
+        intervalMinutes: LOCATE_ITEM_CHECK_INTERVAL_MINUTES,
         resolutionPolicy
     });
     state.dialogueTasks.push(task);
@@ -185,10 +181,10 @@ function resolveLocateItemTask(task, reason) {
     task.resolutionAttempts += 1;
     const forced = asNullableString(task.resolutionPolicy.forceResult);
     const succeeded = forced === 'success'
-        || (forced !== 'failure' && random() < Number(task.resolutionPolicy.successChance ?? 0.65));
+        || (forced !== 'failure' && random() < Number(task.resolutionPolicy.successChance ?? DEFAULT_LOCATE_ITEM_SUCCESS_CHANCE));
     if (succeeded) {
         task.status = DIALOGUE_TASK_STATUSES.RESOLVED;
-        const price = Math.max(50, Math.round(Number(task.resolutionPolicy.price ?? 450)));
+        const price = Math.max(MIN_LOCATED_ITEM_PRICE, Math.round(Number(task.resolutionPolicy.price ?? DEFAULT_LOCATED_ITEM_PRICE)));
         const offer = createDialogueOffer({
             conversationId: task.conversationId,
             taskId: task.id,
