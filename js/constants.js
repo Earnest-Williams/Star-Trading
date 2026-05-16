@@ -8,6 +8,31 @@ export const BALANCE = {
     CAPTAIN_HOURLY_ACTION_CHANCE: 0.045,
     CAPTAIN_MISSION_INTEREST_THRESHOLD: 28,
     CAPTAIN_MISSION_TAKE_THRESHOLD: 55,
+    DIALOGUE_LOCATE_ITEM: {
+        BASE_SUCCESS_CHANCE: 0.45,
+        FAVORED_PORT_SUCCESS_BONUS: 0.12,
+        FAVORED_REGION_SUCCESS_BONUS: 0.08,
+        RELATIONSHIP_TRUST_DIVISOR: 250,
+        RELATIONSHIP_TRUST_MIN_BONUS: -0.08,
+        RELATIONSHIP_TRUST_MAX_BONUS: 0.12,
+        RELATIONSHIP_FAMILIARITY_DIVISOR: 400,
+        RELATIONSHIP_FAMILIARITY_MAX_BONUS: 0.05,
+        ATTEMPT_SUCCESS_BONUS: 0.04,
+        ATTEMPT_SUCCESS_BONUS_CAP: 0.14,
+        RARITY_SUCCESS_PENALTY: 0.22,
+        PIRATE_THREAT_SUCCESS_PENALTY: 0.035,
+        PIRATE_THREAT_SUCCESS_PENALTY_CAP: 0.24,
+        MIN_SUCCESS_CHANCE: 0.08,
+        MAX_SUCCESS_CHANCE: 0.92,
+        RARITY_PRICE_MULTIPLIER: 0.55,
+        PIRATE_THREAT_PRICE_MULTIPLIER: 0.035,
+        PIRATE_THREAT_PRICE_MULTIPLIER_CAP: 0.25,
+        FAVORED_PORT_PRICE_DISCOUNT: 0.06,
+        FAVORED_REGION_PRICE_DISCOUNT: 0.03,
+        RELATIONSHIP_DISCOUNT_DIVISOR: 400,
+        RELATIONSHIP_DISCOUNT_MIN: 0.82,
+        RELATIONSHIP_DISCOUNT_MAX: 1.08
+    },
     TRADE_BATCH: 10,
     MIN_TRADE_PRICE: 5,
     TRADE_TIME_MINUTES: 30,
@@ -427,7 +452,33 @@ export const COMMODITY_NAMES = {
     pulse_canister: "Pulse Canisters",
     heavy_pulse_module: "Heavy Pulse Modules"
 };
-export const NPC_FINDABLE_PARTS = Object.freeze(["fuel_injector", "nav_chip", "hull_patch"]);
+export const NPC_FINDABLE_PART_DEFS = Object.freeze({
+    fuel_injector: Object.freeze({
+        id: "fuel_injector",
+        label: "fuel injector",
+        basePrice: 420,
+        rarity: 0.45,
+        favoredPortTypes: Object.freeze(["industrial", "refinery", "stardock"]),
+        favoredRegions: Object.freeze(["Core", "Frontier"])
+    }),
+    nav_chip: Object.freeze({
+        id: "nav_chip",
+        label: "nav chip",
+        basePrice: 680,
+        rarity: 0.62,
+        favoredPortTypes: Object.freeze(["stardock", "consumer"]),
+        favoredRegions: Object.freeze(["Core"])
+    }),
+    hull_patch: Object.freeze({
+        id: "hull_patch",
+        label: "hull patch",
+        basePrice: 260,
+        rarity: 0.25,
+        favoredPortTypes: Object.freeze(["mining", "industrial", "refinery"]),
+        favoredRegions: Object.freeze(["Frontier", "Badlands"])
+    })
+});
+export const NPC_FINDABLE_PARTS = Object.freeze(Object.keys(NPC_FINDABLE_PART_DEFS));
 export const DEBUG_MODE = true;
 
 export const FACTIONS = {

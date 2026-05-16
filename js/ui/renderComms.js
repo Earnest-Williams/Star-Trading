@@ -47,6 +47,19 @@ function formatFactionSummary(snapshot) {
     return `${factionLabel}${status.status ? ` / ${escapeHtml(status.status)}` : ""}`;
 }
 
+function formatDialogueOfferPayload(offer) {
+    const payload = offer?.payload || {};
+    const details = [];
+    if (payload.condition) details.push(escapeHtml(payload.condition));
+    if (payload.sourceFlavor) details.push(`from ${escapeHtml(payload.sourceFlavor)}`);
+    if (payload.riskLevel) details.push(`${escapeHtml(payload.riskLevel)} risk`);
+    const tags = Array.isArray(payload.explanationTags) ? payload.explanationTags : [];
+    if (tags.includes('priced_high')) details.push('priced high');
+    if (tags.includes('relationship_discount')) details.push('relationship discount');
+    if (details.length === 0) return '';
+    return `<div class="small muted">${details.join(' / ')}</div>`;
+}
+
 function payloadFactionLabel(factionId) {
     const faction = FACTIONS[factionId];
     return faction ? `${escapeHtml(faction.icon)} ${escapeHtml(faction.short)}` : escapeHtml(factionId || "Unaligned");
@@ -229,6 +242,7 @@ export function renderDialogueOffersPanel() {
         const personLabel = person ? person.name : offer.ownerPersonId;
         return `<div class="command-card"><strong>${escapeHtml(offer.itemId.replaceAll("_", " "))}</strong> <span class="sector-chip green">${formatCredits(offer.price)} cr</span><br>`
             + `<span class="small muted">From ${escapeHtml(personLabel)} / expires minute ${Number(offer.expiresAtAbsoluteMinute) || 0}</span>`
+            + formatDialogueOfferPayload(offer)
             + `<div class="compact-actions"><button data-action="acceptDialogueOffer" data-arg0="${offer.id}">Accept Offer</button>`
             + `<button data-action="rejectDialogueOffer" data-arg0="${offer.id}">Reject Offer</button>`
             + `<button data-action="selectDialogueConversation" data-arg0="${escapeHtml(offer.conversationId)}">View Conversation</button></div></div>`;

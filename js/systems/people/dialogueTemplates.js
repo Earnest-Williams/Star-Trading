@@ -51,3 +51,16 @@ export const DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
     [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS
 });
+
+export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
+    success: Object.freeze({
+        worn: 'I found a worn {label} from a {source}. It is not pretty, but it will hold.',
+        pristine: 'I found a pristine {label} through a {source}. It is clean stock and ready for trade.',
+        default: 'I found a {condition} {label} through a {source}. It is available for trade when you are ready.'
+    }),
+    failure: Object.freeze({
+        pirate_pressure: 'No luck on the {label}. The routes are hot and suppliers are holding stock back.',
+        market_pressure: 'No luck on the {label}. The local brokers are dry and prices are moving against us.',
+        default: 'No luck on the {label}. I did not find a lead worth putting aside.'
+    })
+});

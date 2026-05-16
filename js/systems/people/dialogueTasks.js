@@ -1,11 +1,16 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
-import { random } from '../../utils.js';
+import { asString, formatItemLabel, isObject } from './common.js';
 import { ensureDialogueRuntimeStorage } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 import { createDialogueMessage } from './messages.js';
 import { createDialogueOffer } from './offers.js';
+import {
+    buildLocateItemFailureMessage,
+    buildLocateItemSuccessMessage,
+    resolveLocateItemOutcome
+} from './locateItemResolution.js';
 import { applyDialogueRelationshipDelta } from './relationships.js';
 
 export const DIALOGUE_TASK_STATUSES = Object.freeze({
@@ -21,22 +26,6 @@ export const DIALOGUE_TASK_TYPES = Object.freeze({
 
 const TASK_STATUS_VALUES = Object.values(DIALOGUE_TASK_STATUSES);
 const LOCATE_ITEM_CHECK_INTERVAL_MINUTES = 6 * 60;
-const DEFAULT_LOCATE_ITEM_SUCCESS_CHANCE = 0.65;
-const MIN_LOCATED_ITEM_PRICE = 50;
-const DEFAULT_LOCATED_ITEM_PRICE = 450;
-
-function isObject(value) {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function asString(value, fallback = '') {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
-}
-
-function asNullableString(value) {
-    const text = asString(value, '');
-    return text.length > 0 ? text : null;
-}
 
 function asInteger(value, fallback) {
     if (value === null || typeof value === 'undefined') return fallback;
@@ -74,7 +63,7 @@ function normaliseStatus(value) {
 }
 
 function itemLabel(itemId) {
-    return asString(itemId, 'part').replaceAll('_', ' ');
+    return formatItemLabel(itemId);
 }
 
 function findActiveLocateItemTask(ownerPersonId, requesterId, itemId) {
@@ -178,28 +167,67 @@ export function createLocateItemDialogueTask({
     return task;
 }
 
+function resolutionSummary(outcome, includePrice = false) {
+    const summary = {
+        successChance: outcome.successChance,
+        riskLevel: outcome.riskLevel,
+        explanationTags: outcome.explanationTags
+    };
+    if (includePrice) {
+        summary.condition = outcome.condition;
+        summary.sourceFlavor = outcome.sourceFlavor;
+        summary.priceMultiplier = outcome.priceMultiplier;
+    }
+    return summary;
+}
+
+function offerPayloadFromOutcome(outcome) {
+    return {
+        condition: outcome.condition,
+        sourceFlavor: outcome.sourceFlavor,
+        riskLevel: outcome.riskLevel,
+        priceMultiplier: outcome.priceMultiplier,
+        successChance: outcome.successChance,
+        explanationTags: outcome.explanationTags
+    };
+}
+
+function messagePayloadFromOutcome(task, outcome, offer = null) {
+    return {
+        taskId: task.id,
+        itemId: task.itemId,
+        outcome: outcome.outcome,
+        ...(offer ? { offerId: offer.id } : {}),
+        resolution: {
+            condition: outcome.condition,
+            sourceFlavor: outcome.sourceFlavor,
+            riskLevel: outcome.riskLevel,
+            explanationTags: outcome.explanationTags
+        }
+    };
+}
+
 function resolveLocateItemTask(task, reason) {
     task.resolutionAttempts += 1;
-    const forced = asNullableString(task.resolutionPolicy.forceResult);
-    const succeeded = forced === 'success'
-        || (forced !== 'failure' && random() < Number(task.resolutionPolicy.successChance ?? DEFAULT_LOCATE_ITEM_SUCCESS_CHANCE));
-    if (succeeded) {
+    const outcome = resolveLocateItemOutcome(task, reason);
+    if (outcome.outcome === 'success') {
         task.status = DIALOGUE_TASK_STATUSES.RESOLVED;
-        const price = Math.max(MIN_LOCATED_ITEM_PRICE, Math.round(Number(task.resolutionPolicy.price ?? DEFAULT_LOCATED_ITEM_PRICE)));
         const offer = createDialogueOffer({
             conversationId: task.conversationId,
             taskId: task.id,
             ownerPersonId: task.ownerPersonId,
             recipientId: task.requesterId,
             itemId: task.itemId,
-            price
+            price: outcome.price,
+            payload: offerPayloadFromOutcome(outcome)
         });
         task.result = {
             outcome: 'success',
             itemId: task.itemId,
             offerId: offer.id,
             resolvedAt: currentDialogueTimestamp(),
-            reason: asString(reason, 'hourly tick')
+            reason: asString(reason, 'hourly tick'),
+            resolution: resolutionSummary(outcome, true)
         };
         createDialogueMessage({
             conversationId: task.conversationId,
@@ -207,8 +235,8 @@ function resolveLocateItemTask(task, reason) {
             recipientId: task.requesterId,
             taskId: task.id,
             subject: `Found: ${itemLabel(task.itemId)}`,
-            text: `I found a used ${itemLabel(task.itemId)}. It is available for trade when you are ready.`,
-            payload: { taskId: task.id, itemId: task.itemId, outcome: 'success', offerId: offer.id }
+            text: buildLocateItemSuccessMessage(task.itemId, outcome),
+            payload: messagePayloadFromOutcome(task, outcome, offer)
         });
         touchDialogueConversation(task.conversationId, { relatedOfferIds: [offer.id] });
         applyDialogueRelationshipDelta(task.ownerPersonId, { trust: 1, familiarity: 1, tags: ['found_part'], reason: 'task_resolved_success' });
@@ -218,7 +246,8 @@ function resolveLocateItemTask(task, reason) {
             outcome: 'failure',
             itemId: task.itemId,
             resolvedAt: currentDialogueTimestamp(),
-            reason: asString(reason, 'hourly tick')
+            reason: asString(reason, 'hourly tick'),
+            resolution: resolutionSummary(outcome)
         };
         applyDialogueRelationshipDelta(task.ownerPersonId, { trust: -1, familiarity: 1, tags: ['search_failed'], reason: 'task_resolved_failure' });
         createDialogueMessage({
@@ -227,8 +256,8 @@ function resolveLocateItemTask(task, reason) {
             recipientId: task.requesterId,
             taskId: task.id,
             subject: `No luck: ${itemLabel(task.itemId)}`,
-            text: `No luck yet finding a ${itemLabel(task.itemId)}. I did not put anything aside.`,
-            payload: { taskId: task.id, itemId: task.itemId, outcome: 'failure' }
+            text: buildLocateItemFailureMessage(task.itemId, outcome),
+            payload: messagePayloadFromOutcome(task, outcome)
         });
     }
     const ts = currentDialogueTimestamp();
