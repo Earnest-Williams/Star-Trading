@@ -14,6 +14,7 @@ import { makeStock, restoreSessionRng } from '../utils.js';
 import { log } from '../utils.js';
 import { createCharacter, normaliseCharacter } from './characters.js';
 import { normaliseDataCargoState } from './dataCargo.js';
+import { normaliseDialogueTables } from '../systems/people/conversationParts.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -136,10 +137,12 @@ export function buildLoadedState(data) {
     loadedState.dialogueMemories = Array.isArray(data.dialogueMemories) ? data.dialogueMemories : [];
     loadedState.dialogueTasks = Array.isArray(data.dialogueTasks) ? data.dialogueTasks : [];
     loadedState.dialogueMessages = Array.isArray(data.dialogueMessages) ? data.dialogueMessages : [];
+    loadedState.dialogueConversationParts = Array.isArray(data.dialogueConversationParts) ? data.dialogueConversationParts : [];
     loadedState.dialogueEventLog = Array.isArray(data.dialogueEventLog) ? data.dialogueEventLog : [];
     loadedState.nextDialogueMemoryId = data.nextDialogueMemoryId || (loadedState.dialogueMemories.length + 1);
     loadedState.nextDialogueTaskId = data.nextDialogueTaskId || (loadedState.dialogueTasks.length + 1);
     loadedState.nextDialogueMessageId = data.nextDialogueMessageId || (loadedState.dialogueMessages.length + 1);
+    loadedState.nextDialogueConversationPartId = data.nextDialogueConversationPartId || (loadedState.dialogueConversationParts.length + 1);
     loadedState.nextDialogueEventId = data.nextDialogueEventId || (loadedState.dialogueEventLog.length + 1);
     loadedState.entanglements = Array.isArray(data.entanglements) ? data.entanglements : [];
     loadedState.nextEntanglementId = data.nextEntanglementId || (loadedState.entanglements.length + 1);
@@ -325,10 +328,12 @@ export const SAVE_STATE_FIELDS = [
     "dialogueMemories",
     "dialogueTasks",
     "dialogueMessages",
+    "dialogueConversationParts",
     "dialogueEventLog",
     "nextDialogueMemoryId",
     "nextDialogueTaskId",
     "nextDialogueMessageId",
+    "nextDialogueConversationPartId",
     "nextDialogueEventId",
     "entanglements",
     "nextEntanglementId",
@@ -512,14 +517,7 @@ function normaliseCurrentLoadedGame() {
     normaliseDataCargoState();
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
-    if (!Array.isArray(state.dialogueMemories)) state.dialogueMemories = [];
-    if (!Array.isArray(state.dialogueTasks)) state.dialogueTasks = [];
-    if (!Array.isArray(state.dialogueMessages)) state.dialogueMessages = [];
-    if (!Array.isArray(state.dialogueEventLog)) state.dialogueEventLog = [];
-    if (typeof state.nextDialogueMemoryId !== "number") state.nextDialogueMemoryId = state.dialogueMemories.length + 1;
-    if (typeof state.nextDialogueTaskId !== "number") state.nextDialogueTaskId = state.dialogueTasks.length + 1;
-    if (typeof state.nextDialogueMessageId !== "number") state.nextDialogueMessageId = state.dialogueMessages.length + 1;
-    if (typeof state.nextDialogueEventId !== "number") state.nextDialogueEventId = state.dialogueEventLog.length + 1;
+    normaliseDialogueTables();
     state.missions.forEach(m => {
         if (typeof m.rewardRep !== "number") m.rewardRep = 2;
         if (m.type === "stale_signal") {

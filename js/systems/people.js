@@ -43,3 +43,11 @@ export function getPrimaryCompanyContact(companyId) {
     const ids = state.peopleByCompany?.[companyId] || [];
     return ids.length > 0 ? state.people[ids[0]] || null : null;
 }
+
+export {
+    DIALOGUE_PART_TYPES,
+    DIALOGUE_SPEAKER_TYPES,
+    addDialogueConversationPart,
+    getConversationParts,
+    normaliseDialogueTables
+} from './people/conversationParts.js';
