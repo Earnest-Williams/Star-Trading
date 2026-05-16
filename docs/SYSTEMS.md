@@ -61,8 +61,8 @@ adding another subsystem or compatibility wrapper.
   issuers.
 - `js/systems/companies.js` and `js/config/companies.js` seed companies and
   economic actors.
-- `js/systems/polities.js`, `js/systems/politics.js`, and `js/config/politics.js`
-  layer regional governance and faction drift over site influence.
+- `js/systems/polities.js`, `js/systems/politics.js`, `js/systems/guilds.js`, `js/config/politics.js`, and `js/config/polities.js` 
+  layer regional governance, faction drift, and guild charters over site influence.
 
 ## Factions, reputation, intel, and entanglements
 
