@@ -187,8 +187,12 @@ export function addDialogueEvent({
     });
     const eventTime = eventAbsoluteMinute(event);
     const lastEvent = state.dialogueEventLog[state.dialogueEventLog.length - 1];
+    if (!lastEvent) {
+        state.dialogueEventLog.push(event);
+        return event;
+    }
     const lastEventTime = eventAbsoluteMinute(lastEvent);
-    if (!lastEvent || eventTime > lastEventTime || (eventTime === lastEventTime && event.id >= lastEvent.id)) {
+    if (eventTime > lastEventTime || (eventTime === lastEventTime && event.id >= lastEvent.id)) {
         state.dialogueEventLog.push(event);
     } else {
         const insertIndex = state.dialogueEventLog.findIndex(existingEvent => {

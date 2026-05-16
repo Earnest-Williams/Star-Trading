@@ -190,7 +190,7 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(action.task.result.outcome, 'success');
     });
 
-    it('normalises invalid event types and keeps event log ordering on inserts', () => {
+    it('normalizes invalid event types and keeps event log ordering on inserts', () => {
         const newest = addDialogueEvent({
             eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED,
             timestamp: { day: 2, minuteOfDay: 500 }
