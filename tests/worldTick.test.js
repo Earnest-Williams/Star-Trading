@@ -27,6 +27,8 @@ describe('world tick phase order', () => {
                 'secure_payload_expiry',
                 'captain_daily_actions',
                 'social_entanglements',
+                'dialogue_memory_decay',
+                'dialogue_maintenance',
                 'daily_world_event'
             ]
         );
@@ -40,7 +42,8 @@ describe('world tick phase order', () => {
                 'mission_opportunities',
                 'intel_expiry',
                 'private_payload_expiry',
-                'dialogue_task_resolution'
+                'dialogue_task_resolution',
+                'dialogue_offer_expiry'
             ]
         );
     });

@@ -1,6 +1,6 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
-import { normaliseDialogueConversations, touchDialogueConversation } from './conversations.js';
+import { rebuildDialogueConversationsFromTables, touchDialogueConversation } from './conversations.js';
 
 export const DIALOGUE_PART_TYPES = Object.freeze({
     PLAYER_UTTERANCE: 'player_utterance',
@@ -20,7 +20,9 @@ export const DIALOGUE_SPEAKER_TYPES = Object.freeze({
 
 const DIALOGUE_TABLE_SPECS = Object.freeze([
     { table: 'dialogueMemories', nextKey: 'nextDialogueMemoryId' },
+    { table: 'dialogueProposals', nextKey: 'nextDialogueProposalId' },
     { table: 'dialogueTasks', nextKey: 'nextDialogueTaskId' },
+    { table: 'dialogueOffers', nextKey: 'nextDialogueOfferId' },
     { table: 'dialogueMessages', nextKey: 'nextDialogueMessageId' },
     { table: 'dialogueConversationParts', nextKey: 'nextDialogueConversationPartId' },
     { table: 'dialogueConversations', nextKey: 'nextDialogueConversationId' },
@@ -113,9 +115,12 @@ export function normaliseDialogueConversationPart(part, fallbackId = 1) {
     };
 }
 
-export function normaliseDialogueTables(target = state) {
+export function ensureDialogueRuntimeStorage(target = state) {
     DIALOGUE_TABLE_SPECS.forEach(spec => ensureDialogueTable(target, spec.table, spec.nextKey));
-    normaliseDialogueConversations(target);
+}
+
+export function normaliseDialogueConversationParts(target = state) {
+    ensureDialogueRuntimeStorage(target);
     target.dialogueConversationParts = target.dialogueConversationParts
         .map((part, index) => normaliseDialogueConversationPart(part, index + 1))
         .sort((a, b) => a.timestamp.absoluteMinute - b.timestamp.absoluteMinute || a.id - b.id);
@@ -124,6 +129,11 @@ export function normaliseDialogueTables(target = state) {
             || target.nextDialogueConversationPartId < nextPartId) {
         target.nextDialogueConversationPartId = nextPartId;
     }
+}
+
+export function normaliseDialogueTables(target = state) {
+    normaliseDialogueConversationParts(target);
+    rebuildDialogueConversationsFromTables(target);
 }
 
 export function addDialogueConversationPart({
@@ -137,7 +147,7 @@ export function addDialogueConversationPart({
     payload = {},
     causedByPartId = null
 } = {}) {
-    normaliseDialogueTables();
+    ensureDialogueRuntimeStorage();
     const part = normaliseDialogueConversationPart({
         id: takeNextId('nextDialogueConversationPartId'),
         conversationId,

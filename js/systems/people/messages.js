@@ -3,6 +3,7 @@ import { addWorldEvent } from '../../core/worldEvents.js';
 import { state } from '../../state.js';
 import { normaliseDialogueTables } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
+import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 
 export const DIALOGUE_MESSAGE_STATUSES = Object.freeze({
     UNREAD: 'unread',
@@ -144,5 +145,13 @@ export function markDialogueMessageRead(messageId) {
     if (message.status === DIALOGUE_MESSAGE_STATUSES.READ) return message;
     message.status = DIALOGUE_MESSAGE_STATUSES.READ;
     message.readAt = currentDialogueTimestamp();
+    addDialogueEvent({
+        eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_MESSAGE_READ,
+        sourceSystem: 'dialogue_message',
+        conversationId: message.conversationId,
+        messageId: message.id,
+        summary: { messageId: message.id },
+        timestamp: message.readAt
+    });
     return message;
 }

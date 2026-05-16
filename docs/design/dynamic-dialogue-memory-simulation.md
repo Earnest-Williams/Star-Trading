@@ -541,3 +541,23 @@ This architecture prioritizes:
 - context-aware dialogue grounded in actual game state
 - reuse of existing UI and systems before new infrastructure is added
 - a small vertical slice that proves player value before architectural expansion
+
+## Consolidated dialogue update path implemented
+
+The final local-contact dialogue update path is:
+
+```text
+player action
+→ conversation part
+→ proposal row
+→ authority validation
+→ memory/task/offer/message row
+→ event log row
+→ conversation header update
+→ UI read model
+→ world tick resolution/expiry/maintenance
+```
+
+Conversation parts remain a transcript of what was said or proposed. Proposal rows track the lifecycle of intent. Memory, task, offer, and message rows are the authoritative domain state. Event rows explain what happened. Conversation headers are rebuildable query indexes/read models that link related rows.
+
+Runtime dialogue writes now use cheap storage guards and normalise inserted rows only. Full-table repair and conversation-header rebuilds are reserved for load/import or explicit repair flows.

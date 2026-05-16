@@ -6,6 +6,7 @@ import { renderCaptainChipsForSector } from "./renderCaptains.js";
 import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } from "../core/navigation.js";
 import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
+import { getContactDialogueActionState } from "../systems/people.js";
 
 
 function renderLocalAuthorityLine(sector) {
@@ -37,18 +38,11 @@ function renderLocalPeopleDialogueActions(sectorId) {
     const ids = state.peopleBySector?.[sectorId] || [];
     const people = ids.map(id => state.people?.[id]).filter(Boolean);
     if (people.length === 0) return "";
-    const tasks = state.dialogueTasks || [];
     const sections = people.slice(0, 3).map(person => {
         const partButtons = NPC_FINDABLE_PARTS.map(partId => {
-            const activeTask = tasks.find(task => task.status === "active"
-                && task.ownerPersonId === person.id
-                && task.requesterId === "player"
-                && task.taskType === "locate_item"
-                && task.itemId === partId);
-            const disabled = activeTask ? " disabled" : "";
-            const partLabel = partId.replaceAll("_", " ");
-            const label = activeTask ? `Looking for ${escapeHtml(partLabel)}` : `Find ${escapeHtml(partLabel)}`;
-            return `<button data-action="askNpcToFindPart" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(partId)}"${disabled}>${label}</button>`;
+            const actionState = getContactDialogueActionState(person.id, partId);
+            const disabled = actionState.disabled ? " disabled" : "";
+            return `<button data-action="askNpcToFindPart" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(partId)}"${disabled}>${escapeHtml(actionState.label)}</button>`;
         }).join("");
         return `<div>${escapeHtml(person.name)}: ${partButtons}</div>`;
     }).join("");

@@ -10,7 +10,14 @@ import {
 } from "../core/dataCargo.js";
 import { getSectorPathDistance } from "../core/navigation.js";
 import { escapeHtml, formatCommodity, formatCredits } from "../utils.js";
-import { DIALOGUE_MESSAGE_STATUSES } from "../systems/people.js";
+import {
+    DIALOGUE_MESSAGE_STATUSES,
+    getActiveDialogueOffersForPlayer,
+    getConversationSummary,
+    getConversationTimeline,
+    getDialogueDebugTrace,
+    getUnreadDialogueMessageCountByConversation
+} from "../systems/people.js";
 
 function freshnessClass(label) {
     return `data-freshness-${escapeHtml(label || "unknown")}`;
@@ -178,6 +185,66 @@ export function renderDialogueMessagesPanel() {
     return `<div class="comms-panel"><h4>NPC Follow-Ups (${messages.length})</h4><div style="max-height:320px;overflow-y:auto;">${cards}</div></div>`;
 }
 
+
+export function renderDialogueConversationsPanel() {
+    const conversations = Array.isArray(state.dialogueConversations) ? state.dialogueConversations : [];
+    if (conversations.length === 0) return `<div class="comms-panel"><h4>Dialogue Conversations</h4><div class="muted">No conversations yet.</div></div>`;
+    const unread = getUnreadDialogueMessageCountByConversation();
+    const cards = conversations.slice().sort((a, b) => Number(b.updatedAt?.absoluteMinute || 0) - Number(a.updatedAt?.absoluteMinute || 0)).map(conversation => {
+        const person = state.people?.[conversation.ownerPersonId];
+        const personLabel = person ? person.name : conversation.ownerPersonId || "Unknown contact";
+        const count = unread[conversation.conversationId] || 0;
+        const selected = state.selectedDialogueConversationId === conversation.conversationId ? `<span class="sector-chip green">Selected</span>` : "";
+        return `<div class="command-card"><strong>${escapeHtml(personLabel)}</strong> ${selected}<br>`
+            + `<span class="small muted">${escapeHtml(conversation.conversationType)} / ${escapeHtml(conversation.status)} / ${escapeHtml(conversation.topic?.itemId || "general")}</span>`
+            + (count > 0 ? `<span class="sector-chip amber">Unread ${count}</span>` : "")
+            + `<div class="compact-actions"><button data-action="selectDialogueConversation" data-arg0="${escapeHtml(conversation.conversationId)}">View Conversation</button>`
+            + `<button data-action="archiveDialogueConversation" data-arg0="${escapeHtml(conversation.conversationId)}">Archive Conversation</button></div></div>`;
+    }).join("");
+    return `<div class="comms-panel"><h4>Dialogue Conversations (${conversations.length})</h4>${cards}</div>`;
+}
+
+export function renderDialogueConversationDetail() {
+    const conversationId = state.selectedDialogueConversationId || state.dialogueConversations?.[0]?.conversationId;
+    if (!conversationId) return `<div class="comms-panel"><h4>Conversation Detail</h4><div class="muted">Select a conversation.</div></div>`;
+    const summary = getConversationSummary(conversationId);
+    if (!summary) return `<div class="comms-panel"><h4>Conversation Detail</h4><div class="muted">Conversation not found.</div></div>`;
+    const timeline = getConversationTimeline(conversationId).slice(-12).map(entry => {
+        const label = entry.kind === "part" ? `${entry.partType}: ${entry.text || entry.intent || "part"}`
+            : entry.kind === "message" ? `Message: ${entry.subject}`
+                : entry.kind === "offer" ? `Offer: ${entry.itemId} (${formatCredits(entry.price)} cr, ${entry.status})`
+                    : `Event: ${entry.eventType}`;
+        return `<li><span class="small muted">${escapeHtml(entry.kind)}</span> ${escapeHtml(label)}</li>`;
+    }).join("");
+    return `<div class="comms-panel"><h4>Conversation Detail</h4>`
+        + `<div class="small muted">${escapeHtml(conversationId)} / parts ${summary.partCount} / active offers ${summary.activeOfferCount}</div>`
+        + `<ul>${timeline}</ul></div>`;
+}
+
+export function renderDialogueOffersPanel() {
+    const offers = getActiveDialogueOffersForPlayer();
+    if (offers.length === 0) return `<div class="comms-panel"><h4>Dialogue Offers</h4><div class="muted">No active offers.</div></div>`;
+    const cards = offers.map(offer => {
+        const person = state.people?.[offer.ownerPersonId];
+        const personLabel = person ? person.name : offer.ownerPersonId;
+        return `<div class="command-card"><strong>${escapeHtml(offer.itemId.replaceAll("_", " "))}</strong> <span class="sector-chip green">${formatCredits(offer.price)} cr</span><br>`
+            + `<span class="small muted">From ${escapeHtml(personLabel)} / expires minute ${Number(offer.expiresAtAbsoluteMinute) || 0}</span>`
+            + `<div class="compact-actions"><button data-action="acceptDialogueOffer" data-arg0="${offer.id}">Accept Offer</button>`
+            + `<button data-action="rejectDialogueOffer" data-arg0="${offer.id}">Reject Offer</button>`
+            + `<button data-action="selectDialogueConversation" data-arg0="${escapeHtml(offer.conversationId)}">View Conversation</button></div></div>`;
+    }).join("");
+    return `<div class="comms-panel"><h4>Dialogue Offers (${offers.length})</h4>${cards}</div>`;
+}
+
+export function renderDialogueDebugTracePanel() {
+    const conversationId = state.selectedDialogueConversationId || state.dialogueConversations?.[0]?.conversationId;
+    if (!conversationId) return `<div class="comms-panel"><h4>Dialogue Debug Trace</h4><div class="muted">No trace.</div></div>`;
+    const trace = getDialogueDebugTrace(conversationId);
+    return `<div class="comms-panel"><h4>Dialogue Debug Trace</h4>`
+        + `<div class="small muted">Proposals ${trace.proposals.length} / tasks ${trace.tasks.length} / memories ${trace.memories.length} / offers ${trace.offers.length} / events ${trace.events.length}</div>`
+        + `</div>`;
+}
+
 export function renderSecurePayloadPanel() {
     const payloads = getPlayerDataHoldSummary().securePayloads;
     if (payloads.length === 0) {
@@ -213,6 +280,10 @@ export function renderCommunicationsScreen() {
         + renderDataFreshnessSummary()
         + renderPublicSnapshotTable()
         + renderStaleSectorsPanel()
+        + renderDialogueConversationsPanel()
+        + renderDialogueConversationDetail()
+        + renderDialogueOffersPanel()
+        + renderDialogueDebugTracePanel()
         + renderDialogueMessagesPanel()
         + renderPrivatePayloadPanel()
         + renderSecurePayloadPanel()

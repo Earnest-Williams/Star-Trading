@@ -1,10 +1,12 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
 import { random } from '../../utils.js';
-import { normaliseDialogueTables } from './conversationParts.js';
+import { ensureDialogueRuntimeStorage } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 import { createDialogueMessage } from './messages.js';
+import { createDialogueOffer } from './offers.js';
+import { applyDialogueRelationshipDelta } from './relationships.js';
 
 export const DIALOGUE_TASK_STATUSES = Object.freeze({
     ACTIVE: 'active',
@@ -109,7 +111,7 @@ export function normaliseDialogueTask(task, fallbackId = 1) {
 }
 
 export function normaliseDialogueTasks(target = state) {
-    normaliseDialogueTables(target);
+    ensureDialogueRuntimeStorage(target);
     target.dialogueTasks = target.dialogueTasks
         .map((task, index) => {
             const normalised = normaliseDialogueTask(task, index + 1);
@@ -186,14 +188,19 @@ function resolveLocateItemTask(task, reason) {
         || (forced !== 'failure' && random() < Number(task.resolutionPolicy.successChance ?? 0.65));
     if (succeeded) {
         task.status = DIALOGUE_TASK_STATUSES.RESOLVED;
+        const price = Math.max(50, Math.round(Number(task.resolutionPolicy.price ?? 450)));
+        const offer = createDialogueOffer({
+            conversationId: task.conversationId,
+            taskId: task.id,
+            ownerPersonId: task.ownerPersonId,
+            recipientId: task.requesterId,
+            itemId: task.itemId,
+            price
+        });
         task.result = {
             outcome: 'success',
             itemId: task.itemId,
-            offer: {
-                itemId: task.itemId,
-                status: 'available_for_trade',
-                price: Math.max(50, Math.round(Number(task.resolutionPolicy.price ?? 450)))
-            },
+            offerId: offer.id,
             resolvedAt: currentDialogueTimestamp(),
             reason: asString(reason, 'hourly tick')
         };
@@ -204,8 +211,10 @@ function resolveLocateItemTask(task, reason) {
             taskId: task.id,
             subject: `Found: ${itemLabel(task.itemId)}`,
             text: `I found a used ${itemLabel(task.itemId)}. It is available for trade when you are ready.`,
-            payload: { taskId: task.id, itemId: task.itemId, outcome: 'success', offer: task.result.offer }
+            payload: { taskId: task.id, itemId: task.itemId, outcome: 'success', offerId: offer.id }
         });
+        touchDialogueConversation(task.conversationId, { relatedOfferIds: [offer.id] });
+        applyDialogueRelationshipDelta(task.ownerPersonId, { trust: 1, familiarity: 1, tags: ['found_part'], reason: 'task_resolved_success' });
     } else {
         task.status = DIALOGUE_TASK_STATUSES.FAILED;
         task.result = {
@@ -214,6 +223,7 @@ function resolveLocateItemTask(task, reason) {
             resolvedAt: currentDialogueTimestamp(),
             reason: asString(reason, 'hourly tick')
         };
+        applyDialogueRelationshipDelta(task.ownerPersonId, { trust: -1, familiarity: 1, tags: ['search_failed'], reason: 'task_resolved_failure' });
         createDialogueMessage({
             conversationId: task.conversationId,
             senderId: task.ownerPersonId,
@@ -238,7 +248,7 @@ function resolveLocateItemTask(task, reason) {
         conversationId: task.conversationId,
         taskId: task.id,
         causedBy: { conversationId: task.conversationId, taskId: task.id },
-        summary: { itemId: task.itemId, status: task.status, outcome: task.result.outcome },
+        summary: { itemId: task.itemId, status: task.status, outcome: task.result.outcome, offerId: task.result.offerId },
         timestamp: ts
     });
     return task;

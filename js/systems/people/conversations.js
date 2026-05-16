@@ -147,6 +147,13 @@ function sortDialogueConversations(target) {
         });
 }
 
+export function ensureDialogueConversationStorage(target = state) {
+    if (!Array.isArray(target.dialogueConversations)) target.dialogueConversations = [];
+    if (!Number.isInteger(target.nextDialogueConversationId) || target.nextDialogueConversationId < 1) {
+        target.nextDialogueConversationId = nextNumericIdForTable(target.dialogueConversations.filter(isObject));
+    }
+}
+
 function ensureDialogueConversationRows(target = state) {
     if (!Array.isArray(target.dialogueConversations)) target.dialogueConversations = [];
     target.dialogueConversations = target.dialogueConversations
@@ -196,11 +203,12 @@ export function normaliseDialogueConversation(conversation, fallbackId = 1) {
         relatedTaskIds: normaliseIdList(conversation?.relatedTaskIds),
         relatedMemoryIds: normaliseIdList(conversation?.relatedMemoryIds),
         relatedMessageIds: normaliseIdList(conversation?.relatedMessageIds),
+        relatedOfferIds: normaliseIdList(conversation?.relatedOfferIds),
         payload: isObject(conversation?.payload) ? conversation.payload : {}
     };
 }
 
-export function normaliseDialogueConversations(target = state) {
+export function rebuildDialogueConversationsFromTables(target = state) {
     ensureDialogueConversationRows(target);
     const conversationsById = mapDialogueConversations(target);
     let nextGeneratedId = nextNumericIdForTable(target.dialogueConversations);
@@ -271,6 +279,14 @@ export function normaliseDialogueConversations(target = state) {
             addRelatedId(conversation, 'relatedMemoryIds', memory.id);
         });
     }
+    if (Array.isArray(target.dialogueOffers)) {
+        target.dialogueOffers.filter(isObject).forEach(offer => {
+            const conversationId = asString(offer.conversationId, DEFAULT_CONVERSATION_ID);
+            const conversation = getConversationById(conversationId);
+            if (!conversation) return;
+            addRelatedId(conversation, 'relatedOfferIds', offer.id);
+        });
+    }
     if (Array.isArray(target.dialogueMessages)) {
         target.dialogueMessages.filter(isObject).forEach(message => {
             const conversationId = asString(message.conversationId, DEFAULT_CONVERSATION_ID);
@@ -283,8 +299,12 @@ export function normaliseDialogueConversations(target = state) {
     updateNextConversationId(target);
 }
 
+export function normaliseDialogueConversations(target = state) {
+    rebuildDialogueConversationsFromTables(target);
+}
+
 export function getDialogueConversation(conversationId) {
-    ensureDialogueConversationRows();
+    ensureDialogueConversationStorage();
     const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     return findDialogueConversationById(safeConversationId);
 }
@@ -302,9 +322,10 @@ export function ensureDialogueConversation({
     relatedTaskIds = [],
     relatedMemoryIds = [],
     relatedMessageIds = [],
+    relatedOfferIds = [],
     payload = {}
 } = {}) {
-    ensureDialogueConversationRows();
+    ensureDialogueConversationStorage();
     const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     const existing = findDialogueConversationById(safeConversationId);
     if (existing) {
@@ -319,6 +340,7 @@ export function ensureDialogueConversation({
             relatedTaskIds,
             relatedMemoryIds,
             relatedMessageIds,
+            relatedOfferIds,
             payload
         });
     }
@@ -337,6 +359,7 @@ export function ensureDialogueConversation({
         relatedTaskIds,
         relatedMemoryIds,
         relatedMessageIds,
+        relatedOfferIds,
         payload
     });
     state.dialogueConversations.push(conversation);
@@ -344,11 +367,18 @@ export function ensureDialogueConversation({
 }
 
 export function touchDialogueConversation(conversationId, updates = {}) {
-    ensureDialogueConversationRows();
+    ensureDialogueConversationStorage();
     const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     let conversation = findDialogueConversationById(safeConversationId);
     if (!conversation) {
-        conversation = ensureDialogueConversation({ conversationId: safeConversationId });
+        const timestamp = currentDialogueTimestamp();
+        conversation = normaliseDialogueConversation({
+            id: takeNextId(),
+            conversationId: safeConversationId,
+            startedAt: timestamp,
+            updatedAt: timestamp
+        });
+        state.dialogueConversations.push(conversation);
     }
     if (typeof updates.conversationType !== 'undefined') {
         conversation.conversationType = normaliseType(updates.conversationType);
@@ -375,6 +405,7 @@ export function touchDialogueConversation(conversationId, updates = {}) {
     normaliseIdList(updates.relatedTaskIds).forEach(id => addRelatedId(conversation, 'relatedTaskIds', id));
     normaliseIdList(updates.relatedMemoryIds).forEach(id => addRelatedId(conversation, 'relatedMemoryIds', id));
     normaliseIdList(updates.relatedMessageIds).forEach(id => addRelatedId(conversation, 'relatedMessageIds', id));
+    normaliseIdList(updates.relatedOfferIds).forEach(id => addRelatedId(conversation, 'relatedOfferIds', id));
     if (isObject(updates.payload)) {
         conversation.payload = { ...conversation.payload, ...updates.payload };
     }
@@ -385,7 +416,7 @@ export function touchDialogueConversation(conversationId, updates = {}) {
 export function getDialogueConversationsForPerson(personId) {
     const safePersonId = asString(personId, '');
     if (safePersonId.length === 0) return [];
-    ensureDialogueConversationRows();
+    ensureDialogueConversationStorage();
     return state.dialogueConversations
         .filter(conversation => conversation.ownerPersonId === safePersonId
             || conversation.subjectId === safePersonId)
