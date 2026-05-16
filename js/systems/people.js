@@ -51,3 +51,19 @@ export {
     getConversationParts,
     normaliseDialogueTables
 } from './people/conversationParts.js';
+export { askNpcToFindPart } from './people/dialogue.js';
+export {
+    DIALOGUE_TASK_STATUSES,
+    DIALOGUE_TASK_TYPES,
+    createLocateItemDialogueTask,
+    normaliseDialogueTask,
+    normaliseDialogueTasks,
+    resolveDueDialogueTasks
+} from './people/dialogueTasks.js';
+export {
+    DIALOGUE_MESSAGE_STATUSES,
+    createDialogueMessage,
+    markDialogueMessageRead,
+    normaliseDialogueMessage,
+    normaliseDialogueMessages
+} from './people/messages.js';

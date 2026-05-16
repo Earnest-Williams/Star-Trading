@@ -11,6 +11,7 @@ import { updateEntanglementsDaily } from '../systems/entanglements.js';
 import { expireIntel } from './intel.js';
 import { cullOldPublicSnapshots, expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
 import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../systems/secureCourier.js';
+import { resolveDueDialogueTasks } from '../systems/people.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
@@ -34,7 +35,8 @@ export const HOURLY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'captain_hourly_actions', run: () => updateCaptainsHourly() },
     { id: 'mission_opportunities', run: () => prepareAvailableMissionOpportunities() },
     { id: 'intel_expiry', run: () => expireIntel() },
-    { id: 'private_payload_expiry', run: () => expirePrivatePayloads() }
+    { id: 'private_payload_expiry', run: () => expirePrivatePayloads() },
+    { id: 'dialogue_task_resolution', run: reason => resolveDueDialogueTasks(reason) }
 ]);
 
 export function runWorldTickPhases(phases, reason) {
