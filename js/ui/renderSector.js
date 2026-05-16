@@ -42,7 +42,8 @@ function renderLocalPeopleDialogueActions(sectorId) {
         const partButtons = NPC_FINDABLE_PARTS.map(partId => {
             const actionState = getContactDialogueActionState(person.id, partId);
             const disabled = actionState.disabled ? " disabled" : "";
-            return `<button data-action="askNpcToFindPart" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(partId)}"${disabled}>${escapeHtml(actionState.label)}</button>`;
+            const action = actionState.action || "askNpcToFindPart";
+            return `<button data-action="${escapeHtml(action)}" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(partId)}"${disabled}>${escapeHtml(actionState.label)}</button>`;
         }).join("");
         return `<div>${escapeHtml(person.name)}: ${partButtons}</div>`;
     }).join("");

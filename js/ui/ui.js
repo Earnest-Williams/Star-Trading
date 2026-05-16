@@ -57,6 +57,7 @@ import { spendTime } from '../core/time.js';
 import {
     acceptDialogueOffer,
     askNpcToFindPart,
+    checkBackWithNpc,
     markDialogueMessageRead,
     rejectDialogueOffer,
     touchDialogueConversation,
@@ -369,6 +370,10 @@ export function registerUIActions() {
     registerAction('deepenRomanceWithCaptain', deepenRomanceWithCaptainAction);
     registerAction('askNpcToFindPart', (personId, itemId) => {
         const result = askNpcToFindPart(personId, itemId);
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('checkBackWithNpc', (personId, itemId) => {
+        const result = checkBackWithNpc(personId, itemId);
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
     });
     registerAction('markDialogueMessageRead', messageId => {
