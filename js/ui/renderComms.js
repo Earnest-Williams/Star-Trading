@@ -10,6 +10,7 @@ import {
 } from "../core/dataCargo.js";
 import { getSectorPathDistance } from "../core/navigation.js";
 import { escapeHtml, formatCommodity, formatCredits } from "../utils.js";
+import { DIALOGUE_MESSAGE_STATUSES } from "../systems/people.js";
 
 function freshnessClass(label) {
     return `data-freshness-${escapeHtml(label || "unknown")}`;
@@ -154,6 +155,29 @@ export function renderPrivatePayloadPanel() {
     return `<div class="comms-panel"><h4>Private Payloads</h4>${cards}</div>`;
 }
 
+
+export function renderDialogueMessagesPanel() {
+    const messages = Array.isArray(state.dialogueMessages) ? state.dialogueMessages : [];
+    if (messages.length === 0) {
+        return `<div class="comms-panel"><h4>NPC Follow-Ups</h4><div class="muted">No NPC follow-up messages.</div></div>`;
+    }
+    const cards = messages.slice(0, 8).map(message => {
+        const sender = state.people?.[message.senderId];
+        const senderLabel = sender ? sender.name : message.senderId || "Unknown sender";
+        const unread = message.status === DIALOGUE_MESSAGE_STATUSES.UNREAD ? `<span class="sector-chip amber">Unread</span>` : "";
+        const readButton = message.status === DIALOGUE_MESSAGE_STATUSES.UNREAD
+            ? `<button data-action="markDialogueMessageRead" data-arg0="${message.id}">Mark Read</button>`
+            : "";
+        return `<div class="command-card">`
+            + `<strong>${escapeHtml(message.subject)}</strong> ${unread}<br>`
+            + `<span class="small muted">From ${escapeHtml(senderLabel)} / Day ${Number(message.createdAt?.day) || 1}</span>`
+            + `<div>${escapeHtml(message.text)}</div>`
+            + `<div class="compact-actions">${readButton}</div>`
+            + `</div>`;
+    }).join("");
+    return `<div class="comms-panel"><h4>NPC Follow-Ups</h4>${cards}</div>`;
+}
+
 export function renderSecurePayloadPanel() {
     const payloads = getPlayerDataHoldSummary().securePayloads;
     if (payloads.length === 0) {
@@ -189,6 +213,7 @@ export function renderCommunicationsScreen() {
         + renderDataFreshnessSummary()
         + renderPublicSnapshotTable()
         + renderStaleSectorsPanel()
+        + renderDialogueMessagesPanel()
         + renderPrivatePayloadPanel()
         + renderSecurePayloadPanel()
         + `</div>`;

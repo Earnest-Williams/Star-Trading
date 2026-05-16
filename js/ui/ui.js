@@ -54,6 +54,7 @@ import {
     acceptSecureContract, completeSecurePayload, grantSecureCourierLicense
 } from '../systems/secureCourier.js';
 import { spendTime } from '../core/time.js';
+import { askNpcToFindPart, markDialogueMessageRead } from '../systems/people.js';
 
 // =====================================================
 // ACTION DISPATCHER
@@ -220,6 +221,7 @@ const rendererRegistrations = [
         StateSlice.CAPTAINS,
         StateSlice.TRADE_ROUTES,
         StateSlice.DATA_CARGO,
+        StateSlice.DIALOGUE,
         StateSlice.REPUTATION_TAB
     ]],
 
@@ -358,6 +360,14 @@ export function registerUIActions() {
     registerAction('provokeCaptain', provokeCaptain);
     registerAction('startRomanceWithCaptain', startRomanceWithCaptainAction);
     registerAction('deepenRomanceWithCaptain', deepenRomanceWithCaptainAction);
+    registerAction('askNpcToFindPart', (personId, itemId) => {
+        const result = askNpcToFindPart(personId, itemId);
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('markDialogueMessageRead', messageId => {
+        const result = markDialogueMessageRead(parseInt(messageId, 10));
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
 
     // Reputation
     registerAction('setReputationTab', setReputationTab);

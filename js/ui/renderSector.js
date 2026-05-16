@@ -32,6 +32,23 @@ function renderLocalCompanies(sectorId) {
     return `<div><strong>Local Companies:</strong> ${labels.join(" | ")}</div>`;
 }
 
+
+function renderLocalPeopleDialogueActions(sectorId) {
+    const ids = state.peopleBySector?.[sectorId] || [];
+    const people = ids.map(id => state.people?.[id]).filter(Boolean);
+    if (people.length === 0) return "";
+    const buttons = people.slice(0, 3).map(person => {
+        const activeTask = (state.dialogueTasks || []).find(task => task.status === "active"
+            && task.ownerPersonId === person.id
+            && task.requesterId === "player"
+            && task.taskType === "locate_item");
+        const disabled = activeTask ? " disabled" : "";
+        const label = activeTask ? `Looking for ${escapeHtml(activeTask.itemId)}` : "Ask to Find Part";
+        return `<button data-action="askNpcToFindPart" data-arg0="${escapeHtml(person.id)}" data-arg1="fujiwattit"${disabled}>${escapeHtml(person.name)}: ${label}</button>`;
+    }).join("");
+    return `<div class="commodity-row"><strong>Local Contacts</strong><br>${buttons}</div>`;
+}
+
 function renderDataFreshnessLine(sectorId) {
     const freshness = getFreshnessSummaryForSector(sectorId);
     if (freshness.liveLocal) {
@@ -150,6 +167,7 @@ export function renderMenuPanel() {
     if (planets[player.currentSector]) html += `<button data-action="showScreen" data-arg0="colony">Colony</button>`;
     if (state.world?.roles?.shipyardSiteId === player.currentSector) html += `<button data-action="showScreen" data-arg0="shipyard">Shipyard</button>`;
     html += `</div></div>`;
+    html += renderLocalPeopleDialogueActions(player.currentSector);
     document.getElementById("commandList").innerHTML = html;
 }
 

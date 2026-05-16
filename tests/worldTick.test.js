@@ -39,7 +39,8 @@ describe('world tick phase order', () => {
                 'captain_hourly_actions',
                 'mission_opportunities',
                 'intel_expiry',
-                'private_payload_expiry'
+                'private_payload_expiry',
+                'dialogue_task_resolution'
             ]
         );
     });
