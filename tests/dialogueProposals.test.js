@@ -1,6 +1,7 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { BALANCE } from '../js/constants.js';
 import { resetState, state } from '../js/state.js';
 import { askNpcToFindPart } from '../js/systems/people.js';
 
@@ -20,5 +21,16 @@ describe('dialogue proposals', () => {
         assert.deepEqual(state.dialogueProposals.map(proposal => proposal.status), ['committed', 'committed']);
         assert.ok(state.dialogueEventLog.some(event => event.eventType === 'dialogue_proposal_emitted'));
         assert.ok(state.dialogueEventLog.some(event => event.eventType === 'dialogue_proposal_committed'));
+    });
+
+    it('normalises proposal and event timestamps when minuteOfDay overflows a day', () => {
+        state.player.time.minuteOfDay = BALANCE.DAY_MINUTES + 30;
+
+        askNpcToFindPart('person-1', 'fujiwattit');
+
+        assert.equal(state.dialogueProposals[0].createdAt.day, 2);
+        assert.equal(state.dialogueProposals[0].createdAt.minuteOfDay, 30);
+        assert.equal(state.dialogueEventLog[0].day, 2);
+        assert.equal(state.dialogueEventLog[0].minute, 30);
     });
 });

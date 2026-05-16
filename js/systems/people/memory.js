@@ -175,7 +175,7 @@ export function normaliseDialogueMemories(target = state) {
     target.dialogueMemories = target.dialogueMemories
         .map((memory, index) => normaliseDialogueMemory(memory, index + 1))
         .sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
-    const nextId = target.dialogueMemories.reduce((maxId, memory) => Math.max(maxId, memory.id), 0) + 1;
+    const nextId = target.dialogueMemories.reduce((maxId, memory) => Math.max(maxId, asInteger(memory?.id, 0)), 0) + 1;
     if (!Number.isInteger(target.nextDialogueMemoryId) || target.nextDialogueMemoryId < nextId) {
         target.nextDialogueMemoryId = nextId;
     }

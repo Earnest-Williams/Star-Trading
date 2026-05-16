@@ -43,8 +43,15 @@ function asNullableString(value) {
 }
 
 function asInteger(value, fallback) {
+    if (value === null || typeof value === 'undefined') return fallback;
     const number = Number(value);
     return Number.isInteger(number) ? number : fallback;
+}
+
+function currentAbsoluteMinute() {
+    const day = asInteger(state.player?.time?.day, 1);
+    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    return (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay;
 }
 
 function nextNumericIdForTable(records) {
@@ -64,12 +71,11 @@ function ensureDialogueTable(target, table, nextKey) {
 }
 
 function currentDialogueTimestamp() {
-    const day = asInteger(state.player?.time?.day, 1);
-    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    const absoluteMinute = currentAbsoluteMinute();
     return {
-        day,
-        minuteOfDay,
-        absoluteMinute: (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay
+        day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1,
+        minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES,
+        absoluteMinute
     };
 }
 

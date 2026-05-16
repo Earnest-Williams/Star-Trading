@@ -27,17 +27,18 @@ function asNullableString(value) {
 }
 
 function asInteger(value, fallback) {
+    if (value === null || typeof value === 'undefined') return fallback;
     const number = Number(value);
     return Number.isInteger(number) ? number : fallback;
 }
 
 function currentDialogueTimestamp() {
-    const day = asInteger(state.player?.time?.day, 1);
-    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    const absoluteMinute = ((asInteger(state.player?.time?.day, 1) - 1) * BALANCE.DAY_MINUTES)
+        + asInteger(state.player?.time?.minuteOfDay, 0);
     return {
-        day,
-        minuteOfDay,
-        absoluteMinute: (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay
+        day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1,
+        minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES,
+        absoluteMinute
     };
 }
 
@@ -85,7 +86,7 @@ export function normaliseDialogueMessages(target = state) {
     target.dialogueMessages = target.dialogueMessages
         .map((message, index) => normaliseDialogueMessage(message, index + 1))
         .sort((a, b) => b.createdAt.absoluteMinute - a.createdAt.absoluteMinute || b.id - a.id);
-    const nextId = target.dialogueMessages.reduce((maxId, message) => Math.max(maxId, message.id), 0) + 1;
+    const nextId = target.dialogueMessages.reduce((maxId, message) => Math.max(maxId, asInteger(message?.id, 0)), 0) + 1;
     if (!Number.isInteger(target.nextDialogueMessageId) || target.nextDialogueMessageId < nextId) {
         target.nextDialogueMessageId = nextId;
     }

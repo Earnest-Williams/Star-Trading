@@ -41,9 +41,13 @@ function asInteger(value, fallback) {
 }
 
 function currentDialogueTimestamp() {
-    const day = asInteger(state.player?.time?.day, 1);
-    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
-    return { day, minuteOfDay, absoluteMinute: (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay };
+    const absoluteMinute = ((asInteger(state.player?.time?.day, 1) - 1) * BALANCE.DAY_MINUTES)
+        + asInteger(state.player?.time?.minuteOfDay, 0);
+    return {
+        day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1,
+        minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES,
+        absoluteMinute
+    };
 }
 
 function normaliseTimestamp(value, fallback = null) {

@@ -39,6 +39,7 @@ function asNullableString(value) {
 }
 
 function asInteger(value, fallback) {
+    if (value === null || typeof value === 'undefined') return fallback;
     const number = Number(value);
     return Number.isInteger(number) ? number : fallback;
 }
@@ -119,7 +120,7 @@ export function normaliseDialogueTasks(target = state) {
     target.dialogueTasks = target.dialogueTasks
         .map((task, index) => normaliseDialogueTask(task, index + 1))
         .sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
-    const nextId = target.dialogueTasks.reduce((maxId, task) => Math.max(maxId, task.id), 0) + 1;
+    const nextId = target.dialogueTasks.reduce((maxId, task) => Math.max(maxId, asInteger(task?.id, 0)), 0) + 1;
     if (!Number.isInteger(target.nextDialogueTaskId) || target.nextDialogueTaskId < nextId) {
         target.nextDialogueTaskId = nextId;
     }
