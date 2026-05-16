@@ -153,7 +153,6 @@ export function addDialogueConversationPart({
 }
 
 export function getConversationParts(conversationId = 'default') {
-    normaliseDialogueTables();
     return state.dialogueConversationParts
         .filter(part => part.conversationId === conversationId)
         .sort((a, b) => a.timestamp.absoluteMinute - b.timestamp.absoluteMinute || a.id - b.id);
