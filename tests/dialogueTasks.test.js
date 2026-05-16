@@ -130,6 +130,34 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(second.effectPart.payload.duplicateActiveTask, true);
     });
 
+    it('normalizes task records before duplicate detection and resolution', () => {
+        state.dialogueTasks.push({
+            id: 12,
+            taskType: 'locate_item',
+            ownerPersonId: 'person-1',
+            requesterId: 'player',
+            itemId: 'fujiwattit',
+            conversationId: 'legacy-task',
+            status: 'unknown-status',
+            createdAt: { day: 2, minuteOfDay: 480, absoluteMinute: dueMinute() },
+            nextCheckAtAbsoluteMinute: String(dueMinute()),
+            resolutionAttempts: -4,
+            result: null,
+            resolutionPolicy: { forceResult: 'success' }
+        });
+
+        const action = askNpcToFindPart('person-1', 'fujiwattit');
+        const resolved = resolveDueDialogueTasks('test normalized legacy task');
+
+        assert.equal(state.dialogueTasks.length, 1);
+        assert.equal(action.task.id, 12);
+        assert.equal(action.effectPart.payload.duplicateActiveTask, true);
+        assert.equal(resolved.length, 1);
+        assert.equal(action.task.status, DIALOGUE_TASK_STATUSES.RESOLVED);
+        assert.equal(action.task.resolutionAttempts, 1);
+        assert.equal(action.task.result.outcome, 'success');
+    });
+
     it('save and load preserve dialogue state', () => {
         const action = askNpcToFindPart('person-1', 'fujiwattit');
         action.task.nextCheckAtAbsoluteMinute = dueMinute();

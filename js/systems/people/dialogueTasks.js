@@ -69,7 +69,8 @@ function itemLabel(itemId) {
 }
 
 function findActiveLocateItemTask(ownerPersonId, requesterId, itemId) {
-    return state.dialogueTasks.find(task => task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
+    const tasks = Array.isArray(state.dialogueTasks) ? state.dialogueTasks : [];
+    return tasks.find(task => task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
         && task.status === DIALOGUE_TASK_STATUSES.ACTIVE
         && task.ownerPersonId === ownerPersonId
         && task.requesterId === requesterId
@@ -133,6 +134,7 @@ export function createLocateItemDialogueTask({
     causedByPartId,
     resolutionPolicy = {}
 } = {}) {
+    normaliseDialogueTasks();
     const safeOwnerPersonId = asString(ownerPersonId, 'unknown-person');
     const safeRequesterId = asString(requesterId, 'player');
     const safeItemId = asString(itemId, 'unknown_part');
@@ -230,6 +232,7 @@ function resolveLocateItemTask(task, reason) {
 }
 
 export function resolveDueDialogueTasks(reason = 'hourly tick') {
+    normaliseDialogueTasks();
     const now = currentAbsoluteMinute();
     const resolved = [];
     state.dialogueTasks
