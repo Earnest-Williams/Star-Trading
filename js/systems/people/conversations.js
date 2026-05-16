@@ -108,6 +108,43 @@ function nextNumericIdForTable(records) {
     }, 0) + 1;
 }
 
+function updateNextConversationId(target) {
+    const nextId = nextNumericIdForTable(target.dialogueConversations);
+    if (!Number.isInteger(target.nextDialogueConversationId)
+            || target.nextDialogueConversationId < nextId) {
+        target.nextDialogueConversationId = nextId;
+    }
+}
+
+function sortDialogueConversations(target) {
+    target.dialogueConversations = target.dialogueConversations
+        .sort((a, b) => a.startedAt.absoluteMinute - b.startedAt.absoluteMinute
+            || String(a.conversationId).localeCompare(String(b.conversationId)));
+}
+
+function ensureDialogueConversationRows(target = state) {
+    if (!Array.isArray(target.dialogueConversations)) target.dialogueConversations = [];
+    target.dialogueConversations = target.dialogueConversations
+        .filter(isObject)
+        .map((conversation, index) => {
+            const normalised = normaliseDialogueConversation(conversation, index + 1);
+            Object.keys(conversation).forEach(key => delete conversation[key]);
+            Object.assign(conversation, normalised);
+            return conversation;
+        });
+    sortDialogueConversations(target);
+    updateNextConversationId(target);
+}
+
+function mapDialogueConversations(target) {
+    const lookup = new Map();
+    target.dialogueConversations.forEach(conversation => {
+        lookup.set(conversation.conversationId, conversation);
+        lookup.set(conversation.id, conversation);
+    });
+    return lookup;
+}
+
 export function normaliseDialogueConversation(conversation, fallbackId = 1) {
     const startedAt = normaliseTimestamp(conversation?.startedAt);
     const id = asIdString(
@@ -133,34 +170,40 @@ export function normaliseDialogueConversation(conversation, fallbackId = 1) {
 }
 
 export function normaliseDialogueConversations(target = state) {
-    if (!Array.isArray(target.dialogueConversations)) target.dialogueConversations = [];
-    target.dialogueConversations = target.dialogueConversations
-        .filter(isObject)
-        .map((conversation, index) => {
-            const normalised = normaliseDialogueConversation(conversation, index + 1);
-            Object.keys(conversation).forEach(key => delete conversation[key]);
-            Object.assign(conversation, normalised);
-            return conversation;
+    ensureDialogueConversationRows(target);
+    const conversationsById = mapDialogueConversations(target);
+    let nextGeneratedId = nextNumericIdForTable(target.dialogueConversations);
+    function getConversationById(conversationId) {
+        return conversationsById.get(conversationId) || null;
+    }
+    function registerConversation(conversation) {
+        conversationsById.set(conversation.conversationId, conversation);
+        conversationsById.set(conversation.id, conversation);
+    }
+    function ensureConversation(conversationId, seed = {}) {
+        const existing = getConversationById(conversationId);
+        if (existing) return existing;
+        const conversation = normaliseDialogueConversation({
+            id: nextGeneratedId,
+            conversationId,
+            ...seed
         });
+        nextGeneratedId += 1;
+        target.dialogueConversations.push(conversation);
+        registerConversation(conversation);
+        return conversation;
+    }
     if (Array.isArray(target.dialogueConversationParts)) {
         target.dialogueConversationParts.filter(isObject).forEach(part => {
             const conversationId = asString(part.conversationId, 'default');
-            let conversation = target.dialogueConversations.find(item => (
-                item.conversationId === conversationId || item.id === conversationId
-            ));
             const timestamp = normaliseTimestamp(part.timestamp);
-            if (!conversation) {
-                conversation = normaliseDialogueConversation({
-                    id: target.dialogueConversations.length + 1,
-                    conversationId,
-                    startedAt: timestamp,
-                    updatedAt: timestamp,
-                    latestPartId: asInteger(part.id, null),
-                    ownerPersonId: part.speakerType === 'person' ? part.speakerId : null,
-                    subjectId: part.subjectId
-                });
-                target.dialogueConversations.push(conversation);
-            }
+            const conversation = ensureConversation(conversationId, {
+                startedAt: timestamp,
+                updatedAt: timestamp,
+                latestPartId: asInteger(part.id, null),
+                ownerPersonId: part.speakerType === 'person' ? part.speakerId : null,
+                subjectId: part.subjectId
+            });
             if (timestamp.absoluteMinute >= conversation.updatedAt.absoluteMinute) {
                 conversation.updatedAt = timestamp;
                 if (Number.isInteger(part.id)) conversation.latestPartId = part.id;
@@ -176,7 +219,7 @@ export function normaliseDialogueConversations(target = state) {
     if (Array.isArray(target.dialogueTasks)) {
         target.dialogueTasks.filter(isObject).forEach(task => {
             const conversationId = asString(task.conversationId, 'default');
-            const conversation = target.dialogueConversations.find(item => item.conversationId === conversationId);
+            const conversation = getConversationById(conversationId);
             if (!conversation) return;
             addRelatedId(conversation, 'relatedTaskIds', task.id);
             if (task.taskType === DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM) {
@@ -194,7 +237,7 @@ export function normaliseDialogueConversations(target = state) {
     if (Array.isArray(target.dialogueMemories)) {
         target.dialogueMemories.filter(isObject).forEach(memory => {
             const conversationId = asString(memory.conversationId, 'default');
-            const conversation = target.dialogueConversations.find(item => item.conversationId === conversationId);
+            const conversation = getConversationById(conversationId);
             if (!conversation) return;
             addRelatedId(conversation, 'relatedMemoryIds', memory.id);
         });
@@ -202,22 +245,17 @@ export function normaliseDialogueConversations(target = state) {
     if (Array.isArray(target.dialogueMessages)) {
         target.dialogueMessages.filter(isObject).forEach(message => {
             const conversationId = asString(message.conversationId, 'default');
-            const conversation = target.dialogueConversations.find(item => item.conversationId === conversationId);
+            const conversation = getConversationById(conversationId);
             if (!conversation) return;
             addRelatedId(conversation, 'relatedMessageIds', message.id);
         });
     }
-    target.dialogueConversations = target.dialogueConversations
-        .sort((a, b) => a.startedAt.absoluteMinute - b.startedAt.absoluteMinute
-            || String(a.conversationId).localeCompare(String(b.conversationId)));
-    const nextId = nextNumericIdForTable(target.dialogueConversations);
-    if (!Number.isInteger(target.nextDialogueConversationId)
-            || target.nextDialogueConversationId < nextId) {
-        target.nextDialogueConversationId = nextId;
-    }
+    sortDialogueConversations(target);
+    updateNextConversationId(target);
 }
 
 export function getDialogueConversation(conversationId) {
+    ensureDialogueConversationRows();
     const safeConversationId = asString(conversationId, 'default');
     return state.dialogueConversations.find(conversation => (
         conversation.conversationId === safeConversationId || conversation.id === safeConversationId
@@ -239,9 +277,11 @@ export function ensureDialogueConversation({
     relatedMessageIds = [],
     payload = {}
 } = {}) {
-    normaliseDialogueConversations();
+    ensureDialogueConversationRows();
     const safeConversationId = asString(conversationId, 'default');
-    const existing = getDialogueConversation(safeConversationId);
+    const existing = state.dialogueConversations.find(conversation => (
+        conversation.conversationId === safeConversationId || conversation.id === safeConversationId
+    )) || null;
     if (existing) {
         return touchDialogueConversation(safeConversationId, {
             conversationType,
@@ -279,9 +319,12 @@ export function ensureDialogueConversation({
 }
 
 export function touchDialogueConversation(conversationId, updates = {}) {
-    normaliseDialogueConversations();
+    ensureDialogueConversationRows();
     const safeConversationId = asString(conversationId, 'default');
-    let conversation = getDialogueConversation(safeConversationId);
+    let conversation = state.dialogueConversations.find(existingConversation => (
+        existingConversation.conversationId === safeConversationId
+            || existingConversation.id === safeConversationId
+    )) || null;
     if (!conversation) {
         conversation = ensureDialogueConversation({ conversationId: safeConversationId });
     }
@@ -320,7 +363,7 @@ export function touchDialogueConversation(conversationId, updates = {}) {
 export function getDialogueConversationsForPerson(personId) {
     const safePersonId = asString(personId, '');
     if (safePersonId.length === 0) return [];
-    normaliseDialogueConversations();
+    ensureDialogueConversationRows();
     return state.dialogueConversations
         .filter(conversation => conversation.ownerPersonId === safePersonId
             || conversation.subjectId === safePersonId)

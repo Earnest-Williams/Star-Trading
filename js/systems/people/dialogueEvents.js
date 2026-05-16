@@ -41,7 +41,7 @@ function currentDialogueTimestamp() {
 
 function normaliseEventType(value) {
     const eventType = asString(value, DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED);
-    return EVENT_TYPE_VALUES.includes(eventType) ? eventType : eventType;
+    return EVENT_TYPE_VALUES.includes(eventType) ? eventType : DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED;
 }
 
 function takeNextId() {
@@ -58,6 +58,17 @@ function nextNumericIdForTable(records) {
         const id = asInteger(record?.id, 0);
         return Math.max(maxId, id);
     }, 0) + 1;
+}
+
+function eventAbsoluteMinute(event) {
+    return ((asInteger(event?.day, 1) - 1) * BALANCE.DAY_MINUTES) + asInteger(event?.minute, 0);
+}
+
+function ensureDialogueEventStorage(target = state) {
+    if (!Array.isArray(target.dialogueEventLog)) target.dialogueEventLog = [];
+    if (!Number.isInteger(target.nextDialogueEventId) || target.nextDialogueEventId < 1) {
+        target.nextDialogueEventId = nextNumericIdForTable(target.dialogueEventLog);
+    }
 }
 
 function legacyConversationId(event) {
@@ -150,7 +161,7 @@ export function addDialogueEvent({
     payload = {},
     timestamp = null
 } = {}) {
-    normaliseDialogueEvents();
+    ensureDialogueEventStorage();
     const ts = isObject(timestamp) ? timestamp : currentDialogueTimestamp();
     const event = normaliseDialogueEvent({
         id: takeNextId(),
@@ -169,7 +180,23 @@ export function addDialogueEvent({
         summary,
         payload
     });
-    state.dialogueEventLog.push(event);
+    const eventTime = eventAbsoluteMinute(event);
+    const lastEvent = state.dialogueEventLog[state.dialogueEventLog.length - 1];
+    const lastEventTime = eventAbsoluteMinute(lastEvent);
+    if (!lastEvent || eventTime > lastEventTime || (eventTime === lastEventTime && event.id >= lastEvent.id)) {
+        state.dialogueEventLog.push(event);
+    } else {
+        const insertIndex = state.dialogueEventLog.findIndex(existingEvent => {
+            const existingTime = eventAbsoluteMinute(existingEvent);
+            return eventTime < existingTime
+                || (eventTime === existingTime && event.id < asInteger(existingEvent.id, Number.MAX_SAFE_INTEGER));
+        });
+        if (insertIndex === -1) {
+            state.dialogueEventLog.push(event);
+        } else {
+            state.dialogueEventLog.splice(insertIndex, 0, event);
+        }
+    }
     return event;
 }
 

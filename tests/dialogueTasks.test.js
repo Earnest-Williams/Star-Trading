@@ -12,6 +12,7 @@ import {
     DIALOGUE_EVENT_TYPES,
     DIALOGUE_MEMORY_TYPES,
     DIALOGUE_TASK_STATUSES,
+    addDialogueEvent,
     askNpcToFindPart,
     createLocateItemDialogueTask,
     getDialogueEventsByTaskId,
@@ -187,6 +188,20 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(action.task.status, DIALOGUE_TASK_STATUSES.RESOLVED);
         assert.equal(action.task.resolutionAttempts, 1);
         assert.equal(action.task.result.outcome, 'success');
+    });
+
+    it('normalises invalid event types and keeps event log ordering on inserts', () => {
+        const newest = addDialogueEvent({
+            eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED,
+            timestamp: { day: 2, minuteOfDay: 500 }
+        });
+        const older = addDialogueEvent({
+            eventType: 'invalid_event_type',
+            timestamp: { day: 2, minuteOfDay: 450 }
+        });
+
+        assert.equal(older.eventType, DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED);
+        assert.deepEqual(state.dialogueEventLog.map(event => event.id), [older.id, newest.id]);
     });
 
     it('save and load preserve dialogue state', () => {

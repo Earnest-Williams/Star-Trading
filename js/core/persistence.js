@@ -527,8 +527,6 @@ function normaliseCurrentLoadedGame() {
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
     normaliseDialogueTables();
-    normaliseDialogueConversations();
-    normaliseDialogueEvents();
     normaliseDialogueMemories();
     normaliseDialogueTasks();
     normaliseDialogueMessages();
