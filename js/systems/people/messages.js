@@ -107,7 +107,6 @@ export function createDialogueMessage({
     payload = {},
     createWorldEvent = true
 } = {}) {
-    normaliseDialogueMessages();
     const message = normaliseDialogueMessage({
         id: takeNextId(),
         conversationId,
@@ -134,7 +133,6 @@ export function createDialogueMessage({
 }
 
 export function markDialogueMessageRead(messageId) {
-    normaliseDialogueMessages();
     const id = asInteger(messageId, null);
     const message = state.dialogueMessages.find(item => item.id === id);
     if (!message) return false;

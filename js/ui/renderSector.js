@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
+import { FACTIONS, NPC_FINDABLE_PARTS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
@@ -37,16 +37,22 @@ function renderLocalPeopleDialogueActions(sectorId) {
     const ids = state.peopleBySector?.[sectorId] || [];
     const people = ids.map(id => state.people?.[id]).filter(Boolean);
     if (people.length === 0) return "";
-    const buttons = people.slice(0, 3).map(person => {
-        const activeTask = (state.dialogueTasks || []).find(task => task.status === "active"
-            && task.ownerPersonId === person.id
-            && task.requesterId === "player"
-            && task.taskType === "locate_item");
-        const disabled = activeTask ? " disabled" : "";
-        const label = activeTask ? `Looking for ${escapeHtml(activeTask.itemId)}` : "Ask to Find Part";
-        return `<button data-action="askNpcToFindPart" data-arg0="${escapeHtml(person.id)}" data-arg1="fujiwattit"${disabled}>${escapeHtml(person.name)}: ${label}</button>`;
+    const tasks = state.dialogueTasks || [];
+    const sections = people.slice(0, 3).map(person => {
+        const partButtons = NPC_FINDABLE_PARTS.map(partId => {
+            const activeTask = tasks.find(task => task.status === "active"
+                && task.ownerPersonId === person.id
+                && task.requesterId === "player"
+                && task.taskType === "locate_item"
+                && task.itemId === partId);
+            const disabled = activeTask ? " disabled" : "";
+            const partLabel = partId.replaceAll("_", " ");
+            const label = activeTask ? `Looking for ${escapeHtml(partLabel)}` : `Find ${escapeHtml(partLabel)}`;
+            return `<button data-action="askNpcToFindPart" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(partId)}"${disabled}>${label}</button>`;
+        }).join("");
+        return `<div>${escapeHtml(person.name)}: ${partButtons}</div>`;
     }).join("");
-    return `<div class="commodity-row"><strong>Local Contacts</strong><br>${buttons}</div>`;
+    return `<div class="commodity-row"><strong>Local Contacts</strong><br>${sections}</div>`;
 }
 
 function renderDataFreshnessLine(sectorId) {

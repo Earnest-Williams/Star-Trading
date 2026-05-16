@@ -427,6 +427,7 @@ export const COMMODITY_NAMES = {
     pulse_canister: "Pulse Canisters",
     heavy_pulse_module: "Heavy Pulse Modules"
 };
+export const NPC_FINDABLE_PARTS = Object.freeze(["fuel_injector", "nav_chip", "hull_patch"]);
 export const DEBUG_MODE = true;
 
 export const FACTIONS = {

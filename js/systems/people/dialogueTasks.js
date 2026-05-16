@@ -133,7 +133,6 @@ export function createLocateItemDialogueTask({
     causedByPartId,
     resolutionPolicy = {}
 } = {}) {
-    normaliseDialogueTasks();
     const safeOwnerPersonId = asString(ownerPersonId, 'unknown-person');
     const safeRequesterId = asString(requesterId, 'player');
     const safeItemId = asString(itemId, 'unknown_part');
@@ -215,12 +214,13 @@ function resolveLocateItemTask(task, reason) {
             payload: { taskId: task.id, itemId: task.itemId, outcome: 'failure' }
         });
     }
+    const ts = currentDialogueTimestamp();
     state.dialogueEventLog.push({
         id: state.nextDialogueEventId++,
         eventType: 'dialogue_task_resolved',
         sourceSystem: 'dialogue_task',
-        day: state.player?.time?.day || 1,
-        minute: state.player?.time?.minuteOfDay || 0,
+        day: ts.day,
+        minute: ts.minuteOfDay,
         actor: task.ownerPersonId,
         subject: task.requesterId,
         causedBy: { conversationId: task.conversationId, taskId: task.id },
@@ -230,7 +230,6 @@ function resolveLocateItemTask(task, reason) {
 }
 
 export function resolveDueDialogueTasks(reason = 'hourly tick') {
-    normaliseDialogueTasks();
     const now = currentAbsoluteMinute();
     const resolved = [];
     state.dialogueTasks

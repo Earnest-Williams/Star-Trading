@@ -161,7 +161,7 @@ export function renderDialogueMessagesPanel() {
     if (messages.length === 0) {
         return `<div class="comms-panel"><h4>NPC Follow-Ups</h4><div class="muted">No NPC follow-up messages.</div></div>`;
     }
-    const cards = messages.slice(0, 8).map(message => {
+    const cards = messages.map(message => {
         const sender = state.people?.[message.senderId];
         const senderLabel = sender ? sender.name : message.senderId || "Unknown sender";
         const unread = message.status === DIALOGUE_MESSAGE_STATUSES.UNREAD ? `<span class="sector-chip amber">Unread</span>` : "";
@@ -175,7 +175,7 @@ export function renderDialogueMessagesPanel() {
             + `<div class="compact-actions">${readButton}</div>`
             + `</div>`;
     }).join("");
-    return `<div class="comms-panel"><h4>NPC Follow-Ups</h4>${cards}</div>`;
+    return `<div class="comms-panel"><h4>NPC Follow-Ups (${messages.length})</h4><div style="max-height:320px;overflow-y:auto;">${cards}</div></div>`;
 }
 
 export function renderSecurePayloadPanel() {
