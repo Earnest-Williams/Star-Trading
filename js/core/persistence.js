@@ -17,6 +17,7 @@ import { normaliseDataCargoState } from './dataCargo.js';
 import { normaliseDialogueTables } from '../systems/people/conversationParts.js';
 import { normaliseDialogueMessages } from '../systems/people/messages.js';
 import { normaliseDialogueTasks } from '../systems/people/dialogueTasks.js';
+import { normaliseDialogueMemories } from '../systems/people/memory.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -520,6 +521,7 @@ function normaliseCurrentLoadedGame() {
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
     normaliseDialogueTables();
+    normaliseDialogueMemories();
     normaliseDialogueTasks();
     normaliseDialogueMessages();
     state.missions.forEach(m => {

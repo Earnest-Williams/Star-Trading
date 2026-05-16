@@ -7,6 +7,7 @@ import { advanceTime, resetTimeHooks } from '../js/core/time.js';
 import { registerSimulationTickHooks } from '../js/core/worldTick.js';
 import { resetState, state } from '../js/state.js';
 import {
+    DIALOGUE_MEMORY_TYPES,
     DIALOGUE_TASK_STATUSES,
     askNpcToFindPart,
     createLocateItemDialogueTask,
@@ -58,9 +59,20 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(result.task.nextCheckAtAbsoluteMinute, dueMinute() + 360);
         assert.deepEqual(
             state.dialogueConversationParts.map(part => part.partType),
-            ['player_utterance', 'intent', 'npc_utterance', 'proposal', 'effect']
+            [
+                'player_utterance',
+                'intent',
+                'npc_utterance',
+                'proposal',
+                'effect',
+                'proposal',
+                'effect'
+            ]
         );
         assert.equal(result.effectPart.payload.taskId, result.task.id);
+        assert.equal(state.dialogueMemories.length, 1);
+        assert.equal(result.memory.memoryType, DIALOGUE_MEMORY_TYPES.CUSTOMER_REQUEST);
+        assert.equal(result.memory.data.requestedItem, 'fujiwattit');
     });
 
     it('missed-time simulation resolves due tasks through the hourly tick', () => {
@@ -128,6 +140,10 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(state.dialogueTasks.length, 1);
         assert.equal(second.task.id, first.task.id);
         assert.equal(second.effectPart.payload.duplicateActiveTask, true);
+        assert.equal(state.dialogueMemories.length, 1);
+        assert.equal(second.memory.id, first.memory.id);
+        assert.equal(second.memory.reinforcementCount, 2);
+        assert.equal(second.memoryEffectPart.payload.duplicateMemory, true);
     });
 
     it('normalizes task records before duplicate detection and resolution', () => {
@@ -170,7 +186,9 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(loaded.dialogueTasks.length, 1);
         assert.equal(loaded.dialogueTasks[0].status, DIALOGUE_TASK_STATUSES.RESOLVED);
         assert.equal(loaded.dialogueMessages.length, 1);
-        assert.equal(loaded.dialogueConversationParts.length, 5);
+        assert.equal(loaded.dialogueConversationParts.length, 7);
+        assert.equal(loaded.dialogueMemories.length, 1);
+        assert.equal(loaded.dialogueMemories[0].data.requestedItem, 'fujiwattit');
         assert.ok(loaded.nextDialogueTaskId > loaded.dialogueTasks[0].id);
     });
 });

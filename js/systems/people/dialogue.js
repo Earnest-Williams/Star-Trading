@@ -6,6 +6,11 @@ import {
     addPlayerUtterance
 } from './conversationParts.js';
 import { createLocateItemDialogueTask } from './dialogueTasks.js';
+import {
+    DIALOGUE_MEMORY_SALIENCE,
+    DIALOGUE_MEMORY_TYPES,
+    createOrReinforceDialogueMemory
+} from './memory.js';
 import { state } from '../../state.js';
 
 function asString(value, fallback = '') {
@@ -53,6 +58,49 @@ export function askNpcToFindPart(personId, itemId) {
         `No stock today, but I can ask around for a ${label}.`,
         { itemId: safeItemId, intentPartId: intentPart.id }
     );
+    const memoryProposalPart = addDialogueConversationPart({
+        conversationId,
+        partType: DIALOGUE_PART_TYPES.PROPOSAL,
+        speakerType: DIALOGUE_SPEAKER_TYPES.SYSTEM,
+        speakerId: 'dialogue',
+        subjectId: person.id,
+        intent: 'remember_customer_request',
+        payload: {
+            type: 'remember_customer_request',
+            authority: 'memory',
+            memoryType: DIALOGUE_MEMORY_TYPES.CUSTOMER_REQUEST,
+            ownerPersonId: person.id,
+            subjectId: 'player',
+            itemId: safeItemId,
+            salience: DIALOGUE_MEMORY_SALIENCE.HIGH
+        },
+        causedByPartId: responsePart.id
+    });
+    const memory = createOrReinforceDialogueMemory({
+        ownerPersonId: person.id,
+        subjectId: 'player',
+        memoryType: DIALOGUE_MEMORY_TYPES.CUSTOMER_REQUEST,
+        conversationId,
+        causedByPartId: memoryProposalPart.id,
+        text: `Player asked me to find a ${label}.`,
+        data: { requestedItem: safeItemId, itemId: safeItemId },
+        salience: DIALOGUE_MEMORY_SALIENCE.HIGH
+    });
+    const memoryEffectPart = addDialogueConversationPart({
+        conversationId,
+        partType: DIALOGUE_PART_TYPES.EFFECT,
+        speakerType: DIALOGUE_SPEAKER_TYPES.SYSTEM,
+        speakerId: 'memory',
+        subjectId: person.id,
+        intent: 'dialogue_memory_recorded',
+        payload: {
+            proposalPartId: memoryProposalPart.id,
+            memoryId: memory.id,
+            memoryType: memory.memoryType,
+            duplicateMemory: memory.reinforcementCount > 1
+        },
+        causedByPartId: memoryProposalPart.id
+    });
     const proposalPart = addDialogueConversationPart({
         conversationId,
         partType: DIALOGUE_PART_TYPES.PROPOSAL,
@@ -98,6 +146,9 @@ export function askNpcToFindPart(personId, itemId) {
         playerPart,
         intentPart,
         responsePart,
+        memoryProposalPart,
+        memory,
+        memoryEffectPart,
         proposalPart,
         task,
         effectPart
