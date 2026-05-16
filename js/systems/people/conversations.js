@@ -145,6 +145,12 @@ function mapDialogueConversations(target) {
     return lookup;
 }
 
+function findDialogueConversationById(conversationId) {
+    return state.dialogueConversations.find(conversation => (
+        conversation.conversationId === conversationId || conversation.id === conversationId
+    )) || null;
+}
+
 export function normaliseDialogueConversation(conversation, fallbackId = 1) {
     const startedAt = normaliseTimestamp(conversation?.startedAt);
     const id = asIdString(
@@ -257,9 +263,7 @@ export function normaliseDialogueConversations(target = state) {
 export function getDialogueConversation(conversationId) {
     ensureDialogueConversationRows();
     const safeConversationId = asString(conversationId, 'default');
-    return state.dialogueConversations.find(conversation => (
-        conversation.conversationId === safeConversationId || conversation.id === safeConversationId
-    )) || null;
+    return findDialogueConversationById(safeConversationId);
 }
 
 export function ensureDialogueConversation({
@@ -279,9 +283,7 @@ export function ensureDialogueConversation({
 } = {}) {
     ensureDialogueConversationRows();
     const safeConversationId = asString(conversationId, 'default');
-    const existing = state.dialogueConversations.find(conversation => (
-        conversation.conversationId === safeConversationId || conversation.id === safeConversationId
-    )) || null;
+    const existing = findDialogueConversationById(safeConversationId);
     if (existing) {
         return touchDialogueConversation(safeConversationId, {
             conversationType,
@@ -321,10 +323,7 @@ export function ensureDialogueConversation({
 export function touchDialogueConversation(conversationId, updates = {}) {
     ensureDialogueConversationRows();
     const safeConversationId = asString(conversationId, 'default');
-    let conversation = state.dialogueConversations.find(existingConversation => (
-        existingConversation.conversationId === safeConversationId
-            || existingConversation.id === safeConversationId
-    )) || null;
+    let conversation = findDialogueConversationById(safeConversationId);
     if (!conversation) {
         conversation = ensureDialogueConversation({ conversationId: safeConversationId });
     }

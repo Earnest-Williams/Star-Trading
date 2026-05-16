@@ -61,7 +61,12 @@ function nextNumericIdForTable(records) {
 }
 
 function eventAbsoluteMinute(event) {
-    return ((asInteger(event?.day, 1) - 1) * BALANCE.DAY_MINUTES) + asInteger(event?.minute, 0);
+    const day = asInteger(event?.day ?? event?.timestamp?.day, 1);
+    const minute = asInteger(
+        event?.minute ?? event?.minuteOfDay ?? event?.timestamp?.minuteOfDay,
+        0
+    );
+    return ((day - 1) * BALANCE.DAY_MINUTES) + minute;
 }
 
 function ensureDialogueEventStorage(target = state) {
