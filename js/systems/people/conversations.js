@@ -110,8 +110,7 @@ function nextNumericIdForTable(records) {
 
 function updateNextConversationId(target) {
     const nextId = nextNumericIdForTable(target.dialogueConversations);
-    if (!Number.isInteger(target.nextDialogueConversationId)
-            || target.nextDialogueConversationId < nextId) {
+    if (!Number.isInteger(target.nextDialogueConversationId) || target.nextDialogueConversationId < nextId) {
         target.nextDialogueConversationId = nextId;
     }
 }

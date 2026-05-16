@@ -69,6 +69,12 @@ function eventAbsoluteMinute(event) {
     return ((day - 1) * BALANCE.DAY_MINUTES) + minute;
 }
 
+function compareDialogueEvents(a, b) {
+    const minuteDiff = eventAbsoluteMinute(a) - eventAbsoluteMinute(b);
+    if (minuteDiff !== 0) return minuteDiff;
+    return asInteger(a?.id, 0) - asInteger(b?.id, 0);
+}
+
 function ensureDialogueEventStorage(target = state) {
     if (!Array.isArray(target.dialogueEventLog)) target.dialogueEventLog = [];
     if (!Number.isInteger(target.nextDialogueEventId) || target.nextDialogueEventId < 1) {
@@ -185,20 +191,16 @@ export function addDialogueEvent({
         summary,
         payload
     });
-    const eventTime = eventAbsoluteMinute(event);
     const lastEvent = state.dialogueEventLog[state.dialogueEventLog.length - 1];
     if (!lastEvent) {
         state.dialogueEventLog.push(event);
         return event;
     }
-    const lastEventTime = eventAbsoluteMinute(lastEvent);
-    if (eventTime > lastEventTime || (eventTime === lastEventTime && event.id >= lastEvent.id)) {
+    if (compareDialogueEvents(event, lastEvent) >= 0) {
         state.dialogueEventLog.push(event);
     } else {
         const insertIndex = state.dialogueEventLog.findIndex(existingEvent => {
-            const existingTime = eventAbsoluteMinute(existingEvent);
-            return eventTime < existingTime
-                || (eventTime === existingTime && event.id < asInteger(existingEvent.id, Number.MAX_SAFE_INTEGER));
+            return compareDialogueEvents(event, existingEvent) < 0;
         });
         if (insertIndex === -1) {
             state.dialogueEventLog.push(event);
