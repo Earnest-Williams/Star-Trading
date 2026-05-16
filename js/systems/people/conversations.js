@@ -117,8 +117,11 @@ function updateNextConversationId(target) {
 
 function sortDialogueConversations(target) {
     target.dialogueConversations = target.dialogueConversations
-        .sort((a, b) => a.startedAt.absoluteMinute - b.startedAt.absoluteMinute
-            || String(a.conversationId).localeCompare(String(b.conversationId)));
+        .sort((a, b) => {
+            const minuteDiff = a.startedAt.absoluteMinute - b.startedAt.absoluteMinute;
+            if (minuteDiff !== 0) return minuteDiff;
+            return String(a.conversationId).localeCompare(String(b.conversationId));
+        });
 }
 
 function ensureDialogueConversationRows(target = state) {
