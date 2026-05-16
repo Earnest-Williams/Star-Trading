@@ -1,27 +1,23 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resetState, state } from '../js/state.js';
-import {
-    calculateGatePulseCost,
-    createPlayer,
-    generateUniverse
-} from '../js/core/universe.js';
+import { state } from '../js/state.js';
+import { calculateGatePulseCost } from '../js/core/universe.js';
 import { areSectorsConnected, getSectorNeighbors } from '../js/core/navigation.js';
 import { BALANCE, MARKET_COMMODITIES } from '../js/constants.js';
 import { tradeCommodity } from '../js/systems/market.js';
+import {
+    defaultWorldgenSettings,
+    getEconomicSectorIds,
+    seedGeneratedUniverse,
+    TEST_SEEDS
+} from './helpers/gameState.js';
 
 function seedGame() {
-    resetState();
-    state.player = createPlayer();
-    state.player.seed = 424242;
-    state.worldgenSettings = {
-        galaxyArchetype: 'barred_spiral',
-        occupiedSites: 60,
-        routeDensity: 1,
-        chartedFraction: BALANCE.WORLDGEN.DEFAULT_CHARTED_FRACTION
-    };
-    generateUniverse();
+    seedGeneratedUniverse({
+        seed: TEST_SEEDS.WORLDGEN,
+        worldgenSettings: defaultWorldgenSettings(60)
+    });
 }
 
 describe('sparse 3D world generation and gate economy', () => {
@@ -81,73 +77,81 @@ describe('sparse 3D world generation and gate economy', () => {
 describe('economic connectivity, companies, people, and polities', () => {
     const seeds = [101, 202, 303];
 
-    for (const occupiedSites of BALANCE.WORLDGEN.SITE_COUNT_PRESETS) {
-        for (const seed of seeds) {
-            it(`connects all economic sectors for ${occupiedSites} sites seed ${seed}`, () => {
-                resetState();
-                state.player = createPlayer();
-                state.player.seed = seed;
-                state.worldgenSettings = {
-                    galaxyArchetype: occupiedSites >= 540 ? 'four_arm_spiral' : 'barred_spiral',
-                    occupiedSites,
-                    routeDensity: 1,
-                    chartedFraction: BALANCE.WORLDGEN.DEFAULT_CHARTED_FRACTION
-                };
-                generateUniverse();
-
-                const economicIds = Object.keys(state.universe).map(Number).filter(id => {
-                    const sector = state.universe[id];
-                    return state.ports[id] || state.planets[id] || sector.asteroids || sector.station;
+    it('connects all economic sectors across supported site presets and seeds', () => {
+        for (const occupiedSites of BALANCE.WORLDGEN.SITE_COUNT_PRESETS) {
+            for (const seed of seeds) {
+                seedGeneratedUniverse({
+                    seed,
+                    worldgenSettings: defaultWorldgenSettings(occupiedSites)
                 });
+
+                const economicIds = getEconomicSectorIds();
                 const anchor = economicIds[0];
-                assert.ok(economicIds.length > 0, 'worldgen should create economic sectors');
-                assert.ok(economicIds.every(id => areSectorsConnected(anchor, id)), 'all economic sectors should be mutually reachable');
-            });
-        }
-    }
-
-    it('spawns companies and contacts only in economically active sectors', () => {
-        const economicIds = new Set(Object.keys(state.universe).map(Number).filter(id => {
-            const sector = state.universe[id];
-            return state.ports[id] || state.planets[id] || sector.asteroids || sector.station;
-        }));
-
-        Object.values(state.companies).forEach(company => {
-            assert.ok(economicIds.has(company.sectorId), `company ${company.id} should be in an economic sector`);
-            assert.ok(company.contactPersonIds.length > 0, `company ${company.id} should have a contact`);
-        });
-        economicIds.forEach(id => {
-            assert.ok((state.companyIdsBySector[id] || []).length > 0, `economic sector ${id} should have a company`);
-            assert.ok(state.universe[id].localAuthority, `economic sector ${id} should have a local authority`);
-        });
-    });
-
-    it('keeps mission issuer companies aligned with mission origins', async () => {
-        const { generateMissionPool } = await import('../js/systems/missions.js');
-        generateMissionPool(12);
-        state.missions.filter(mission => mission.issuerCompanyId).forEach(mission => {
-            const company = state.companies[mission.issuerCompanyId];
-            assert.ok(company, `mission issuer ${mission.issuerCompanyId} should exist`);
-            assert.equal(company.sectorId, mission.originSector);
-            assert.equal(company.factionId, mission.factionId);
-        });
-    });
-
-    it('assigns contiguous non-independent polities', () => {
-        Object.values(state.polities).forEach(polity => {
-            if (polity.type === 'independent' || polity.sectorIds.length <= 1) return;
-            const allowed = new Set(polity.sectorIds);
-            const seen = new Set([polity.sectorIds[0]]);
-            const queue = [polity.sectorIds[0]];
-            while (queue.length > 0) {
-                const id = queue.shift();
-                getSectorNeighbors(id).forEach(next => {
-                    if (!allowed.has(next) || seen.has(next)) return;
-                    seen.add(next);
-                    queue.push(next);
-                });
+                const label = `${occupiedSites} sites seed ${seed}`;
+                assert.ok(economicIds.length > 0, `${label}: economic sectors should exist`);
+                assert.ok(
+                    economicIds.every(id => areSectorsConnected(anchor, id)),
+                    `${label}: all economic sectors should be mutually reachable`
+                );
             }
-            assert.equal(seen.size, allowed.size, `${polity.name} should be contiguous`);
+        }
+    });
+
+    describe('generated economic entities', () => {
+        beforeEach(seedGame);
+
+        it('spawns companies and contacts only in economically active sectors', () => {
+            const economicIds = new Set(getEconomicSectorIds());
+
+            Object.values(state.companies).forEach(company => {
+                assert.ok(
+                    economicIds.has(company.sectorId),
+                    `company ${company.id} should be in an economic sector`
+                );
+                assert.ok(
+                    company.contactPersonIds.length > 0,
+                    `company ${company.id} should have a contact`
+                );
+            });
+            economicIds.forEach(id => {
+                assert.ok(
+                    (state.companyIdsBySector[id] || []).length > 0,
+                    `economic sector ${id} should have a company`
+                );
+                assert.ok(
+                    state.universe[id].localAuthority,
+                    `economic sector ${id} should have a local authority`
+                );
+            });
+        });
+
+        it('keeps mission issuer companies aligned with mission origins', async () => {
+            const { generateMissionPool } = await import('../js/systems/missions.js');
+            generateMissionPool(12);
+            state.missions.filter(mission => mission.issuerCompanyId).forEach(mission => {
+                const company = state.companies[mission.issuerCompanyId];
+                assert.ok(company, `mission issuer ${mission.issuerCompanyId} should exist`);
+                assert.equal(company.sectorId, mission.originSector);
+                assert.equal(company.factionId, mission.factionId);
+            });
+        });
+
+        it('assigns contiguous non-independent polities', () => {
+            Object.values(state.polities).forEach(polity => {
+                if (polity.type === 'independent' || polity.sectorIds.length <= 1) return;
+                const allowed = new Set(polity.sectorIds);
+                const seen = new Set([polity.sectorIds[0]]);
+                const queue = [polity.sectorIds[0]];
+                while (queue.length > 0) {
+                    const id = queue.shift();
+                    getSectorNeighbors(id).forEach(next => {
+                        if (!allowed.has(next) || seen.has(next)) return;
+                        seen.add(next);
+                        queue.push(next);
+                    });
+                }
+                assert.equal(seen.size, allowed.size, `${polity.name} should be contiguous`);
+            });
         });
     });
 });

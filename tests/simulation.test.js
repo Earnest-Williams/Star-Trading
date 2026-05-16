@@ -4,25 +4,24 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetState, state } from '../js/state.js';
-import { createPlayer, generateUniverse } from '../js/core/universe.js';
+import { createPlayer } from '../js/core/universe.js';
 import { initSessionRng, random, restoreSessionRng, seededRng } from '../js/utils.js';
 import { registerDailyHook, clearDailyHooks, clearHourlyHooks, advanceTime } from '../js/core/time.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../js/systems/politics.js';
 import { expireMissions } from '../js/systems/missions.js';
 import { BALANCE } from '../js/constants.js';
+import { seedGeneratedUniverse, TEST_SEEDS } from './helpers/gameState.js';
 
-const FIXED_SEED = 42;
+const FIXED_SEED = TEST_SEEDS.SIMULATION;
 const MINUTES_PER_DAY = BALANCE.DAY_MINUTES; // 1440
 
 function seedGame(seed = FIXED_SEED) {
-    state.player = createPlayer();
-    state.player.seed = seed;
+    seedGeneratedUniverse({ seed });
     state.worldEvents = [];
     state.nextWorldEventId = 1;
     state.captains = {};
     state.captainEventLog = [];
     state.nextCaptainEventId = 1;
-    generateUniverse();
 }
 
 // =====================================================
