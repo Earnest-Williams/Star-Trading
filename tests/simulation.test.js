@@ -1,7 +1,7 @@
 // Cross-system simulation tests.
 // Exercises seeded world generation and basic time-advance invariants
 // without touching any browser-specific code.
-import { before, describe, it } from 'node:test';
+import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetState, state } from '../js/state.js';
 import { createPlayer } from '../js/core/universe.js';
@@ -161,7 +161,7 @@ describe('generateUniverse — determinism', () => {
 });
 
 describe('simulation — 10-day advance', () => {
-    before(() => {
+    beforeEach(() => {
         registerSimulationHooks();
         seedGame(FIXED_SEED);
 
