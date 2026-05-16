@@ -224,6 +224,8 @@ compatibility expectations.
 - World-tick orchestration split into daily and hourly phases with registered
   hooks.
 - World events log for persistent narrative tracking.
+- Simulation trace layer that mirrors world, dialogue, and route outcomes into
+  a shared causal debug ledger.
 - Character sheet, chargen presets, trait hooks, and starting platform choices.
 - Sparse-world save migration and persistence normalization.
 - Interactive map polish: hover tooltips, zoom/pan viewport transforms, parallax
@@ -232,7 +234,7 @@ compatibility expectations.
 
 ### In progress
 
-- Making the event layer more consistent across travel, captains, factions,
+- Extending simulation-trace adoption across travel, captains, factions,
   missions, colonies, economy, combat, and threat systems.
 - Deepening entanglement consequences and captain-relationship gameplay.
 - Improving first-run onboarding and system discoverability.
@@ -242,5 +244,5 @@ compatibility expectations.
 
 - Screenshot or short GIF for the README.
 - More authored map, chargen, and notification feedback.
-- Deeper event causality and debug surfacing for simulation outcomes.
+- More authored causal explanations in notifications, route reports, and maps.
 - Bounty board once the contraband/legality heat surface is proven.

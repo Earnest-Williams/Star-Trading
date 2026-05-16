@@ -492,9 +492,11 @@ export function createTradeRoute(destinationSector, commodity) {
     addSectorInfluence(originSector, getFactionPoliticalPole(origin.factionId || "traders"), BALANCE.TRADE_ROUTE.OPEN_INFLUENCE_GAIN, "new logistics route");
     addSectorInfluence(destinationSector, getFactionPoliticalPole(destination.factionId || "traders"), BALANCE.TRADE_ROUTE.OPEN_INFLUENCE_GAIN, "new logistics route");
     addWorldEvent({
-        type: "route_opened", sectorId: destinationSector, factionId: route.factionId,
+        type: "route_opened", sourceSystem: "trade_routes", routeId: route.id,
+        sectorId: destinationSector, factionId: route.factionId,
         text: `You opened an explicit ${formatCommodity(commodity)} trade route from sector ${originSector} to sector ${destinationSector}.`,
-        importance: 2, alert: true
+        importance: 2, alert: true,
+        payload: { originSector, destinationSector, commodity }
     });
 }
 
@@ -542,7 +544,11 @@ export function toggleTradeRoute(routeId) {
     const route = state.tradeRoutes.find(r => r.id === routeId);
     if (!route || route.status === "closed") return;
     route.status = route.status === "active" ? "paused" : "active";
-    addWorldEvent({ type: "route_status", text: `${route.name} is now ${route.status}.`, sectorId: route.destinationSector, importance: 1, alert: false });
+    addWorldEvent({
+        type: "route_status", sourceSystem: "trade_routes", routeId: route.id,
+        text: `${route.name} is now ${route.status}.`,
+        sectorId: route.destinationSector, importance: 1, alert: false
+    });
 }
 
 export function closeTradeRoute(routeId) {
@@ -552,7 +558,11 @@ export function closeTradeRoute(routeId) {
     if (!route || route.status === "closed") return;
     route.status = "closed";
     route.escortCaptainId = null;
-    addWorldEvent({ type: "route_closed", text: `${route.name} was closed.`, sectorId: route.destinationSector, importance: 1, alert: true });
+    addWorldEvent({
+        type: "route_closed", sourceSystem: "trade_routes", routeId: route.id,
+        text: `${route.name} was closed.`,
+        sectorId: route.destinationSector, importance: 1, alert: true
+    });
 }
 
 export function assignCaptainToRoute(routeId, captainId) {
@@ -614,7 +624,12 @@ export function runTradeRoute(route) {
     const destination = getLogisticsNode(route.destinationSector);
     if (!origin || !destination) {
         route.status = "paused";
-        addWorldEvent({ type: "route_paused", text: `${route.name} paused because one endpoint is no longer valid.`, importance: 2, alert: true });
+        addWorldEvent({
+            type: "route_paused", sourceSystem: "trade_routes", routeId: route.id,
+            text: `${route.name} paused because one endpoint is no longer valid.`,
+            importance: 2, alert: true,
+            causedBy: [{ sourceSystem: "trade_routes", eventType: "route_endpoint_missing" }]
+        });
         return;
     }
     const available = Math.max(0, origin.stock[route.commodity] || 0);
@@ -630,9 +645,16 @@ export function runTradeRoute(route) {
         if (route.starvedDays >= BALANCE.TRADE_ROUTE.STARVED_PAUSE_DAYS) route.status = "paused";
         route.reliability = clampRange(route.reliability - BALANCE.TRADE_ROUTE.STARVED_RELIABILITY_LOSS, 0, 100);
         addWorldEvent({
-            type: "route_shortage", sectorId: route.originSector, factionId: route.factionId,
+            type: "route_shortage", sourceSystem: "trade_routes", routeId: route.id,
+            sectorId: route.originSector, factionId: route.factionId,
             text: `${route.name} missed a run because ${formatCommodity(route.commodity)} was unavailable or the destination was full.`,
-            importance: 1, alert: false
+            importance: 1, alert: false,
+            causedBy: [{
+                sourceSystem: "economy",
+                eventType: "route_capacity_or_supply_shortfall",
+                label: `${formatCommodity(route.commodity)} available ${available}, capacity ${capacity}`
+            }],
+            payload: { available, capacity, commodity: route.commodity }
         });
         return;
     }
@@ -640,9 +662,12 @@ export function runTradeRoute(route) {
     if (risk === null) {
         route.status = "paused";
         addWorldEvent({
-            type: "route_disconnected", sectorId: route.originSector, factionId: route.factionId,
+            type: "route_disconnected", sourceSystem: "trade_routes", routeId: route.id,
+            sectorId: route.originSector, factionId: route.factionId,
             text: `${route.name} paused because no connected jump-gate corridor path exists between sector ${route.originSector} and sector ${route.destinationSector}.`,
-            importance: 3, alert: true
+            importance: 3, alert: true,
+            causedBy: [{ sourceSystem: "travel", eventType: "corridor_path_missing" }],
+            payload: { originSector: route.originSector, destinationSector: route.destinationSector }
         });
         return;
     }
@@ -680,11 +705,18 @@ export function runTradeRoute(route) {
         }
         if (escortCaptain) nudgeCaptainRelation(escortCaptain.id, { opinion: 1, trust: 1, rivalry: 1 }, `fought through a failed convoy run on ${route.name}`);
         addWorldEvent({
-            type: "route_raid", sectorId: hotSector,
+            type: "route_raid", sourceSystem: "trade_routes", routeId: route.id,
+            sectorId: hotSector,
             captainId: escortCaptain ? escortCaptain.id : null,
             factionId: "vc",
             text: `${route.name} was hit en route. Pirate pressure increased near sector ${hotSector}.`,
-            importance: 3, alert: true
+            importance: 3, alert: true,
+            causedBy: [{
+                sourceSystem: "threat",
+                eventType: "route_risk_check",
+                label: `risk ${risk}, escort ${escortPower}, failure chance ${Math.round(failureChance * 100)}%`
+            }],
+            payload: { risk, escortPower, failureChance, hotSector }
         });
         return;
     }
@@ -724,10 +756,17 @@ export function runTradeRoute(route) {
         }, `kept ${route.name} running`);
     }
     addWorldEvent({
-        type: "route_success", sectorId: route.destinationSector,
+        type: "route_success", sourceSystem: "trade_routes", routeId: route.id,
+        sectorId: route.destinationSector,
         captainId: escortCaptain ? escortCaptain.id : null, factionId: route.factionId,
         text: `${route.name} delivered ${amount} ${formatCommodity(route.commodity)} and earned ${formatCredits(profit)} credits.`,
-        importance: route.runs % BALANCE.TRADE_ROUTE.ESCORT_RELATION_RUN_INTERVAL === 0 ? 2 : 1, alert: false
+        importance: route.runs % BALANCE.TRADE_ROUTE.ESCORT_RELATION_RUN_INTERVAL === 0 ? 2 : 1, alert: false,
+        causedBy: [{
+            sourceSystem: "economy",
+            eventType: "route_profit_check",
+            label: `${amount} ${formatCommodity(route.commodity)} moved for ${formatCredits(profit)}`
+        }],
+        payload: { amount, commodity: route.commodity, profit }
     });
 }
 

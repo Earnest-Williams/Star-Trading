@@ -12,6 +12,7 @@ import { renderCaptainsTab } from "./renderCaptains.js";
 import { getActiveIntel } from '../core/intel.js';
 import { getActivePrivatePayloads } from '../core/dataCargo.js';
 import { getActiveSecurePayloads } from '../systems/secureCourier.js';
+import { getRecentSimulationTrace, getSimulationTraceCauses } from '../core/simulationTrace.js';
 
 export function renderReputationScreen() {
     const { reputationTab } = state;
@@ -201,8 +202,19 @@ function renderWorldNewsTab() {
     return html;
 }
 
+function formatTraceCause(cause) {
+    if (!cause) return 'Unknown cause';
+    if (cause.summary?.text) return cause.summary.text;
+    if (cause.label) return cause.label;
+    const source = cause.sourceSystem || 'trace';
+    const type = cause.eventType || 'event';
+    const id = cause.id || cause.eventId || cause.traceId || '?';
+    return `${source}:${type} #${id}`;
+}
+
 function renderDebugTab() {
     const { worldEvents, tradeRoutes, universe, missions, captains } = state;
+    const recentTrace = getRecentSimulationTrace(8);
     let html = `<h4>Simulation Debug</h4>`;
     html += `<div class="small muted">Use these while tuning the living economy.</div>`;
     html += `<div class="compact-actions">`;
@@ -218,7 +230,28 @@ function renderDebugTab() {
     html += `<div class="stat-pill">Available missions: ${missions.filter(m => m.status === "available").length}</div>`;
     html += `<div class="stat-pill">Captain-taken missions: ${missions.filter(m => m.status === "captain_taken").length}</div>`;
     html += `<div class="stat-pill">Active captains: ${Object.values(captains).filter(c => c.status === "active").length}</div>`;
+    html += `<div class="stat-pill">Trace events: ${(state.simulationTrace || []).length}</div>`;
     html += `</div>`;
+    html += `<h4>Recent Causes</h4>`;
+    if (recentTrace.length === 0) {
+        html += `<div class="muted">No simulation trace entries recorded yet.</div>`;
+    } else {
+        recentTrace.forEach(event => {
+            const causes = getSimulationTraceCauses(event.id);
+            const stamp = `Day ${event.day}, ${formatTime(event.minute || 0)}`;
+            html += `<div class="timeline-entry">`;
+            html += `<strong>${stamp}</strong> `;
+            html += `<span class="sector-chip">${escapeHtml(event.sourceSystem)}</span> `;
+            if (event.sectorId) html += `<span class="sector-chip">Sector ${event.sectorId}</span> `;
+            html += `${escapeHtml(event.summary?.text || event.eventType)}`;
+            if (causes.length > 0) {
+                html += `<div class="small muted">Because: ${causes.map(formatTraceCause).map(escapeHtml).join(' → ')}</div>`;
+            } else {
+                html += `<div class="small muted">No recorded causal parent.</div>`;
+            }
+            html += `</div>`;
+        });
+    }
     return html;
 }
 

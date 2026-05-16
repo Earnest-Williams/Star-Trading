@@ -15,6 +15,8 @@ compatible with older prototype payloads. The current save version is defined by
 - `js/systems/captains/persistence.js` — captain-specific normalization.
 - `js/systems/tradeRoutes/**` — route validation and normalization.
 - `js/core/dataCargo/**` — data-cargo state normalization.
+- `js/core/simulationTrace.js` — cross-system event trace normalization and
+  causal-reference read models.
 
 ## Save lifecycle
 
@@ -49,6 +51,12 @@ lattice cells must not be materialized during migration or normalization.
 Legacy route payloads are interpreted as player-owned explicit trade routes when
 possible. Route execution must continue to validate real corridor connectivity;
 disconnected endpoints are invalid data, not a reason to create a fallback path.
+
+## Simulation trace compatibility
+
+`state.simulationTrace` and `state.nextSimulationTraceId` are persisted so debug
+and causality context survives save/load. Missing trace fields are safe to fill
+through normalization because old saves simply start with an empty trace ledger.
 
 ## Persistence adapters
 
