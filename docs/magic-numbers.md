@@ -90,3 +90,21 @@ near migration code:
 
 Future balance work should continue moving any newly-added player-facing number
 into the closest domain config object before using it in system code.
+
+## Maintenance checklist
+
+When adding or changing numeric values, classify each value before committing:
+
+1. **Player-facing balance:** put it in `BALANCE` or the closest domain config
+   file, then name it by behavior rather than by current value.
+2. **Authored content:** keep it with the content table when the number is part
+   of a mission, trait, company, polity, person, or worldgen data record.
+3. **Structural code:** leave obvious indexes, sentinels, radix values, bitwise
+   constants, and percentage display conversions near the implementation.
+4. **Compatibility gates:** keep save-version checks and legacy defaults close to
+   the migration branch that uses them.
+5. **Tests and benchmarks:** keep scenario fixtures local to the test unless the
+   value is shared production behavior.
+
+If a new balance group is introduced, update this audit and link the owning file
+from `docs/SYSTEMS.md` or `docs/ARCHITECTURE.md` as appropriate.
