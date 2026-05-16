@@ -67,3 +67,10 @@ export {
     normaliseDialogueMessage,
     normaliseDialogueMessages
 } from './people/messages.js';
+export {
+    DIALOGUE_MEMORY_SALIENCE,
+    DIALOGUE_MEMORY_TYPES,
+    createOrReinforceDialogueMemory,
+    normaliseDialogueMemories,
+    normaliseDialogueMemory
+} from './people/memory.js';
