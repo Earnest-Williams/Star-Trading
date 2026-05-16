@@ -216,14 +216,12 @@ export function addDialogueConversationPart({
 }
 
 export function getConversationPart(partId) {
-    ensureDialogueRuntimeStorage();
     const id = asRecordId(partId);
     if (!Number.isInteger(id)) return null;
     return state.dialogueConversationParts.find(part => part.id === id) || null;
 }
 
 export function getConversationParts(conversationId = DEFAULT_CONVERSATION_ID) {
-    ensureDialogueRuntimeStorage();
     const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     return state.dialogueConversationParts
         .filter(part => part.conversationId === safeConversationId)
@@ -243,26 +241,24 @@ export function getConversationPartsByType(conversationId = DEFAULT_CONVERSATION
 }
 
 export function getConversationPartsBySpeaker(speakerType, speakerId = null, conversationId = null) {
-    ensureDialogueRuntimeStorage();
     const safeSpeakerType = asString(speakerType, '');
     if (!isDialogueSpeakerType(safeSpeakerType)) return [];
     const safeSpeakerId = asNullableString(speakerId);
     const safeConversationId = asNullableString(conversationId);
     return state.dialogueConversationParts
-        .filter(part => part.speakerType === safeSpeakerType)
-        .filter(part => safeSpeakerId === null || part.speakerId === safeSpeakerId)
-        .filter(part => safeConversationId === null || part.conversationId === safeConversationId)
+        .filter(part => part.speakerType === safeSpeakerType
+            && (safeSpeakerId === null || part.speakerId === safeSpeakerId)
+            && (safeConversationId === null || part.conversationId === safeConversationId))
         .sort(compareDialogueConversationParts);
 }
 
 export function getConversationPartsCausedBy(causedByPartId, conversationId = null) {
-    ensureDialogueRuntimeStorage();
     const id = asRecordId(causedByPartId);
     if (!Number.isInteger(id)) return [];
     const safeConversationId = asNullableString(conversationId);
     return state.dialogueConversationParts
-        .filter(part => part.causedByPartId === id)
-        .filter(part => safeConversationId === null || part.conversationId === safeConversationId)
+        .filter(part => part.causedByPartId === id
+            && (safeConversationId === null || part.conversationId === safeConversationId))
         .sort(compareDialogueConversationParts);
 }
 
@@ -273,9 +269,7 @@ export function getConversationPartCausalChain(partId) {
     while (current && !visited.has(current.id)) {
         visited.add(current.id);
         chain.unshift(current);
-        current = Number.isInteger(current.causedByPartId)
-            ? getConversationPart(current.causedByPartId)
-            : null;
+        current = getConversationPart(current.causedByPartId);
     }
     return chain;
 }
