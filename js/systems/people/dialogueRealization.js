@@ -2,6 +2,7 @@ import {
     DIALOGUE_FALLBACK_LINE,
     DIALOGUE_FRAME_STATES,
     DIALOGUE_INTENTS,
+    DIALOGUE_PROMPT_TEMPLATE_BANKS,
     DIALOGUE_TEMPLATE_BANKS,
     LOCATE_ITEM_REQUIRED_SLOTS
 } from './dialogueTemplates.js';
@@ -47,14 +48,16 @@ function requiredSlotsForFrame(frame) {
 }
 
 function fillTemplate(template, slots) {
-    return template
-        .replaceAll('{itemLabel}', asString(slots.itemLabel, 'part'))
-        .replaceAll('{personName}', asString(slots.personName, 'contact'));
+    return Object.entries(isObject(slots) ? slots : {})
+        .reduce((line, [key, value]) => line.replaceAll(`{${key}}`, asString(value, '')), template);
 }
 
 export function buildDialogueFrame(intent, context = {}) {
     const source = isObject(context) ? context : {};
     const slots = isObject(source.slots) ? source.slots : {};
+    const normalizedSlots = Object.fromEntries(
+        Object.entries(slots).map(([key, value]) => [key, asString(value, '')])
+    );
     return {
         intent: normalizeIntent(intent),
         actorId: asString(source.actorId, 'player'),
@@ -64,6 +67,7 @@ export function buildDialogueFrame(intent, context = {}) {
         state: normalizeState(source.state),
         tone: asString(source.tone, 'neutral'),
         slots: {
+            ...normalizedSlots,
             itemLabel: asString(slots.itemLabel, ''),
             personName: asString(slots.personName, '')
         }
@@ -93,4 +97,12 @@ export function realizeDialogueLine(frame) {
     const template = templates[frame.state];
     if (!template) return DIALOGUE_FALLBACK_LINE;
     return fillTemplate(template, frame.slots || {});
+}
+
+export function realizeDialoguePrompt(frame) {
+    const normalizedFrame = buildDialogueFrame(frame?.intent, frame);
+    const templates = DIALOGUE_PROMPT_TEMPLATE_BANKS[normalizedFrame.intent] || {};
+    const template = templates[normalizedFrame.state] || templates[DIALOGUE_FRAME_STATES.FRESH_REQUEST];
+    if (!template) return DIALOGUE_FALLBACK_LINE;
+    return fillTemplate(template, normalizedFrame.slots || {});
 }

@@ -160,11 +160,13 @@ export {
 export {
     buildDialogueFrame,
     realizeDialogueLine,
+    realizeDialoguePrompt,
     validateDialogueFrame
 } from './people/dialogueRealization.js';
 export {
     DIALOGUE_FALLBACK_LINE,
     DIALOGUE_FRAME_STATES,
     DIALOGUE_INTENTS,
+    DIALOGUE_PROMPT_TEMPLATE_BANKS,
     DIALOGUE_TEMPLATE_BANKS
 } from './people/dialogueTemplates.js';

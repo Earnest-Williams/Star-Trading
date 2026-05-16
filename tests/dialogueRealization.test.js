@@ -7,6 +7,7 @@ import {
     DIALOGUE_INTENTS,
     buildDialogueFrame,
     realizeDialogueLine,
+    realizeDialoguePrompt,
     validateDialogueFrame
 } from '../js/systems/people.js';
 
@@ -71,5 +72,27 @@ describe('dialogue realization', () => {
         const frame = buildLocateFrame(DIALOGUE_FRAME_STATES.OFFER_READY);
 
         assert.equal(realizeDialogueLine(frame), realizeDialogueLine(frame));
+    });
+
+    it('preserves additional normalized slots on the semantic frame', () => {
+        const frame = buildDialogueFrame(DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM, {
+            ownerPersonId: 'person-1',
+            itemId: 'nav_chip',
+            state: DIALOGUE_FRAME_STATES.FRESH_REQUEST,
+            slots: { itemLabel: 'nav chip', personName: 'Nara Keel', urgency: ' high ' }
+        });
+
+        assert.equal(frame.slots.urgency, 'high');
+    });
+
+    it('realizes player prompts through the template pipeline', () => {
+        const frame = buildDialogueFrame(DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM, {
+            ownerPersonId: 'person-1',
+            itemId: 'nav_chip',
+            state: DIALOGUE_FRAME_STATES.ACTIVE_TASK,
+            slots: { itemLabel: 'nav chip', personName: 'Nara Keel' }
+        });
+
+        assert.equal(realizeDialoguePrompt(frame), 'Any news on that nav chip?');
     });
 });

@@ -12,7 +12,7 @@ import {
     touchDialogueConversation
 } from './conversations.js';
 import { DIALOGUE_TASK_STATUSES, DIALOGUE_TASK_TYPES, createLocateItemDialogueTask } from './dialogueTasks.js';
-import { buildDialogueFrame, realizeDialogueLine } from './dialogueRealization.js';
+import { buildDialogueFrame, realizeDialogueLine, realizeDialoguePrompt } from './dialogueRealization.js';
 import { DIALOGUE_FRAME_STATES, DIALOGUE_INTENTS } from './dialogueTemplates.js';
 import { DIALOGUE_OFFER_STATUSES, getActiveDialogueOffersForPlayer } from './offers.js';
 import {
@@ -85,6 +85,19 @@ function buildLocateItemResponse({ intent, person, itemId, dialogueState }) {
     return { frame, text: realizeDialogueLine(frame) };
 }
 
+function buildLocateItemPlayerPrompt({ intent, person, itemId, dialogueState }) {
+    const frame = buildDialogueFrame(intent, {
+        actorId: 'player',
+        ownerPersonId: person.id,
+        subjectId: person.id,
+        itemId,
+        state: dialogueState,
+        tone: 'neutral',
+        slots: { itemLabel: itemLabel(itemId), personName: asString(person.name, person.id) }
+    });
+    return { frame, text: realizeDialoguePrompt(frame) };
+}
+
 export function askNpcToFindPart(personId, itemId) {
     const person = ensurePerson(personId);
     const safeItemId = asString(itemId, 'unknown_part');
@@ -98,10 +111,17 @@ export function askNpcToFindPart(personId, itemId) {
         subjectId: 'player',
         topic: { itemId: safeItemId }
     });
+    const currentDialogueState = getLocateItemDialogueState(person.id, safeItemId);
+    const playerPrompt = buildLocateItemPlayerPrompt({
+        intent: DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+        person,
+        itemId: safeItemId,
+        dialogueState: currentDialogueState.state
+    });
     const playerPart = addPlayerUtterance(
         conversationId,
-        `Can you find a ${label} for me?`,
-        { action: 'askNpcToFindPart', itemId: safeItemId }
+        playerPrompt.text,
+        { action: 'askNpcToFindPart', itemId: safeItemId, dialogueFrame: playerPrompt.frame }
     );
     const intentPart = addDialogueConversationPart({
         conversationId,
@@ -118,7 +138,6 @@ export function askNpcToFindPart(personId, itemId) {
         },
         causedByPartId: playerPart.id
     });
-    const currentDialogueState = getLocateItemDialogueState(person.id, safeItemId);
     const realized = buildLocateItemResponse({
         intent: DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
         person,
@@ -269,7 +288,6 @@ export function checkBackWithNpc(personId, itemId) {
     const safeItemId = asString(itemId, 'unknown_part');
     if (!person) return false;
     const conversationId = locateItemConversationId(person.id, safeItemId);
-    const label = itemLabel(safeItemId);
     ensureDialogueConversation({
         conversationId,
         conversationType: DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM,
@@ -277,10 +295,17 @@ export function checkBackWithNpc(personId, itemId) {
         subjectId: 'player',
         topic: { itemId: safeItemId }
     });
+    const currentDialogueState = getLocateItemDialogueState(person.id, safeItemId);
+    const playerPrompt = buildLocateItemPlayerPrompt({
+        intent: DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+        person,
+        itemId: safeItemId,
+        dialogueState: currentDialogueState.state
+    });
     const playerPart = addPlayerUtterance(
         conversationId,
-        `Any news on that ${label}?`,
-        { action: 'checkBackWithNpc', itemId: safeItemId }
+        playerPrompt.text,
+        { action: 'checkBackWithNpc', itemId: safeItemId, dialogueFrame: playerPrompt.frame }
     );
     const intentPart = addDialogueConversationPart({
         conversationId,
@@ -297,7 +322,6 @@ export function checkBackWithNpc(personId, itemId) {
         },
         causedByPartId: playerPart.id
     });
-    const currentDialogueState = getLocateItemDialogueState(person.id, safeItemId);
     const realized = buildLocateItemResponse({
         intent: DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
         person,
