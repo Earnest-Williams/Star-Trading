@@ -9,13 +9,22 @@ import { resetState, state } from '../js/state.js';
 import {
     DIALOGUE_CONVERSATION_STATUSES,
     DIALOGUE_CONVERSATION_TYPES,
+    DIALOGUE_PART_TYPES,
+    DIALOGUE_SPEAKER_TYPES,
     DIALOGUE_EVENT_TYPES,
     DIALOGUE_MEMORY_TYPES,
     DIALOGUE_TASK_STATUSES,
     addDialogueEvent,
     askNpcToFindPart,
     createLocateItemDialogueTask,
+    getConversationPart,
+    getConversationPartCausalChain,
+    getConversationPartsBySpeaker,
+    getConversationPartsByType,
+    getConversationPartsCausedBy,
+    getLatestConversationPart,
     getDialogueEventsByTaskId,
+    normaliseDialogueConversationParts,
     resolveDueDialogueTasks
 } from '../js/systems/people.js';
 
@@ -89,6 +98,86 @@ describe('dialogue locate-item tasks', () => {
         assert.deepEqual(state.dialogueConversations[0].relatedTaskIds, [result.task.id]);
         assert.deepEqual(state.dialogueConversations[0].relatedMemoryIds, [result.memory.id]);
         assert.equal(getDialogueEventsByTaskId(result.task.id)[0].eventType, DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED);
+    });
+
+    it('queries conversation parts by id, type, speaker, cause, and latest row', () => {
+        const result = askNpcToFindPart('person-1', 'fujiwattit');
+
+        assert.equal(getConversationPart(result.intentPart.id).intent, 'request_locate_item');
+        assert.deepEqual(
+            getConversationPartsByType(result.conversationId, DIALOGUE_PART_TYPES.PROPOSAL)
+                .map(part => part.id),
+            [result.memoryProposalPart.id, result.proposalPart.id]
+        );
+        assert.deepEqual(
+            getConversationPartsBySpeaker(
+                DIALOGUE_SPEAKER_TYPES.PERSON,
+                'person-1',
+                result.conversationId
+            ).map(part => part.id),
+            [result.responsePart.id]
+        );
+        assert.deepEqual(
+            getConversationPartsCausedBy(result.responsePart.id, result.conversationId)
+                .map(part => part.id),
+            [result.memoryProposalPart.id, result.proposalPart.id]
+        );
+        assert.deepEqual(
+            getConversationPartCausalChain(result.effectPart.id).map(part => part.id),
+            [result.responsePart.id, result.proposalPart.id, result.effectPart.id]
+        );
+        const invalidPartId = 0;
+        const invalidPartType = 'bad-type';
+        assert.equal(getLatestConversationPart(result.conversationId).id, result.effectPart.id);
+        assert.deepEqual(getConversationPartsByType(result.conversationId, invalidPartType), []);
+        assert.deepEqual(getConversationPartsCausedBy(invalidPartId, result.conversationId), []);
+    });
+
+    it('normalizes legacy conversation part rows and causal pointers', () => {
+        const legacyPlayerPartId = 9;
+        const legacyIntentPartId = 10;
+        const legacyTimestampDay = 2;
+        const legacyPlayerPartMinuteOfDay = 500;
+        const legacyIntentPartMinuteOfDay = 501;
+        const legacyPlayerPartMinuteOffset = 20;
+        const legacyIntentPartMinuteOffset = 21;
+
+        state.dialogueConversationParts.push({
+            id: String(legacyPlayerPartId),
+            conversationId: 'legacy-conversation',
+            partType: DIALOGUE_PART_TYPES.PLAYER_UTTERANCE,
+            speakerType: DIALOGUE_SPEAKER_TYPES.PLAYER,
+            speakerId: 'player',
+            text: 'Can you track this down?',
+            timestamp: {
+                day: legacyTimestampDay,
+                minuteOfDay: legacyPlayerPartMinuteOfDay,
+                absoluteMinute: dueMinute() + legacyPlayerPartMinuteOffset
+            }
+        });
+        state.dialogueConversationParts.push({
+            id: String(legacyIntentPartId),
+            conversationId: 'legacy-conversation',
+            partType: DIALOGUE_PART_TYPES.INTENT,
+            speakerType: DIALOGUE_SPEAKER_TYPES.PLAYER,
+            speakerId: 'player',
+            intent: 'legacy_request',
+            causedByPartId: String(legacyPlayerPartId),
+            timestamp: {
+                day: legacyTimestampDay,
+                minuteOfDay: legacyIntentPartMinuteOfDay,
+                absoluteMinute: dueMinute() + legacyIntentPartMinuteOffset
+            }
+        });
+
+        normaliseDialogueConversationParts();
+
+        assert.equal(getConversationPart(legacyIntentPartId).causedByPartId, legacyPlayerPartId);
+        assert.deepEqual(
+            getConversationPartCausalChain(legacyIntentPartId).map(part => part.id),
+            [legacyPlayerPartId, legacyIntentPartId]
+        );
+        assert.equal(state.nextDialogueConversationPartId, legacyIntentPartId + 1);
     });
 
     it('missed-time simulation resolves due tasks through the hourly tick', () => {
