@@ -3,6 +3,7 @@ import { addWorldEvent } from '../../core/worldEvents.js';
 import { state } from '../../state.js';
 import { normaliseDialogueTables } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
+import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 
 export const DIALOGUE_MESSAGE_STATUSES = Object.freeze({
     UNREAD: 'unread',
@@ -26,17 +27,18 @@ function asNullableString(value) {
 }
 
 function asInteger(value, fallback) {
+    if (value === null || typeof value === 'undefined') return fallback;
     const number = Number(value);
     return Number.isInteger(number) ? number : fallback;
 }
 
 function currentDialogueTimestamp() {
-    const day = asInteger(state.player?.time?.day, 1);
-    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    const absoluteMinute = ((asInteger(state.player?.time?.day, 1) - 1) * BALANCE.DAY_MINUTES)
+        + asInteger(state.player?.time?.minuteOfDay, 0);
     return {
-        day,
-        minuteOfDay,
-        absoluteMinute: (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay
+        day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1,
+        minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES,
+        absoluteMinute
     };
 }
 
@@ -82,17 +84,9 @@ export function normaliseDialogueMessage(message, fallbackId = 1) {
 export function normaliseDialogueMessages(target = state) {
     normaliseDialogueTables(target);
     target.dialogueMessages = target.dialogueMessages
-        .map((message, index) => {
-            const normalised = normaliseDialogueMessage(message, index + 1);
-            if (isObject(message)) {
-                Object.keys(message).forEach(key => delete message[key]);
-                Object.assign(message, normalised);
-                return message;
-            }
-            return normalised;
-        })
+        .map((message, index) => normaliseDialogueMessage(message, index + 1))
         .sort((a, b) => b.createdAt.absoluteMinute - a.createdAt.absoluteMinute || b.id - a.id);
-    const nextId = target.dialogueMessages.reduce((maxId, message) => Math.max(maxId, message.id), 0) + 1;
+    const nextId = target.dialogueMessages.reduce((maxId, message) => Math.max(maxId, asInteger(message?.id, 0)), 0) + 1;
     if (!Number.isInteger(target.nextDialogueMessageId) || target.nextDialogueMessageId < nextId) {
         target.nextDialogueMessageId = nextId;
     }
@@ -144,5 +138,13 @@ export function markDialogueMessageRead(messageId) {
     if (message.status === DIALOGUE_MESSAGE_STATUSES.READ) return message;
     message.status = DIALOGUE_MESSAGE_STATUSES.READ;
     message.readAt = currentDialogueTimestamp();
+    addDialogueEvent({
+        eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_MESSAGE_READ,
+        sourceSystem: 'dialogue_message',
+        conversationId: message.conversationId,
+        messageId: message.id,
+        summary: { messageId: message.id },
+        timestamp: message.readAt
+    });
     return message;
 }

@@ -54,7 +54,14 @@ import {
     acceptSecureContract, completeSecurePayload, grantSecureCourierLicense
 } from '../systems/secureCourier.js';
 import { spendTime } from '../core/time.js';
-import { askNpcToFindPart, markDialogueMessageRead } from '../systems/people.js';
+import {
+    acceptDialogueOffer,
+    askNpcToFindPart,
+    markDialogueMessageRead,
+    rejectDialogueOffer,
+    touchDialogueConversation,
+    DIALOGUE_CONVERSATION_STATUSES
+} from '../systems/people.js';
 
 // =====================================================
 // ACTION DISPATCHER
@@ -366,6 +373,22 @@ export function registerUIActions() {
     });
     registerAction('markDialogueMessageRead', messageId => {
         const result = markDialogueMessageRead(parseInt(messageId, 10));
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('acceptDialogueOffer', offerId => {
+        const result = acceptDialogueOffer(parseInt(offerId, 10));
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('rejectDialogueOffer', offerId => {
+        const result = rejectDialogueOffer(parseInt(offerId, 10));
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('selectDialogueConversation', conversationId => {
+        state.selectedDialogueConversationId = conversationId;
+        return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
+    });
+    registerAction('archiveDialogueConversation', conversationId => {
+        const result = touchDialogueConversation(conversationId, { status: DIALOGUE_CONVERSATION_STATUSES.ARCHIVED });
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
     });
 

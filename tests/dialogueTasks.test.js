@@ -124,9 +124,10 @@ describe('dialogue locate-item tasks', () => {
 
         assert.equal(resolved.length, 1);
         assert.equal(task.status, DIALOGUE_TASK_STATUSES.RESOLVED);
-        assert.equal(task.result.offer.status, 'available_for_trade');
-        assert.equal(task.result.offer.price, 725);
-        assert.equal(state.dialogueMessages[0].payload.offer.itemId, 'fujiwattit');
+        assert.equal(state.dialogueOffers.length, 1);
+        assert.equal(task.result.offerId, state.dialogueOffers[0].id);
+        assert.equal(state.dialogueOffers[0].price, 725);
+        assert.equal(state.dialogueMessages[0].payload.offerId, state.dialogueOffers[0].id);
     });
 
     it('failure creates a follow-up without granting inventory', () => {
@@ -216,6 +217,8 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(loaded.dialogueTasks.length, 1);
         assert.equal(loaded.dialogueTasks[0].status, DIALOGUE_TASK_STATUSES.RESOLVED);
         assert.equal(loaded.dialogueMessages.length, 1);
+        assert.equal(loaded.dialogueOffers.length, 1);
+        assert.equal(loaded.dialogueProposals.length, 2);
         assert.equal(loaded.dialogueConversationParts.length, 7);
         assert.equal(loaded.dialogueMemories.length, 1);
         assert.equal(loaded.dialogueMemories[0].data.requestedItem, 'fujiwattit');
@@ -223,6 +226,7 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(loaded.dialogueConversations[0].conversationType, DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM);
         assert.equal(loaded.dialogueConversations[0].status, DIALOGUE_CONVERSATION_STATUSES.RESOLVED);
         assert.deepEqual(loaded.dialogueConversations[0].relatedMessageIds, [loaded.dialogueMessages[0].id]);
+        assert.deepEqual(loaded.dialogueConversations[0].relatedOfferIds, [loaded.dialogueOffers[0].id]);
         assert.ok(loaded.dialogueEventLog.some(event => event.conversationId === action.conversationId));
         assert.ok(loaded.dialogueEventLog.some(event => event.taskId === action.task.id));
         assert.ok(loaded.nextDialogueTaskId > loaded.dialogueTasks[0].id);

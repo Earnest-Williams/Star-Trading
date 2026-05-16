@@ -49,6 +49,8 @@ export {
     DIALOGUE_SPEAKER_TYPES,
     addDialogueConversationPart,
     getConversationParts,
+    ensureDialogueRuntimeStorage,
+    normaliseDialogueConversationParts,
     normaliseDialogueTables
 } from './people/conversationParts.js';
 export { askNpcToFindPart } from './people/dialogue.js';
@@ -59,7 +61,9 @@ export {
     getDialogueConversation,
     getDialogueConversationsForPerson,
     normaliseDialogueConversation,
+    ensureDialogueConversationStorage,
     normaliseDialogueConversations,
+    rebuildDialogueConversationsFromTables,
     touchDialogueConversation
 } from './people/conversations.js';
 export {
@@ -89,8 +93,61 @@ export {
 } from './people/messages.js';
 export {
     DIALOGUE_MEMORY_SALIENCE,
+    DIALOGUE_MEMORY_STATUSES,
     DIALOGUE_MEMORY_TYPES,
     createOrReinforceDialogueMemory,
+    decayDialogueMemories,
+    getActiveCustomerRequests,
+    getDialogueMemoriesForPerson,
     normaliseDialogueMemories,
-    normaliseDialogueMemory
+    normaliseDialogueMemory,
+    resolveDialogueMemory,
+    supersedeDialogueMemory
 } from './people/memory.js';
+export {
+    DIALOGUE_PROPOSAL_AUTHORITIES,
+    DIALOGUE_PROPOSAL_STATUSES,
+    acceptDialogueProposal,
+    commitDialogueProposal,
+    createDialogueProposal,
+    getDialogueProposal,
+    getDialogueProposalByPartId,
+    getDialogueProposalsByConversationId,
+    normaliseDialogueProposal,
+    normaliseDialogueProposals,
+    rejectDialogueProposal
+} from './people/proposals.js';
+export {
+    DIALOGUE_OFFER_STATUSES,
+    DIALOGUE_OFFER_TYPES,
+    acceptDialogueOffer,
+    acceptLocatedItemOffer,
+    createDialogueOffer,
+    expireDialogueOffers,
+    getActiveDialogueOffersForPlayer,
+    getDialogueOffer,
+    getDialogueOffersByConversationId,
+    normaliseDialogueOffer,
+    normaliseDialogueOffers,
+    rejectDialogueOffer
+} from './people/offers.js';
+export {
+    getActiveDialoguePromisesForPlayer,
+    getContactDialogueActionState,
+    getConversationSummary,
+    getConversationTimeline,
+    getDialogueDebugTrace,
+    getPersonConversationHistory,
+    getUnreadDialogueMessageCountByConversation
+} from './people/conversationQueries.js';
+export {
+    applyDialogueRelationshipDelta,
+    getDialogueRelationship,
+    normaliseDialogueRelationship
+} from './people/relationships.js';
+export {
+    archiveResolvedConversations,
+    expireOldDialogueMessages,
+    pruneOldDialogueEvents,
+    runDialogueMaintenanceDaily
+} from './people/dialogueMaintenance.js';

@@ -4,8 +4,23 @@ import { state } from '../../state.js';
 export const DIALOGUE_EVENT_TYPES = Object.freeze({
     DIALOGUE_MEMORY_RECORDED: 'dialogue_memory_recorded',
     DIALOGUE_MEMORY_REINFORCED: 'dialogue_memory_reinforced',
+    DIALOGUE_MEMORY_RESOLVED: 'dialogue_memory_resolved',
+    DIALOGUE_MEMORY_SUPERSEDED: 'dialogue_memory_superseded',
+    DIALOGUE_MEMORY_EXPIRED: 'dialogue_memory_expired',
     DIALOGUE_TASK_CREATED: 'dialogue_task_created',
-    DIALOGUE_TASK_RESOLVED: 'dialogue_task_resolved'
+    DIALOGUE_TASK_RESOLVED: 'dialogue_task_resolved',
+    DIALOGUE_PROPOSAL_EMITTED: 'dialogue_proposal_emitted',
+    DIALOGUE_PROPOSAL_ACCEPTED: 'dialogue_proposal_accepted',
+    DIALOGUE_PROPOSAL_REJECTED: 'dialogue_proposal_rejected',
+    DIALOGUE_PROPOSAL_COMMITTED: 'dialogue_proposal_committed',
+    DIALOGUE_OFFER_CREATED: 'dialogue_offer_created',
+    DIALOGUE_OFFER_ACCEPTED: 'dialogue_offer_accepted',
+    DIALOGUE_OFFER_REJECTED: 'dialogue_offer_rejected',
+    DIALOGUE_OFFER_EXPIRED: 'dialogue_offer_expired',
+    DIALOGUE_RELATIONSHIP_CHANGED: 'dialogue_relationship_changed',
+    DIALOGUE_CONVERSATION_ARCHIVED: 'dialogue_conversation_archived',
+    DIALOGUE_MESSAGE_READ: 'dialogue_message_read',
+    DIALOGUE_MAINTENANCE_RUN: 'dialogue_maintenance_run'
 });
 
 const EVENT_TYPE_VALUES = Object.values(DIALOGUE_EVENT_TYPES);
@@ -30,12 +45,12 @@ function asInteger(value, fallback) {
 }
 
 function currentDialogueTimestamp() {
-    const day = asInteger(state.player?.time?.day, 1);
-    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    const absoluteMinute = ((asInteger(state.player?.time?.day, 1) - 1) * BALANCE.DAY_MINUTES)
+        + asInteger(state.player?.time?.minuteOfDay, 0);
     return {
-        day,
-        minuteOfDay,
-        absoluteMinute: (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay
+        day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1,
+        minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES,
+        absoluteMinute
     };
 }
 
@@ -142,12 +157,7 @@ export function normaliseDialogueEvents(target = state) {
     if (!Array.isArray(target.dialogueEventLog)) target.dialogueEventLog = [];
     target.dialogueEventLog = target.dialogueEventLog
         .filter(isObject)
-        .map((event, index) => {
-            const normalised = normaliseDialogueEvent(event, index + 1);
-            Object.keys(event).forEach(key => delete event[key]);
-            Object.assign(event, normalised);
-            return event;
-        })
+        .map((event, index) => normaliseDialogueEvent(event, index + 1))
         .sort(compareDialogueEvents);
     const nextId = nextNumericIdForTable(target.dialogueEventLog);
     if (!Number.isInteger(target.nextDialogueEventId) || target.nextDialogueEventId < nextId) {
@@ -212,27 +222,23 @@ export function addDialogueEvent({
 export function getDialogueEventsByConversationId(conversationId) {
     const safeConversationId = asString(conversationId, '');
     if (safeConversationId.length === 0) return [];
-    normaliseDialogueEvents();
-    return state.dialogueEventLog.filter(event => event.conversationId === safeConversationId);
+    return (state.dialogueEventLog || []).filter(event => event.conversationId === safeConversationId);
 }
 
 export function getDialogueEventsByPartId(partId) {
     const safePartId = asInteger(partId, null);
     if (!Number.isInteger(safePartId)) return [];
-    normaliseDialogueEvents();
-    return state.dialogueEventLog.filter(event => event.partId === safePartId);
+    return (state.dialogueEventLog || []).filter(event => event.partId === safePartId);
 }
 
 export function getDialogueEventsByTaskId(taskId) {
     const safeTaskId = asInteger(taskId, null);
     if (!Number.isInteger(safeTaskId)) return [];
-    normaliseDialogueEvents();
-    return state.dialogueEventLog.filter(event => event.taskId === safeTaskId);
+    return (state.dialogueEventLog || []).filter(event => event.taskId === safeTaskId);
 }
 
 export function getDialogueEventsByMemoryId(memoryId) {
     const safeMemoryId = asInteger(memoryId, null);
     if (!Number.isInteger(safeMemoryId)) return [];
-    normaliseDialogueEvents();
-    return state.dialogueEventLog.filter(event => event.memoryId === safeMemoryId);
+    return (state.dialogueEventLog || []).filter(event => event.memoryId === safeMemoryId);
 }

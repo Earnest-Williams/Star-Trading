@@ -11,7 +11,7 @@ import { updateEntanglementsDaily } from '../systems/entanglements.js';
 import { expireIntel } from './intel.js';
 import { cullOldPublicSnapshots, expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
 import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../systems/secureCourier.js';
-import { resolveDueDialogueTasks } from '../systems/people.js';
+import { decayDialogueMemories, expireDialogueOffers, resolveDueDialogueTasks, runDialogueMaintenanceDaily } from '../systems/people.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
@@ -28,6 +28,8 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'secure_payload_expiry', run: () => failExpiredSecurePayloads() },
     { id: 'captain_daily_actions', run: reason => updateCaptainsDaily(reason) },
     { id: 'social_entanglements', run: () => updateEntanglementsDaily() },
+    { id: 'dialogue_memory_decay', run: reason => decayDialogueMemories(reason) },
+    { id: 'dialogue_maintenance', run: reason => runDialogueMaintenanceDaily(reason) },
     { id: 'daily_world_event', run: () => recordDailyWorldEvent() }
 ]);
 
@@ -36,7 +38,8 @@ export const HOURLY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'mission_opportunities', run: () => prepareAvailableMissionOpportunities() },
     { id: 'intel_expiry', run: () => expireIntel() },
     { id: 'private_payload_expiry', run: () => expirePrivatePayloads() },
-    { id: 'dialogue_task_resolution', run: reason => resolveDueDialogueTasks(reason) }
+    { id: 'dialogue_task_resolution', run: reason => resolveDueDialogueTasks(reason) },
+    { id: 'dialogue_offer_expiry', run: reason => expireDialogueOffers(reason) }
 ]);
 
 export function runWorldTickPhases(phases, reason) {

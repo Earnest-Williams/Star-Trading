@@ -1,11 +1,18 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
-import { normaliseDialogueTables } from './conversationParts.js';
+import { ensureDialogueRuntimeStorage } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
-import { addDialogueEvent } from './dialogueEvents.js';
+import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 
 export const DIALOGUE_MEMORY_TYPES = Object.freeze({
     CUSTOMER_REQUEST: 'customer_request'
+});
+
+export const DIALOGUE_MEMORY_STATUSES = Object.freeze({
+    ACTIVE: 'active',
+    RESOLVED: 'resolved',
+    SUPERSEDED: 'superseded',
+    EXPIRED: 'expired'
 });
 
 export const DIALOGUE_MEMORY_SALIENCE = Object.freeze({
@@ -15,8 +22,10 @@ export const DIALOGUE_MEMORY_SALIENCE = Object.freeze({
 });
 
 const MEMORY_TYPE_VALUES = Object.values(DIALOGUE_MEMORY_TYPES);
+const MEMORY_STATUS_VALUES = Object.values(DIALOGUE_MEMORY_STATUSES);
 const MEMORY_SALIENCE_VALUES = Object.values(DIALOGUE_MEMORY_SALIENCE);
 const SALIENCE_RANK = Object.freeze({ low: 1, medium: 2, high: 3 });
+const MEMORY_DECAY_DAYS = 14;
 
 function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -32,17 +41,23 @@ function asNullableString(value) {
 }
 
 function asInteger(value, fallback) {
+    if (value === null || typeof value === 'undefined') return fallback;
     const number = Number(value);
     return Number.isInteger(number) ? number : fallback;
 }
 
-function currentDialogueTimestamp() {
+function currentAbsoluteMinute() {
     const day = asInteger(state.player?.time?.day, 1);
     const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    return (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay;
+}
+
+function currentDialogueTimestamp() {
+    const absoluteMinute = currentAbsoluteMinute();
     return {
-        day,
-        minuteOfDay,
-        absoluteMinute: (day - 1) * BALANCE.DAY_MINUTES + minuteOfDay
+        day: Math.floor(absoluteMinute / BALANCE.DAY_MINUTES) + 1,
+        minuteOfDay: absoluteMinute % BALANCE.DAY_MINUTES,
+        absoluteMinute
     };
 }
 
@@ -60,6 +75,11 @@ function normaliseMemoryType(value) {
     return MEMORY_TYPE_VALUES.includes(memoryType)
         ? memoryType
         : DIALOGUE_MEMORY_TYPES.CUSTOMER_REQUEST;
+}
+
+function normaliseMemoryStatus(value, active = true) {
+    const status = asString(value, active ? DIALOGUE_MEMORY_STATUSES.ACTIVE : DIALOGUE_MEMORY_STATUSES.EXPIRED);
+    return MEMORY_STATUS_VALUES.includes(status) ? status : DIALOGUE_MEMORY_STATUSES.ACTIVE;
 }
 
 function normaliseSalience(value) {
@@ -117,6 +137,7 @@ export function normaliseDialogueMemory(memory, fallbackId = 1) {
         ? memory.lastReinforcedAt
         : createdAt;
     const data = isObject(memory?.data) ? memory.data : {};
+    const status = normaliseMemoryStatus(memory?.status, typeof memory?.active === 'boolean' ? memory.active : true);
     return {
         id: asInteger(memory?.id, fallbackId),
         memoryType: normaliseMemoryType(memory?.memoryType ?? memory?.type),
@@ -139,24 +160,22 @@ export function normaliseDialogueMemory(memory, fallbackId = 1) {
             minuteOfDay: asInteger(lastReinforcedAt.minuteOfDay, 0),
             absoluteMinute: asInteger(lastReinforcedAt.absoluteMinute, 0)
         },
-        active: typeof memory?.active === 'boolean' ? memory.active : true
+        status,
+        resolvedAt: isObject(memory?.resolvedAt) ? {
+            day: asInteger(memory.resolvedAt.day, 1),
+            minuteOfDay: asInteger(memory.resolvedAt.minuteOfDay, 0),
+            absoluteMinute: asInteger(memory.resolvedAt.absoluteMinute, 0)
+        } : null,
+        active: status === DIALOGUE_MEMORY_STATUSES.ACTIVE
     };
 }
 
 export function normaliseDialogueMemories(target = state) {
-    normaliseDialogueTables(target);
+    ensureDialogueRuntimeStorage(target);
     target.dialogueMemories = target.dialogueMemories
-        .map((memory, index) => {
-            const normalised = normaliseDialogueMemory(memory, index + 1);
-            if (isObject(memory)) {
-                Object.keys(memory).forEach(key => delete memory[key]);
-                Object.assign(memory, normalised);
-                return memory;
-            }
-            return normalised;
-        })
+        .map((memory, index) => normaliseDialogueMemory(memory, index + 1))
         .sort((a, b) => a.createdAt.absoluteMinute - b.createdAt.absoluteMinute || a.id - b.id);
-    const nextId = target.dialogueMemories.reduce((maxId, memory) => Math.max(maxId, memory.id), 0) + 1;
+    const nextId = target.dialogueMemories.reduce((maxId, memory) => Math.max(maxId, asInteger(memory?.id, 0)), 0) + 1;
     if (!Number.isInteger(target.nextDialogueMemoryId) || target.nextDialogueMemoryId < nextId) {
         target.nextDialogueMemoryId = nextId;
     }
@@ -173,13 +192,13 @@ export function createOrReinforceDialogueMemory({
     mergeKey = null,
     salience = DIALOGUE_MEMORY_SALIENCE.MEDIUM
 } = {}) {
-    if (!Array.isArray(state.dialogueMemories)) state.dialogueMemories = [];
+    ensureDialogueRuntimeStorage();
     const safeData = isObject(data) ? data : {};
     const safeMemoryType = normaliseMemoryType(memoryType);
     const safeOwnerPersonId = asString(ownerPersonId, 'unknown-person');
     const safeSubjectId = asString(subjectId, 'player');
     const safeMergeKey = inferMergeKey(safeData, asNullableString(mergeKey));
-    const existing = safeMergeKey === null ? null : state.dialogueMemories.find(memory => memory.active
+    const existing = safeMergeKey === null ? null : state.dialogueMemories.find(memory => memory.status === DIALOGUE_MEMORY_STATUSES.ACTIVE
         && memory.memoryType === safeMemoryType
         && memory.ownerPersonId === safeOwnerPersonId
         && memory.subjectId === safeSubjectId
@@ -191,7 +210,7 @@ export function createOrReinforceDialogueMemory({
         existing.salience = chooseHigherSalience(existing.salience, salience);
         existing.lastReinforcedAt = currentDialogueTimestamp();
         existing.reinforcementCount += 1;
-        emitDialogueMemoryEvent(existing, 'dialogue_memory_reinforced');
+        emitDialogueMemoryEvent(existing, DIALOGUE_EVENT_TYPES.DIALOGUE_MEMORY_REINFORCED);
         return existing;
     }
 
@@ -210,9 +229,68 @@ export function createOrReinforceDialogueMemory({
         reinforcementCount: 1,
         createdAt: timestamp,
         lastReinforcedAt: timestamp,
-        active: true
+        active: true,
+        status: DIALOGUE_MEMORY_STATUSES.ACTIVE
     });
     state.dialogueMemories.push(memory);
-    emitDialogueMemoryEvent(memory, 'dialogue_memory_recorded');
+    emitDialogueMemoryEvent(memory, DIALOGUE_EVENT_TYPES.DIALOGUE_MEMORY_RECORDED);
     return memory;
+}
+
+
+export function getDialogueMemoriesForPerson(personId) {
+    const safePersonId = asString(personId, '');
+    if (safePersonId.length === 0) return [];
+    return (state.dialogueMemories || []).filter(memory => memory.ownerPersonId === safePersonId);
+}
+
+export function getActiveCustomerRequests({ ownerPersonId = null, subjectId = 'player', itemId = null } = {}) {
+    const safeOwnerPersonId = asNullableString(ownerPersonId);
+    const safeItemId = asNullableString(itemId);
+    return (state.dialogueMemories || []).filter(memory => memory.memoryType === DIALOGUE_MEMORY_TYPES.CUSTOMER_REQUEST
+        && memory.status === DIALOGUE_MEMORY_STATUSES.ACTIVE
+        && (safeOwnerPersonId === null || memory.ownerPersonId === safeOwnerPersonId)
+        && memory.subjectId === asString(subjectId, 'player')
+        && (safeItemId === null || memory.mergeKey === safeItemId || memory.data?.itemId === safeItemId));
+}
+
+function resolveMemoryRow(memory, status, eventType) {
+    if (!memory || memory.status !== DIALOGUE_MEMORY_STATUSES.ACTIVE) return false;
+    memory.status = status;
+    memory.active = false;
+    memory.resolvedAt = currentDialogueTimestamp();
+    emitDialogueMemoryEvent(memory, eventType);
+    return memory;
+}
+
+export function resolveDialogueMemory({ memoryId = null, ownerPersonId = null, subjectId = 'player', itemId = null, conversationId = null } = {}) {
+    const id = asInteger(memoryId, null);
+    let memory = null;
+    if (Number.isInteger(id)) {
+        memory = (state.dialogueMemories || []).find(item => item.id === id) || null;
+    } else {
+        memory = getActiveCustomerRequests({ ownerPersonId, subjectId, itemId })
+            .find(item => !conversationId || item.conversationId === conversationId) || null;
+    }
+    return resolveMemoryRow(memory, DIALOGUE_MEMORY_STATUSES.RESOLVED, DIALOGUE_EVENT_TYPES.DIALOGUE_MEMORY_RESOLVED);
+}
+
+export function supersedeDialogueMemory(memoryId, reason = 'superseded') {
+    const id = asInteger(memoryId, null);
+    const memory = (state.dialogueMemories || []).find(item => item.id === id) || null;
+    if (memory) memory.data = { ...memory.data, supersededReason: asString(reason, 'superseded') };
+    return resolveMemoryRow(memory, DIALOGUE_MEMORY_STATUSES.SUPERSEDED, DIALOGUE_EVENT_TYPES.DIALOGUE_MEMORY_SUPERSEDED);
+}
+
+export function decayDialogueMemories(reason = 'daily tick') {
+    const now = currentAbsoluteMinute();
+    const expired = [];
+    (state.dialogueMemories || []).filter(memory => memory.status === DIALOGUE_MEMORY_STATUSES.ACTIVE)
+        .filter(memory => now - memory.lastReinforcedAt.absoluteMinute >= BALANCE.DAY_MINUTES * MEMORY_DECAY_DAYS)
+        .forEach(memory => {
+            memory.data = { ...memory.data, expiredReason: asString(reason, 'daily tick') };
+            const resolved = resolveMemoryRow(memory, DIALOGUE_MEMORY_STATUSES.EXPIRED, DIALOGUE_EVENT_TYPES.DIALOGUE_MEMORY_EXPIRED);
+            if (resolved) expired.push(resolved);
+        });
+    return expired;
 }

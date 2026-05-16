@@ -14,12 +14,14 @@ import { makeStock, restoreSessionRng } from '../utils.js';
 import { log } from '../utils.js';
 import { createCharacter, normaliseCharacter } from './characters.js';
 import { normaliseDataCargoState } from './dataCargo.js';
-import { normaliseDialogueTables } from '../systems/people/conversationParts.js';
-import { normaliseDialogueConversations } from '../systems/people/conversations.js';
+import { normaliseDialogueConversationParts } from '../systems/people/conversationParts.js';
+import { rebuildDialogueConversationsFromTables } from '../systems/people/conversations.js';
 import { normaliseDialogueEvents } from '../systems/people/dialogueEvents.js';
 import { normaliseDialogueMessages } from '../systems/people/messages.js';
 import { normaliseDialogueTasks } from '../systems/people/dialogueTasks.js';
 import { normaliseDialogueMemories } from '../systems/people/memory.js';
+import { normaliseDialogueOffers } from '../systems/people/offers.js';
+import { normaliseDialogueProposals } from '../systems/people/proposals.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -140,13 +142,17 @@ export function buildLoadedState(data) {
     loadedState.worldEvents = Array.isArray(data.worldEvents) ? data.worldEvents : [];
     loadedState.nextWorldEventId = data.nextWorldEventId || (loadedState.worldEvents.length + 1);
     loadedState.dialogueMemories = Array.isArray(data.dialogueMemories) ? data.dialogueMemories : [];
+    loadedState.dialogueProposals = Array.isArray(data.dialogueProposals) ? data.dialogueProposals : [];
     loadedState.dialogueTasks = Array.isArray(data.dialogueTasks) ? data.dialogueTasks : [];
+    loadedState.dialogueOffers = Array.isArray(data.dialogueOffers) ? data.dialogueOffers : [];
     loadedState.dialogueMessages = Array.isArray(data.dialogueMessages) ? data.dialogueMessages : [];
     loadedState.dialogueConversationParts = Array.isArray(data.dialogueConversationParts) ? data.dialogueConversationParts : [];
     loadedState.dialogueConversations = Array.isArray(data.dialogueConversations) ? data.dialogueConversations : [];
     loadedState.dialogueEventLog = Array.isArray(data.dialogueEventLog) ? data.dialogueEventLog : [];
     loadedState.nextDialogueMemoryId = data.nextDialogueMemoryId || (loadedState.dialogueMemories.length + 1);
+    loadedState.nextDialogueProposalId = data.nextDialogueProposalId || (loadedState.dialogueProposals.length + 1);
     loadedState.nextDialogueTaskId = data.nextDialogueTaskId || (loadedState.dialogueTasks.length + 1);
+    loadedState.nextDialogueOfferId = data.nextDialogueOfferId || (loadedState.dialogueOffers.length + 1);
     loadedState.nextDialogueMessageId = data.nextDialogueMessageId || (loadedState.dialogueMessages.length + 1);
     loadedState.nextDialogueConversationPartId = data.nextDialogueConversationPartId || (loadedState.dialogueConversationParts.length + 1);
     loadedState.nextDialogueConversationId = data.nextDialogueConversationId || (loadedState.dialogueConversations.length + 1);
@@ -333,13 +339,17 @@ export const SAVE_STATE_FIELDS = [
     "worldEvents",
     "nextWorldEventId",
     "dialogueMemories",
+    "dialogueProposals",
     "dialogueTasks",
+    "dialogueOffers",
     "dialogueMessages",
     "dialogueConversationParts",
     "dialogueConversations",
     "dialogueEventLog",
     "nextDialogueMemoryId",
+    "nextDialogueProposalId",
     "nextDialogueTaskId",
+    "nextDialogueOfferId",
     "nextDialogueMessageId",
     "nextDialogueConversationPartId",
     "nextDialogueConversationId",
@@ -526,12 +536,14 @@ function normaliseCurrentLoadedGame() {
     normaliseDataCargoState();
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
-    normaliseDialogueTables();
+    normaliseDialogueConversationParts();
+    normaliseDialogueProposals();
     normaliseDialogueMemories();
     normaliseDialogueTasks();
+    normaliseDialogueOffers();
     normaliseDialogueMessages();
-    normaliseDialogueConversations();
     normaliseDialogueEvents();
+    rebuildDialogueConversationsFromTables();
     state.missions.forEach(m => {
         if (typeof m.rewardRep !== "number") m.rewardRep = 2;
         if (m.type === "stale_signal") {
