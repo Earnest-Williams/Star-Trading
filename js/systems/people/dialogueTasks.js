@@ -1,5 +1,6 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
+import { asString, formatItemLabel, isObject } from './common.js';
 import { ensureDialogueRuntimeStorage } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
@@ -25,14 +26,6 @@ export const DIALOGUE_TASK_TYPES = Object.freeze({
 
 const TASK_STATUS_VALUES = Object.values(DIALOGUE_TASK_STATUSES);
 const LOCATE_ITEM_CHECK_INTERVAL_MINUTES = 6 * 60;
-
-function isObject(value) {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function asString(value, fallback = '') {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
-}
 
 function asInteger(value, fallback) {
     if (value === null || typeof value === 'undefined') return fallback;
@@ -70,7 +63,7 @@ function normaliseStatus(value) {
 }
 
 function itemLabel(itemId) {
-    return asString(itemId, 'part').replaceAll('_', ' ');
+    return formatItemLabel(itemId);
 }
 
 function findActiveLocateItemTask(ownerPersonId, requesterId, itemId) {

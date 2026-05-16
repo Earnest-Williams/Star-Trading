@@ -1,6 +1,8 @@
-import { NPC_FINDABLE_PART_DEFS } from '../../constants.js';
+import { BALANCE, NPC_FINDABLE_PART_DEFS } from '../../constants.js';
 import { state } from '../../state.js';
 import { random } from '../../utils.js';
+import { LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES } from './dialogueTemplates.js';
+import { asNumber, asString, formatItemLabel, isObject } from './common.js';
 import { getDialogueRelationship } from './relationships.js';
 
 export const LOCATE_ITEM_CONDITIONS = Object.freeze([
@@ -19,20 +21,7 @@ export const LOCATE_ITEM_SOURCE_FLAVORS = Object.freeze([
 
 const MIN_LOCATED_ITEM_PRICE = 50;
 const DEFAULT_LOCATED_ITEM_PRICE = 450;
-
-function isObject(value) {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function asString(value, fallback = '') {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
-}
-
-function asNumber(value, fallback = 0) {
-    if (value === null || typeof value === 'undefined') return fallback;
-    const number = Number(value);
-    return Number.isFinite(number) ? number : fallback;
-}
+const LOCATE_ITEM_BALANCE = BALANCE.DIALOGUE_LOCATE_ITEM;
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, Number(value) || 0));
@@ -48,7 +37,7 @@ function getItemDef(itemId) {
     if (knownDef) return knownDef;
     return {
         id: safeItemId,
-        label: safeItemId.replaceAll('_', ' '),
+        label: formatItemLabel(safeItemId),
         basePrice: DEFAULT_LOCATED_ITEM_PRICE,
         rarity: 0.5,
         favoredPortTypes: [],
@@ -138,7 +127,7 @@ export function normaliseLocateItemResolutionPolicy(policy) {
 export function buildLocateItemResolutionContext(task) {
     const ownerPersonId = asString(task?.ownerPersonId, 'unknown-person');
     const person = state.people?.[ownerPersonId] || null;
-    const sectorId = Number(person?.sectorId || state.player?.currentSector || 0);
+    const sectorId = Number(person?.sectorId ?? state.player?.currentSector ?? 0);
     const sector = state.universe?.[sectorId] || null;
     const port = state.ports?.[sectorId] || null;
     const relationship = getDialogueRelationship(ownerPersonId) || {};
@@ -163,14 +152,27 @@ export function scoreLocateItemResolution(task, context) {
     const favoredRegion = itemDef.favoredRegions.includes(context.region);
     const relationTrust = asNumber(context.relationship?.trust, 0);
     const familiarity = asNumber(context.relationship?.familiarity, 0);
-    const relationshipBonus = clamp(relationTrust / 250, -0.08, 0.12)
-        + clamp(familiarity / 400, 0, 0.05);
-    const attemptBonus = Math.min(0.14, Math.max(0, asNumber(task?.resolutionAttempts, 0)) * 0.04);
-    const rarityPenalty = clamp(itemDef.rarity, 0, 1) * 0.22;
-    const pirateThreatPenalty = Math.min(0.24, context.pirateThreat * 0.035);
-    let successChance = 0.45
-        + (favoredPort ? 0.12 : 0)
-        + (favoredRegion ? 0.08 : 0)
+    const relationshipBonus = clamp(
+        relationTrust / LOCATE_ITEM_BALANCE.RELATIONSHIP_TRUST_DIVISOR,
+        LOCATE_ITEM_BALANCE.RELATIONSHIP_TRUST_MIN_BONUS,
+        LOCATE_ITEM_BALANCE.RELATIONSHIP_TRUST_MAX_BONUS
+    ) + clamp(
+        familiarity / LOCATE_ITEM_BALANCE.RELATIONSHIP_FAMILIARITY_DIVISOR,
+        0,
+        LOCATE_ITEM_BALANCE.RELATIONSHIP_FAMILIARITY_MAX_BONUS
+    );
+    const attemptBonus = Math.min(
+        LOCATE_ITEM_BALANCE.ATTEMPT_SUCCESS_BONUS_CAP,
+        Math.max(0, asNumber(task?.resolutionAttempts, 0)) * LOCATE_ITEM_BALANCE.ATTEMPT_SUCCESS_BONUS
+    );
+    const rarityPenalty = clamp(itemDef.rarity, 0, 1) * LOCATE_ITEM_BALANCE.RARITY_SUCCESS_PENALTY;
+    const pirateThreatPenalty = Math.min(
+        LOCATE_ITEM_BALANCE.PIRATE_THREAT_SUCCESS_PENALTY_CAP,
+        context.pirateThreat * LOCATE_ITEM_BALANCE.PIRATE_THREAT_SUCCESS_PENALTY
+    );
+    let successChance = LOCATE_ITEM_BALANCE.BASE_SUCCESS_CHANCE
+        + (favoredPort ? LOCATE_ITEM_BALANCE.FAVORED_PORT_SUCCESS_BONUS : 0)
+        + (favoredRegion ? LOCATE_ITEM_BALANCE.FAVORED_REGION_SUCCESS_BONUS : 0)
         + richnessAvailabilityBonus(context.richness)
         + relationshipBonus
         + roleServiceBonus(context.person)
@@ -186,7 +188,11 @@ export function scoreLocateItemResolution(task, context) {
     if (rarityPenalty >= 0.12) pushTag(explanationTags, 'rare_item');
     if (pirateThreatPenalty >= 0.11) pushTag(explanationTags, 'pirate_pressure');
 
-    successChance = clamp(successChance, 0.08, 0.92);
+    successChance = clamp(
+        successChance,
+        LOCATE_ITEM_BALANCE.MIN_SUCCESS_CHANCE,
+        LOCATE_ITEM_BALANCE.MAX_SUCCESS_CHANCE
+    );
     if (Number.isFinite(Number(policy.successChance))) {
         successChance = policy.successChance;
         pushTag(explanationTags, 'policy_chance_override');
@@ -205,12 +211,19 @@ export function scoreLocateItemResolution(task, context) {
         person: context.person,
         relationship: context.relationship
     });
-    const rarityMultiplier = 1 + clamp(itemDef.rarity, 0, 1) * 0.55;
+    const rarityMultiplier = 1 + clamp(itemDef.rarity, 0, 1) * LOCATE_ITEM_BALANCE.RARITY_PRICE_MULTIPLIER;
     const portPressureMultiplier = richnessPricePressure(context.richness)
-        + Math.min(0.25, context.pirateThreat * 0.035)
-        - (favoredPort ? 0.06 : 0)
-        - (favoredRegion ? 0.03 : 0);
-    const relationshipDiscount = clamp(1 - Math.max(0, relationTrust) / 400, 0.82, 1.08);
+        + Math.min(
+            LOCATE_ITEM_BALANCE.PIRATE_THREAT_PRICE_MULTIPLIER_CAP,
+            context.pirateThreat * LOCATE_ITEM_BALANCE.PIRATE_THREAT_PRICE_MULTIPLIER
+        )
+        - (favoredPort ? LOCATE_ITEM_BALANCE.FAVORED_PORT_PRICE_DISCOUNT : 0)
+        - (favoredRegion ? LOCATE_ITEM_BALANCE.FAVORED_REGION_PRICE_DISCOUNT : 0);
+    const relationshipDiscount = clamp(
+        1 - Math.max(0, relationTrust) / LOCATE_ITEM_BALANCE.RELATIONSHIP_DISCOUNT_DIVISOR,
+        LOCATE_ITEM_BALANCE.RELATIONSHIP_DISCOUNT_MIN,
+        LOCATE_ITEM_BALANCE.RELATIONSHIP_DISCOUNT_MAX
+    );
     let priceMultiplier = rarityMultiplier
         * conditionMultiplier(condition)
         * portPressureMultiplier
@@ -258,23 +271,28 @@ export function buildLocateItemSuccessMessage(itemId, outcome) {
     const label = getItemDef(itemId).label;
     const condition = asString(outcome?.condition, 'serviceable');
     const source = asString(outcome?.sourceFlavor, 'port broker');
+    const templates = LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES.success;
     if (condition === 'worn') {
-        return `I found a worn ${label} from a ${source}. It is not pretty, but it will hold.`;
+        return templates.worn.replaceAll('{label}', label).replaceAll('{source}', source);
     }
     if (condition === 'pristine') {
-        return `I found a pristine ${label} through a ${source}. It is clean stock and ready for trade.`;
+        return templates.pristine.replaceAll('{label}', label).replaceAll('{source}', source);
     }
-    return `I found a ${condition} ${label} through a ${source}. It is available for trade when you are ready.`;
+    return templates.default
+        .replaceAll('{condition}', condition)
+        .replaceAll('{label}', label)
+        .replaceAll('{source}', source);
 }
 
 export function buildLocateItemFailureMessage(itemId, outcome) {
     const label = getItemDef(itemId).label;
     const tags = Array.isArray(outcome?.explanationTags) ? outcome.explanationTags : [];
+    const templates = LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES.failure;
     if (tags.includes('pirate_pressure')) {
-        return `No luck on the ${label}. The routes are hot and suppliers are holding stock back.`;
+        return templates.pirate_pressure.replaceAll('{label}', label);
     }
     if (tags.includes('rare_item') || tags.includes('priced_high')) {
-        return `No luck on the ${label}. The local brokers are dry and prices are moving against us.`;
+        return templates.market_pressure.replaceAll('{label}', label);
     }
-    return `No luck on the ${label}. I did not find a lead worth putting aside.`;
+    return templates.default.replaceAll('{label}', label);
 }
