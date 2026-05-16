@@ -6,6 +6,7 @@ import { BALANCE } from '../js/constants.js';
 import { state } from '../js/state.js';
 import { fightPirates } from '../js/systems/combat.js';
 import { getPortPrice, tradeCommodity } from '../js/systems/market.js';
+import { assertInRange } from './helpers/assertions.js';
 import {
     findPortForCommodity,
     seedGeneratedUniverse,
@@ -23,39 +24,49 @@ function seedGame() {
 describe('player actions — trading', () => {
     beforeEach(seedGame);
 
-    it('buying from a port debits credits, fills cargo, reduces stock, and advances time', () => {
-        const { sectorId, port } = findPortForCommodity('ore', 'buy');
-        state.player.currentSector = sectorId;
-        state.selectedSectorId = sectorId;
-        const price = getPortPrice(port, 'ore', 'buy');
-        const startingCredits = state.player.credits;
-        const startingStock = port.stock.ore;
-        const startingMinute = state.player.time.minuteOfDay;
+    const tradeCases = [
+        {
+            mode: 'buy',
+            expectedCargo: BALANCE.TRADE_BATCH,
+            creditDirection: -1,
+            stockDirection: -1
+        },
+        {
+            mode: 'sell',
+            startingCargo: BALANCE.TRADE_BATCH,
+            expectedCargo: 0,
+            creditDirection: 1,
+            stockDirection: 1
+        }
+    ];
 
-        tradeCommodity('ore', 'buy');
+    tradeCases.forEach(testCase => {
+        it(`${testCase.mode}ing at a port updates cargo, credits, stock, and time`, () => {
+            const { sectorId, port } = findPortForCommodity('ore', testCase.mode);
+            state.player.currentSector = sectorId;
+            state.selectedSectorId = sectorId;
 
-        assert.equal(state.player.cargo.ore, BALANCE.TRADE_BATCH);
-        assert.equal(state.player.credits, startingCredits - price * BALANCE.TRADE_BATCH);
-        assert.equal(port.stock.ore, startingStock - BALANCE.TRADE_BATCH);
-        assert.equal(state.player.time.minuteOfDay, startingMinute + BALANCE.TRADE_TIME_MINUTES);
-    });
+            if (testCase.startingCargo) {
+                state.player.cargo.ore = testCase.startingCargo;
+            }
 
-    it('selling to a port credits the player, empties cargo, increases stock, and advances time', () => {
-        const { sectorId, port } = findPortForCommodity('ore', 'sell');
-        state.player.currentSector = sectorId;
-        state.selectedSectorId = sectorId;
-        state.player.cargo.ore = BALANCE.TRADE_BATCH;
-        const price = getPortPrice(port, 'ore', 'sell');
-        const startingCredits = state.player.credits;
-        const startingStock = port.stock.ore;
-        const startingMinute = state.player.time.minuteOfDay;
+            const price = getPortPrice(port, 'ore', testCase.mode);
+            const startingCredits = state.player.credits;
+            const startingStock = port.stock.ore;
+            const startingMinute = state.player.time.minuteOfDay;
 
-        tradeCommodity('ore', 'sell');
+            tradeCommodity('ore', testCase.mode);
 
-        assert.equal(state.player.cargo.ore, 0);
-        assert.equal(state.player.credits, startingCredits + price * BALANCE.TRADE_BATCH);
-        assert.equal(port.stock.ore, startingStock + BALANCE.TRADE_BATCH);
-        assert.equal(state.player.time.minuteOfDay, startingMinute + BALANCE.TRADE_TIME_MINUTES);
+            const creditDelta = price * BALANCE.TRADE_BATCH * testCase.creditDirection;
+            const stockDelta = BALANCE.TRADE_BATCH * testCase.stockDirection;
+            assert.equal(state.player.cargo.ore, testCase.expectedCargo);
+            assert.equal(state.player.credits, startingCredits + creditDelta);
+            assert.equal(port.stock.ore, startingStock + stockDelta);
+            assert.equal(
+                state.player.time.minuteOfDay,
+                startingMinute + BALANCE.TRADE_TIME_MINUTES
+            );
+        });
     });
 });
 
@@ -70,13 +81,10 @@ describe('player actions — combat', () => {
 
         fightPirates();
 
-        assert.ok(sector.pirateThreat >= 0 && sector.pirateThreat <= 6);
-        assert.ok(state.player.fighters >= 0);
-        assert.ok(state.player.fighters <= state.player.ship.maxFighters);
-        assert.ok(state.player.shields >= 0);
-        assert.ok(state.player.shields <= state.player.ship.maxShields);
-        assert.ok(state.player.hull >= 1);
-        assert.ok(state.player.hull <= state.player.ship.maxHull);
+        assertInRange(sector.pirateThreat, 0, 6, 'pirateThreat');
+        assertInRange(state.player.fighters, 0, state.player.ship.maxFighters, 'fighters');
+        assertInRange(state.player.shields, 0, state.player.ship.maxShields, 'shields');
+        assertInRange(state.player.hull, 1, state.player.ship.maxHull, 'hull');
     });
 });
 

@@ -6,6 +6,7 @@ import { calculateGatePulseCost } from '../js/core/universe.js';
 import { areSectorsConnected, getSectorNeighbors } from '../js/core/navigation.js';
 import { BALANCE, MARKET_COMMODITIES } from '../js/constants.js';
 import { tradeCommodity } from '../js/systems/market.js';
+import { assertInRange, assertPositive } from './helpers/assertions.js';
 import {
     defaultWorldgenSettings,
     getEconomicSectorIds,
@@ -52,9 +53,9 @@ describe('sparse 3D world generation and gate economy', () => {
             holdSeconds: 12
         });
 
-        assert.ok(cost.sourceCredits > 7 && cost.sourceCredits < 7.2);
-        assert.ok(cost.anchorCredits > 1 && cost.anchorCredits < 1.1);
-        assert.ok(cost.totalCredits > 8 && cost.totalCredits < 8.3);
+        assertInRange(cost.sourceCredits, 7, 7.2, 'sourceCredits');
+        assertInRange(cost.anchorCredits, 1, 1.1, 'anchorCredits');
+        assertInRange(cost.totalCredits, 8, 8.3, 'totalCredits');
     });
 
     it('exposes packaged jump inventory as tradable market cargo', () => {
@@ -64,37 +65,43 @@ describe('sparse 3D world generation and gate economy', () => {
         const homeSiteId = state.world.roles.homeSiteId;
         state.player.currentSector = homeSiteId;
         const port = state.ports[homeSiteId];
-        assert.ok(port.stock.pulse_canister > 0, 'home port should stock pulse canisters');
+        assertPositive(port.stock.pulse_canister, 'home pulse canister stock');
 
         const startingCredits = state.player.credits;
         tradeCommodity('pulse_canister', 'buy');
 
-        assert.ok(state.player.cargo.pulse_canister > 0);
+        assertPositive(state.player.cargo.pulse_canister, 'player pulse canister cargo');
         assert.ok(state.player.credits < startingCredits);
     });
 });
 
 describe('economic connectivity, companies, people, and polities', () => {
-    const seeds = [101, 202, 303];
+    const connectivityCases = BALANCE.WORLDGEN.SITE_COUNT_PRESETS.map(
+        (occupiedSites, index) => ({
+            occupiedSites,
+            seed: [101, 202, 303][index % 3]
+        })
+    );
 
-    for (const occupiedSites of BALANCE.WORLDGEN.SITE_COUNT_PRESETS) {
-        for (const seed of seeds) {
-            it(`connects all economic sectors for ${occupiedSites} sites seed ${seed}`, () => {
-                seedGeneratedUniverse({
-                    seed,
-                    worldgenSettings: defaultWorldgenSettings(occupiedSites)
-                });
-
-                const economicIds = getEconomicSectorIds();
-                const anchor = economicIds[0];
-                assert.ok(economicIds.length > 0, 'economic sectors should exist');
-                assert.ok(
-                    economicIds.every(id => areSectorsConnected(anchor, id)),
-                    'all economic sectors should be mutually reachable'
-                );
+    connectivityCases.forEach(({ occupiedSites, seed }) => {
+        it(`connects all economic sectors for ${occupiedSites} sites seed ${seed}`, () => {
+            seedGeneratedUniverse({
+                seed,
+                worldgenSettings: defaultWorldgenSettings(occupiedSites)
             });
-        }
-    }
+
+            const economicIds = getEconomicSectorIds();
+            const anchor = economicIds[0];
+            assert.ok(
+                economicIds.length > 0,
+                `economic sectors should exist for ${occupiedSites} sites seed ${seed}`
+            );
+            assert.ok(
+                economicIds.every(id => areSectorsConnected(anchor, id)),
+                `economic sectors should connect for ${occupiedSites} sites seed ${seed}`
+            );
+        });
+    });
 
     describe('generated economic entities', () => {
         beforeEach(seedGame);
