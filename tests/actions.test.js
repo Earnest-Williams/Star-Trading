@@ -2,33 +2,22 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BALANCE, PORT_TYPES } from '../js/constants.js';
-import { createPlayer, generateUniverse } from '../js/core/universe.js';
-import { state, resetState } from '../js/state.js';
+import { BALANCE } from '../js/constants.js';
+import { state } from '../js/state.js';
 import { fightPirates } from '../js/systems/combat.js';
 import { getPortPrice, tradeCommodity } from '../js/systems/market.js';
-import { initSessionRng } from '../js/utils.js';
-
-const FIXED_SEED = 4242;
+import {
+    findPortForCommodity,
+    seedGeneratedUniverse,
+    TEST_SEEDS
+} from './helpers/gameState.js';
 
 function seedGame() {
-    resetState();
-    state.player = createPlayer();
-    state.player.seed = FIXED_SEED;
-    initSessionRng(FIXED_SEED);
-    generateUniverse();
-    state.selectedSectorId = state.player.currentSector;
-}
-
-function findPortForCommodity(commodity, mode) {
-    const entry = Object.entries(state.ports).find(([, port]) => {
-        const portType = PORT_TYPES[port.typeKey];
-        if (!portType) return false;
-        const side = mode === 'buy' ? portType.sells : portType.buys;
-        return side.includes(commodity);
+    seedGeneratedUniverse({
+        seed: TEST_SEEDS.ACTIONS,
+        initializeRng: true,
+        selectCurrentSector: true
     });
-    assert.ok(entry, `expected a port that can ${mode} ${commodity}`);
-    return { sectorId: Number(entry[0]), port: entry[1] };
 }
 
 describe('player actions — trading', () => {
