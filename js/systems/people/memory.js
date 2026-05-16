@@ -164,7 +164,7 @@ export function createOrReinforceDialogueMemory({
     mergeKey = null,
     salience = DIALOGUE_MEMORY_SALIENCE.MEDIUM
 } = {}) {
-    normaliseDialogueMemories();
+    if (!Array.isArray(state.dialogueMemories)) state.dialogueMemories = [];
     const safeData = isObject(data) ? data : {};
     const safeMemoryType = normaliseMemoryType(memoryType);
     const safeOwnerPersonId = asString(ownerPersonId, 'unknown-person');
