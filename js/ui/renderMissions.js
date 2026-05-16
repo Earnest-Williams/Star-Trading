@@ -23,7 +23,10 @@ export function renderMissionBoard() {
     const { missions, player, captains } = state;
     const available = missions.filter(m => m.status === "available" && m.originSector === player.currentSector && isMissionVisible(m));
     let html = `<h4>Mission Board</h4>`;
-    if (available.length === 0) { html += `<span class="muted">No available missions here.</span>`; return html; }
+    if (available.length === 0) {
+        html += `<div class="empty-state"><strong>No available missions here.</strong><div class="small muted">Mission postings are local. Jump to another port, improve faction standing, or check Communications for data-cargo and dialogue leads.</div></div>`;
+        return html;
+    }
     available.forEach(m => {
         const faction = FACTIONS[m.factionId] || null;
         const prefix = faction ? `<span class="faction-icon" style="color:${faction.color}">${faction.icon}</span> ` : "";

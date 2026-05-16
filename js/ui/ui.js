@@ -22,6 +22,7 @@ import { renderCharacterSheet } from './renderCharacterSheet.js';
 import { renderCommunicationsScreen } from './renderComms.js';
 import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsheet.js';
 import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
+import { renderNextStepsPanel } from './onboarding.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -283,6 +284,17 @@ const rendererRegistrations = [
         StateSlice.TRADE_ROUTES,
         StateSlice.UNIVERSE,
         StateSlice.FACTIONS
+    ]],
+
+    ['nextSteps', renderNextStepsPanel, [
+        StateSlice.PLAYER,
+        StateSlice.UNIVERSE,
+        StateSlice.PORTS,
+        StateSlice.MISSIONS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.DATA_CARGO,
+        StateSlice.CURRENT_SCREEN,
+        StateSlice.SELECTED_SECTOR
     ]]
 ];
 let rendererUnsubscribers = [];

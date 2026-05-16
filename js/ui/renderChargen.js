@@ -13,6 +13,45 @@ function describeTrait(trait) {
     return `<span class="small">${trait.description}${shifts ? ` Stats: ${shifts}.` : ""}</span>${drawbacks ? `<ul class="small red">${drawbacks}</ul>` : ""}`;
 }
 
+
+function summarizeBenefitMap(label, values) {
+    if (!values) return null;
+    const entries = Object.entries(values);
+    if (entries.length === 0) return null;
+    return `${label}: ${entries.map(([key, value]) => `${key} ${value > 0 ? "+" : ""}${value}`).join(", ")}`;
+}
+
+function packageBenefitSummary(packageId) {
+    const startPackage = START_PACKAGES[packageId];
+    if (!startPackage) return null;
+    const benefits = startPackage.benefits || {};
+    const parts = [
+        summarizeBenefitMap("rep", benefits.publicRep),
+        summarizeBenefitMap("private", benefits.privateRep),
+        summarizeBenefitMap("guild", benefits.memberships),
+        summarizeBenefitMap("cargo", benefits.cargo),
+        summarizeBenefitMap("heat", benefits.heat)
+    ].filter(Boolean);
+    if (benefits.contacts) parts.push(`contacts ${benefits.contacts.length}`);
+    if (benefits.equipment) parts.push(`equipment ${benefits.equipment.length}`);
+    if (benefits.credits) parts.push(`credits +${benefits.credits}`);
+    return parts.length ? `${startPackage.label}: ${parts.join("; ")}` : `${startPackage.label}: no direct start-state modifier`;
+}
+
+function buildMechanicalPreview(build, platform, spend) {
+    const selectedPackages = build.packageIds.map(packageBenefitSummary).filter(Boolean);
+    const ship = platform.ship || {};
+    const shipStats = [
+        ship.maxHolds ? `holds ${ship.maxHolds}` : null,
+        ship.maxFighters ? `fighters ${ship.maxFighters}` : null,
+        ship.maxShields ? `shields ${ship.maxShields}` : null,
+        ship.maxHull ? `hull ${ship.maxHull}` : null
+    ].filter(Boolean).join(" / ");
+    const cash = platform.creditModifier + spend.leftoverPoints * CHAR_DEFAULTS.CASH_PER_LEFTOVER_POINT;
+    const packageText = selectedPackages.length ? selectedPackages.join(" | ") : "No package modifiers selected.";
+    return `Cash delta ${cash >= 0 ? "+" : ""}${cash}; ${platform.label} gives ${shipStats || "baseline hull"}. ${packageText}`;
+}
+
 function packageSummary(packageId) {
     const startPackage = START_PACKAGES[packageId];
     if (!startPackage) return "";
@@ -62,6 +101,7 @@ export function renderChargenControls() {
     const validationList = validation.errors.length
         ? `<ul class="chargen-errors">${validation.errors.map(error => `<li>${error}</li>`).join("")}</ul>`
         : "";
+    const mechanicalPreview = buildMechanicalPreview(build, platform, spend);
     return `
         <div class="chargen-grid">
             <div><strong>Character Build</strong>${statControls}</div>
@@ -74,6 +114,7 @@ export function renderChargenControls() {
             <label class="chargen-field${employerClass}${fieldError("employer") ? " field-invalid" : ""}">Employer Lane <select id="chargen-employer"${employerDisabled}><option value="">None</option>${employerOptions}</select></label>
             <div class="small">Point breakdown: stats ${spend.statPoints}, careers ${spend.careerPoints}, ship/employer ${spend.platformPoints}, packages ${spend.packagePoints}; spent ${spend.total}/${CHAR_DEFAULTS.CHARGEN_POINTS}; leftover ${spend.leftoverPoints}.</div>
             <div class="small">Start preview: ${platform.label}; ship ${platform.ship?.name || "none"}; cash modifier ${platform.creditModifier}; rank ${build.platform.employerLaneId || "independent"}; runtime ${platform.runtimeType}.</div>
+            <div class="small blue">Mechanical preview: ${mechanicalPreview}</div>
             <div class="small">Summary: ${selectedTraits.map(trait => trait.name).join(", ") || "No traits"}; packages ${build.packageIds.join(", ") || "none"}.</div>
             ${drawbacks.length ? `<div class="small red">Drawbacks: ${drawbacks.join(" ")}</div>` : ""}
             ${conflicts.length ? `<div class="small red">Trait conflicts: ${conflicts.join(" ")}</div>` : ""}
