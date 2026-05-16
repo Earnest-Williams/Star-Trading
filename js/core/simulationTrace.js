@@ -232,8 +232,7 @@ export function addSimulationTraceEvent({
         const insertIndex = state.simulationTrace.findIndex(existingEvent => {
             return compareSimulationTraceEvents(event, existingEvent) < 0;
         });
-        if (insertIndex === -1) state.simulationTrace.push(event);
-        else state.simulationTrace.splice(insertIndex, 0, event);
+        state.simulationTrace.splice(insertIndex, 0, event);
     }
     if (state.simulationTrace.length > traceLimit()) {
         state.simulationTrace = state.simulationTrace.slice(-traceLimit());
@@ -244,34 +243,44 @@ export function addSimulationTraceEvent({
 export function getRecentSimulationTrace(limit = 12) {
     ensureSimulationTraceStorage();
     const safeLimit = Math.max(0, asInteger(limit, 12));
-    return state.simulationTrace.slice().sort(compareSimulationTraceEvents).reverse().slice(0, safeLimit);
+    return state.simulationTrace.slice().reverse().slice(0, safeLimit);
 }
 
-export function getSimulationTraceEvent(traceId) {
-    ensureSimulationTraceStorage();
+function findSimulationTraceEvent(traceId) {
     const safeTraceId = asNullableInteger(traceId);
     if (safeTraceId === null) return null;
     return state.simulationTrace.find(event => event.id === safeTraceId) || null;
 }
 
+export function getSimulationTraceEvent(traceId) {
+    ensureSimulationTraceStorage();
+    return findSimulationTraceEvent(traceId);
+}
+
 export function getSimulationTraceCauses(traceId) {
-    const event = getSimulationTraceEvent(traceId);
+    ensureSimulationTraceStorage();
+    const event = findSimulationTraceEvent(traceId);
     if (!event) return [];
     return event.causedBy.map(cause => {
         if (cause.traceId !== null) {
-            return getSimulationTraceEvent(cause.traceId) || cause;
+            return findSimulationTraceEvent(cause.traceId) || cause;
         }
         return cause;
     });
 }
 
-export function getSimulationTraceCausalChain(traceId, visited = new Set()) {
-    const event = getSimulationTraceEvent(traceId);
+function buildSimulationTraceCausalChain(traceId, visited) {
+    const event = findSimulationTraceEvent(traceId);
     if (!event || visited.has(event.id)) return [];
     visited.add(event.id);
     const causes = event.causedBy.flatMap(cause => {
         if (cause.traceId === null) return [];
-        return getSimulationTraceCausalChain(cause.traceId, visited);
+        return buildSimulationTraceCausalChain(cause.traceId, visited);
     });
     return [...causes, event];
+}
+
+export function getSimulationTraceCausalChain(traceId, visited = new Set()) {
+    ensureSimulationTraceStorage();
+    return buildSimulationTraceCausalChain(traceId, visited);
 }
