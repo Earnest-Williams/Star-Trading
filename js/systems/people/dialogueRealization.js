@@ -68,8 +68,8 @@ export function buildDialogueFrame(intent, context = {}) {
         tone: asString(source.tone, 'neutral'),
         slots: {
             ...normalizedSlots,
-            itemLabel: asString(slots.itemLabel, ''),
-            personName: asString(slots.personName, '')
+            itemLabel: normalizedSlots.itemLabel ?? '',
+            personName: normalizedSlots.personName ?? ''
         }
     };
 }
