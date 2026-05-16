@@ -35,6 +35,20 @@ Templates live in `js/systems/people/dialogueTemplates.js`. Realization is inten
 
 The locate-item request and check-back paths both write player utterance and semantic intent parts first, then add the realized NPC utterance to the same `locate-item:<personId>:<itemId>` conversation. Request actions may still propose memories and tasks. Check-back actions only inspect the authoritative memory/task/offer tables and add transcript parts; they do not create duplicate tasks.
 
+## NPC voice realization
+
+NPC voice data is durable on each person as `dialogueProfile`. Loaded saves repair missing or partial profiles during persistence normalisation, and generated contacts receive a role-based profile when they are created. Profiles select a preferred register, fallback register, lexicon ids, tone bias, and stable seed; they do not create gameplay effects by themselves.
+
+Relationship voice data is durable under `person.relationships.player.affect`. Affect contains bounded numeric `warmth`, `irritation`, `respect`, and `suspicion` values. Relationship deltas may mutate those values safely, but tones are derived at realization time from trust and affect. Tones are presentation choices, not canonical relationship states.
+
+Realization remains deterministic and authored:
+
+- Callers may still build simple semantic frames with intent, state, ids, and slots.
+- `dialogueRealization.js` resolves the frame person from `state.people`, reads the player relationship, selects a register, derives a tone, resolves lexicon slots, and then selects from nested authored templates.
+- Template banks are shaped as `intent → state → register → tone → templates[]` and fall back through neutral/plain/professional variants when a narrow register or tone is missing.
+- Lexicon and template choices use stable keys, not random draws, so repeated realization of the same semantic frame produces the same text.
+- Templates may mention Communications only for states where a real offer/message surface exists, such as `offer_ready`; templates never grant offers, tasks, memories, reputation, inventory, or any other gameplay effect.
+
 ## Authority boundaries
 
 - `dialogueConversationParts`: transcript/readable record of utterances, intents, proposals, effects, and system notes.

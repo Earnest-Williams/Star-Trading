@@ -6,13 +6,15 @@ import { resetTimeHooks } from '../js/core/time.js';
 import { resetState, state } from '../js/state.js';
 import {
     DIALOGUE_FRAME_STATES,
+    DIALOGUE_FALLBACK_LINE,
     DIALOGUE_INTENTS,
     DIALOGUE_OFFER_STATUSES,
     DIALOGUE_TASK_STATUSES,
     askNpcToFindPart,
     checkBackWithNpc,
     createDialogueOffer,
-    resolveDueDialogueTasks
+    resolveDueDialogueTasks,
+    validateDialogueFrame
 } from '../js/systems/people.js';
 
 function seedDialogueState() {
@@ -59,7 +61,8 @@ describe('dialogue check-back intent', () => {
         assert.equal(state.dialogueTasks.length, taskCount);
         assert.equal(result.dialogueState, DIALOGUE_FRAME_STATES.ACTIVE_TASK);
         assert.equal(result.intentPart.intent, DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM);
-        assert.match(result.responsePart.text, /still looking/);
+        assert.equal(validateDialogueFrame(result.responsePart.payload.dialogueFrame).valid, true);
+        assert.notEqual(result.responsePart.text, DIALOGUE_FALLBACK_LINE);
     });
 
     it('points check-back on an active offer to the offer state', () => {
@@ -74,7 +77,8 @@ describe('dialogue check-back intent', () => {
         const result = checkBackWithNpc('person-1', 'fujiwattit');
 
         assert.equal(result.dialogueState, DIALOGUE_FRAME_STATES.OFFER_READY);
-        assert.match(result.responsePart.text, /check Communications/);
+        assert.equal(validateDialogueFrame(result.responsePart.payload.dialogueFrame).valid, true);
+        assert.notEqual(result.responsePart.text, DIALOGUE_FALLBACK_LINE);
         assert.equal(state.dialogueTasks.length, 0);
     });
 
@@ -88,7 +92,8 @@ describe('dialogue check-back intent', () => {
         const askAgain = askNpcToFindPart('person-1', 'fujiwattit');
 
         assert.equal(checkBack.dialogueState, DIALOGUE_FRAME_STATES.FAILED_PREVIOUS);
-        assert.match(checkBack.responsePart.text, /Ask again/);
+        assert.equal(validateDialogueFrame(checkBack.responsePart.payload.dialogueFrame).valid, true);
+        assert.notEqual(checkBack.responsePart.text, DIALOGUE_FALLBACK_LINE);
         assert.equal(state.dialogueTasks.length, 2);
         assert.equal(askAgain.task.status, DIALOGUE_TASK_STATUSES.ACTIVE);
     });
@@ -107,7 +112,8 @@ describe('dialogue check-back intent', () => {
         const result = checkBackWithNpc('person-1', 'fujiwattit');
 
         assert.equal(result.dialogueState, DIALOGUE_FRAME_STATES.FOUND_ALREADY);
-        assert.match(result.responsePart.text, /already picked up/);
+        assert.equal(validateDialogueFrame(result.responsePart.payload.dialogueFrame).valid, true);
+        assert.notEqual(result.responsePart.text, DIALOGUE_FALLBACK_LINE);
         assert.equal(state.dialogueTasks.length, 0);
     });
 });

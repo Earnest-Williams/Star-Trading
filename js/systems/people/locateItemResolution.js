@@ -267,18 +267,34 @@ export function resolveLocateItemOutcome(task, reason) {
     };
 }
 
+
+function stableTemplateChoice(templates, key) {
+    if (!Array.isArray(templates) || templates.length === 0) return '';
+    const text = asString(key, 'locate-item-result');
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return templates[(hash >>> 0) % templates.length];
+}
+
 export function buildLocateItemSuccessMessage(itemId, outcome) {
     const label = getItemDef(itemId).label;
     const condition = asString(outcome?.condition, 'serviceable');
     const source = asString(outcome?.sourceFlavor, 'port broker');
     const templates = LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES.success;
     if (condition === 'worn') {
-        return templates.worn.replaceAll('{label}', label).replaceAll('{source}', source);
+        return stableTemplateChoice(templates.worn, `${itemId}|${condition}|${source}`)
+            .replaceAll('{label}', label)
+            .replaceAll('{source}', source);
     }
     if (condition === 'pristine') {
-        return templates.pristine.replaceAll('{label}', label).replaceAll('{source}', source);
+        return stableTemplateChoice(templates.pristine, `${itemId}|${condition}|${source}`)
+            .replaceAll('{label}', label)
+            .replaceAll('{source}', source);
     }
-    return templates.default
+    return stableTemplateChoice(templates.default, `${itemId}|${condition}|${source}`)
         .replaceAll('{condition}', condition)
         .replaceAll('{label}', label)
         .replaceAll('{source}', source);
@@ -289,10 +305,13 @@ export function buildLocateItemFailureMessage(itemId, outcome) {
     const tags = Array.isArray(outcome?.explanationTags) ? outcome.explanationTags : [];
     const templates = LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES.failure;
     if (tags.includes('pirate_pressure')) {
-        return templates.pirate_pressure.replaceAll('{label}', label);
+        return stableTemplateChoice(templates.pirate_pressure, `${itemId}|pirate_pressure`)
+            .replaceAll('{label}', label);
     }
     if (tags.includes('rare_item') || tags.includes('priced_high')) {
-        return templates.market_pressure.replaceAll('{label}', label);
+        return stableTemplateChoice(templates.market_pressure, `${itemId}|market_pressure`)
+            .replaceAll('{label}', label);
     }
-    return templates.default.replaceAll('{label}', label);
+    return stableTemplateChoice(templates.default, `${itemId}|default`)
+        .replaceAll('{label}', label);
 }

@@ -79,7 +79,6 @@ function buildLocateItemResponse({ intent, person, itemId, dialogueState }) {
         subjectId: 'player',
         itemId,
         state: dialogueState,
-        tone: 'neutral',
         slots: { itemLabel: itemLabel(itemId), personName: asString(person.name, person.id) }
     });
     return { frame, text: realizeDialogueLine(frame) };
@@ -92,7 +91,6 @@ function buildLocateItemPlayerPrompt({ intent, person, itemId, dialogueState }) 
         subjectId: person.id,
         itemId,
         state: dialogueState,
-        tone: 'neutral',
         slots: { itemLabel: itemLabel(itemId), personName: asString(person.name, person.id) }
     });
     return { frame, text: realizeDialoguePrompt(frame) };
