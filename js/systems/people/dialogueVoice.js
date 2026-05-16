@@ -123,6 +123,18 @@ function normalizeLexiconIds(value) {
         : [...DEFAULT_DIALOGUE_PROFILE.lexiconIds];
 }
 
+function hasNormalisedDialogueProfile(profile) {
+    return isObject(profile)
+        && REGISTER_VALUES.includes(profile.register)
+        && REGISTER_VALUES.includes(profile.fallbackRegister)
+        && TONE_VALUES.includes(profile.toneBias)
+        && typeof profile.stableSeed === 'string'
+        && profile.stableSeed.trim().length > 0
+        && Array.isArray(profile.lexiconIds)
+        && profile.lexiconIds.length > 0
+        && profile.lexiconIds.every(lexiconId => LEXICON_VALUES.includes(lexiconId));
+}
+
 export function dialogueProfileForRole(role, overrides = {}) {
     const safeRole = PERSON_ROLES.includes(role) ? role : 'factor';
     const source = isObject(overrides) ? overrides : {};
@@ -161,6 +173,9 @@ export function normaliseRelationshipAffect(affect = {}) {
 
 export function ensurePersonDialogueProfile(person) {
     if (!isObject(person)) return null;
+    if (hasNormalisedDialogueProfile(person.dialogueProfile)) {
+        return person.dialogueProfile;
+    }
     person.dialogueProfile = normaliseDialogueProfile({
         ...dialogueProfileForRole(person.role),
         ...(isObject(person.dialogueProfile) ? person.dialogueProfile : {}),

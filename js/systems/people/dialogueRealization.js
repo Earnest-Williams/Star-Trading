@@ -131,37 +131,37 @@ function getFrameRelationship(person) {
     return normaliseDialogueRelationship(relationship || {});
 }
 
-export function selectDialogueRegister(frame, person = null) {
+export function selectDialogueRegister(frame, person = null, profile = null) {
     const frameRegister = normalizeRegister(frame?.register, '');
     if (frameRegister) return frameRegister;
-    const profile = person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile();
-    return normalizeRegister(profile?.register, DIALOGUE_REGISTERS.PROFESSIONAL);
+    const safeProfile = profile || (person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile());
+    return normalizeRegister(safeProfile?.register, DIALOGUE_REGISTERS.PROFESSIONAL);
 }
 
-export function deriveDialogueTone(frame, relationship = null, person = null) {
+export function deriveDialogueTone(frame, relationship = null, person = null, profile = null, affect = null) {
     const explicitTone = normalizeTone(frame?.tone, '');
     if (explicitTone) return explicitTone;
     const safeRelationship = normaliseDialogueRelationship(relationship || {});
-    const affect = normaliseRelationshipAffect(safeRelationship.affect || DEFAULT_RELATIONSHIP_AFFECT);
-    if (safeRelationship.trust <= -40 || affect.irritation >= 60 || affect.suspicion >= 60) {
+    const safeAffect = normaliseRelationshipAffect(affect || safeRelationship.affect || DEFAULT_RELATIONSHIP_AFFECT);
+    if (safeRelationship.trust <= -40 || safeAffect.irritation >= 60 || safeAffect.suspicion >= 60) {
         return DIALOGUE_TONES.HOSTILE;
     }
-    if (safeRelationship.trust < -10 || affect.suspicion >= 25) return DIALOGUE_TONES.WARY;
-    if (safeRelationship.trust >= 35 || affect.warmth >= 35) return DIALOGUE_TONES.WARM;
-    const profile = person ? ensurePersonDialogueProfile(person) : null;
-    return normalizeTone(profile?.toneBias, DIALOGUE_TONES.NEUTRAL);
+    if (safeRelationship.trust < -10 || safeAffect.suspicion >= 25) return DIALOGUE_TONES.WARY;
+    if (safeRelationship.trust >= 35 || safeAffect.warmth >= 35) return DIALOGUE_TONES.WARM;
+    const safeProfile = profile || (person ? ensurePersonDialogueProfile(person) : null);
+    return normalizeTone(safeProfile?.toneBias, DIALOGUE_TONES.NEUTRAL);
 }
 
-export function resolveLexiconSlots(frame, person = null) {
-    const profile = person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile();
+export function resolveLexiconSlots(frame, person = null, profile = null) {
+    const safeProfile = profile || (person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile());
     const keyBase = [
         frame?.intent,
         frame?.state,
         frame?.ownerPersonId,
         frame?.itemId,
-        profile?.stableSeed
+        safeProfile?.stableSeed
     ].map(value => asString(value, '')).join('|');
-    return (profile?.lexiconIds || [DIALOGUE_LEXICON_IDS.STANDARD]).reduce((slots, lexiconId) => {
+    return (safeProfile?.lexiconIds || [DIALOGUE_LEXICON_IDS.STANDARD]).reduce((slots, lexiconId) => {
         const lexicon = DIALOGUE_LEXICONS[lexiconId] || {};
         Object.entries(lexicon).forEach(([slot, options]) => {
             if (typeof slots[slot] === 'undefined') {
@@ -206,15 +206,16 @@ function enrichFrameForRealization(frame) {
     const person = getFramePerson(normalizedFrame);
     const relationship = getFrameRelationship(person);
     const profile = person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile();
-    const register = selectDialogueRegister(normalizedFrame, person);
-    const tone = deriveDialogueTone(normalizedFrame, relationship, person);
+    const affect = normaliseRelationshipAffect(relationship.affect || DEFAULT_RELATIONSHIP_AFFECT);
+    const register = selectDialogueRegister(normalizedFrame, null, profile);
+    const tone = deriveDialogueTone(normalizedFrame, relationship, null, profile, affect);
     return {
         ...normalizedFrame,
         register,
         fallbackRegister: normalizedFrame.fallbackRegister || profile.fallbackRegister,
         tone,
         slots: {
-            ...resolveLexiconSlots(normalizedFrame, person),
+            ...resolveLexiconSlots(normalizedFrame, null, profile),
             ...normalizedFrame.slots
         }
     };
