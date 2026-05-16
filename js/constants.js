@@ -427,7 +427,33 @@ export const COMMODITY_NAMES = {
     pulse_canister: "Pulse Canisters",
     heavy_pulse_module: "Heavy Pulse Modules"
 };
-export const NPC_FINDABLE_PARTS = Object.freeze(["fuel_injector", "nav_chip", "hull_patch"]);
+export const NPC_FINDABLE_PART_DEFS = Object.freeze({
+    fuel_injector: Object.freeze({
+        id: "fuel_injector",
+        label: "fuel injector",
+        basePrice: 420,
+        rarity: 0.45,
+        favoredPortTypes: Object.freeze(["industrial", "refinery", "stardock"]),
+        favoredRegions: Object.freeze(["Core", "Frontier"])
+    }),
+    nav_chip: Object.freeze({
+        id: "nav_chip",
+        label: "nav chip",
+        basePrice: 680,
+        rarity: 0.62,
+        favoredPortTypes: Object.freeze(["stardock", "consumer"]),
+        favoredRegions: Object.freeze(["Core"])
+    }),
+    hull_patch: Object.freeze({
+        id: "hull_patch",
+        label: "hull patch",
+        basePrice: 260,
+        rarity: 0.25,
+        favoredPortTypes: Object.freeze(["mining", "industrial", "refinery"]),
+        favoredRegions: Object.freeze(["Frontier", "Badlands"])
+    })
+});
+export const NPC_FINDABLE_PARTS = Object.freeze(Object.keys(NPC_FINDABLE_PART_DEFS));
 export const DEBUG_MODE = true;
 
 export const FACTIONS = {

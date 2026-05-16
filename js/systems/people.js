@@ -152,6 +152,12 @@ export {
     normaliseDialogueRelationship
 } from './people/relationships.js';
 export {
+    buildLocateItemResolutionContext,
+    normaliseLocateItemResolutionPolicy,
+    resolveLocateItemOutcome,
+    scoreLocateItemResolution
+} from './people/locateItemResolution.js';
+export {
     archiveResolvedConversations,
     expireOldDialogueMessages,
     pruneOldDialogueEvents,
