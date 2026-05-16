@@ -17,6 +17,18 @@ export const DIALOGUE_CONVERSATION_STATUSES = Object.freeze({
 
 const CONVERSATION_TYPE_VALUES = Object.values(DIALOGUE_CONVERSATION_TYPES);
 const CONVERSATION_STATUS_VALUES = Object.values(DIALOGUE_CONVERSATION_STATUSES);
+const DEFAULT_DAY = 1;
+const DEFAULT_MINUTE_OF_DAY = 0;
+const DEFAULT_ABSOLUTE_MINUTE = 0;
+const DEFAULT_CONVERSATION_ID = 'default';
+const PERSON_SPEAKER_TYPE = 'person';
+const UNKNOWN_ITEM_ID = 'unknown_part';
+const TASK_STATUS_TO_CONVERSATION_STATUS = Object.freeze({
+    active: DIALOGUE_CONVERSATION_STATUSES.WAITING,
+    resolved: DIALOGUE_CONVERSATION_STATUSES.RESOLVED,
+    failed: DIALOGUE_CONVERSATION_STATUSES.FAILED,
+    cancelled: DIALOGUE_CONVERSATION_STATUSES.CANCELLED
+});
 
 function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -40,7 +52,7 @@ function asInteger(value, fallback) {
 function asIdString(value, fallbackId) {
     const stringValue = asNullableString(value);
     if (stringValue !== null) return stringValue;
-    return String(asInteger(fallbackId, 1));
+    return String(asInteger(fallbackId, DEFAULT_DAY));
 }
 
 function normaliseType(value) {
@@ -57,18 +69,21 @@ function normaliseTimestamp(value, fallback = null) {
     const source = isObject(value) ? value : {};
     const fallbackSource = isObject(fallback) ? fallback : {};
     return {
-        day: asInteger(source.day, asInteger(fallbackSource.day, 1)),
-        minuteOfDay: asInteger(source.minuteOfDay, asInteger(fallbackSource.minuteOfDay, 0)),
+        day: asInteger(source.day, asInteger(fallbackSource.day, DEFAULT_DAY)),
+        minuteOfDay: asInteger(
+            source.minuteOfDay,
+            asInteger(fallbackSource.minuteOfDay, DEFAULT_MINUTE_OF_DAY)
+        ),
         absoluteMinute: asInteger(
             source.absoluteMinute,
-            asInteger(fallbackSource.absoluteMinute, 0)
+            asInteger(fallbackSource.absoluteMinute, DEFAULT_ABSOLUTE_MINUTE)
         )
     };
 }
 
 function currentDialogueTimestamp() {
-    const day = asInteger(state.player?.time?.day, 1);
-    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, 0);
+    const day = asInteger(state.player?.time?.day, DEFAULT_DAY);
+    const minuteOfDay = asInteger(state.player?.time?.minuteOfDay, DEFAULT_MINUTE_OF_DAY);
     return {
         day,
         minuteOfDay,
@@ -88,8 +103,16 @@ function addRelatedId(conversation, field, id) {
     const safeId = asInteger(id, null);
     if (!Number.isInteger(safeId)) return;
     if (!Array.isArray(conversation[field])) conversation[field] = [];
-    if (!conversation[field].includes(safeId)) conversation[field].push(safeId);
-    conversation[field].sort((a, b) => a - b);
+    if (conversation[field].includes(safeId)) return;
+    const ids = conversation[field];
+    const lastId = ids[ids.length - 1];
+    if (!Number.isInteger(lastId) || safeId > lastId) {
+        ids.push(safeId);
+        return;
+    }
+    const insertAt = ids.findIndex(existingId => safeId < existingId);
+    if (insertAt === -1) ids.push(safeId);
+    else ids.splice(insertAt, 0, safeId);
 }
 
 function takeNextId() {
@@ -203,20 +226,20 @@ export function normaliseDialogueConversations(target = state) {
     }
     if (Array.isArray(target.dialogueConversationParts)) {
         target.dialogueConversationParts.filter(isObject).forEach(part => {
-            const conversationId = asString(part.conversationId, 'default');
+            const conversationId = asString(part.conversationId, DEFAULT_CONVERSATION_ID);
             const timestamp = normaliseTimestamp(part.timestamp);
             const conversation = ensureConversation(conversationId, {
                 startedAt: timestamp,
                 updatedAt: timestamp,
                 latestPartId: asInteger(part.id, null),
-                ownerPersonId: part.speakerType === 'person' ? part.speakerId : null,
+                ownerPersonId: part.speakerType === PERSON_SPEAKER_TYPE ? part.speakerId : null,
                 subjectId: part.subjectId
             });
             if (timestamp.absoluteMinute >= conversation.updatedAt.absoluteMinute) {
                 conversation.updatedAt = timestamp;
                 if (Number.isInteger(part.id)) conversation.latestPartId = part.id;
             }
-            if (conversation.ownerPersonId === null && part.speakerType === 'person') {
+            if (conversation.ownerPersonId === null && part.speakerType === PERSON_SPEAKER_TYPE) {
                 conversation.ownerPersonId = asNullableString(part.speakerId);
             }
             if (conversation.subjectId === null) {
@@ -226,17 +249,15 @@ export function normaliseDialogueConversations(target = state) {
     }
     if (Array.isArray(target.dialogueTasks)) {
         target.dialogueTasks.filter(isObject).forEach(task => {
-            const conversationId = asString(task.conversationId, 'default');
+            const conversationId = asString(task.conversationId, DEFAULT_CONVERSATION_ID);
             const conversation = getConversationById(conversationId);
             if (!conversation) return;
             addRelatedId(conversation, 'relatedTaskIds', task.id);
             if (task.taskType === DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM) {
                 conversation.conversationType = DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM;
-                conversation.topic = { ...conversation.topic, itemId: asString(task.itemId, 'unknown_part') };
-                if (task.status === 'active') conversation.status = DIALOGUE_CONVERSATION_STATUSES.WAITING;
-                if (task.status === 'resolved') conversation.status = DIALOGUE_CONVERSATION_STATUSES.RESOLVED;
-                if (task.status === 'failed') conversation.status = DIALOGUE_CONVERSATION_STATUSES.FAILED;
-                if (task.status === 'cancelled') conversation.status = DIALOGUE_CONVERSATION_STATUSES.CANCELLED;
+                conversation.topic = { ...conversation.topic, itemId: asString(task.itemId, UNKNOWN_ITEM_ID) };
+                const mappedStatus = TASK_STATUS_TO_CONVERSATION_STATUS[task.status];
+                if (mappedStatus) conversation.status = mappedStatus;
             }
             if (conversation.ownerPersonId === null) conversation.ownerPersonId = asNullableString(task.ownerPersonId);
             if (conversation.subjectId === null) conversation.subjectId = asNullableString(task.requesterId);
@@ -244,7 +265,7 @@ export function normaliseDialogueConversations(target = state) {
     }
     if (Array.isArray(target.dialogueMemories)) {
         target.dialogueMemories.filter(isObject).forEach(memory => {
-            const conversationId = asString(memory.conversationId, 'default');
+            const conversationId = asString(memory.conversationId, DEFAULT_CONVERSATION_ID);
             const conversation = getConversationById(conversationId);
             if (!conversation) return;
             addRelatedId(conversation, 'relatedMemoryIds', memory.id);
@@ -252,7 +273,7 @@ export function normaliseDialogueConversations(target = state) {
     }
     if (Array.isArray(target.dialogueMessages)) {
         target.dialogueMessages.filter(isObject).forEach(message => {
-            const conversationId = asString(message.conversationId, 'default');
+            const conversationId = asString(message.conversationId, DEFAULT_CONVERSATION_ID);
             const conversation = getConversationById(conversationId);
             if (!conversation) return;
             addRelatedId(conversation, 'relatedMessageIds', message.id);
@@ -264,7 +285,7 @@ export function normaliseDialogueConversations(target = state) {
 
 export function getDialogueConversation(conversationId) {
     ensureDialogueConversationRows();
-    const safeConversationId = asString(conversationId, 'default');
+    const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     return findDialogueConversationById(safeConversationId);
 }
 
@@ -284,7 +305,7 @@ export function ensureDialogueConversation({
     payload = {}
 } = {}) {
     ensureDialogueConversationRows();
-    const safeConversationId = asString(conversationId, 'default');
+    const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     const existing = findDialogueConversationById(safeConversationId);
     if (existing) {
         return touchDialogueConversation(safeConversationId, {
@@ -324,7 +345,7 @@ export function ensureDialogueConversation({
 
 export function touchDialogueConversation(conversationId, updates = {}) {
     ensureDialogueConversationRows();
-    const safeConversationId = asString(conversationId, 'default');
+    const safeConversationId = asString(conversationId, DEFAULT_CONVERSATION_ID);
     let conversation = findDialogueConversationById(safeConversationId);
     if (!conversation) {
         conversation = ensureDialogueConversation({ conversationId: safeConversationId });

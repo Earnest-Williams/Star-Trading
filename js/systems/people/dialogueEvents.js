@@ -148,9 +148,7 @@ export function normaliseDialogueEvents(target = state) {
             Object.assign(event, normalised);
             return event;
         })
-        .sort((a, b) => ((a.day - 1) * BALANCE.DAY_MINUTES + a.minute)
-            - ((b.day - 1) * BALANCE.DAY_MINUTES + b.minute)
-            || a.id - b.id);
+        .sort(compareDialogueEvents);
     const nextId = nextNumericIdForTable(target.dialogueEventLog);
     if (!Number.isInteger(target.nextDialogueEventId) || target.nextDialogueEventId < nextId) {
         target.nextDialogueEventId = nextId;
