@@ -69,8 +69,7 @@ function itemLabel(itemId) {
 }
 
 function findActiveLocateItemTask(ownerPersonId, requesterId, itemId) {
-    const tasks = Array.isArray(state.dialogueTasks) ? state.dialogueTasks : [];
-    return tasks.find(task => task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
+    return state.dialogueTasks.find(task => task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
         && task.status === DIALOGUE_TASK_STATUSES.ACTIVE
         && task.ownerPersonId === ownerPersonId
         && task.requesterId === requesterId
@@ -232,7 +231,6 @@ function resolveLocateItemTask(task, reason) {
 }
 
 export function resolveDueDialogueTasks(reason = 'hourly tick') {
-    normaliseDialogueTasks();
     const now = currentAbsoluteMinute();
     const resolved = [];
     state.dialogueTasks
