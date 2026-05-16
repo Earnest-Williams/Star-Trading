@@ -1,6 +1,8 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
 import { normaliseDialogueTables } from './conversationParts.js';
+import { touchDialogueConversation } from './conversations.js';
+import { addDialogueEvent } from './dialogueEvents.js';
 
 export const DIALOGUE_MEMORY_TYPES = Object.freeze({
     CUSTOMER_REQUEST: 'customer_request'
@@ -84,21 +86,28 @@ function inferMergeKey(data, fallback = null) {
 
 function emitDialogueMemoryEvent(memory, eventType) {
     const ts = currentDialogueTimestamp();
-    state.dialogueEventLog.push({
-        id: state.nextDialogueEventId++,
+    touchDialogueConversation(memory.conversationId, {
+        ownerPersonId: memory.ownerPersonId,
+        subjectId: memory.subjectId,
+        relatedMemoryIds: [memory.id],
+        updatedAt: ts
+    });
+    addDialogueEvent({
         eventType,
         sourceSystem: 'memory',
-        day: ts.day,
-        minute: ts.minuteOfDay,
         actor: memory.ownerPersonId,
         subject: memory.subjectId,
+        conversationId: memory.conversationId,
+        partId: memory.causedByPartId,
+        memoryId: memory.id,
         causedBy: { conversationId: memory.conversationId, partId: memory.causedByPartId },
         summary: {
             memoryId: memory.id,
             memoryType: memory.memoryType,
             salience: memory.salience,
             mergeKey: memory.mergeKey
-        }
+        },
+        timestamp: ts
     });
 }
 
