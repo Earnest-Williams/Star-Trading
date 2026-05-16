@@ -44,7 +44,7 @@ const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
 });
 
 const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
-    [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: 'Any news on that {itemLabel}?'
+    [DIALOGUE_FRAME_STATES.ACTIVE_TASK]: 'Any news on that {itemLabel}?'
 });
 
 export const DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({

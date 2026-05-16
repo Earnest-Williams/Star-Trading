@@ -49,7 +49,10 @@ function requiredSlotsForFrame(frame) {
 
 function fillTemplate(template, slots) {
     return Object.entries(isObject(slots) ? slots : {})
-        .reduce((line, [key, value]) => line.replaceAll(`{${key}}`, asString(value, '')), template);
+        .reduce((line, [key, value]) => {
+            const token = `{${key}}`;
+            return line.includes(token) ? line.replaceAll(token, asString(value, '')) : line;
+        }, template);
 }
 
 export function buildDialogueFrame(intent, context = {}) {
@@ -66,11 +69,7 @@ export function buildDialogueFrame(intent, context = {}) {
         itemId: asString(source.itemId, 'unknown_part'),
         state: normalizeState(source.state),
         tone: asString(source.tone, 'neutral'),
-        slots: {
-            ...normalizedSlots,
-            itemLabel: normalizedSlots.itemLabel ?? '',
-            personName: normalizedSlots.personName ?? ''
-        }
+        slots: { itemLabel: '', personName: '', ...normalizedSlots }
     };
 }
 
@@ -102,7 +101,9 @@ export function realizeDialogueLine(frame) {
 export function realizeDialoguePrompt(frame) {
     const normalizedFrame = buildDialogueFrame(frame?.intent, frame);
     const templates = DIALOGUE_PROMPT_TEMPLATE_BANKS[normalizedFrame.intent] || {};
-    const template = templates[normalizedFrame.state] || templates[DIALOGUE_FRAME_STATES.FRESH_REQUEST];
+    const template = templates[normalizedFrame.state]
+        || templates[DIALOGUE_FRAME_STATES.ACTIVE_TASK]
+        || templates[DIALOGUE_FRAME_STATES.FRESH_REQUEST];
     if (!template) return DIALOGUE_FALLBACK_LINE;
     return fillTemplate(template, normalizedFrame.slots || {});
 }
