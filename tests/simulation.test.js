@@ -6,14 +6,24 @@ import assert from 'node:assert/strict';
 import { resetState, state } from '../js/state.js';
 import { createPlayer } from '../js/core/universe.js';
 import { initSessionRng, random, restoreSessionRng, seededRng } from '../js/utils.js';
-import { registerDailyHook, clearDailyHooks, clearHourlyHooks, advanceTime } from '../js/core/time.js';
-import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../js/systems/politics.js';
+import {
+    registerDailyHook,
+    clearDailyHooks,
+    clearHourlyHooks,
+    advanceTime
+} from '../js/core/time.js';
+import {
+    updatePortsDaily,
+    updateThreatsDaily,
+    updateFactionsDaily
+} from '../js/systems/politics.js';
 import { expireMissions } from '../js/systems/missions.js';
 import { BALANCE } from '../js/constants.js';
+import { assertInRange } from './helpers/assertions.js';
 import { seedGeneratedUniverse, TEST_SEEDS } from './helpers/gameState.js';
 
 const FIXED_SEED = TEST_SEEDS.SIMULATION;
-const MINUTES_PER_DAY = BALANCE.DAY_MINUTES; // 1440
+const MINUTES_PER_DAY = BALANCE.DAY_MINUTES;
 
 function seedGame(seed = FIXED_SEED) {
     seedGeneratedUniverse({ seed });
@@ -24,53 +34,77 @@ function seedGame(seed = FIXED_SEED) {
     state.nextCaptainEventId = 1;
 }
 
-// =====================================================
-// PRNG DETERMINISM
-// =====================================================
+function worldSnapshot() {
+    return {
+        sectorCount: Object.keys(state.universe).length,
+        corridors: Object.fromEntries(
+            Object.entries(state.universe).map(([id, sector]) => [
+                id,
+                sector.jumpGates
+                    .map(gate => gate.destinationSectorId)
+                    .sort((a, b) => a - b)
+            ])
+        ),
+        portKeys: Object.keys(state.ports).sort()
+    };
+}
+
+function registerSimulationHooks() {
+    clearDailyHooks();
+    clearHourlyHooks();
+
+    registerDailyHook(() => {
+        updatePortsDaily();
+        updateThreatsDaily();
+        updateFactionsDaily();
+        expireMissions();
+    });
+}
+
 describe('seededRng', () => {
-    it('produces identical sequences for the same seed', () => {
-        const rng1 = seededRng(FIXED_SEED);
-        const rng2 = seededRng(FIXED_SEED);
-        const seq1 = Array.from({ length: 20 }, () => rng1());
-        const seq2 = Array.from({ length: 20 }, () => rng2());
-        assert.deepEqual(seq1, seq2, 'same seed should produce identical sequence');
-    });
+    it('is deterministic, bounded, and seed-sensitive', () => {
+        const rngA = seededRng(FIXED_SEED);
+        const rngB = seededRng(FIXED_SEED);
+        const first = Array.from({ length: 20 }, () => rngA());
+        const second = Array.from({ length: 20 }, () => rngB());
+        assert.deepEqual(first, second, 'same seed should produce identical sequence');
 
-    it('produces values in [0, 1)', () => {
         const rng = seededRng(FIXED_SEED);
-        for (let i = 0; i < 100; i++) {
-            const v = rng();
-            assert.ok(v >= 0 && v < 1, `value ${v} out of range`);
+        for (let i = 0; i < 100; i += 1) {
+            const value = rng();
+            assert.ok(value >= 0 && value < 1, `value ${value} out of range`);
         }
-    });
 
-    it('produces different sequences for different seeds', () => {
-        const rng1 = seededRng(1);
-        const rng2 = seededRng(2);
-        const seq1 = Array.from({ length: 10 }, () => rng1());
-        const seq2 = Array.from({ length: 10 }, () => rng2());
-        assert.notDeepEqual(seq1, seq2, 'different seeds should produce different sequences');
+        const rngSeedA = seededRng(1);
+        const rngSeedB = seededRng(2);
+        const sequenceA = Array.from({ length: 10 }, () => rngSeedA());
+        const sequenceB = Array.from({ length: 10 }, () => rngSeedB());
+        assert.notDeepEqual(
+            sequenceA,
+            sequenceB,
+            'different seeds should produce different sequences'
+        );
     });
 });
 
 describe('session RNG', () => {
-    it('produces reproducible runtime sequences from the same seed', () => {
+    it('replays, restores, and reinitializes deterministically', () => {
         initSessionRng(FIXED_SEED);
         const first = Array.from({ length: 10 }, () => random());
         initSessionRng(FIXED_SEED);
         const second = Array.from({ length: 10 }, () => random());
         assert.deepEqual(first, second, 'session RNG should replay from the same seed');
-    });
 
-    it('restores from persisted call counts', () => {
         initSessionRng(FIXED_SEED);
         const expected = Array.from({ length: 6 }, () => random());
         restoreSessionRng({ seed: FIXED_SEED, calls: 3 }, 0);
         const resumed = Array.from({ length: 3 }, () => random());
-        assert.deepEqual(resumed, expected.slice(3), 'restored RNG should continue at saved call count');
-    });
+        assert.deepEqual(
+            resumed,
+            expected.slice(3),
+            'restored RNG should continue at saved call count'
+        );
 
-    it('reinitializes safely after resetState clears persisted RNG metadata', () => {
         initSessionRng(FIXED_SEED);
         random();
         resetState();
@@ -82,39 +116,29 @@ describe('session RNG', () => {
     });
 });
 
-// =====================================================
-// DETERMINISTIC WORLD GENERATION
-// =====================================================
 describe('generateUniverse — determinism', () => {
-    it('produces the same sector count on every run with the same seed', () => {
+    it('keeps seeded world snapshots stable and seed-sensitive', () => {
         seedGame(FIXED_SEED);
-        const sectorCount1 = Object.keys(state.universe).length;
-        seedGame(FIXED_SEED);
-        const sectorCount2 = Object.keys(state.universe).length;
-        assert.equal(sectorCount1, sectorCount2, 'sector count should be deterministic');
-    });
+        const snapshotA = worldSnapshot();
 
-    it('produces the same corridor topology on every run with the same seed', () => {
         seedGame(FIXED_SEED);
-        const corridors1 = JSON.stringify(
-            Object.fromEntries(Object.entries(state.universe).map(([k, s]) => [k, s.jumpGates.map(g => g.destinationSectorId).sort()]))
+        const snapshotB = worldSnapshot();
+
+        assert.deepEqual(snapshotA, snapshotB, 'same seed should produce same world');
+        assert.equal(
+            snapshotA.sectorCount,
+            BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
+            'sector count should match the configured default'
         );
-        seedGame(FIXED_SEED);
-        const corridors2 = JSON.stringify(
-            Object.fromEntries(Object.entries(state.universe).map(([k, s]) => [k, s.jumpGates.map(g => g.destinationSectorId).sort()]))
-        );
-        assert.equal(corridors1, corridors2, 'corridor graph should be identical for the same seed');
+
+        seedGame(1);
+        const portKeysA = worldSnapshot().portKeys;
+        seedGame(2);
+        const portKeysB = worldSnapshot().portKeys;
+        assert.notDeepEqual(portKeysA, portKeysB, 'different seeds should differ');
     });
 
-    it('produces the same port layout on every run with the same seed', () => {
-        seedGame(FIXED_SEED);
-        const portKeys1 = Object.keys(state.ports).sort().join(',');
-        seedGame(FIXED_SEED);
-        const portKeys2 = Object.keys(state.ports).sort().join(',');
-        assert.equal(portKeys1, portKeys2, 'port sectors should be identical for the same seed');
-    });
-
-    it('creates a role-anchored StarDock with a stardock port', () => {
+    it('creates a navigable role-anchored StarDock map', () => {
         seedGame(FIXED_SEED);
         const homeSiteId = state.world.roles.homeSiteId;
         assert.ok(state.universe[homeSiteId], 'home role should point at an occupied site');
@@ -122,90 +146,53 @@ describe('generateUniverse — determinism', () => {
         assert.ok(state.ports[homeSiteId], 'home site should have a port');
         assert.equal(state.ports[homeSiteId].typeKey, 'stardock');
         assert.equal(state.player.currentSector, homeSiteId);
-    });
 
-    it('produces different layouts for different seeds', () => {
-        seedGame(1);
-        const portKeys1 = Object.keys(state.ports).sort().join(',');
-        seedGame(2);
-        const portKeys2 = Object.keys(state.ports).sort().join(',');
-        // Different seeds usually produce different maps; this checks at least one run differs
-        // (extremely unlikely to be identical for well-separated seeds)
-        assert.notEqual(portKeys1, portKeys2, 'different seeds should produce different maps');
-    });
-
-    it('universe has the configured occupied navigable site count', () => {
-        seedGame(FIXED_SEED);
-        assert.equal(Object.keys(state.universe).length, BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES);
-    });
-
-    it('every sector has at least one jump corridor', () => {
-        seedGame(FIXED_SEED);
         Object.values(state.universe).forEach(sector => {
-            assert.ok(sector.jumpGates.length >= 1,
-                `sector ${sector.id} should have at least one jump corridor`);
+            assert.ok(
+                sector.jumpGates.length >= 1,
+                `sector ${sector.id} should have at least one jump corridor`
+            );
         });
     });
 });
 
-// =====================================================
-// TIME ADVANCEMENT OVER N DAYS
-// =====================================================
 describe('simulation — 10-day advance', () => {
     beforeEach(() => {
-        clearDailyHooks();
-        clearHourlyHooks();
+        registerSimulationHooks();
         seedGame(FIXED_SEED);
 
-        // Register a minimal daily tick that exercises politics + missions
-        registerDailyHook(() => {
-            updatePortsDaily();
-            updateThreatsDaily();
-            updateFactionsDaily();
-            expireMissions();
-        });
-
-        // Start at 08:00, override sleep/wake to allow full-day advance
         state.player.time.wakeMinute = 0;
         state.player.time.sleepMinute = MINUTES_PER_DAY;
         state.missions = [];
         state.nextMissionId = 1;
     });
 
-    it('day counter reaches 11 after advancing 10 full days', () => {
+    it('advances time while preserving economy, threat, and faction invariants', () => {
         advanceTime(10 * MINUTES_PER_DAY);
-        assert.equal(state.player.time.day, 11);
-    });
 
-    it('port stocks remain non-negative after 10 days', () => {
-        advanceTime(10 * MINUTES_PER_DAY);
-        Object.entries(state.ports).forEach(([sid, port]) => {
-            ['ore', 'org', 'eq'].forEach(c => {
-                assert.ok(port.stock[c] >= 0,
-                    `port in sector ${sid} has negative ${c} stock: ${port.stock[c]}`);
+        assert.equal(state.player.time.day, 11);
+
+        Object.entries(state.ports).forEach(([sectorId, port]) => {
+            ['ore', 'org', 'eq'].forEach(commodity => {
+                assert.ok(
+                    port.stock[commodity] >= 0,
+                    `port in sector ${sectorId} has negative ${commodity} stock`
+                );
             });
         });
-    });
 
-    it('pirate threat stays within 0–6 in all sectors after 10 days', () => {
-        advanceTime(10 * MINUTES_PER_DAY);
         Object.values(state.universe).forEach(sector => {
-            assert.ok(
-                sector.pirateThreat >= 0 && sector.pirateThreat <= 6,
-                `sector ${sector.id} pirateThreat=${sector.pirateThreat} out of bounds`
-            );
+            assertInRange(sector.pirateThreat, 0, 6, `sector ${sector.id} pirateThreat`);
         });
-    });
 
-    it('faction relations stay within −100–100 after 10 days', () => {
-        advanceTime(10 * MINUTES_PER_DAY);
-        const fr = state.player.factionRelations;
-        Object.keys(fr).forEach(a => {
-            Object.keys(fr[a]).forEach(b => {
-                const val = fr[a][b];
-                assert.ok(
-                    val >= -100 && val <= 100,
-                    `factionRelations[${a}][${b}]=${val} out of bounds`
+        const relations = state.player.factionRelations;
+        Object.keys(relations).forEach(source => {
+            Object.keys(relations[source]).forEach(target => {
+                assertInRange(
+                    relations[source][target],
+                    -100,
+                    100,
+                    `factionRelations[${source}][${target}]`
                 );
             });
         });
