@@ -83,8 +83,8 @@ describe('economic connectivity, companies, people, and polities', () => {
         })
     );
 
-    it('connects all economic sectors across sampled world sizes and seeds', () => {
-        connectivityCases.forEach(({ occupiedSites, seed }) => {
+    connectivityCases.forEach(({ occupiedSites, seed }) => {
+        it(`connects all economic sectors for ${occupiedSites} sites seed ${seed}`, () => {
             seedGeneratedUniverse({
                 seed,
                 worldgenSettings: defaultWorldgenSettings(occupiedSites)

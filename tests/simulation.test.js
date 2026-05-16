@@ -1,7 +1,7 @@
 // Cross-system simulation tests.
 // Exercises seeded world generation and basic time-advance invariants
 // without touching any browser-specific code.
-import { describe, it, beforeEach } from 'node:test';
+import { before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetState, state } from '../js/state.js';
 import { createPlayer } from '../js/core/universe.js';
@@ -62,19 +62,23 @@ function registerSimulationHooks() {
 }
 
 describe('seededRng', () => {
-    it('is deterministic, bounded, and seed-sensitive', () => {
+    it('is deterministic for the same seed', () => {
         const rngA = seededRng(FIXED_SEED);
         const rngB = seededRng(FIXED_SEED);
         const first = Array.from({ length: 20 }, () => rngA());
         const second = Array.from({ length: 20 }, () => rngB());
         assert.deepEqual(first, second, 'same seed should produce identical sequence');
+    });
 
+    it('stays within [0, 1)', () => {
         const rng = seededRng(FIXED_SEED);
         for (let i = 0; i < 100; i += 1) {
             const value = rng();
             assert.ok(value >= 0 && value < 1, `value ${value} out of range`);
         }
+    });
 
+    it('is seed-sensitive', () => {
         const rngSeedA = seededRng(1);
         const rngSeedB = seededRng(2);
         const sequenceA = Array.from({ length: 10 }, () => rngSeedA());
@@ -157,7 +161,7 @@ describe('generateUniverse — determinism', () => {
 });
 
 describe('simulation — 10-day advance', () => {
-    beforeEach(() => {
+    before(() => {
         registerSimulationHooks();
         seedGame(FIXED_SEED);
 
@@ -165,13 +169,15 @@ describe('simulation — 10-day advance', () => {
         state.player.time.sleepMinute = MINUTES_PER_DAY;
         state.missions = [];
         state.nextMissionId = 1;
+
+        advanceTime(10 * MINUTES_PER_DAY);
     });
 
-    it('advances time while preserving economy, threat, and faction invariants', () => {
-        advanceTime(10 * MINUTES_PER_DAY);
-
+    it('advances 10 days', () => {
         assert.equal(state.player.time.day, 11);
+    });
 
+    it('keeps tracked port stocks non-negative', () => {
         Object.entries(state.ports).forEach(([sectorId, port]) => {
             ['ore', 'org', 'eq'].forEach(commodity => {
                 assert.ok(
@@ -180,11 +186,15 @@ describe('simulation — 10-day advance', () => {
                 );
             });
         });
+    });
 
+    it('keeps pirate threat in range', () => {
         Object.values(state.universe).forEach(sector => {
             assertInRange(sector.pirateThreat, 0, 6, `sector ${sector.id} pirateThreat`);
         });
+    });
 
+    it('keeps faction relations in range', () => {
         const relations = state.player.factionRelations;
         Object.keys(relations).forEach(source => {
             Object.keys(relations[source]).forEach(target => {
