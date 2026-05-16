@@ -2,6 +2,7 @@ import { ARCHETYPE_PRESETS, CHAR_DEFAULTS, CHAR_STATS, EMPLOYER_LANES, PLATFORM_
 import { CAREER_TRAITS, ORIGIN_TRAITS, getTraitDefinition } from '../config/traits.js';
 import { calcStatGain, getBuildSpend, isPlatformEmployed, maxStatSpend, validateBuild } from '../core/characterBuild.js';
 import { getChargenBuild } from './chargenState.js';
+import { escapeHtml } from '../utils.js';
 
 function option(value, label, selected) {
     return `<option value="${value}"${selected ? " selected" : ""}>${label}</option>`;
@@ -114,7 +115,7 @@ export function renderChargenControls() {
             <label class="chargen-field${employerClass}${fieldError("employer") ? " field-invalid" : ""}">Employer Lane <select id="chargen-employer"${employerDisabled}><option value="">None</option>${employerOptions}</select></label>
             <div class="small">Point breakdown: stats ${spend.statPoints}, careers ${spend.careerPoints}, ship/employer ${spend.platformPoints}, packages ${spend.packagePoints}; spent ${spend.total}/${CHAR_DEFAULTS.CHARGEN_POINTS}; leftover ${spend.leftoverPoints}.</div>
             <div class="small">Start preview: ${platform.label}; ship ${platform.ship?.name || "none"}; cash modifier ${platform.creditModifier}; rank ${build.platform.employerLaneId || "independent"}; runtime ${platform.runtimeType}.</div>
-            <div class="small blue">Mechanical preview: ${mechanicalPreview}</div>
+            <div class="small blue">Mechanical preview: ${escapeHtml(mechanicalPreview)}</div>
             <div class="small">Summary: ${selectedTraits.map(trait => trait.name).join(", ") || "No traits"}; packages ${build.packageIds.join(", ") || "none"}.</div>
             ${drawbacks.length ? `<div class="small red">Drawbacks: ${drawbacks.join(" ")}</div>` : ""}
             ${conflicts.length ? `<div class="small red">Trait conflicts: ${conflicts.join(" ")}</div>` : ""}

@@ -27,7 +27,7 @@ function hasGoodsToBuy(port) {
 }
 
 function getVisibleMissionCount(sectorId) {
-    return state.missions.filter(mission => (
+    return (state.missions || []).filter(mission => (
         mission.status === "available" && mission.originSector === sectorId
     )).length;
 }
@@ -60,7 +60,7 @@ export function buildNextActionSuggestions() {
     if (!state.player) return [];
 
     const sectorId = state.player.currentSector;
-    const port = state.ports[sectorId] || null;
+    const port = state.ports?.[sectorId] || null;
     const neighbors = getSectorNeighbors(sectorId);
     const suggestions = [];
 
@@ -116,7 +116,7 @@ export function buildNextActionSuggestions() {
         });
     }
 
-    if (state.tradeRoutes.filter(route => route.status !== "closed").length === 0) {
+    if ((state.tradeRoutes || []).filter(route => route.status !== "closed").length === 0) {
         const routeSuggestion = findRouteSuggestion();
         if (routeSuggestion) suggestions.push(routeSuggestion);
     }

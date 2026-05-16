@@ -292,7 +292,6 @@ const rendererRegistrations = [
         StateSlice.PORTS,
         StateSlice.MISSIONS,
         StateSlice.TRADE_ROUTES,
-        StateSlice.DATA_CARGO,
         StateSlice.CURRENT_SCREEN,
         StateSlice.SELECTED_SECTOR
     ]]
