@@ -74,7 +74,7 @@ and `js/systems/` so it can be tested with Node's built-in test runner.
 - `js/systems/ambientTrade.js` — capped background trade flows.
 - `js/systems/missions.js`, `secureCourier.js`, `colonies.js`, `mining.js`,
   `combat.js`, `travel.js`, `guilds.js`, `politics.js`, `polities.js`,
-  `companies.js`, and `people.js` — domain-specific simulation systems.
+  `companies.js`, `people.js`, and `contraband.js` — domain-specific simulation systems.
 - `js/systems/entanglements/**` — captain relationship state, faction social
   events, daily decay, and event generation.
 
