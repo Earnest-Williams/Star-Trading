@@ -133,6 +133,7 @@ export function createLocateItemDialogueTask({
     causedByPartId,
     resolutionPolicy = {}
 } = {}) {
+    normaliseDialogueTasks();
     const safeOwnerPersonId = asString(ownerPersonId, 'unknown-person');
     const safeRequesterId = asString(requesterId, 'player');
     const safeItemId = asString(itemId, 'unknown_part');
