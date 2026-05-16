@@ -77,9 +77,9 @@ describe('sparse 3D world generation and gate economy', () => {
 describe('economic connectivity, companies, people, and polities', () => {
     const seeds = [101, 202, 303];
 
-    it('connects all economic sectors across supported site presets and seeds', () => {
-        for (const occupiedSites of BALANCE.WORLDGEN.SITE_COUNT_PRESETS) {
-            for (const seed of seeds) {
+    for (const occupiedSites of BALANCE.WORLDGEN.SITE_COUNT_PRESETS) {
+        for (const seed of seeds) {
+            it(`connects all economic sectors for ${occupiedSites} sites seed ${seed}`, () => {
                 seedGeneratedUniverse({
                     seed,
                     worldgenSettings: defaultWorldgenSettings(occupiedSites)
@@ -87,15 +87,14 @@ describe('economic connectivity, companies, people, and polities', () => {
 
                 const economicIds = getEconomicSectorIds();
                 const anchor = economicIds[0];
-                const label = `${occupiedSites} sites seed ${seed}`;
-                assert.ok(economicIds.length > 0, `${label}: economic sectors should exist`);
+                assert.ok(economicIds.length > 0, 'economic sectors should exist');
                 assert.ok(
                     economicIds.every(id => areSectorsConnected(anchor, id)),
-                    `${label}: all economic sectors should be mutually reachable`
+                    'all economic sectors should be mutually reachable'
                 );
-            }
+            });
         }
-    });
+    }
 
     describe('generated economic entities', () => {
         beforeEach(seedGame);
