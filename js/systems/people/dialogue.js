@@ -5,6 +5,12 @@ import {
     addPersonUtterance,
     addPlayerUtterance
 } from './conversationParts.js';
+import {
+    DIALOGUE_CONVERSATION_STATUSES,
+    DIALOGUE_CONVERSATION_TYPES,
+    ensureDialogueConversation,
+    touchDialogueConversation
+} from './conversations.js';
 import { createLocateItemDialogueTask } from './dialogueTasks.js';
 import {
     DIALOGUE_MEMORY_SALIENCE,
@@ -32,6 +38,13 @@ export function askNpcToFindPart(personId, itemId) {
     if (!person) return false;
     const conversationId = `locate-item:${person.id}:${safeItemId}`;
     const label = itemLabel(safeItemId);
+    ensureDialogueConversation({
+        conversationId,
+        conversationType: DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM,
+        ownerPersonId: person.id,
+        subjectId: 'player',
+        topic: { itemId: safeItemId }
+    });
     const playerPart = addPlayerUtterance(
         conversationId,
         `Can you find a ${label} for me?`,
@@ -125,6 +138,15 @@ export function askNpcToFindPart(personId, itemId) {
         itemId: safeItemId,
         conversationId,
         causedByPartId: proposalPart.id
+    });
+    touchDialogueConversation(conversationId, {
+        conversationType: DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM,
+        ownerPersonId: person.id,
+        subjectId: 'player',
+        status: DIALOGUE_CONVERSATION_STATUSES.WAITING,
+        topic: { itemId: safeItemId },
+        relatedTaskIds: [task.id],
+        relatedMemoryIds: [memory.id]
     });
     const effectPart = addDialogueConversationPart({
         conversationId,

@@ -2,6 +2,8 @@ import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
 import { random } from '../../utils.js';
 import { normaliseDialogueTables } from './conversationParts.js';
+import { touchDialogueConversation } from './conversations.js';
+import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 import { createDialogueMessage } from './messages.js';
 
 export const DIALOGUE_TASK_STATUSES = Object.freeze({
@@ -156,16 +158,23 @@ export function createLocateItemDialogueTask({
         resolutionPolicy
     });
     state.dialogueTasks.push(task);
-    state.dialogueEventLog.push({
-        id: state.nextDialogueEventId++,
-        eventType: 'dialogue_task_created',
+    touchDialogueConversation(task.conversationId, {
+        ownerPersonId: task.ownerPersonId,
+        subjectId: task.requesterId,
+        relatedTaskIds: [task.id],
+        updatedAt: task.createdAt
+    });
+    addDialogueEvent({
+        eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED,
         sourceSystem: 'dialogue_task',
-        day: task.createdAt.day,
-        minute: task.createdAt.minuteOfDay,
         actor: task.ownerPersonId,
         subject: task.requesterId,
+        conversationId: task.conversationId,
+        partId: task.causedByPartId,
+        taskId: task.id,
         causedBy: { conversationId: task.conversationId, partId: task.causedByPartId },
-        summary: { taskId: task.id, itemId: task.itemId, status: task.status }
+        summary: { taskId: task.id, itemId: task.itemId, status: task.status },
+        timestamp: task.createdAt
     });
     return task;
 }
@@ -216,16 +225,21 @@ function resolveLocateItemTask(task, reason) {
         });
     }
     const ts = currentDialogueTimestamp();
-    state.dialogueEventLog.push({
-        id: state.nextDialogueEventId++,
-        eventType: 'dialogue_task_resolved',
+    touchDialogueConversation(task.conversationId, {
+        status: task.status === DIALOGUE_TASK_STATUSES.RESOLVED ? 'resolved' : 'failed',
+        relatedTaskIds: [task.id],
+        updatedAt: ts
+    });
+    addDialogueEvent({
+        eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_RESOLVED,
         sourceSystem: 'dialogue_task',
-        day: ts.day,
-        minute: ts.minuteOfDay,
         actor: task.ownerPersonId,
         subject: task.requesterId,
+        conversationId: task.conversationId,
+        taskId: task.id,
         causedBy: { conversationId: task.conversationId, taskId: task.id },
-        summary: { itemId: task.itemId, status: task.status, outcome: task.result.outcome }
+        summary: { itemId: task.itemId, status: task.status, outcome: task.result.outcome },
+        timestamp: ts
     });
     return task;
 }

@@ -1,5 +1,6 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
+import { normaliseDialogueConversations, touchDialogueConversation } from './conversations.js';
 
 export const DIALOGUE_PART_TYPES = Object.freeze({
     PLAYER_UTTERANCE: 'player_utterance',
@@ -22,6 +23,7 @@ const DIALOGUE_TABLE_SPECS = Object.freeze([
     { table: 'dialogueTasks', nextKey: 'nextDialogueTaskId' },
     { table: 'dialogueMessages', nextKey: 'nextDialogueMessageId' },
     { table: 'dialogueConversationParts', nextKey: 'nextDialogueConversationPartId' },
+    { table: 'dialogueConversations', nextKey: 'nextDialogueConversationId' },
     { table: 'dialogueEventLog', nextKey: 'nextDialogueEventId' }
 ]);
 
@@ -113,6 +115,7 @@ export function normaliseDialogueConversationPart(part, fallbackId = 1) {
 
 export function normaliseDialogueTables(target = state) {
     DIALOGUE_TABLE_SPECS.forEach(spec => ensureDialogueTable(target, spec.table, spec.nextKey));
+    normaliseDialogueConversations(target);
     target.dialogueConversationParts = target.dialogueConversationParts
         .map((part, index) => normaliseDialogueConversationPart(part, index + 1))
         .sort((a, b) => a.timestamp.absoluteMinute - b.timestamp.absoluteMinute || a.id - b.id);
@@ -149,6 +152,12 @@ export function addDialogueConversationPart({
         timestamp: currentDialogueTimestamp()
     });
     state.dialogueConversationParts.push(part);
+    touchDialogueConversation(part.conversationId, {
+        ownerPersonId: part.speakerType === DIALOGUE_SPEAKER_TYPES.PERSON ? part.speakerId : undefined,
+        subjectId: part.subjectId,
+        latestPartId: part.id,
+        updatedAt: part.timestamp
+    });
     return part;
 }
 

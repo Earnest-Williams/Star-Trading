@@ -53,6 +53,26 @@ export {
 } from './people/conversationParts.js';
 export { askNpcToFindPart } from './people/dialogue.js';
 export {
+    DIALOGUE_CONVERSATION_STATUSES,
+    DIALOGUE_CONVERSATION_TYPES,
+    ensureDialogueConversation,
+    getDialogueConversation,
+    getDialogueConversationsForPerson,
+    normaliseDialogueConversation,
+    normaliseDialogueConversations,
+    touchDialogueConversation
+} from './people/conversations.js';
+export {
+    DIALOGUE_EVENT_TYPES,
+    addDialogueEvent,
+    getDialogueEventsByConversationId,
+    getDialogueEventsByMemoryId,
+    getDialogueEventsByPartId,
+    getDialogueEventsByTaskId,
+    normaliseDialogueEvent,
+    normaliseDialogueEvents
+} from './people/dialogueEvents.js';
+export {
     DIALOGUE_TASK_STATUSES,
     DIALOGUE_TASK_TYPES,
     createLocateItemDialogueTask,

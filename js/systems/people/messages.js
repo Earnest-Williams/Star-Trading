@@ -2,6 +2,7 @@ import { BALANCE } from '../../constants.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
 import { state } from '../../state.js';
 import { normaliseDialogueTables } from './conversationParts.js';
+import { touchDialogueConversation } from './conversations.js';
 
 export const DIALOGUE_MESSAGE_STATUSES = Object.freeze({
     UNREAD: 'unread',
@@ -121,6 +122,10 @@ export function createDialogueMessage({
         payload
     });
     state.dialogueMessages.unshift(message);
+    touchDialogueConversation(message.conversationId, {
+        relatedMessageIds: [message.id],
+        updatedAt: message.createdAt
+    });
     if (createWorldEvent) {
         addWorldEvent({
             type: 'dialogue_message',

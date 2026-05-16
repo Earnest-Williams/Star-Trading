@@ -7,10 +7,15 @@ import { advanceTime, resetTimeHooks } from '../js/core/time.js';
 import { registerSimulationTickHooks } from '../js/core/worldTick.js';
 import { resetState, state } from '../js/state.js';
 import {
+    DIALOGUE_CONVERSATION_STATUSES,
+    DIALOGUE_CONVERSATION_TYPES,
+    DIALOGUE_EVENT_TYPES,
     DIALOGUE_MEMORY_TYPES,
     DIALOGUE_TASK_STATUSES,
+    addDialogueEvent,
     askNpcToFindPart,
     createLocateItemDialogueTask,
+    getDialogueEventsByTaskId,
     resolveDueDialogueTasks
 } from '../js/systems/people.js';
 
@@ -73,6 +78,17 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(state.dialogueMemories.length, 1);
         assert.equal(result.memory.memoryType, DIALOGUE_MEMORY_TYPES.CUSTOMER_REQUEST);
         assert.equal(result.memory.data.requestedItem, 'fujiwattit');
+        assert.equal(state.dialogueConversations.length, 1);
+        assert.equal(state.dialogueConversations[0].conversationId, result.conversationId);
+        assert.equal(state.dialogueConversations[0].conversationType, DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM);
+        assert.equal(state.dialogueConversations[0].ownerPersonId, 'person-1');
+        assert.equal(state.dialogueConversations[0].subjectId, 'player');
+        assert.equal(state.dialogueConversations[0].topic.itemId, 'fujiwattit');
+        assert.equal(state.dialogueConversations[0].status, DIALOGUE_CONVERSATION_STATUSES.WAITING);
+        assert.equal(state.dialogueConversations[0].latestPartId, result.effectPart.id);
+        assert.deepEqual(state.dialogueConversations[0].relatedTaskIds, [result.task.id]);
+        assert.deepEqual(state.dialogueConversations[0].relatedMemoryIds, [result.memory.id]);
+        assert.equal(getDialogueEventsByTaskId(result.task.id)[0].eventType, DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED);
     });
 
     it('missed-time simulation resolves due tasks through the hourly tick', () => {
@@ -174,6 +190,20 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(action.task.result.outcome, 'success');
     });
 
+    it('normalizes invalid event types and keeps event log ordering on inserts', () => {
+        const newest = addDialogueEvent({
+            eventType: DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED,
+            timestamp: { day: 2, minuteOfDay: 500 }
+        });
+        const older = addDialogueEvent({
+            eventType: 'invalid_event_type',
+            timestamp: { day: 2, minuteOfDay: 450 }
+        });
+
+        assert.equal(older.eventType, DIALOGUE_EVENT_TYPES.DIALOGUE_TASK_CREATED);
+        assert.deepEqual(state.dialogueEventLog.map(event => event.id), [older.id, newest.id]);
+    });
+
     it('save and load preserve dialogue state', () => {
         const action = askNpcToFindPart('person-1', 'fujiwattit');
         action.task.nextCheckAtAbsoluteMinute = dueMinute();
@@ -189,6 +219,12 @@ describe('dialogue locate-item tasks', () => {
         assert.equal(loaded.dialogueConversationParts.length, 7);
         assert.equal(loaded.dialogueMemories.length, 1);
         assert.equal(loaded.dialogueMemories[0].data.requestedItem, 'fujiwattit');
+        assert.equal(loaded.dialogueConversations.length, 1);
+        assert.equal(loaded.dialogueConversations[0].conversationType, DIALOGUE_CONVERSATION_TYPES.LOCATE_ITEM);
+        assert.equal(loaded.dialogueConversations[0].status, DIALOGUE_CONVERSATION_STATUSES.RESOLVED);
+        assert.deepEqual(loaded.dialogueConversations[0].relatedMessageIds, [loaded.dialogueMessages[0].id]);
+        assert.ok(loaded.dialogueEventLog.some(event => event.conversationId === action.conversationId));
+        assert.ok(loaded.dialogueEventLog.some(event => event.taskId === action.task.id));
         assert.ok(loaded.nextDialogueTaskId > loaded.dialogueTasks[0].id);
     });
 });

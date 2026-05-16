@@ -37,6 +37,11 @@ describe('conversation parts table', () => {
         assert.deepEqual(parts.map(part => part.id), [1, 2]);
         assert.equal(parts[0].partType, DIALOGUE_PART_TYPES.PLAYER_UTTERANCE);
         assert.equal(parts[1].speakerType, DIALOGUE_SPEAKER_TYPES.PERSON);
+        assert.equal(state.dialogueConversations.length, 1);
+        assert.equal(state.dialogueConversations[0].conversationId, 'dealer-ask-1');
+        assert.equal(state.dialogueConversations[0].ownerPersonId, 'person-7');
+        assert.equal(state.dialogueConversations[0].subjectId, 'player');
+        assert.equal(state.dialogueConversations[0].latestPartId, second.id);
     });
 
     it('stores structured intent/proposal/effect payloads without making them authoritative', () => {
@@ -64,12 +69,16 @@ describe('conversation parts table', () => {
     it('normalises missing dialogue tables and next id counters', () => {
         delete state.dialogueConversationParts;
         delete state.nextDialogueConversationPartId;
+        delete state.dialogueConversations;
+        delete state.nextDialogueConversationId;
         state.dialogueEventLog = [{ id: 3, eventType: 'legacy' }];
 
         normaliseDialogueTables();
 
         assert.ok(Array.isArray(state.dialogueConversationParts));
+        assert.ok(Array.isArray(state.dialogueConversations));
         assert.equal(state.nextDialogueConversationPartId, 1);
+        assert.equal(state.nextDialogueConversationId, 1);
         assert.equal(state.dialogueEventLog.length, 1);
     });
 
@@ -80,5 +89,7 @@ describe('conversation parts table', () => {
         normaliseDialogueTables();
 
         assert.equal(state.nextDialogueConversationPartId, 13);
+        assert.equal(state.dialogueConversations[0].conversationId, 'legacy');
+        assert.equal(state.dialogueConversations[0].latestPartId, 12);
     });
 });

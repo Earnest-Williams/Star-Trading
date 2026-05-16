@@ -15,6 +15,8 @@ import { log } from '../utils.js';
 import { createCharacter, normaliseCharacter } from './characters.js';
 import { normaliseDataCargoState } from './dataCargo.js';
 import { normaliseDialogueTables } from '../systems/people/conversationParts.js';
+import { normaliseDialogueConversations } from '../systems/people/conversations.js';
+import { normaliseDialogueEvents } from '../systems/people/dialogueEvents.js';
 import { normaliseDialogueMessages } from '../systems/people/messages.js';
 import { normaliseDialogueTasks } from '../systems/people/dialogueTasks.js';
 import { normaliseDialogueMemories } from '../systems/people/memory.js';
@@ -141,11 +143,13 @@ export function buildLoadedState(data) {
     loadedState.dialogueTasks = Array.isArray(data.dialogueTasks) ? data.dialogueTasks : [];
     loadedState.dialogueMessages = Array.isArray(data.dialogueMessages) ? data.dialogueMessages : [];
     loadedState.dialogueConversationParts = Array.isArray(data.dialogueConversationParts) ? data.dialogueConversationParts : [];
+    loadedState.dialogueConversations = Array.isArray(data.dialogueConversations) ? data.dialogueConversations : [];
     loadedState.dialogueEventLog = Array.isArray(data.dialogueEventLog) ? data.dialogueEventLog : [];
     loadedState.nextDialogueMemoryId = data.nextDialogueMemoryId || (loadedState.dialogueMemories.length + 1);
     loadedState.nextDialogueTaskId = data.nextDialogueTaskId || (loadedState.dialogueTasks.length + 1);
     loadedState.nextDialogueMessageId = data.nextDialogueMessageId || (loadedState.dialogueMessages.length + 1);
     loadedState.nextDialogueConversationPartId = data.nextDialogueConversationPartId || (loadedState.dialogueConversationParts.length + 1);
+    loadedState.nextDialogueConversationId = data.nextDialogueConversationId || (loadedState.dialogueConversations.length + 1);
     loadedState.nextDialogueEventId = data.nextDialogueEventId || (loadedState.dialogueEventLog.length + 1);
     loadedState.entanglements = Array.isArray(data.entanglements) ? data.entanglements : [];
     loadedState.nextEntanglementId = data.nextEntanglementId || (loadedState.entanglements.length + 1);
@@ -332,11 +336,13 @@ export const SAVE_STATE_FIELDS = [
     "dialogueTasks",
     "dialogueMessages",
     "dialogueConversationParts",
+    "dialogueConversations",
     "dialogueEventLog",
     "nextDialogueMemoryId",
     "nextDialogueTaskId",
     "nextDialogueMessageId",
     "nextDialogueConversationPartId",
+    "nextDialogueConversationId",
     "nextDialogueEventId",
     "entanglements",
     "nextEntanglementId",
@@ -524,6 +530,8 @@ function normaliseCurrentLoadedGame() {
     normaliseDialogueMemories();
     normaliseDialogueTasks();
     normaliseDialogueMessages();
+    normaliseDialogueConversations();
+    normaliseDialogueEvents();
     state.missions.forEach(m => {
         if (typeof m.rewardRep !== "number") m.rewardRep = 2;
         if (m.type === "stale_signal") {
