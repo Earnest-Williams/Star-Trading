@@ -49,10 +49,7 @@ function requiredSlotsForFrame(frame) {
 
 function fillTemplate(template, slots) {
     return Object.entries(isObject(slots) ? slots : {})
-        .reduce((line, [key, value]) => {
-            const token = `{${key}}`;
-            return line.includes(token) ? line.replaceAll(token, asString(value, '')) : line;
-        }, template);
+        .reduce((line, [key, value]) => line.replaceAll(`{${key}}`, asString(value, '')), template);
 }
 
 export function buildDialogueFrame(intent, context = {}) {
