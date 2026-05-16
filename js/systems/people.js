@@ -59,7 +59,7 @@ export {
     normaliseDialogueConversationParts,
     normaliseDialogueTables
 } from './people/conversationParts.js';
-export { askNpcToFindPart } from './people/dialogue.js';
+export { askNpcToFindPart, checkBackWithNpc } from './people/dialogue.js';
 export {
     DIALOGUE_CONVERSATION_STATUSES,
     DIALOGUE_CONVERSATION_TYPES,
@@ -157,3 +157,16 @@ export {
     pruneOldDialogueEvents,
     runDialogueMaintenanceDaily
 } from './people/dialogueMaintenance.js';
+export {
+    buildDialogueFrame,
+    realizeDialogueLine,
+    realizeDialoguePrompt,
+    validateDialogueFrame
+} from './people/dialogueRealization.js';
+export {
+    DIALOGUE_FALLBACK_LINE,
+    DIALOGUE_FRAME_STATES,
+    DIALOGUE_INTENTS,
+    DIALOGUE_PROMPT_TEMPLATE_BANKS,
+    DIALOGUE_TEMPLATE_BANKS
+} from './people/dialogueTemplates.js';
