@@ -22,6 +22,7 @@ import { normaliseDialogueTasks } from '../systems/people/dialogueTasks.js';
 import { normaliseDialogueMemories } from '../systems/people/memory.js';
 import { normaliseDialogueOffers } from '../systems/people/offers.js';
 import { normaliseDialogueProposals } from '../systems/people/proposals.js';
+import { normaliseSimulationTrace } from './simulationTrace.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -141,6 +142,9 @@ export function buildLoadedState(data) {
     loadedState.nextCaptainEventId = data.nextCaptainEventId || (loadedState.captainEventLog.length + 1);
     loadedState.worldEvents = Array.isArray(data.worldEvents) ? data.worldEvents : [];
     loadedState.nextWorldEventId = data.nextWorldEventId || (loadedState.worldEvents.length + 1);
+    loadedState.simulationTrace = Array.isArray(data.simulationTrace) ? data.simulationTrace : [];
+    loadedState.nextSimulationTraceId = data.nextSimulationTraceId
+        || (loadedState.simulationTrace.length + 1);
     loadedState.dialogueMemories = Array.isArray(data.dialogueMemories) ? data.dialogueMemories : [];
     loadedState.dialogueProposals = Array.isArray(data.dialogueProposals) ? data.dialogueProposals : [];
     loadedState.dialogueTasks = Array.isArray(data.dialogueTasks) ? data.dialogueTasks : [];
@@ -338,6 +342,8 @@ export const SAVE_STATE_FIELDS = [
     "nextCaptainEventId",
     "worldEvents",
     "nextWorldEventId",
+    "simulationTrace",
+    "nextSimulationTraceId",
     "dialogueMemories",
     "dialogueProposals",
     "dialogueTasks",
@@ -536,6 +542,7 @@ function normaliseCurrentLoadedGame() {
     normaliseDataCargoState();
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;
+    normaliseSimulationTrace();
     normaliseDialogueConversationParts();
     normaliseDialogueProposals();
     normaliseDialogueMemories();

@@ -2,11 +2,13 @@ import { state } from '../state.js';
 import { BALANCE } from '../constants.js';
 import { log } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
+import { addSimulationTraceEvent, normaliseSimulationTraceCauses } from './simulationTrace.js';
 
 export function addWorldEvent(event) {
     if (!event || !event.text) return;
     const time = state.player && state.player.time ? state.player.time : { day: 1, minuteOfDay: 0 };
-    state.worldEvents.unshift({
+    const causedBy = normaliseSimulationTraceCauses(event.causedBy);
+    const worldEvent = {
         id: state.nextWorldEventId++,
         day: time.day, minute: time.minuteOfDay,
         type: event.type || "news",
@@ -14,11 +16,30 @@ export function addWorldEvent(event) {
         factionId: event.factionId || null,
         captainId: event.captainId || null,
         text: event.text,
-        importance: event.importance || 1
+        importance: event.importance || 1,
+        causedBy
+    };
+    state.worldEvents.unshift(worldEvent);
+    addSimulationTraceEvent({
+        eventType: worldEvent.type,
+        sourceSystem: event.sourceSystem || 'world',
+        actor: event.actor || null,
+        subject: event.subject || null,
+        sectorId: worldEvent.sectorId,
+        factionId: worldEvent.factionId,
+        captainId: worldEvent.captainId,
+        routeId: event.routeId || null,
+        missionId: event.missionId || null,
+        worldEventId: worldEvent.id,
+        causedBy: worldEvent.causedBy,
+        summary: { text: worldEvent.text, importance: worldEvent.importance },
+        payload: event.payload || {},
+        timestamp: { day: worldEvent.day, minuteOfDay: worldEvent.minute }
     });
     state.worldEvents = state.worldEvents.slice(0, BALANCE.WORLD_EVENT_LIMIT);
     if (event.alert) {
         log(event.text);
         if (event.importance >= 3) Notifications.show(event.text, event.importance);
     }
+    return worldEvent;
 }

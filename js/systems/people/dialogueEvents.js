@@ -1,5 +1,6 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
+import { addSimulationTraceEvent } from '../../core/simulationTrace.js';
 
 export const DIALOGUE_EVENT_TYPES = Object.freeze({
     DIALOGUE_MEMORY_RECORDED: 'dialogue_memory_recorded',
@@ -202,9 +203,7 @@ export function addDialogueEvent({
     const lastEvent = state.dialogueEventLog[state.dialogueEventLog.length - 1];
     if (!lastEvent) {
         state.dialogueEventLog.push(event);
-        return event;
-    }
-    if (compareDialogueEvents(event, lastEvent) >= 0) {
+    } else if (compareDialogueEvents(event, lastEvent) >= 0) {
         state.dialogueEventLog.push(event);
     } else {
         const insertIndex = state.dialogueEventLog.findIndex(existingEvent => {
@@ -216,6 +215,19 @@ export function addDialogueEvent({
             state.dialogueEventLog.splice(insertIndex, 0, event);
         }
     }
+    addSimulationTraceEvent({
+        eventType: event.eventType,
+        sourceSystem: event.sourceSystem,
+        actor: event.actor,
+        subject: event.subject,
+        conversationId: event.conversationId,
+        partId: event.partId,
+        dialogueEventId: event.id,
+        causedBy: event.causedBy,
+        summary: event.summary,
+        payload: event.payload,
+        timestamp: { day: event.day, minuteOfDay: event.minute }
+    });
     return event;
 }
 

@@ -43,6 +43,8 @@ export function createInitialState() {
         nextCaptainEventId: 1,
         worldEvents: [],
         nextWorldEventId: 1,
+        simulationTrace: [],
+        nextSimulationTraceId: 1,
         dialogueMemories: [],
         dialogueProposals: [],
         dialogueTasks: [],

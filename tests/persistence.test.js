@@ -311,6 +311,17 @@ describe('save serialization', () => {
         state.nextCaptainEventId = 2;
         state.worldEvents = [{ id: 1, text: 'World event' }];
         state.nextWorldEventId = 2;
+        state.simulationTrace = [{
+            id: 1,
+            eventType: 'world_event',
+            sourceSystem: 'world',
+            day: 1,
+            minute: 480,
+            causedBy: [{ traceId: null, sourceSystem: 'test', eventType: 'cause', eventId: 7, label: 'cause' }],
+            summary: { text: 'Trace event' },
+            payload: {}
+        }];
+        state.nextSimulationTraceId = 2;
         state.tradeRoutes = [];
         state.nextTradeRouteId = 1;
         state.nextMissionId = 8;
@@ -336,6 +347,9 @@ describe('save serialization', () => {
         assert.deepEqual(state.peopleByCompany['company-1'], ['person-1']);
         assert.deepEqual(state.polities.polity_1.sectorIds, [1]);
         assert.equal(state.polityIdsBySector[1], 'polity_1');
+        assert.equal(state.simulationTrace[0].summary.text, 'Trace event');
+        assert.equal(state.simulationTrace[0].causedBy[0].eventId, 7);
+        assert.equal(state.nextSimulationTraceId, 2);
         assert.equal(state.selectedSectorId, state.player.currentSector);
         assert.equal(state.currentScreen, 'sector');
         assert.deepEqual(state.starField, []);
