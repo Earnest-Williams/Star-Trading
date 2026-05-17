@@ -240,7 +240,8 @@ export function renderDialogueOffersPanel() {
     const cards = offers.map(offer => {
         const person = state.people?.[offer.ownerPersonId];
         const personLabel = person ? person.name : offer.ownerPersonId;
-        return `<div class="command-card"><strong>${escapeHtml(offer.itemId.replaceAll("_", " "))}</strong> <span class="sector-chip green">${formatCredits(offer.price)} cr</span><br>`
+        const serviceLabel = offer.serviceType ? `${offer.serviceType}: ` : "";
+        return `<div class="command-card"><strong>${escapeHtml(serviceLabel + offer.itemId.replaceAll("_", " "))}</strong> <span class="sector-chip green">${formatCredits(offer.price)} cr</span><br>`
             + `<span class="small muted">From ${escapeHtml(personLabel)} / expires minute ${Number(offer.expiresAtAbsoluteMinute) || 0}</span>`
             + formatDialogueOfferPayload(offer)
             + `<div class="compact-actions"><button data-action="acceptDialogueOffer" data-arg0="${offer.id}">Accept Offer</button>`

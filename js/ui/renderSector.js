@@ -38,16 +38,30 @@ function renderLocalPeopleDialogueActions(sectorId) {
     const ids = state.peopleBySector?.[sectorId] || [];
     const people = ids.map(id => state.people?.[id]).filter(Boolean);
     if (people.length === 0) return "";
+    const defaultPartId = NPC_FINDABLE_PARTS[0] || "fujiwattit";
+    const serviceButtons = [
+        { service: "parts", label: "Source Part", arg2: defaultPartId },
+        { service: "orders", label: "Arrange Order", arg2: "eq" },
+        { service: "permits", label: "Request Permit", arg2: "local_access" },
+        { service: "intel", label: "Ask for Intel", arg2: "local_activity" }
+    ];
     const sections = people.slice(0, 3).map(person => {
-        const partButtons = NPC_FINDABLE_PARTS.map(partId => {
-            const actionState = getContactDialogueActionState(person.id, partId);
-            const disabled = actionState.disabled ? " disabled" : "";
-            const action = actionState.action || "askNpcToFindPart";
-            return `<button data-action="${escapeHtml(action)}" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(partId)}"${disabled}>${escapeHtml(actionState.label)}</button>`;
-        }).join("");
-        return `<div>${escapeHtml(person.name)}: ${partButtons}</div>`;
-    }).join("");
-    return `<div class="commodity-row"><strong>Local Contacts</strong><br>${sections}</div>`;
+        const services = Array.isArray(person.services) ? person.services : [];
+        const buttons = serviceButtons
+            .filter(button => services.includes(button.service))
+            .map(button => {
+                if (button.service === "parts") {
+                    const actionState = getContactDialogueActionState(person.id, button.arg2);
+                    const disabled = actionState.disabled ? " disabled" : "";
+                    const action = actionState.action || "requestContactService";
+                    return `<button data-action="${escapeHtml(action)}" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(button.arg2)}"${disabled}>${escapeHtml(button.label)}</button>`;
+                }
+                return `<button data-action="requestContactService" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(button.service)}" data-arg2="${escapeHtml(button.arg2)}">${escapeHtml(button.label)}</button>`;
+            }).join("");
+        if (buttons.length === 0) return "";
+        return `<div>${escapeHtml(person.name)}: ${buttons}</div>`;
+    }).filter(Boolean).join("");
+    return sections ? `<div class="commodity-row"><strong>Local Contacts</strong><br>${sections}</div>` : "";
 }
 
 function renderDataFreshnessLine(sectorId) {

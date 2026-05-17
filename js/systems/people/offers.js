@@ -6,7 +6,11 @@ import { DIALOGUE_TASK_STATUSES } from './dialogueTasks.js';
 import { resolveDialogueMemory } from './memory.js';
 import { applyDialogueRelationshipDelta } from './relationships.js';
 
-export const DIALOGUE_OFFER_TYPES = Object.freeze({ LOCATED_ITEM: 'located_item' });
+export const DIALOGUE_OFFER_TYPES = Object.freeze({
+    LOCATED_ITEM: 'located_item',
+    SOURCED_ORDER: 'sourced_order',
+    PERMIT: 'permit'
+});
 export const DIALOGUE_OFFER_STATUSES = Object.freeze({
     ACTIVE: 'active',
     ACCEPTED: 'accepted',
@@ -105,6 +109,7 @@ export function normaliseDialogueOffer(offer, fallbackId = 1) {
         ownerPersonId: asString(offer?.ownerPersonId, 'unknown-person'),
         recipientId: asString(offer?.recipientId, 'player'),
         itemId: asString(offer?.itemId, 'unknown_part'),
+        serviceType: asString(offer?.serviceType, ''),
         price: Math.max(0, asInteger(offer?.price, 0)),
         status: normaliseStatus(offer?.status),
         createdAt,
@@ -125,13 +130,14 @@ export function normaliseDialogueOffers(target = state) {
 
 export function createDialogueOffer({
     conversationId = 'default', taskId = null, ownerPersonId = 'unknown-person', recipientId = 'player',
-    itemId = 'unknown_part', price = 0, payload = {}, expiresAtAbsoluteMinute = null
+    itemId = 'unknown_part', price = 0, payload = {}, expiresAtAbsoluteMinute = null,
+    offerType = DIALOGUE_OFFER_TYPES.LOCATED_ITEM, serviceType = ''
 } = {}) {
     ensureStorage();
     const timestamp = currentDialogueTimestamp();
     const offer = normaliseDialogueOffer({
-        id: takeNextId(), offerType: DIALOGUE_OFFER_TYPES.LOCATED_ITEM, conversationId, taskId, ownerPersonId,
-        recipientId, itemId, price, status: DIALOGUE_OFFER_STATUSES.ACTIVE, createdAt: timestamp,
+        id: takeNextId(), offerType, conversationId, taskId, ownerPersonId,
+        recipientId, itemId, serviceType, price, status: DIALOGUE_OFFER_STATUSES.ACTIVE, createdAt: timestamp,
         expiresAtAbsoluteMinute: asInteger(expiresAtAbsoluteMinute, timestamp.absoluteMinute + BALANCE.DAY_MINUTES), payload
     });
     state.dialogueOffers.push(offer);
@@ -156,6 +162,10 @@ export function getActiveDialogueOffersForPlayer() {
 }
 
 export function acceptDialogueOffer(offerId) {
+    const offer = getDialogueOffer(offerId);
+    if (!offer) return false;
+    if (offer.offerType === DIALOGUE_OFFER_TYPES.SOURCED_ORDER) return acceptSourcedOrderOffer(offerId);
+    if (offer.offerType === DIALOGUE_OFFER_TYPES.PERMIT) return acceptPermitOffer(offerId);
     return acceptLocatedItemOffer(offerId);
 }
 
@@ -182,6 +192,61 @@ export function expireDialogueOffers(reason = 'hourly tick') {
             emitOfferEvent(offer, DIALOGUE_EVENT_TYPES.DIALOGUE_OFFER_EXPIRED, { reason });
         });
     return expired;
+}
+
+export function acceptSourcedOrderOffer(offerId) {
+    const offer = getDialogueOffer(offerId);
+    if (!offer || offer.status !== DIALOGUE_OFFER_STATUSES.ACTIVE) return false;
+    if (offer.offerType !== DIALOGUE_OFFER_TYPES.SOURCED_ORDER || offer.recipientId !== 'player') return false;
+    if (offer.expiresAtAbsoluteMinute <= currentAbsoluteMinute()) {
+        expireDialogueOffers('accept expired offer');
+        return false;
+    }
+    const task = (state.dialogueTasks || []).find(item => item.id === offer.taskId) || null;
+    if (!task || task.status !== DIALOGUE_TASK_STATUSES.RESOLVED) return false;
+    if (Number(state.player?.credits || 0) < offer.price) return false;
+    const commodityId = asString(offer.payload?.commodityId, offer.itemId);
+    const quantity = Math.max(1, asInteger(offer.payload?.quantity, 1));
+    if (!state.player.cargo || typeof state.player.cargo !== 'object') state.player.cargo = {};
+    state.player.credits -= offer.price;
+    state.player.cargo[commodityId] = (Number(state.player.cargo[commodityId]) || 0) + quantity;
+    offer.status = DIALOGUE_OFFER_STATUSES.ACCEPTED;
+    offer.resolvedAt = currentDialogueTimestamp();
+    applyDialogueRelationshipDelta(offer.ownerPersonId, { trust: 2, familiarity: 1, tags: ['fulfilled_order'], reason: 'offer_accepted' });
+    emitOfferEvent(offer, DIALOGUE_EVENT_TYPES.DIALOGUE_OFFER_ACCEPTED, { commodityId, quantity });
+    return offer;
+}
+
+export function acceptPermitOffer(offerId) {
+    const offer = getDialogueOffer(offerId);
+    if (!offer || offer.status !== DIALOGUE_OFFER_STATUSES.ACTIVE) return false;
+    if (offer.offerType !== DIALOGUE_OFFER_TYPES.PERMIT || offer.recipientId !== 'player') return false;
+    if (offer.expiresAtAbsoluteMinute <= currentAbsoluteMinute()) {
+        expireDialogueOffers('accept expired offer');
+        return false;
+    }
+    const task = (state.dialogueTasks || []).find(item => item.id === offer.taskId) || null;
+    if (!task || task.status !== DIALOGUE_TASK_STATUSES.RESOLVED) return false;
+    if (Number(state.player?.credits || 0) < offer.price) return false;
+    const authorization = isObject(offer.payload?.authorization)
+        ? { ...offer.payload.authorization }
+        : {
+            permitType: asString(offer.payload?.permitType, offer.itemId),
+            sectorId: asInteger(offer.payload?.sectorId, state.player?.currentSector || 0),
+            expiresAtAbsoluteMinute: currentAbsoluteMinute() + BALANCE.DAY_MINUTES
+        };
+    if (!Array.isArray(state.player.contactAuthorizations)) state.player.contactAuthorizations = [];
+    state.player.credits -= offer.price;
+    state.player.contactAuthorizations.push({
+        ...authorization,
+        sourceOfferId: offer.id,
+        ownerPersonId: offer.ownerPersonId
+    });
+    offer.status = DIALOGUE_OFFER_STATUSES.ACCEPTED;
+    offer.resolvedAt = currentDialogueTimestamp();
+    applyDialogueRelationshipDelta(offer.ownerPersonId, { trust: 2, familiarity: 1, tags: ['fulfilled_permit'], reason: 'offer_accepted' });
+    emitOfferEvent(offer, DIALOGUE_EVENT_TYPES.DIALOGUE_OFFER_ACCEPTED, { permitType: authorization.permitType, sectorId: authorization.sectorId });
+    return offer;
 }
 
 export function acceptLocatedItemOffer(offerId) {
