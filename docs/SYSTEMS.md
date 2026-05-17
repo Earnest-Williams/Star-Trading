@@ -82,8 +82,10 @@ adding another subsystem or compatibility wrapper.
 - `js/systems/secureCourier.js` owns secure courier contract generation,
   delivery, expiry, compromise, and interception behavior.
 - `js/systems/contraband.js` owns legality/heat interactions for contraband
-  cargo. `js/new/contraband.js` remains only a compatibility entry point.
-- Data-cargo and secure-courier balance values live in `BALANCE.DATA_CARGO`.
+  cargo, structured bust results, and derived enforcement status.
+  `js/new/contraband.js` remains only a compatibility entry point.
+- Data-cargo and secure-courier balance values live in `BALANCE.DATA_CARGO`;
+  contraband enforcement thresholds live in `BALANCE.CONTRABAND`.
 
 ## Colonies, mining, combat, and travel
 

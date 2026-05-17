@@ -17,7 +17,8 @@ export function addWorldEvent(event) {
         captainId: event.captainId || null,
         text: event.text,
         importance: event.importance || 1,
-        causedBy
+        causedBy,
+        payload: event.payload || {}
     };
     state.worldEvents.unshift(worldEvent);
     addSimulationTraceEvent({

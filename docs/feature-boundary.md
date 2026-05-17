@@ -81,7 +81,11 @@ Contraband reuses the existing legality, route-risk, hidden-front, and
 faction-heat surfaces. The canonical implementation lives in
 `js/systems/contraband.js`; `js/new/contraband.js` is only a compatibility entry
 point. Contraband should create fast payoff in the current map/economy/faction
-loop without adding unrelated law-enforcement scaffolding.
+loop without adding unrelated law-enforcement scaffolding. Structured
+contraband bust results and derived SDA enforcement status are now the proven
+precursor to bounties: enforcement pressure is read from faction heat and bust
+severity, and threshold crossings are recorded as world events instead of a
+separate legality store.
 
 ## Character, captain, and entanglement boundary
 
@@ -96,11 +100,12 @@ faction/reputation stores.
 
 ## Deferred feature: Bounties
 
-Bounties stay planned until the game has clearer enforcement, combat-result,
-capture, and surrender flows. The current bounty stub should remain
-non-authoritative and must not introduce a parallel legality model that conflicts
-with SDA heat, captain combat, pirate threat, contraband, or way-station
-inspection rules.
+Bounties stay planned until the game has clearer combat-result, capture, and
+surrender flows. Contraband enforcement status now proves the legality/heat
+precursor that future warrants can consume, but the bounty board remains
+deferred. The current bounty stub should remain non-authoritative and must not
+introduce a parallel legality model that conflicts with SDA heat, captain
+combat, pirate threat, contraband, or way-station inspection rules.
 
 ## Non-goals for this boundary
 
@@ -114,8 +119,9 @@ inspection rules.
 - No ambient market layer that replaces explicit route gameplay.
 - No second intel store or parallel intel API.
 - No renderer/EventBus subscriptions that cannot be removed.
-- No bounty board expansion until the contraband loop proves the legality/heat
-  surface.
+- No bounty board expansion until combat-result, capture, and surrender flows
+  can consume the proven contraband enforcement status without creating a
+  parallel legality model.
 
 ## Required documentation updates when crossing boundaries
 
