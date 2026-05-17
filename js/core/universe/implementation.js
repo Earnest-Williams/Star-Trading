@@ -9,6 +9,7 @@ import { createFactionState } from '../factions.js';
 import { createCharacter } from '../characters.js';
 import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from '../characterBuild.js';
 import { getEmploymentTerms } from '../characterChecks.js';
+import { createStartingProperties } from '../../systems/properties.js';
 import { markGraphDirty } from '../routePlanner.js';
 import { getTraitDefinition } from '../../config/traits.js';
 import { assignSectorPolities } from '../../systems/polities.js';
@@ -744,17 +745,18 @@ function applyStartBenefitsToPlayer(player, benefits) {
     }
 }
 
-function makePlayerBase(ship, credits, character, platformPackage, employerLane) {
+function makePlayerBase(ship, credits, character, platformPackage, employerLane, properties = []) {
     return {
         credits,
         currentSector: STARTER_PLAYER.CURRENT_SECTOR,
         time: { day: 1, minuteOfDay: BALANCE.DEFAULT_WAKE, wakeMinute: BALANCE.DEFAULT_WAKE, sleepMinute: BALANCE.DEFAULT_SLEEP },
         ship,
+        properties,
         cargo: { ...STARTER_PLAYER.CARGO },
         contrabandHold: [],
-        fighters: Math.min(STARTER_PLAYER.FIGHTERS, ship.maxFighters),
-        shields: ship.maxShields,
-        hull: ship.maxHull,
+        fighters: ship ? Math.min(STARTER_PLAYER.FIGHTERS, ship.maxFighters) : 0,
+        shields: ship ? ship.maxShields : 0,
+        hull: ship ? ship.maxHull : 0,
         reputation: STARTER_PLAYER.REPUTATION,
         seed: Date.now(),
         factionRelations: JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS)),
@@ -788,8 +790,9 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
     const builtCharacter = createCharacter(character);
     const startBenefits = collectStartBenefits(builtCharacter);
     const ship = createStarterShipFromPlatform(platformPackage);
+    const properties = createStartingProperties(platformType, { roles: state.world?.roles, siteId: STARTER_PLAYER.CURRENT_SECTOR });
     const credits = getStarterCredits(leftoverPoints, platformPackage, startBenefits);
-    const player = makePlayerBase(ship, credits, builtCharacter, platformPackage, employerLane);
+    const player = makePlayerBase(ship, credits, builtCharacter, platformPackage, employerLane, properties);
     if (player.employment) {
         player.employment = getEmploymentTerms(player.character, player.employment);
     }

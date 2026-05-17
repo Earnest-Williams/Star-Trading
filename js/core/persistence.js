@@ -27,6 +27,7 @@ import { ensurePersonDialogueProfile } from '../systems/people/dialogueVoice.js'
 import { normaliseSimulationTrace } from './simulationTrace.js';
 import { normalisePriorityBriefingState } from './priorityBriefing.js';
 import { getPortType } from './ports.js';
+import { normaliseProperty } from '../systems/properties.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -453,7 +454,10 @@ export function loadGame() {
 
 function normaliseCurrentLoadedGame() {
     if (!state.player.time) state.player.time = { day: 1, minuteOfDay: 480, wakeMinute: 480, sleepMinute: 1320 };
-    if (!state.player.ship) state.player.ship = createPlayer().ship;
+    state.player.character = normaliseCharacter(state.player.character || createCharacter());
+    const platformType = state.player.character.platform?.type;
+    const propertyStart = platformType && platformType.startsWith("property_");
+    if (!state.player.ship && !propertyStart) state.player.ship = createPlayer().ship;
     migrateShipTransitFields(state.player);
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
     if (!state.world) state.world = { saveModel: "sparse-3d-sites", roles: {} };
@@ -466,7 +470,9 @@ function normaliseCurrentLoadedGame() {
     }
     ensureFactionState();
     if (!state.player.factions.contacts) state.player.factions.contacts = createContactState();
-    state.player.character = normaliseCharacter(state.player.character || createCharacter());
+    state.player.properties = Array.isArray(state.player.properties)
+        ? state.player.properties.map(property => normaliseProperty(property))
+        : [];
     CARGO_COMMODITIES.forEach(c => { if (typeof state.player.cargo[c] !== "number") state.player.cargo[c] = 0; });
     state.sitesById = state.universe;
     if (!state.siteIdByCoord) state.siteIdByCoord = {};

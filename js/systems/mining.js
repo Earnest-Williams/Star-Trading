@@ -15,6 +15,7 @@ export function mineAsteroids() {
     const sector = state.universe[state.player.currentSector];
     const asteroids = sector.asteroids;
     if (!asteroids) { log("No asteroid field here."); return; }
+    if (!state.player.ship) { log("You need a ship before mining asteroids."); return; }
     if (asteroids.ore <= 0) { log("This asteroid field has been depleted."); return; }
     if (getFreeHolds() <= 0) { log("Your cargo holds are full."); return; }
     if (!spendTime(BALANCE.MINING.OPERATION_TIME_MINUTES)) return;

@@ -50,7 +50,8 @@ function buildMechanicalPreview(build, platform, spend) {
     ].filter(Boolean).join(" / ");
     const cash = platform.creditModifier + spend.leftoverPoints * CHAR_DEFAULTS.CASH_PER_LEFTOVER_POINT;
     const packageText = selectedPackages.length ? selectedPackages.join(" | ") : "No package modifiers selected.";
-    return `Cash delta ${cash >= 0 ? "+" : ""}${cash}; ${platform.label} gives ${shipStats || "baseline hull"}. ${packageText}`;
+    const assetText = platform.property ? `property ${platform.property.kind}, units ${platform.property.units}, rent ${platform.property.rentDaily}/day` : `ship ${shipStats || "baseline hull"}`;
+    return `Cash delta ${cash >= 0 ? "+" : ""}${cash}; ${platform.label} gives ${assetText}. ${packageText}`;
 }
 
 function packageSummary(packageId) {
@@ -111,10 +112,10 @@ export function renderChargenControls() {
             <label class="chargen-field${fieldError("origin") ? " field-invalid" : ""}">Origin <select id="chargen-origin">${originOptions}</select>${describeTrait(getTraitDefinition(build.originTraitId))}</label>
             <fieldset><legend>Career traits</legend>${careerControls}</fieldset>
             <fieldset><legend>Starting packages</legend>${packageControls}</fieldset>
-            <label class="chargen-field${fieldError("platform") ? " field-invalid" : ""}">Start Ship / Employer Package <select id="chargen-platform">${platformOptions}</select></label>
+            <label class="chargen-field${fieldError("platform") ? " field-invalid" : ""}">Starting Platform <select id="chargen-platform">${platformOptions}</select></label>
             <label class="chargen-field${employerClass}${fieldError("employer") ? " field-invalid" : ""}">Employer Lane <select id="chargen-employer"${employerDisabled}><option value="">None</option>${employerOptions}</select></label>
             <div class="small">Point breakdown: stats ${spend.statPoints}, careers ${spend.careerPoints}, ship/employer ${spend.platformPoints}, packages ${spend.packagePoints}; spent ${spend.total}/${CHAR_DEFAULTS.CHARGEN_POINTS}; leftover ${spend.leftoverPoints}.</div>
-            <div class="small">Start preview: ${platform.label}; ship ${platform.ship?.name || "none"}; cash modifier ${platform.creditModifier}; rank ${build.platform.employerLaneId || "independent"}; runtime ${platform.runtimeType}.</div>
+            <div class="small">Start preview: ${platform.label}; asset ${platform.ship?.name || platform.property?.kind || "none"}; cash modifier ${platform.creditModifier}; rank ${build.platform.employerLaneId || "independent"}; runtime ${platform.runtimeType}.</div>
             <div class="small blue">Mechanical preview: ${escapeHtml(mechanicalPreview)}</div>
             <div class="small">Summary: ${selectedTraits.map(trait => trait.name).join(", ") || "No traits"}; packages ${build.packageIds.join(", ") || "none"}.</div>
             ${drawbacks.length ? `<div class="small red">Drawbacks: ${drawbacks.join(" ")}</div>` : ""}

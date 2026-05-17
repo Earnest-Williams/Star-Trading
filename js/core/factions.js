@@ -353,8 +353,14 @@ export function getFactionPoliticalPole(factionId) {
 export function clampPlayerState() {
     ensureFactionState();
     state.player.credits = Math.max(0, Math.floor(state.player.credits));
-    state.player.fighters = Math.max(0, Math.min(state.player.fighters, state.player.ship.maxFighters));
-    state.player.shields = Math.max(0, Math.min(state.player.shields, state.player.ship.maxShields));
-    state.player.hull = Math.max(0, Math.min(state.player.hull, state.player.ship.maxHull));
+    if (state.player.ship) {
+        state.player.fighters = Math.max(0, Math.min(state.player.fighters, state.player.ship.maxFighters));
+        state.player.shields = Math.max(0, Math.min(state.player.shields, state.player.ship.maxShields));
+        state.player.hull = Math.max(0, Math.min(state.player.hull, state.player.ship.maxHull));
+    } else {
+        state.player.fighters = 0;
+        state.player.shields = 0;
+        state.player.hull = 0;
+    }
     CARGO_COMMODITIES.forEach(c => { state.player.cargo[c] = Math.max(0, Math.floor(state.player.cargo[c])); });
 }

@@ -60,7 +60,7 @@ export function getPriorityItems() {
             priority: 7
         });
     }
-    if (player.hull < player.ship.maxHull * 0.3) {
+    if (player.ship && player.hull < player.ship.maxHull * 0.3) {
         items.push({
             text: `Hull damaged: ${player.hull}/${player.ship.maxHull}`,
             urgent: player.hull < player.ship.maxHull * 0.15,
@@ -87,7 +87,8 @@ export function renderHeader() {
     const { player } = state;
     clampPlayerState();
     const sector = state.universe[player.currentSector];
-    document.getElementById("shipName").textContent = player.ship.name;
+    const ship = player.ship || null;
+    document.getElementById("shipName").textContent = ship ? ship.name : "No assigned ship";
     document.getElementById("credits").textContent = formatCredits(player.credits);
     document.getElementById("dayTime").textContent = `Day ${player.time.day}, ${formatTime(player.time.minuteOfDay)}`;
     document.getElementById("sectorNum").textContent = player.currentSector;
@@ -95,10 +96,10 @@ export function renderHeader() {
     const cs = document.getElementById("curSector");
     if (cs) cs.textContent = player.currentSector;
     document.getElementById("cargoSummary").textContent = CARGO_COMMODITIES.map(c => `${formatCommodity(c)} ${player.cargo[c] || 0}`).join(" / ");
-    document.getElementById("holds").textContent = `${getCargoUsed()}/${player.ship.maxHolds}`;
-    document.getElementById("fighters").textContent = `${player.fighters}/${player.ship.maxFighters}`;
-    document.getElementById("shields").textContent = `${player.shields}/${player.ship.maxShields}`;
-    document.getElementById("hull").textContent = `${player.hull}/${player.ship.maxHull}`;
+    document.getElementById("holds").textContent = ship ? `${getCargoUsed()}/${ship.maxHolds}` : "0/0";
+    document.getElementById("fighters").textContent = ship ? `${player.fighters}/${ship.maxFighters}` : "0/0";
+    document.getElementById("shields").textContent = ship ? `${player.shields}/${ship.maxShields}` : "0/0";
+    document.getElementById("hull").textContent = ship ? `${player.hull}/${ship.maxHull}` : "0/0";
 }
 
 export function renderFactionPanel() {
@@ -187,7 +188,10 @@ export function renderSectorActionMenu() {
     const hasPort = Boolean(ports[player.currentSector]);
     const hasPlanet = Boolean(planets[player.currentSector]);
     let html = `<h4>Available Actions</h4><div class="card-grid">`;
-    html += `<div class="card"><strong>Navigation</strong><br><span class="muted">Choose a direct jump corridor from the right panel or click the map.</span><br>${getSectorNeighbors(player.currentSector).map(target => `<button data-action="moveTo" data-arg0="${target}">Use Jump Gate ${target} (${player.ship.travelMinutesPerCorridor}m)</button>`).join("")}</div>`;
+    const navigationButtons = player.ship
+        ? getSectorNeighbors(player.currentSector).map(target => `<button data-action="moveTo" data-arg0="${target}">Use Jump Gate ${target} (${player.ship.travelMinutesPerCorridor}m)</button>`).join("")
+        : '<span class="muted">No ship assigned. Property careers can operate locally until you hire transport or acquire a hull.</span>';
+    html += `<div class="card"><strong>Navigation</strong><br><span class="muted">Choose a direct jump corridor from the right panel or click the map.</span><br>${navigationButtons}</div>`;
     html += `<div class="card"><strong>Survey</strong><br>Reveal hidden fronts, precise asteroid data, and better map intel.<br><button data-action="surveySector">Survey Sector (60m)</button></div>`;
     if (hasPort) html += `<div class="card"><strong>Port</strong><br>Trade, missions, and local faction pressure.<br><button data-action="showScreen" data-arg0="market">Open Market</button></div>`;
     if (sector.asteroids) html += `<div class="card"><strong>Asteroids</strong><br>Mine ore and shift industrial influence.<br><button data-action="mineAsteroids">Mine Asteroids (120m)</button></div>`;

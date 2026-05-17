@@ -162,8 +162,8 @@ describe('validateBuild', () => {
     });
 
     it('accepts spending exactly 100 points on stats', () => {
-        // 25+25+25+25 = 100 (all at max)
-        const result = validateBuild({ statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 25, command: 25 }, careerTraitIds: [] });
+        // 25+25+25+25 = 100 across four focused stats
+        const result = validateBuild({ statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 25, command: 25, acumen: 0 }, careerTraitIds: [] });
         assert.equal(result.valid, true);
     });
 
@@ -186,11 +186,11 @@ describe('validateBuild', () => {
 
     it('rejects total spend over 150', () => {
         const result = validateBuild({
-            statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 25, command: 25 },
+            statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 25, command: 25, acumen: 25 },
             careerTraitIds: ['veteran_miner', 'quiet_hands']
         });
         assert.equal(result.valid, false);
-        assert.ok(result.reason.includes('150')); 
+        assert.ok(result.reason.includes(String(CHAR_DEFAULTS.CHARGEN_POINTS)));  
     });
 
     it('rejects non-object input', () => {
@@ -243,7 +243,7 @@ describe('buildCharacterFromSpec', () => {
             statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 0, command: 0 },
             careerTraitIds: []
         });
-        assert.equal(leftoverPoints, 50);
+        assert.equal(leftoverPoints, CHAR_DEFAULTS.CHARGEN_POINTS - 100);
     });
 
     it('calculates leftover after spending 50 on stats + 1 career trait', () => {
@@ -251,7 +251,7 @@ describe('buildCharacterFromSpec', () => {
             statSpend: { nerve: 25, tradecraft: 25, fieldcraft: 0, command: 0 },
             careerTraitIds: ['veteran_miner']
         });
-        assert.equal(leftoverPoints, 0);
+        assert.equal(leftoverPoints, CHAR_DEFAULTS.CHARGEN_POINTS - 150);
     });
 });
 
@@ -273,6 +273,7 @@ describe('shared character schema', () => {
         assert.equal(normalised.stats.tradecraft, CHAR_DEFAULTS.STAT_BASE);
         assert.equal(normalised.stats.fieldcraft, CHAR_DEFAULTS.STAT_BASE);
         assert.equal(normalised.stats.command, CHAR_DEFAULTS.STAT_BASE);
+        assert.equal(normalised.stats.acumen, CHAR_DEFAULTS.STAT_BASE);
         assert.deepEqual(normalised.traits, []);
         assert.deepEqual(normalised.careerTraitIds, []);
         assert.equal(normalised.originTraitId, null);
@@ -317,7 +318,7 @@ describe('migrateSave — v14 character block injection', () => {
     it('does not overwrite character already present in player', () => {
         const save = minimalSave(13);
         save.player.character = {
-            stats: { nerve: 75, tradecraft: 60, fieldcraft: 55, command: 50 },
+            stats: { nerve: 75, tradecraft: 60, fieldcraft: 55, command: 50, acumen: 50 },
             traits: ['veteran_miner'],
             originTraitId: 'veteran_miner',
             careerTraitIds: [],
@@ -342,7 +343,7 @@ describe('migrateSave — v14 character block injection', () => {
     it('does not overwrite character already present on a captain', () => {
         const save = minimalSave(13);
         save.captains = {
-            npc_1: { id: 'npc_1', character: { stats: { nerve: 80, tradecraft: 50, fieldcraft: 50, command: 50 }, traits: [], originTraitId: null, careerTraitIds: [], platform: { type: 'ship_owned', employerLaneId: null }, contacts: [] } }
+            npc_1: { id: 'npc_1', character: { stats: { nerve: 80, tradecraft: 50, fieldcraft: 50, command: 50, acumen: 50 }, traits: [], originTraitId: null, careerTraitIds: [], platform: { type: 'ship_owned', employerLaneId: null }, contacts: [] } }
         };
         const result = migrateSave(save);
         assert.equal(result.captains.npc_1.character.stats.nerve, 80);

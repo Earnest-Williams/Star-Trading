@@ -181,7 +181,7 @@ describe('expanded chargen packages and regression coverage', () => {
             const validation = validateBuild(preset.build);
             assert.equal(validation.valid, true, preset.label);
             const player = createPlayerFromBuild(preset.build);
-            assert.ok(player.ship.name.length > 0);
+            assert.ok(player.ship?.name.length > 0 || player.properties.length > 0);
         });
     });
 });

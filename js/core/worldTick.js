@@ -12,10 +12,12 @@ import { expireIntel } from './intel.js';
 import { cullOldPublicSnapshots, expirePrivatePayloads, runAmbientDataPropagationDaily } from './dataCargo.js';
 import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../systems/secureCourier.js';
 import { decayDialogueMemories, expireDialogueOffers, resolveDueDialogueTasks, runDialogueMaintenanceDaily } from '../systems/people.js';
+import { runPlayerPropertiesDaily } from '../systems/properties.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
     { id: 'explicit_trade_route_runs', run: () => runTradeRoutesDaily() },
+    { id: 'player_property_economics', run: () => runPlayerPropertiesDaily() },
     { id: 'ambient_trade_response', run: () => runAmbientTradeDaily() },
     { id: 'ambient_data_propagation', run: () => runAmbientDataPropagationDaily() },
     { id: 'data_cargo_culling', run: () => cullOldPublicSnapshots() },
@@ -73,7 +75,7 @@ export function expireFactionIntel() {
 function recordDailyWorldEvent() {
     addWorldEvent({
         type: 'daily_tick',
-        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, ambient trade and public data moved, markets shifted, captains acted, entanglements shifted, factions moved, and sector threats advanced.`,
+        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, property ledgers settled, ambient trade and public data moved, markets shifted, captains acted, entanglements shifted, factions moved, and sector threats advanced.`,
         importance: 2,
         alert: false
     });

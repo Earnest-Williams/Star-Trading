@@ -26,6 +26,8 @@ The `docs/design/` directory contains feature proposals and implementation
 notes. Treat these documents as planning references until the corresponding code
 is merged and covered by tests.
 
+- [Character-mediated Challenges](./design/character-mediated-challenges.md)
+- [RPG Careers and Property](./design/rpg-careers-and-property.md)
 - [Blackline Command](./design/blackline-command.md)
 - [Blackline Command Implementation](./design/blackline-command-implementation.md)
 - [Dynamic Dialogue, Memory, Task, and World Simulation](./design/dynamic-dialogue-memory-simulation.md)
