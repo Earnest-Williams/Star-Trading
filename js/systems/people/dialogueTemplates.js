@@ -355,6 +355,24 @@ const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
             [DIALOGUE_TONES.WARM]: Object.freeze(['Would you find a {itemLabel} for me?']),
             [DIALOGUE_TONES.INTIMATE]: Object.freeze(['I need a {itemLabel}. Can you find one?'])
         })
+    }),
+    [DIALOGUE_FRAME_STATES.FAILED_PREVIOUS]: Object.freeze({
+        [DIALOGUE_REGISTERS.WORK]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you restart the search for that {itemLabel}?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['Could you take another look for my {itemLabel}?']),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Can you make another quiet run at the {itemLabel}?']),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['Try again on the {itemLabel}.'])
+        }),
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you look again for that {itemLabel}?'])
+        }),
+        [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you try again on the {itemLabel}?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['Would you try again on my {itemLabel}?']),
+            [DIALOGUE_TONES.INTIMATE]: Object.freeze([
+                'I still need that {itemLabel}. Can you try again?'
+            ])
+        })
     })
 });
 
@@ -373,11 +391,89 @@ const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Any news on the {itemLabel}?']),
             [DIALOGUE_TONES.WARM]: Object.freeze(['Heard anything on my {itemLabel}?'])
         })
+    }),
+    [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['What is the status of that {itemLabel}?'])
+        })
+    }),
+    [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]: Object.freeze({
+        [DIALOGUE_REGISTERS.WORK]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Do you still have my {itemLabel} request?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['Do you still have my {itemLabel} in your notes?']),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Is the {itemLabel} request still open?']),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['You still have that {itemLabel} request, right?'])
+        }),
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Is my {itemLabel} request still open?'])
+        }),
+        [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You still remember the {itemLabel}?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['You still have my {itemLabel} in mind?'])
+        })
+    }),
+    [DIALOGUE_FRAME_STATES.OFFER_READY]: Object.freeze({
+        [DIALOGUE_REGISTERS.WORK]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You found the {itemLabel}?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['You found my {itemLabel}?']),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Is the {itemLabel} ready to review?']),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['Show me the {itemLabel} offer.'])
+        }),
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You found a {itemLabel}?'])
+        }),
+        [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You found the {itemLabel}?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['You came through on my {itemLabel}?']),
+            [DIALOGUE_TONES.INTIMATE]: Object.freeze(['You found my {itemLabel}? I knew you would.'])
+        })
+    }),
+    [DIALOGUE_FRAME_STATES.FOUND_ALREADY]: Object.freeze({
+        [DIALOGUE_REGISTERS.WORK]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['That {itemLabel} is already settled, right?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['We already settled the {itemLabel}, right?']),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze(['The {itemLabel} is off the books now, yes?']),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['That {itemLabel} is already handled.'])
+        }),
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['I already picked up that {itemLabel}, right?'])
+        }),
+        [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['We already handled the {itemLabel}.']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['Thanks again for the {itemLabel}.'])
+        })
+    }),
+    [DIALOGUE_FRAME_STATES.FAILED_PREVIOUS]: Object.freeze({
+        [DIALOGUE_REGISTERS.WORK]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['The last {itemLabel} search failed?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['No luck on my {itemLabel} last time?']),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze(['The {itemLabel} trail went cold?']),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['You missed on the {itemLabel}?'])
+        }),
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['No luck on the {itemLabel}?'])
+        }),
+        [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Still no {itemLabel}?']),
+            [DIALOGUE_TONES.WARM]: Object.freeze(['No luck finding my {itemLabel}?'])
+        })
     })
 });
 
+const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS = Object.freeze({
+    ...REQUEST_LOCATE_ITEM_PLAYER_PROMPTS,
+    [DIALOGUE_FRAME_STATES.ACTIVE_TASK]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.ACTIVE_TASK],
+    [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST],
+    [DIALOGUE_FRAME_STATES.OFFER_READY]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.OFFER_READY],
+    [DIALOGUE_FRAME_STATES.FOUND_ALREADY]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.FOUND_ALREADY]
+});
+
 export const DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
-    [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS,
+    [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS
 });
 
