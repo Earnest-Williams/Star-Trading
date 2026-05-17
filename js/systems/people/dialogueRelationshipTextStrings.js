@@ -601,6 +601,24 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'Do you have space for a personal conversation?',
                     'I wanted to say something without the whole station hearing.'
                 ]),
+                hostile: Object.freeze([
+                    'Do you have a minute, or should I stop wasting both our time?',
+                    'I need to say something, and I would rather do it directly.',
+                    'Can we get one honest minute without all the posturing?',
+                    'I came to talk. Do not make it harder than it needs to be.'
+                ]),
+                envious: Object.freeze([
+                    'Do you still have a minute for me, or is everyone else ahead in line?',
+                    'I wanted to catch you while you still had time to spare.',
+                    'Can we talk before the rest of the station claims you again?',
+                    'I thought I would see if I could get a little of your attention.'
+                ]),
+                jealous: Object.freeze([
+                    'Do you have a minute for me first?',
+                    'I wanted to talk before someone else took your time.',
+                    'Can we have a private minute? Just us.',
+                    'I came by because I wanted your attention on me.'
+                ]),
                 intimate: Object.freeze([
                     'I missed you. Can we talk?',
                     'I wanted a minute with just you.',
@@ -620,6 +638,30 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I like talking with you. Do you have a minute?',
                     'I came here because this is where I wanted to be.',
                     'Can I stay a while?'
+                ]),
+                guarded: Object.freeze([
+                    'Can we talk somewhere quieter?',
+                    'I wanted to say something personal without an audience.',
+                    'Do you have room for a careful conversation?',
+                    'I wanted a minute that felt more private than this place usually allows.'
+                ]),
+                hostile: Object.freeze([
+                    'Can we skip the small talk and just be honest for a minute?',
+                    'I came to talk to you, not stand here circling the point.',
+                    'Do you have room for one direct conversation?',
+                    'I need a minute with you, assuming that is still allowed.'
+                ]),
+                envious: Object.freeze([
+                    'I wanted a little time with you before someone else claimed it.',
+                    'Can I borrow you for a minute, if the station can spare you?',
+                    'I came by because I wanted to be the person you talked to right now.',
+                    'Do you have room for me before the rest of this place gets in the way?'
+                ]),
+                jealous: Object.freeze([
+                    'Can I have a little time with you before anyone else does?',
+                    'I wanted to catch you alone for once.',
+                    'Do you have room for me, specifically me, right now?',
+                    'I came here because I wanted your attention to stay with me.'
                 ]),
                 intimate: Object.freeze([
                     'I needed to be near you for a minute.',
@@ -649,11 +691,73 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'You have started to matter more than I expected.',
                     'I am trying to understand what this is becoming.'
                 ]),
+                hostile: Object.freeze([
+                    'You have gotten familiar enough that pretending otherwise feels pointless.',
+                    'I notice when you are around. Make of that what you want.',
+                    'You have become hard to ignore, which is not always convenient.',
+                    'I am used to you now. That does not mean I know what to do with it.'
+                ]),
+                envious: Object.freeze([
+                    'I keep noticing how easily you make yourself part of a place.',
+                    'You are becoming familiar in a way I cannot quite stop measuring.',
+                    'I notice when you dock here, even if I try not to make much of it.',
+                    'I am getting used to you, and that does strange things to my perspective.'
+                ]),
+                jealous: Object.freeze([
+                    'I have started noticing when your routine does not include me.',
+                    'You are becoming familiar enough that I miss you when you go elsewhere.',
+                    'I look for you more than I should admit.',
+                    'I am getting used to you, and I am not eager to share that.'
+                ]),
                 intimate: Object.freeze([
                     'I notice when you are not around.',
                     'I keep saving stories to tell you.',
                     'I think of you when the ship goes quiet.',
                     'I like how natural this feels with you.'
+                ])
+            }),
+            personal: Object.freeze({
+                neutral: Object.freeze([
+                    'I think we have become familiar in a way I actually like.',
+                    'You feel less like a stop on the route and more like part of it now.',
+                    'I have started expecting to see you.',
+                    'You have become one of the people I carry with me.'
+                ]),
+                warm: Object.freeze([
+                    'I like how natural this is getting with you.',
+                    'I miss you in small ways now, which feels important.',
+                    'I have started looking forward to you more than I planned.',
+                    'You feel familiar in a way that makes the station easier to come back to.'
+                ]),
+                guarded: Object.freeze([
+                    'I am not used to someone feeling this familiar this quickly.',
+                    'You are getting closer to me than most people manage.',
+                    'I am trying not to flinch at how much I notice you now.',
+                    'This is becoming familiar enough to matter.'
+                ]),
+                hostile: Object.freeze([
+                    'You have gotten under my guard enough to feel familiar, which is irritating.',
+                    'I am used to you now, whether that was smart or not.',
+                    'You have become part of my thinking. I am not thrilled by how easily that happened.',
+                    'I know your absence too well for someone I keep arguing with.'
+                ]),
+                envious: Object.freeze([
+                    'You have become familiar to me, and I still do not know how you make it look so easy.',
+                    'I notice the space you take up in my day more than I expected.',
+                    'You have become one of the people I measure the room against.',
+                    'I am getting used to you, and that comes with more feeling than I planned.'
+                ]),
+                jealous: Object.freeze([
+                    'You have become familiar enough that I hate sharing your attention.',
+                    'I know when you are gone, and I notice where I think you might be instead.',
+                    'I have gotten used to you in a way that makes me possessive.',
+                    'You matter enough now that I miss you before I mean to.'
+                ]),
+                intimate: Object.freeze([
+                    'You feel familiar in the ways that matter most to me.',
+                    'I have started carrying you with me between stops.',
+                    'You have become part of my quiet, and I do not want to lose that.',
+                    'Being close to you is starting to feel like the natural state of things.'
                 ])
             })
         }),
@@ -677,11 +781,73 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I am curious about you in a way that is hard to ignore.',
                     'Would you tell me something real?'
                 ]),
+                hostile: Object.freeze([
+                    'Tell me something real, if that is not too much to ask.',
+                    'I want to know what is actually true about you.',
+                    'What are you like when the performance drops away?',
+                    'I am asking because I would rather understand you than keep guessing.'
+                ]),
+                envious: Object.freeze([
+                    'Tell me something about the life that made you this hard to ignore.',
+                    'What did you get to want before the lanes narrowed things down?',
+                    'I want to hear one story only you could have lived.',
+                    'What part of your life would someone like me envy most?'
+                ]),
+                jealous: Object.freeze([
+                    'Tell me something real that you do not give to everyone.',
+                    'What part of you gets saved for the people who matter?',
+                    'I want to know the version of you that is not for public trade.',
+                    'Who do you let close, really?'
+                ]),
                 intimate: Object.freeze([
                     'I want to know what matters to you.',
                     'Tell me the part of you people miss when they rush past.',
                     'I want to understand you slowly.',
                     'What would make you feel less alone here?'
+                ])
+            }),
+            personal: Object.freeze({
+                neutral: Object.freeze([
+                    'What matters to you when nobody is asking for anything?',
+                    'Tell me something about yourself that feels real.',
+                    'What part of your life do you miss when you are moving?',
+                    'What do you want when you stop being useful for a minute?'
+                ]),
+                warm: Object.freeze([
+                    'I want to know what softens you.',
+                    'Tell me something I would only learn by staying.',
+                    'What kind of life would make you feel at ease?',
+                    'I want to know the part of you that does not have to impress anyone.'
+                ]),
+                guarded: Object.freeze([
+                    'Can I ask something personal without pushing too hard?',
+                    'Tell me if this crosses a line, but I want to know you better.',
+                    'I am trying to ask with care: what matters most to you?',
+                    'Would you trust me with something honest?'
+                ]),
+                hostile: Object.freeze([
+                    'I want the truth, not the polished version.',
+                    'Tell me something honest before I invent the worst answer.',
+                    'What matters to you when no one is watching?',
+                    'Give me something real to work with.'
+                ]),
+                envious: Object.freeze([
+                    'Tell me about something you got to want that I never did.',
+                    'What part of your life would be hardest for anyone else to understand?',
+                    'I want to hear about the place or person that still has hold of you.',
+                    'What do you miss that the rest of us only imagine?'
+                ]),
+                jealous: Object.freeze([
+                    'Tell me something you only trust certain people with.',
+                    'What do you share when someone actually gets close to you?',
+                    'I want to know the part of you that is not for everyone else.',
+                    'What does someone have to earn before you let them know you?'
+                ]),
+                intimate: Object.freeze([
+                    'Tell me what you need when the day has taken too much.',
+                    'I want to know what home feels like to you.',
+                    'What part of you still wants to be understood?',
+                    'Let me hear the story you save for the quiet hours.'
                 ])
             })
         }),
@@ -705,6 +871,24 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I do not want to play games with you.',
                     'If this is only banter, I should probably know.'
                 ]),
+                hostile: Object.freeze([
+                    'If you are going to stare at me like that, own it.',
+                    'Tell me whether this is real or just another game.',
+                    'You make it hard to tell whether I should lean in or walk away.',
+                    'If this is flirting, say it with your whole chest.'
+                ]),
+                envious: Object.freeze([
+                    'Do you smile like that at everyone, or am I allowed to be curious?',
+                    'I want to know whether that look means anything when it lands on me.',
+                    'You make attention look effortless. It is unfair.',
+                    'I am trying not to wonder how many people get this version of you.'
+                ]),
+                jealous: Object.freeze([
+                    'Tell me that look is for me.',
+                    'I would like to know whether you do this with everyone else too.',
+                    'If you are flirting, I want to know I am not sharing the moment.',
+                    'You are making me wonder who else gets this smile.'
+                ]),
                 intimate: Object.freeze([
                     'I have been thinking about that look you gave me.',
                     'I wanted to see if you missed this too.',
@@ -724,6 +908,30 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I like the way we circle each other.',
                     'I am trying not to smile too much around you.',
                     'You make me want to linger.'
+                ]),
+                guarded: Object.freeze([
+                    'Tell me if I am stepping too close to the truth.',
+                    'I do not want this to be a game between us.',
+                    'I am flirting, but not casually.',
+                    'If I am being obvious, I would rather you know it is intentional.'
+                ]),
+                hostile: Object.freeze([
+                    'If this is going somewhere, I want honesty more than charm.',
+                    'You have me off-balance. I am trying not to resent how much I like it.',
+                    'Stop smiling at me like that unless you mean it.',
+                    'I want to know whether this is real before I give in to it.'
+                ]),
+                envious: Object.freeze([
+                    'You make being desired look easy, and I hate how much I notice.',
+                    'I want to know whether this attention of yours is actually rare.',
+                    'You make me curious in ways that feel unfair.',
+                    'I am trying not to compare myself to everyone else who notices you.'
+                ]),
+                jealous: Object.freeze([
+                    'If you are going to flirt with me, do not split that smile with the whole station.',
+                    'I like your attention best when it stays on me.',
+                    'You make me want to be the only person getting this version of you.',
+                    'I want to know that this is mine for a minute.'
                 ]),
                 intimate: Object.freeze([
                     'I want you closer than this.',
@@ -755,11 +963,73 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'This matters enough that I do not want to guess.',
                     'Can we talk about us without dodging the hard part?'
                 ]),
+                hostile: Object.freeze([
+                    'There is clearly something here. I am tired of pretending otherwise.',
+                    'If this matters, I want the truth instead of another sidestep.',
+                    'Tell me plainly whether this is real or not.',
+                    'I do not have patience for half-honest feelings.'
+                ]),
+                envious: Object.freeze([
+                    'You make connection look easier than it feels from my side.',
+                    'There is something here, and I want to know whether I imagined the imbalance.',
+                    'I want to stop wondering how many other people get this version of you.',
+                    'This means enough to me that comparison is starting to poison it.'
+                ]),
+                jealous: Object.freeze([
+                    'If there is something between us, I need to know it is not shared out casually.',
+                    'Do you feel this too, or am I only one stop in a longer line?',
+                    'I want to know whether this matters to you the way it does to me.',
+                    'Tell me whether this is ours before I let it become more.'
+                ]),
                 intimate: Object.freeze([
                     'I want you, and I want to know if you want this too.',
                     'I am tired of almost saying what I mean.',
                     'I want to choose this with you, not stumble into it.',
                     'I want us to stop pretending this is small.'
+                ])
+            }),
+            personal: Object.freeze({
+                neutral: Object.freeze([
+                    'There is something here, and I do not want to keep walking around it.',
+                    'I think this between us has become too real to ignore.',
+                    'I want to talk about what we are becoming.',
+                    'Do you feel how close to changing this is?'
+                ]),
+                warm: Object.freeze([
+                    'I want this to become something honest with you.',
+                    'I think we are standing at the edge of something good.',
+                    'I want to know whether you feel this pulling too.',
+                    'This has started to matter to me in a real way.'
+                ]),
+                guarded: Object.freeze([
+                    'I need to know if I am reading us right.',
+                    'I want to be honest, but I do not want to step alone.',
+                    'This matters enough that I am scared of guessing wrong.',
+                    'Can we talk about what this is without either of us hiding?'
+                ]),
+                hostile: Object.freeze([
+                    'I am done pretending this tension is not there.',
+                    'If this matters, then say it straight.',
+                    'I want the truth about us, not another careful dodge.',
+                    'Tell me whether I am wasting my heart here.'
+                ]),
+                envious: Object.freeze([
+                    'I want to know whether this feels as uneven to you as it sometimes does to me.',
+                    'This means enough that I keep comparing it to what everyone else seems to have.',
+                    'I need to know whether I am imagining the distance between us.',
+                    'Tell me whether this is real before envy makes a mess of it.'
+                ]),
+                jealous: Object.freeze([
+                    'If this is becoming something, I need to know I am not sharing your heart by accident.',
+                    'I want to hear whether this is ours to claim.',
+                    'Tell me whether I matter to you in a way that changes the rest.',
+                    'I need to know if I am the one you want here.'
+                ]),
+                intimate: Object.freeze([
+                    'I want to stop circling this and choose you out loud.',
+                    'This feels too important to leave half-said.',
+                    'I want to know whether we can call this love before it slips by.',
+                    'Tell me if your heart is reaching for mine too.'
                 ])
             })
         }),
@@ -783,6 +1053,24 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I do not say this lightly: I have feelings for you.',
                     'I am afraid of how much I want this, but I still want it.'
                 ]),
+                hostile: Object.freeze([
+                    'Fine. Here is the truth: I care about you.',
+                    'I am done pretending this does not matter to me.',
+                    'You have gotten past my defenses. I need you to know that.',
+                    'I care about you whether that is convenient or not.'
+                ]),
+                envious: Object.freeze([
+                    'I care about you, even when the feeling makes me compare too much.',
+                    'You matter to me more than is comfortable to admit.',
+                    'I have feelings for you, and they make me want more than I have.',
+                    'I care about you enough that it changes the way I see everything else.'
+                ]),
+                jealous: Object.freeze([
+                    'I care about you, and I hate how much I want to keep that feeling close.',
+                    'You matter to me enough that I want to be chosen back.',
+                    'I have feelings for you that do not leave much room for pretending otherwise.',
+                    'I care about you, and I want to know I matter that way to you too.'
+                ]),
                 intimate: Object.freeze([
                     'I love you.',
                     'I want to build something real with you.',
@@ -791,11 +1079,41 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                 ])
             }),
             personal: Object.freeze({
+                neutral: Object.freeze([
+                    'I need to tell you that I care about you.',
+                    'This is real for me now.',
+                    'You matter to me in a way I cannot keep treating lightly.',
+                    'I wanted you to hear from me that this is love, or close enough to frighten me.'
+                ]),
                 warm: Object.freeze([
                     'I care about you, and I am done hiding it.',
                     'I want us to be real.',
                     'I want to be with you.',
                     'My heart keeps finding its way back to you.'
+                ]),
+                guarded: Object.freeze([
+                    'This is difficult for me, but it is true: I care about you deeply.',
+                    'I am trusting you with the fact that my heart is involved now.',
+                    'I do not say this easily, but I have fallen for you.',
+                    'I am scared to hand you this truth, but it is yours anyway.'
+                ]),
+                hostile: Object.freeze([
+                    'I care about you. There, it is said.',
+                    'You have become important to me, and I am tired of fighting it.',
+                    'I love you enough to stop hiding behind sharp edges.',
+                    'I want you to know exactly what you have done to me.'
+                ]),
+                envious: Object.freeze([
+                    'I care about you, and sometimes the wanting of it all gets tangled up in envy.',
+                    'You matter to me enough that I keep measuring what I fear losing.',
+                    'I love you, even when it makes me feel smaller than I want to admit.',
+                    'My feelings for you are real, even when they bring out the messier parts of me.'
+                ]),
+                jealous: Object.freeze([
+                    'I care about you enough to want your heart turned toward me.',
+                    'I love you, and part of me is terrified of not being your first choice.',
+                    'You matter to me in the possessive, vulnerable way I never planned on.',
+                    'I want to be yours, not one option among many.'
                 ]),
                 intimate: Object.freeze([
                     'I love you, and I want you to hear it from me.',
@@ -825,11 +1143,73 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I can wait if we are both being honest.',
                     'I am not running. I am just scared.'
                 ]),
+                hostile: Object.freeze([
+                    'I am still here. That is the part that matters.',
+                    'I do not need polished promises. I need you to mean what you say.',
+                    'We can do this honestly, even if it is not graceful.',
+                    'I am not leaving just because this is difficult.'
+                ]),
+                envious: Object.freeze([
+                    'I know comparison can poison good things. I still want this.',
+                    'We do not need what anyone else has. We need what is real for us.',
+                    'I want this enough to stay steady through the uglier feelings.',
+                    'Even when I feel the imbalance, I still want to build something true with you.'
+                ]),
+                jealous: Object.freeze([
+                    'I am here. Let that count for something solid.',
+                    'You do not have to prove everything at once. Just keep choosing this with me.',
+                    'I want to trust what we have without clutching it too hard.',
+                    'Stay honest with me, and I will stay with you.'
+                ]),
                 intimate: Object.freeze([
                     'I am with you.',
                     'You can rest with me.',
                     'I choose you on the difficult days too.',
                     'Come back to me as you are.'
+                ])
+            }),
+            personal: Object.freeze({
+                neutral: Object.freeze([
+                    'We do not need every answer tonight.',
+                    'I want to keep choosing this carefully with you.',
+                    'We can take the next step without rushing the whole road.',
+                    'I am here for the honest version of this.'
+                ]),
+                warm: Object.freeze([
+                    'We can move gently and still mean it.',
+                    'I am here, and I am not in a hurry to lose this.',
+                    'I want to build this in a way that feels safe for both of us.',
+                    'You do not have to be perfect for me to stay.'
+                ]),
+                guarded: Object.freeze([
+                    'I am willing to move slowly if it keeps this honest.',
+                    'I need steadiness, but I am still here.',
+                    'We can be careful without being afraid of each other.',
+                    'I want to trust this one truthful step at a time.'
+                ]),
+                hostile: Object.freeze([
+                    'I am staying. Let us start there.',
+                    'We can get through the rough edges without pretending they are not rough.',
+                    'I want honesty more than reassurance dressed up as poetry.',
+                    'This is hard, but I am not backing away.'
+                ]),
+                envious: Object.freeze([
+                    'Even when I compare, I still want what is ours.',
+                    'I know envy can get loud. I do not want it deciding this for us.',
+                    'We do not need to look like anyone else to be real.',
+                    'I want to keep choosing us over the uglier thoughts.'
+                ]),
+                jealous: Object.freeze([
+                    'I want to trust this without squeezing it too tightly.',
+                    'Keep being honest with me, and I can quiet the worst parts of myself.',
+                    'I am here because I want to believe in what we are building.',
+                    'Stay with me in the truth of this, and I will stay with you.'
+                ]),
+                intimate: Object.freeze([
+                    'Rest here with me. We do not have to solve everything tonight.',
+                    'I am not afraid of taking this slowly if it means taking it with you.',
+                    'You can bring me the scared parts too.',
+                    'I choose us, even while we are still learning how.'
                 ])
             })
         }),
@@ -853,6 +1233,24 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                     'I will come back when the route lets me.',
                     'Do not forget me too quickly.'
                 ]),
+                hostile: Object.freeze([
+                    'I am leaving now. Do not make this harder than it already is.',
+                    'I will come back. That will have to be enough for today.',
+                    'Take care of yourself while I am gone.',
+                    'I hate this part, so let us keep it honest and brief.'
+                ]),
+                envious: Object.freeze([
+                    'I am going, and I am trying not to resent how easy staying seems for other people.',
+                    'I will be back. I just wish leaving looked simpler from my side.',
+                    'Take care of what I have to leave behind for a while.',
+                    'I already miss what other people get to keep.'
+                ]),
+                jealous: Object.freeze([
+                    'I am going. Try not to give my place away while I am gone.',
+                    'I will come back, so save some of that warmth for me.',
+                    'Do not make me picture someone else taking my goodbye.',
+                    'I already miss you, and I am not even out the door yet.'
+                ]),
                 intimate: Object.freeze([
                     'Kiss me before I go.',
                     'I will come back to you.',
@@ -861,11 +1259,41 @@ export const DIALOGUE_RELATIONSHIP_PROMPT_TEMPLATE_BANKS = Object.freeze({
                 ])
             }),
             personal: Object.freeze({
+                neutral: Object.freeze([
+                    'I will come back as soon as the route lets me.',
+                    'Take care until I see you again.',
+                    'I will be thinking of you on the way out.',
+                    'The leaving is easier if I know I am coming back to you.'
+                ]),
                 warm: Object.freeze([
                     'I hate leaving you.',
                     'I will carry this with me until I am back.',
                     'I want the next hello already.',
                     'I will take care of myself for you.'
+                ]),
+                guarded: Object.freeze([
+                    'I am trying to leave without making it harder than it has to be.',
+                    'I will come back. I just need to get through the leaving first.',
+                    'Take care of yourself while I am gone, and I will do the same.',
+                    'I mean more in this goodbye than I am saying out loud.'
+                ]),
+                hostile: Object.freeze([
+                    'I am going, and I hate how much that matters.',
+                    'I will come back. Let that be the promise for now.',
+                    'Do not make me drag this goodbye out any further.',
+                    'I care enough that leaving puts me in a foul mood.'
+                ]),
+                envious: Object.freeze([
+                    'I wish I were the one who got to stay with you.',
+                    'I will come back, even if I envy anyone who gets your time while I am gone.',
+                    'Leaving you makes me resent the distance before it even starts.',
+                    'Take care of the part of my heart I am leaving here.'
+                ]),
+                jealous: Object.freeze([
+                    'I am leaving, and I already hate the idea of anyone else getting the time I want.',
+                    'Save the best of your welcome for when I come back.',
+                    'I will return, so do not let anyone else take up too much of my space with you.',
+                    'Part of me wants to stay just so I do not have to share you with the distance.'
                 ]),
                 intimate: Object.freeze([
                     'I love you. I will come back.',
