@@ -104,7 +104,27 @@ describe('dialogue realization', () => {
             ],
             [
                 DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.ACTIVE_TASK
+            ],
+            [
+                DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST
+            ],
+            [
+                DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.OFFER_READY
+            ],
+            [
+                DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.FOUND_ALREADY
+            ],
+            [
+                DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
                 DIALOGUE_FRAME_STATES.FAILED_PREVIOUS
+            ],
+            [
+                DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.FRESH_REQUEST
             ],
             [
                 DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,

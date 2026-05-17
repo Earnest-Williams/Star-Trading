@@ -368,7 +368,10 @@ const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
         }),
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you try again on the {itemLabel}?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['Would you try again on my {itemLabel}?'])
+            [DIALOGUE_TONES.WARM]: Object.freeze(['Would you try again on my {itemLabel}?']),
+            [DIALOGUE_TONES.INTIMATE]: Object.freeze([
+                'I still need that {itemLabel}. Can you try again?'
+            ])
         })
     })
 });
@@ -387,6 +390,11 @@ const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Any news on the {itemLabel}?']),
             [DIALOGUE_TONES.WARM]: Object.freeze(['Heard anything on my {itemLabel}?'])
+        })
+    }),
+    [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
+        [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['What is the status of that {itemLabel}?'])
         })
     }),
     [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]: Object.freeze({
@@ -416,7 +424,8 @@ const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
         }),
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You found the {itemLabel}?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['You came through on my {itemLabel}?'])
+            [DIALOGUE_TONES.WARM]: Object.freeze(['You came through on my {itemLabel}?']),
+            [DIALOGUE_TONES.INTIMATE]: Object.freeze(['You found my {itemLabel}? I knew you would.'])
         })
     }),
     [DIALOGUE_FRAME_STATES.FOUND_ALREADY]: Object.freeze({
@@ -451,8 +460,20 @@ const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
     })
 });
 
+const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS = Object.freeze({
+    ...REQUEST_LOCATE_ITEM_PLAYER_PROMPTS,
+    [DIALOGUE_FRAME_STATES.ACTIVE_TASK]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.ACTIVE_TASK],
+    [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST],
+    [DIALOGUE_FRAME_STATES.OFFER_READY]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.OFFER_READY],
+    [DIALOGUE_FRAME_STATES.FOUND_ALREADY]:
+        CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.FOUND_ALREADY]
+});
+
 export const DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
-    [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS,
+    [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS
 });
 
