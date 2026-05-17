@@ -176,7 +176,7 @@ export {
     getDialogueRelationship,
     normaliseDialogueRelationship
 } from './people/relationships.js';
-export { deepenRelationship, startPersonalChat } from './people/relationshipConversationActions.js';
+export { deepenRelationship, MIN_DEEPEN_FAMILIARITY, startPersonalChat } from './people/relationshipConversationActions.js';
 export {
     buildLocateItemResolutionContext,
     normaliseLocateItemResolutionPolicy,

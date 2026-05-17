@@ -3,7 +3,6 @@ import {
     DIALOGUE_PART_TYPES,
     DIALOGUE_SPEAKER_TYPES,
     addDialogueConversationPart,
-    addPersonUtterance,
     addPlayerUtterance
 } from './conversationParts.js';
 import {
@@ -20,7 +19,7 @@ import {
     normaliseDialogueRelationship
 } from './relationships.js';
 
-const MIN_DEEPEN_FAMILIARITY = 2;
+export const MIN_DEEPEN_FAMILIARITY = 2;
 const TOPIC_DELTAS = Object.freeze({
     check_in: Object.freeze({ affect: { warmth: 1 }, state: DIALOGUE_FRAME_STATES.GETTING_FAMILIAR }),
     stories: Object.freeze({ affect: { respect: 1 }, state: DIALOGUE_FRAME_STATES.PERSONAL_INTEREST }),
@@ -177,10 +176,19 @@ function runRelationshipConversation({ person, intent, dialogueState, topicTag, 
         causedByPartId: playerPart.id
     });
     const npcLine = realizeDialogueLine(frame);
-    const responsePart = addPersonUtterance(conversationId, person.id, npcLine, {
-        topicTag,
-        intentPartId: intentPart.id,
-        dialogueFrame: frame
+    const responsePart = addDialogueConversationPart({
+        conversationId,
+        partType: DIALOGUE_PART_TYPES.NPC_UTTERANCE,
+        speakerType: DIALOGUE_SPEAKER_TYPES.PERSON,
+        speakerId: person.id,
+        subjectId: 'player',
+        text: npcLine,
+        payload: {
+            topicTag,
+            intentPartId: intentPart.id,
+            dialogueFrame: frame
+        },
+        causedByPartId: intentPart.id
     });
     const before = normaliseDialogueRelationship(getDialogueRelationship(person.id) || {});
     const relationship = applyDialogueRelationshipDelta(person.id, delta);
@@ -248,7 +256,7 @@ export function deepenRelationship(personId, topicTag) {
     if (!relationship) return failResult(person.id, 'missing_relationship');
     const access = hasDeepenAccess(relationship, safeTopicTag);
     if (!access.ok) return failResult(person.id, access.reason);
-    const topicDelta = TOPIC_DELTAS[safeTopicTag] || TOPIC_DELTAS[DEFAULT_TOPIC_TAG];
+    const topicDelta = TOPIC_DELTAS[safeTopicTag];
     return runRelationshipConversation({
         person,
         intent: DIALOGUE_INTENTS.DEEPEN_RELATIONSHIP,

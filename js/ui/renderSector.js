@@ -6,7 +6,7 @@ import { renderCaptainChipsForSector } from "./renderCaptains.js";
 import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } from "../core/navigation.js";
 import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
-import { getContactDialogueActionState, normaliseDialogueRelationship } from "../systems/people.js";
+import { getContactDialogueActionState, MIN_DEEPEN_FAMILIARITY, normaliseDialogueRelationship } from "../systems/people.js";
 
 
 function renderLocalAuthorityLine(sector) {
@@ -59,7 +59,7 @@ function renderLocalPeopleDialogueActions(sectorId) {
                 return `<button data-action="requestContactService" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(button.service)}" data-arg2="${escapeHtml(button.arg2)}">${escapeHtml(button.label)}</button>`;
             }).join("");
         const relationship = normaliseDialogueRelationship(person.relationships?.player || {});
-        const canDeepen = relationship && relationship.familiarity >= 2;
+        const canDeepen = relationship && relationship.familiarity >= MIN_DEEPEN_FAMILIARITY;
         const deepenDisabled = canDeepen ? "" : " disabled";
         const relationshipButtons = `<button data-action="startPersonalChat" data-arg0="${escapeHtml(person.id)}">Talk personally</button>`
             + `<button data-action="deepenRelationship" data-arg0="${escapeHtml(person.id)}" data-arg1="stories"${deepenDisabled}>Talk more</button>`;
