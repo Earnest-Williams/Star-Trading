@@ -62,6 +62,7 @@ import {
     checkBackWithNpc,
     markDialogueMessageRead,
     rejectDialogueOffer,
+    requestContactService,
     touchDialogueConversation,
     DIALOGUE_CONVERSATION_STATUSES
 } from '../systems/people.js';
@@ -391,6 +392,15 @@ export function registerUIActions() {
     });
     registerAction('checkBackWithNpc', (personId, itemId) => {
         const result = checkBackWithNpc(personId, itemId);
+        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('requestContactService', (personId, serviceType, value) => {
+        const payload = {};
+        if (serviceType === 'parts') payload.itemId = value || 'fujiwattit';
+        if (serviceType === 'orders') payload.commodityId = value || 'eq';
+        if (serviceType === 'permits') payload.permitType = value || 'local_access';
+        if (serviceType === 'intel') payload.topic = value || 'local_activity';
+        const result = requestContactService(personId, serviceType, payload);
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
     });
     registerAction('markDialogueMessageRead', messageId => {

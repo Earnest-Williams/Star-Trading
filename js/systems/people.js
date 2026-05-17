@@ -77,7 +77,7 @@ export {
     normaliseDialogueConversationParts,
     normaliseDialogueTables
 } from './people/conversationParts.js';
-export { askNpcToFindPart, checkBackWithNpc } from './people/dialogue.js';
+export { askNpcToFindPart, checkBackWithNpc, requestContactService } from './people/dialogue.js';
 export {
     DIALOGUE_CONVERSATION_STATUSES,
     DIALOGUE_CONVERSATION_TYPES,
@@ -101,12 +101,17 @@ export {
     normaliseDialogueEvents
 } from './people/dialogueEvents.js';
 export {
+    CONTACT_SERVICE_TYPES,
     DIALOGUE_TASK_STATUSES,
     DIALOGUE_TASK_TYPES,
+    createContactServiceDialogueTask,
     createLocateItemDialogueTask,
     normaliseDialogueTask,
     normaliseDialogueTasks,
-    resolveDueDialogueTasks
+    resolveDueDialogueTasks,
+    serviceTypeForTaskType,
+    stablePayloadKeyForService,
+    taskTypeForServiceType
 } from './people/dialogueTasks.js';
 export {
     DIALOGUE_MESSAGE_STATUSES,
@@ -146,6 +151,8 @@ export {
     DIALOGUE_OFFER_TYPES,
     acceptDialogueOffer,
     acceptLocatedItemOffer,
+    acceptPermitOffer,
+    acceptSourcedOrderOffer,
     createDialogueOffer,
     expireDialogueOffers,
     getActiveDialogueOffersForPlayer,

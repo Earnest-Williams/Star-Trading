@@ -13,13 +13,13 @@ export const PERSON_ROLES = Object.freeze([
 export const PERSON_SERVICES_BY_ROLE = Object.freeze({
     sales_director: Object.freeze(["orders", "discounts"]),
     freight_manager: Object.freeze(["orders", "intel"]),
-    dockmaster: Object.freeze(["discounts", "permits"]),
+    dockmaster: Object.freeze(["parts", "discounts", "permits"]),
     customs_officer: Object.freeze(["permits", "intel"]),
     polity_envoy: Object.freeze(["permits", "intel"]),
     local_councillor: Object.freeze(["permits", "orders"]),
     union_rep: Object.freeze(["orders", "discounts"]),
-    factor: Object.freeze(["orders", "discounts", "intel"]),
-    fixer: Object.freeze(["orders", "permits", "intel"])
+    factor: Object.freeze(["parts", "orders", "discounts", "intel"]),
+    fixer: Object.freeze(["parts", "orders", "permits", "intel"])
 });
 
 export const PERSON_NAME_PARTS = Object.freeze({

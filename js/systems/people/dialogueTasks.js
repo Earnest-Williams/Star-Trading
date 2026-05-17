@@ -1,6 +1,6 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
-import { asString, formatItemLabel, isObject } from './common.js';
+import { asInteger, asString, formatItemLabel, isObject } from './common.js';
 import { ensureDialogueRuntimeStorage } from './conversationParts.js';
 import { touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
@@ -12,6 +12,7 @@ import {
     resolveLocateItemOutcome
 } from './locateItemResolution.js';
 import { applyDialogueRelationshipDelta } from './relationships.js';
+import { finishContactServiceResolution, resolveContactServiceTask } from './contactServiceResolution.js';
 
 export const DIALOGUE_TASK_STATUSES = Object.freeze({
     ACTIVE: 'active',
@@ -21,17 +22,21 @@ export const DIALOGUE_TASK_STATUSES = Object.freeze({
 });
 
 export const DIALOGUE_TASK_TYPES = Object.freeze({
-    LOCATE_ITEM: 'locate_item'
+    LOCATE_ITEM: 'locate_item',
+    SOURCE_ORDER: 'source_order',
+    ARRANGE_PERMIT: 'arrange_permit',
+    GATHER_INTEL: 'gather_intel'
+});
+
+export const CONTACT_SERVICE_TYPES = Object.freeze({
+    PARTS: 'parts',
+    ORDERS: 'orders',
+    PERMITS: 'permits',
+    INTEL: 'intel'
 });
 
 const TASK_STATUS_VALUES = Object.values(DIALOGUE_TASK_STATUSES);
 const LOCATE_ITEM_CHECK_INTERVAL_MINUTES = 6 * 60;
-
-function asInteger(value, fallback) {
-    if (value === null || typeof value === 'undefined') return fallback;
-    const number = Number(value);
-    return Number.isInteger(number) ? number : fallback;
-}
 
 function currentAbsoluteMinute() {
     const day = asInteger(state.player?.time?.day, 1);
@@ -66,25 +71,99 @@ function itemLabel(itemId) {
     return formatItemLabel(itemId);
 }
 
-function findActiveLocateItemTask(ownerPersonId, requesterId, itemId) {
-    return state.dialogueTasks.find(task => task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM
+function normalisePayload(payload) {
+    return isObject(payload) ? { ...payload } : {};
+}
+
+function keyValue(value, fallback) {
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+    if (Number.isFinite(Number(value))) return String(value);
+    return fallback;
+}
+
+export function taskTypeForServiceType(serviceType) {
+    const safeServiceType = asString(serviceType, CONTACT_SERVICE_TYPES.PARTS);
+    if (safeServiceType === CONTACT_SERVICE_TYPES.ORDERS) return DIALOGUE_TASK_TYPES.SOURCE_ORDER;
+    if (safeServiceType === CONTACT_SERVICE_TYPES.PERMITS) return DIALOGUE_TASK_TYPES.ARRANGE_PERMIT;
+    if (safeServiceType === CONTACT_SERVICE_TYPES.INTEL) return DIALOGUE_TASK_TYPES.GATHER_INTEL;
+    return DIALOGUE_TASK_TYPES.LOCATE_ITEM;
+}
+
+export function serviceTypeForTaskType(taskType) {
+    const safeTaskType = asString(taskType, DIALOGUE_TASK_TYPES.LOCATE_ITEM);
+    if (safeTaskType === DIALOGUE_TASK_TYPES.SOURCE_ORDER) return CONTACT_SERVICE_TYPES.ORDERS;
+    if (safeTaskType === DIALOGUE_TASK_TYPES.ARRANGE_PERMIT) return CONTACT_SERVICE_TYPES.PERMITS;
+    if (safeTaskType === DIALOGUE_TASK_TYPES.GATHER_INTEL) return CONTACT_SERVICE_TYPES.INTEL;
+    return CONTACT_SERVICE_TYPES.PARTS;
+}
+
+export function stablePayloadKeyForService(serviceType, payload = {}) {
+    const safePayload = normalisePayload(payload);
+    const safeServiceType = asString(serviceType, CONTACT_SERVICE_TYPES.PARTS);
+    if (safeServiceType === CONTACT_SERVICE_TYPES.PERMITS) {
+        return `permit:${asString(safePayload.permitType, 'local_access')}:sector:${keyValue(safePayload.sectorId, 'local')}`;
+    }
+    if (safeServiceType === CONTACT_SERVICE_TYPES.INTEL) {
+        return `intel:${asString(safePayload.topic, 'local_activity')}:sector:${keyValue(safePayload.sectorId, 'local')}`;
+    }
+    if (safeServiceType === CONTACT_SERVICE_TYPES.ORDERS) {
+        return `order:${asString(safePayload.commodityId, 'eq')}:qty:${asInteger(safePayload.quantity, 10)}`;
+    }
+    return `part:${asString(safePayload.itemId, 'unknown_part')}`;
+}
+
+function itemIdForService(serviceType, payload = {}, fallback = 'unknown_part') {
+    const safePayload = normalisePayload(payload);
+    const safeServiceType = asString(serviceType, CONTACT_SERVICE_TYPES.PARTS);
+    if (safeServiceType === CONTACT_SERVICE_TYPES.ORDERS) {
+        return asString(safePayload.commodityId, fallback);
+    }
+    if (safeServiceType === CONTACT_SERVICE_TYPES.PERMITS) {
+        return asString(safePayload.permitType, fallback);
+    }
+    if (safeServiceType === CONTACT_SERVICE_TYPES.INTEL) {
+        return asString(safePayload.topic, fallback);
+    }
+    return asString(safePayload.itemId, fallback);
+}
+
+function findActiveDialogueTask(taskType, ownerPersonId, requesterId, payloadKey) {
+    return state.dialogueTasks.find(task => task.taskType === taskType
         && task.status === DIALOGUE_TASK_STATUSES.ACTIVE
         && task.ownerPersonId === ownerPersonId
         && task.requesterId === requesterId
-        && task.itemId === itemId) || null;
+        && task.payloadKey === payloadKey) || null;
 }
 
 export function normaliseDialogueTask(task, fallbackId = 1) {
     const createdAt = isObject(task?.createdAt) ? task.createdAt : {};
     const result = isObject(task?.result) ? task.result : {};
     const taskType = asString(task?.taskType, DIALOGUE_TASK_TYPES.LOCATE_ITEM);
+    const serviceType = asString(task?.serviceType, serviceTypeForTaskType(taskType));
+    const payload = normalisePayload(task?.payload);
     return {
         id: asInteger(task?.id, fallbackId),
         taskType: Object.values(DIALOGUE_TASK_TYPES).includes(taskType)
             ? taskType : DIALOGUE_TASK_TYPES.LOCATE_ITEM,
         ownerPersonId: asString(task?.ownerPersonId, 'unknown-person'),
         requesterId: asString(task?.requesterId, 'player'),
-        itemId: asString(task?.itemId, 'unknown_part'),
+        serviceType,
+        payload,
+        payloadKey: asString(
+            task?.payloadKey,
+            stablePayloadKeyForService(
+                serviceType,
+                isObject(task?.payload)
+                    ? task.payload
+                    : {
+                        itemId: asString(task?.itemId, 'unknown_part'),
+                        commodityId: asString(task?.commodityId, ''),
+                        permitType: asString(task?.permitType, ''),
+                        topic: asString(task?.topic, '')
+                    }
+            )
+        ),
+        itemId: asString(task?.itemId, itemIdForService(serviceType, payload, 'unknown_part')),
         conversationId: asString(task?.conversationId, 'default'),
         causedByPartId: Number.isInteger(task?.causedByPartId) ? task.causedByPartId : null,
         status: normaliseStatus(task?.status),
@@ -115,10 +194,11 @@ export function normaliseDialogueTasks(target = state) {
     }
 }
 
-export function createLocateItemDialogueTask({
+export function createContactServiceDialogueTask({
     ownerPersonId,
     requesterId,
-    itemId,
+    serviceType,
+    payload = {},
     conversationId,
     causedByPartId,
     resolutionPolicy = {}
@@ -126,12 +206,19 @@ export function createLocateItemDialogueTask({
     normaliseDialogueTasks();
     const safeOwnerPersonId = asString(ownerPersonId, 'unknown-person');
     const safeRequesterId = asString(requesterId, 'player');
-    const safeItemId = asString(itemId, 'unknown_part');
-    const duplicate = findActiveLocateItemTask(safeOwnerPersonId, safeRequesterId, safeItemId);
+    const safeServiceType = asString(serviceType, CONTACT_SERVICE_TYPES.PARTS);
+    const safePayload = normalisePayload(payload);
+    const taskType = taskTypeForServiceType(safeServiceType);
+    const payloadKey = stablePayloadKeyForService(safeServiceType, safePayload);
+    const safeItemId = itemIdForService(safeServiceType, safePayload, 'unknown_part');
+    const duplicate = findActiveDialogueTask(taskType, safeOwnerPersonId, safeRequesterId, payloadKey);
     if (duplicate) return duplicate;
     const task = normaliseDialogueTask({
         id: takeNextId(),
-        taskType: DIALOGUE_TASK_TYPES.LOCATE_ITEM,
+        taskType,
+        serviceType: safeServiceType,
+        payload: safePayload,
+        payloadKey,
         ownerPersonId: safeOwnerPersonId,
         requesterId: safeRequesterId,
         itemId: safeItemId,
@@ -161,10 +248,29 @@ export function createLocateItemDialogueTask({
         partId: task.causedByPartId,
         taskId: task.id,
         causedBy: { conversationId: task.conversationId, partId: task.causedByPartId },
-        summary: { taskId: task.id, itemId: task.itemId, status: task.status },
+        summary: { taskId: task.id, serviceType: task.serviceType, itemId: task.itemId, payloadKey: task.payloadKey, status: task.status },
         timestamp: task.createdAt
     });
     return task;
+}
+
+export function createLocateItemDialogueTask({
+    ownerPersonId,
+    requesterId,
+    itemId,
+    conversationId,
+    causedByPartId,
+    resolutionPolicy = {}
+} = {}) {
+    return createContactServiceDialogueTask({
+        ownerPersonId,
+        requesterId,
+        serviceType: CONTACT_SERVICE_TYPES.PARTS,
+        payload: { itemId: asString(itemId, 'unknown_part') },
+        conversationId,
+        causedByPartId,
+        resolutionPolicy
+    });
 }
 
 function resolutionSummary(outcome, includePrice = false) {
@@ -287,7 +393,12 @@ export function resolveDueDialogueTasks(reason = 'hourly tick') {
         .filter(task => task.status === DIALOGUE_TASK_STATUSES.ACTIVE)
         .filter(task => task.nextCheckAtAbsoluteMinute <= now)
         .forEach(task => {
-            resolved.push(resolveLocateItemTask(task, reason));
+            if (task.taskType === DIALOGUE_TASK_TYPES.LOCATE_ITEM) {
+                resolved.push(resolveLocateItemTask(task, reason));
+            } else {
+                const serviceTask = resolveContactServiceTask(task, reason);
+                if (serviceTask) resolved.push(finishContactServiceResolution(serviceTask));
+            }
         });
     return resolved;
 }
