@@ -162,9 +162,7 @@ function hasValidProfile(profile) {
         && Number.isFinite(profile.personalRegisterTrust);
 }
 
-function normaliseDialogueProfileWithFallback(profile, fallbackProfile) {
-    const source = isObject(profile) ? profile : {};
-    const fallback = normaliseDialogueProfile(fallbackProfile);
+function normaliseDialogueProfileFromSource(source, fallback) {
     return {
         voiceId: asString(source.voiceId, fallback.voiceId),
         lexiconId: isKnownValue(source.lexiconId, LEXICON_VALUES)
@@ -182,25 +180,17 @@ function normaliseDialogueProfileWithFallback(profile, fallbackProfile) {
     };
 }
 
+function normaliseDialogueProfileWithFallback(profile, fallbackProfile) {
+    const source = isObject(profile) ? profile : {};
+    const fallback = normaliseDialogueProfile(fallbackProfile);
+    return normaliseDialogueProfileFromSource(source, fallback);
+}
+
 // ─── Normalisers ─────────────────────────────────────────────────────────────
 
 export function normaliseDialogueProfile(profile = {}) {
     const source = isObject(profile) ? profile : {};
-    return {
-        voiceId: asString(source.voiceId, DEFAULT_DIALOGUE_PROFILE.voiceId),
-        lexiconId: isKnownValue(source.lexiconId, LEXICON_VALUES)
-            ? source.lexiconId
-            : DEFAULT_DIALOGUE_PROFILE.lexiconId,
-        defaultRegister: isKnownValue(source.defaultRegister, REGISTER_VALUES)
-            ? source.defaultRegister
-            : DEFAULT_DIALOGUE_PROFILE.defaultRegister,
-        personalRegisterFamiliarity: Number.isFinite(source.personalRegisterFamiliarity)
-            ? source.personalRegisterFamiliarity
-            : DEFAULT_DIALOGUE_PROFILE.personalRegisterFamiliarity,
-        personalRegisterTrust: Number.isFinite(source.personalRegisterTrust)
-            ? source.personalRegisterTrust
-            : DEFAULT_DIALOGUE_PROFILE.personalRegisterTrust
-    };
+    return normaliseDialogueProfileFromSource(source, DEFAULT_DIALOGUE_PROFILE);
 }
 
 export function normaliseRelationshipAffect(affect = {}) {
