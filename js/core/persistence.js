@@ -1,5 +1,5 @@
 import { createInitialState, state } from '../state.js';
-import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_TYPES } from '../constants.js';
+import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
@@ -26,6 +26,7 @@ import { normaliseDialogueRelationship } from '../systems/people/relationships.j
 import { ensurePersonDialogueProfile } from '../systems/people/dialogueVoice.js';
 import { normaliseSimulationTrace } from './simulationTrace.js';
 import { normalisePriorityBriefingState } from './priorityBriefing.js';
+import { getPortType } from './ports.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -496,7 +497,8 @@ function normaliseCurrentLoadedGame() {
         if (sector.asteroids && typeof sector.asteroids.maxOre !== "number") sector.asteroids.maxOre = Math.max(sector.asteroids.ore, 2500);
     });
     Object.values(state.ports).forEach(port => {
-        if (!port.factionId) port.factionId = PORT_TYPES[port.typeKey].factionId;
+        const portType = getPortType(port);
+        if (!port.factionId) port.factionId = portType.factionId;
         if (!port.publicFactionId) port.publicFactionId = port.factionId;
         if (typeof port.hiddenFactionId === "undefined") port.hiddenFactionId = null;
         if (!port.stock) port.stock = makeStock(0, 0, 0);

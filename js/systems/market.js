@@ -1,9 +1,10 @@
 import { state } from '../state.js';
-import { BALANCE, PORT_TYPES } from '../constants.js';
+import { BALANCE } from '../constants.js';
 import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
 import { getFactionPriceMultiplier, addFactionRep, addFactionHeat, applyPoliticalEffect } from '../core/factions.js';
 import { spendTime } from '../core/time.js';
 import { updatePoliticalAsksForTrade } from './guilds.js';
+import { getPortType } from '../core/ports.js';
 
 export function getPortPrice(port, commodity, mode) {
     const stock = Math.max(0, port.stock[commodity] || 0);
@@ -19,7 +20,7 @@ export function getPortPrice(port, commodity, mode) {
 export function tradeCommodity(commodity, mode) {
     const port = state.ports[state.player.currentSector];
     if (!port) return;
-    const type = PORT_TYPES[port.typeKey];
+    const type = getPortType(port);
     const price = getPortPrice(port, commodity, mode);
     let amount = BALANCE.TRADE_BATCH;
     if (mode === "buy") {

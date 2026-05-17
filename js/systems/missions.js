@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, PORT_TYPES } from '../constants.js';
+import { BALANCE, FACTIONS } from '../constants.js';
 import { MISSION_TUNING } from '../config/missions.js';
 import { formatCommodity, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
@@ -16,10 +16,25 @@ import { getFreshnessSummaryForSector, normaliseDataCargoState } from '../core/d
 import { areSectorsConnected, getSectorPathDistance } from '../core/navigation.js';
 import { getMissionIssuerCompany } from './companies.js';
 import { getPrimaryCompanyContact } from './people.js';
+import { getPortType, normalisePortTypeKeys } from '../core/ports.js';
 
 export { prepareMissionOpportunity };
 
 export function activePortSectors() { return Object.keys(state.ports).map(Number); }
+
+function activePortEntries() {
+    normalisePortTypeKeys(state.ports);
+    return activePortSectors()
+        .map(sectorId => ({ sectorId, port: state.ports[sectorId] }))
+        .filter(entry => entry.port && typeof entry.port === 'object' && !Array.isArray(entry.port))
+        .map(entry => ({ ...entry, type: getPortType(entry.port) }));
+}
+
+function chooseRandomPortSector() {
+    const entries = activePortEntries();
+    if (entries.length < 1) return null;
+    return entries[Math.floor(random() * entries.length)].sectorId;
+}
 
 export function makeBaseMission(title, originSector, rewardCredits, expiresInDays, missionType = null) {
     const port = state.ports[originSector];
@@ -44,16 +59,20 @@ export function makeBaseMission(title, originSector, rewardCredits, expiresInDay
 }
 
 export function makeDeliveryMission() {
-    const sectors = activePortSectors().filter(s => s !== 1 && PORT_TYPES[state.ports[s].typeKey].sells.length > 0);
-    if (sectors.length < 1) return null;
-    const origin = sectors[Math.floor(random() * sectors.length)];
-    const commodity = PORT_TYPES[state.ports[origin].typeKey].sells[0];
-    const destinations = activePortSectors().filter(s => s !== origin && PORT_TYPES[state.ports[s].typeKey].buys.includes(commodity));
+    const sourceEntries = activePortEntries()
+        .filter(entry => entry.sectorId !== 1 && entry.type.sells.length > 0);
+    if (sourceEntries.length < 1) return null;
+    const source = sourceEntries[Math.floor(random() * sourceEntries.length)];
+    const origin = source.sectorId;
+    const commodity = source.type.sells[0];
+    const destinations = activePortEntries()
+        .filter(entry => entry.sectorId !== origin && entry.type.buys.includes(commodity))
+        .map(entry => entry.sectorId);
     if (destinations.length < 1) return null;
     const destination = destinations[Math.floor(random() * destinations.length)];
     const amount = MISSION_TUNING.DELIVERY.AMOUNTS[Math.floor(random() * MISSION_TUNING.DELIVERY.AMOUNTS.length)];
     const distance = Math.abs(destination - origin) + MISSION_TUNING.DELIVERY.DISTANCE_BASELINE;
-    const reward = amount * state.ports[origin].basePrices[commodity]
+    const reward = amount * (state.ports[origin].basePrices?.[commodity] || BALANCE.MIN_TRADE_PRICE)
         + distance * MISSION_TUNING.DELIVERY.DISTANCE_REWARD
         + MISSION_TUNING.DELIVERY.BASE_REWARD;
     const m = makeBaseMission(`Deliver ${amount} ${formatCommodity(commodity)} to sector ${destination}`, origin, reward, MISSION_TUNING.DELIVERY.EXPIRES_BASE_DAYS
@@ -66,11 +85,12 @@ export function makeDeliveryMission() {
 }
 
 export function makeMiningMission() {
-    const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
+    const origin = chooseRandomPortSector();
+    if (origin === null) return null;
     const amount = MISSION_TUNING.MINING.AMOUNTS[Math.floor(random() * MISSION_TUNING.MINING.AMOUNTS.length)];
     const m = makeBaseMission(`Mine ${amount} Ore for sector ${origin}`, origin, amount * MISSION_TUNING.MINING.ORE_REWARD_PER_UNIT
         + MISSION_TUNING.MINING.BASE_REWARD, MISSION_TUNING.MINING.EXPIRES_DAYS, "mining");
-    if (!m.issuerCompanyId) m.factionId = PORT_TYPES[state.ports[origin].typeKey].factionId === "hc" ? "miners" : m.factionId;
+    if (!m.issuerCompanyId) m.factionId = getPortType(state.ports[origin]).factionId === "hc" ? "miners" : m.factionId;
     m.type = "mining";
     m.amount = amount;
     m.progress = 0;
@@ -78,7 +98,8 @@ export function makeMiningMission() {
 }
 
 export function makeSurveyMission() {
-    const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
+    const origin = chooseRandomPortSector();
+    if (origin === null) return null;
     const candidates = Object.values(state.universe).filter(s => !s.surveyed && s.id !== origin);
     if (candidates.length < 1) return null;
     const target = candidates[Math.floor(random() * candidates.length)].id;
@@ -90,7 +111,8 @@ export function makeSurveyMission() {
 }
 
 export function makeColonyMission() {
-    const origin = activePortSectors()[Math.floor(random() * activePortSectors().length)];
+    const origin = chooseRandomPortSector();
+    if (origin === null) return null;
     const candidates = Object.keys(state.planets).map(Number).filter(s => !state.planets[s].owner);
     if (candidates.length < 1) return null;
     const target = candidates[Math.floor(random() * candidates.length)];
