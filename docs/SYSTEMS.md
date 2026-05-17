@@ -132,6 +132,8 @@ Renderers may display options and recommendations, but hidden resolution rules
 belong in core or system helpers so low, average, and high competency outcomes
 can be tested without a DOM. Relevant stats are nerve, tradecraft, fieldcraft,
 command, and acumen; traits and skill nodes may further adjust execution.
+Market recommendations live in `js/systems/market.js` so trade analysis remains
+character-mediated rather than a renderer-only arithmetic puzzle.
 
 ## Property, stationary careers, and local assets
 
