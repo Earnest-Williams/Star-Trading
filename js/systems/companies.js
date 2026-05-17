@@ -75,7 +75,7 @@ export function seedCompaniesAndPeople(rng) {
         createCompany(sectorId, type, rng);
         const port = state.ports[sectorId];
         const portType = port ? getPortType(port) : null;
-        const isHub = port && (portType.sells.length > 0 || normalisePortTypeKey(port) === 'stardock');
+        const isHub = port && (portType.sells.length > 0 || port.typeKey === 'stardock');
         if (isHub) createCompany(sectorId, type === 'import_export' ? 'haulage' : 'import_export', rng);
     });
 }
