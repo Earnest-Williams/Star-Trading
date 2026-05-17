@@ -1,6 +1,7 @@
 import { BALANCE, NPC_FINDABLE_PART_DEFS } from '../../constants.js';
 import { state } from '../../state.js';
 import { random } from '../../utils.js';
+import { chooseStable } from './dialogueVoice.js';
 import { LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES } from './dialogueTemplates.js';
 import { asNumber, asString, formatItemLabel, isObject } from './common.js';
 import { getDialogueRelationship } from './relationships.js';
@@ -273,12 +274,16 @@ export function buildLocateItemSuccessMessage(itemId, outcome) {
     const source = asString(outcome?.sourceFlavor, 'port broker');
     const templates = LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES.success;
     if (condition === 'worn') {
-        return templates.worn.replaceAll('{label}', label).replaceAll('{source}', source);
+        return (chooseStable(templates.worn, `${itemId}|${condition}|${source}`) || '')
+            .replaceAll('{label}', label)
+            .replaceAll('{source}', source);
     }
     if (condition === 'pristine') {
-        return templates.pristine.replaceAll('{label}', label).replaceAll('{source}', source);
+        return (chooseStable(templates.pristine, `${itemId}|${condition}|${source}`) || '')
+            .replaceAll('{label}', label)
+            .replaceAll('{source}', source);
     }
-    return templates.default
+    return (chooseStable(templates.default, `${itemId}|${condition}|${source}`) || '')
         .replaceAll('{condition}', condition)
         .replaceAll('{label}', label)
         .replaceAll('{source}', source);
@@ -289,10 +294,13 @@ export function buildLocateItemFailureMessage(itemId, outcome) {
     const tags = Array.isArray(outcome?.explanationTags) ? outcome.explanationTags : [];
     const templates = LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES.failure;
     if (tags.includes('pirate_pressure')) {
-        return templates.pirate_pressure.replaceAll('{label}', label);
+        return (chooseStable(templates.pirate_pressure, `${itemId}|pirate_pressure`) || '')
+            .replaceAll('{label}', label);
     }
     if (tags.includes('rare_item') || tags.includes('priced_high')) {
-        return templates.market_pressure.replaceAll('{label}', label);
+        return (chooseStable(templates.market_pressure, `${itemId}|market_pressure`) || '')
+            .replaceAll('{label}', label);
     }
-    return templates.default.replaceAll('{label}', label);
+    return (chooseStable(templates.default, `${itemId}|default`) || '')
+        .replaceAll('{label}', label);
 }

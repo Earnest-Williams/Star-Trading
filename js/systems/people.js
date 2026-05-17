@@ -1,5 +1,6 @@
 import { state } from '../state.js';
 import { PERSON_NAME_PARTS, PERSON_ROLES, PERSON_SERVICES_BY_ROLE } from '../config/people.js';
+import { dialogueProfileForRole } from './people/dialogueVoice.js';
 
 function pick(list, rng) {
     return list[Math.floor(rng() * list.length)];
@@ -27,7 +28,8 @@ export function createGeneratedPerson({ role, sectorId, companyId = null, polity
         trust: 0,
         leverage: 0,
         known: false,
-        services: (PERSON_SERVICES_BY_ROLE[safeRole] || PERSON_SERVICES_BY_ROLE.factor).slice()
+        services: (PERSON_SERVICES_BY_ROLE[safeRole] || PERSON_SERVICES_BY_ROLE.factor).slice(),
+        dialogueProfile: dialogueProfileForRole(safeRole, { stableSeed: id })
     };
     state.people[id] = person;
     if (!state.peopleBySector[sectorId]) state.peopleBySector[sectorId] = [];
@@ -44,6 +46,22 @@ export function getPrimaryCompanyContact(companyId) {
     return ids.length > 0 ? state.people[ids[0]] || null : null;
 }
 
+export {
+    DEFAULT_DIALOGUE_PROFILE,
+    DEFAULT_RELATIONSHIP_AFFECT,
+    DIALOGUE_LEXICON_IDS,
+    DIALOGUE_LEXICONS,
+    DIALOGUE_REGISTERS,
+    DIALOGUE_TONES,
+    chooseStable,
+    deriveDialogueTone,
+    ensurePersonDialogueProfile,
+    normaliseDialogueProfile,
+    normaliseRelationshipAffect,
+    resolveLexiconSlots,
+    selectDialogueRegister,
+    selectNestedTemplate
+} from './people/dialogueVoice.js';
 export {
     DIALOGUE_PART_TYPES,
     DIALOGUE_SPEAKER_TYPES,

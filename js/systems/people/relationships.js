@@ -1,6 +1,7 @@
 import { BALANCE } from '../../constants.js';
 import { state } from '../../state.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
+import { normaliseRelationshipAffect } from './dialogueVoice.js';
 
 function asInteger(value, fallback) {
     if (value === null || typeof value === 'undefined') return fallback;
@@ -26,15 +27,21 @@ function clamp(value, min, max) {
     return Math.max(min, Math.min(max, Number(value) || 0));
 }
 
+function isObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 export function normaliseDialogueRelationship(relationship = {}) {
-    const tags = Array.isArray(relationship.tags)
-        ? [...new Set(relationship.tags.filter(tag => typeof tag === 'string' && tag.length > 0))]
+    const source = isObject(relationship) ? relationship : {};
+    const tags = Array.isArray(source.tags)
+        ? [...new Set(source.tags.filter(tag => typeof tag === 'string' && tag.length > 0))]
         : [];
     return {
-        trust: clamp(relationship.trust, -100, 100),
-        familiarity: Math.max(0, Number(relationship.familiarity) || 0),
-        lastInteractionAt: relationship.lastInteractionAt || null,
-        tags
+        trust: clamp(source.trust, -100, 100),
+        familiarity: Math.max(0, Number(source.familiarity) || 0),
+        lastInteractionAt: source.lastInteractionAt || null,
+        tags,
+        affect: normaliseRelationshipAffect(source.affect)
     };
 }
 
@@ -47,13 +54,24 @@ export function getDialogueRelationship(personId) {
     return person.relationships.player;
 }
 
-export function applyDialogueRelationshipDelta(personId, { trust = 0, familiarity = 0, tags = [], reason = 'dialogue' } = {}) {
+export function applyDialogueRelationshipDelta(personId, { trust = 0, familiarity = 0, tags = [], affect = {}, reason = 'dialogue' } = {}) {
     const relationship = getDialogueRelationship(personId);
     if (!relationship) return false;
     relationship.trust = clamp(relationship.trust + Number(trust || 0), -100, 100);
     relationship.familiarity = Math.max(0, relationship.familiarity + Number(familiarity || 0));
-    tags.filter(tag => typeof tag === 'string' && tag.length > 0).forEach(tag => {
+    const safeTags = Array.isArray(tags) ? tags : [];
+    safeTags.filter(tag => typeof tag === 'string' && tag.length > 0).forEach(tag => {
         if (!relationship.tags.includes(tag)) relationship.tags.push(tag);
+    });
+    const affectDelta = normaliseRelationshipAffect(affect);
+    relationship.affect = normaliseRelationshipAffect({
+        warmth: relationship.affect.warmth + affectDelta.warmth,
+        respect: relationship.affect.respect + affectDelta.respect,
+        resentment: relationship.affect.resentment + affectDelta.resentment,
+        fear: relationship.affect.fear + affectDelta.fear,
+        envy: relationship.affect.envy + affectDelta.envy,
+        jealousy: relationship.affect.jealousy + affectDelta.jealousy,
+        attraction: relationship.affect.attraction + affectDelta.attraction
     });
     relationship.lastInteractionAt = currentDialogueTimestamp();
     addDialogueEvent({
@@ -61,8 +79,8 @@ export function applyDialogueRelationshipDelta(personId, { trust = 0, familiarit
         sourceSystem: 'relationship',
         actor: personId,
         subject: 'player',
-        summary: { personId, trust: relationship.trust, familiarity: relationship.familiarity, reason },
-        payload: { personId, trustDelta: trust, familiarityDelta: familiarity, tags, reason },
+        summary: { personId, trust: relationship.trust, familiarity: relationship.familiarity, affect: relationship.affect, reason },
+        payload: { personId, trustDelta: trust, familiarityDelta: familiarity, affect: affectDelta, tags: safeTags, reason },
         timestamp: relationship.lastInteractionAt
     });
     return relationship;

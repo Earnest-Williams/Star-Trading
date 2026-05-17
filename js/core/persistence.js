@@ -22,6 +22,8 @@ import { normaliseDialogueTasks } from '../systems/people/dialogueTasks.js';
 import { normaliseDialogueMemories } from '../systems/people/memory.js';
 import { normaliseDialogueOffers } from '../systems/people/offers.js';
 import { normaliseDialogueProposals } from '../systems/people/proposals.js';
+import { normaliseDialogueRelationship } from '../systems/people/relationships.js';
+import { ensurePersonDialogueProfile } from '../systems/people/dialogueVoice.js';
 import { normaliseSimulationTrace } from './simulationTrace.js';
 
 const defaultPersistenceAdapters = {
@@ -515,6 +517,13 @@ function normaliseCurrentLoadedGame() {
     if (!state.people) state.people = {};
     if (!state.peopleBySector) state.peopleBySector = {};
     if (!state.peopleByCompany) state.peopleByCompany = {};
+    Object.values(state.people).forEach(person => {
+        ensurePersonDialogueProfile(person);
+        if (!person.relationships || typeof person.relationships !== "object" || Array.isArray(person.relationships)) {
+            person.relationships = {};
+        }
+        person.relationships.player = normaliseDialogueRelationship(person.relationships.player || {});
+    });
     if (typeof state.nextPersonId !== "number") state.nextPersonId = Object.keys(state.people).length + 1;
     if (!state.polities) state.polities = {};
     if (!state.polityIdsBySector) state.polityIdsBySector = {};
