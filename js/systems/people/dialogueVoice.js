@@ -1,5 +1,6 @@
 import { PERSON_ROLES } from '../../config/people.js';
 import { DIALOGUE_TEXT_LEXICON_ADDITIONS } from './dialogueTextStrings.js';
+import { mergeFrozenStringTree } from './common.js';
 
 // ─── Public vocabulary ────────────────────────────────────────────────────────
 
@@ -32,37 +33,6 @@ export const DIALOGUE_LEXICON_IDS = Object.freeze({
 const REGISTER_VALUES = Object.freeze(Object.values(DIALOGUE_REGISTERS));
 const TONE_VALUES = Object.freeze(Object.values(DIALOGUE_TONES));
 const LEXICON_VALUES = Object.freeze(Object.values(DIALOGUE_LEXICON_IDS));
-
-function isPlainLexiconObject(value) {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function mergeFrozenLexiconTree(base = {}, additions = {}) {
-    const baseSource = isPlainLexiconObject(base) ? base : {};
-    const additionSource = isPlainLexiconObject(additions) ? additions : {};
-    const keys = new Set([
-        ...Object.keys(baseSource),
-        ...Object.keys(additionSource)
-    ]);
-    const result = {};
-    keys.forEach(key => {
-        const baseValue = baseSource[key];
-        const additionValue = additionSource[key];
-        if (Array.isArray(baseValue) || Array.isArray(additionValue)) {
-            result[key] = Object.freeze([
-                ...(Array.isArray(baseValue) ? baseValue : []),
-                ...(Array.isArray(additionValue) ? additionValue : [])
-            ]);
-            return;
-        }
-        if (isPlainLexiconObject(baseValue) || isPlainLexiconObject(additionValue)) {
-            result[key] = mergeFrozenLexiconTree(baseValue, additionValue);
-            return;
-        }
-        result[key] = typeof additionValue === 'undefined' ? baseValue : additionValue;
-    });
-    return Object.freeze(result);
-}
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
@@ -129,7 +99,7 @@ const BASE_DIALOGUE_LEXICONS = Object.freeze({
     })
 });
 
-export const DIALOGUE_LEXICONS = mergeFrozenLexiconTree(
+export const DIALOGUE_LEXICONS = mergeFrozenStringTree(
     BASE_DIALOGUE_LEXICONS,
     DIALOGUE_TEXT_LEXICON_ADDITIONS
 );

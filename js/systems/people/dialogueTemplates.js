@@ -4,6 +4,7 @@ import {
     DIALOGUE_TEXT_TEMPLATE_BANKS,
     LOCATE_ITEM_RESULT_MESSAGE_ADDITIONS
 } from './dialogueTextStrings.js';
+import { mergeFrozenStringTree } from './common.js';
 
 export const DIALOGUE_INTENTS = Object.freeze({
     REQUEST_LOCATE_ITEM: 'request_locate_item',
@@ -22,37 +23,6 @@ export const DIALOGUE_FRAME_STATES = Object.freeze({
 export const DIALOGUE_FALLBACK_LINE = 'I can check my notes and get back to you.';
 
 export const LOCATE_ITEM_REQUIRED_SLOTS = Object.freeze(['itemLabel', 'personName']);
-
-function isPlainStringTreeObject(value) {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function mergeFrozenStringTree(base = {}, additions = {}) {
-    const baseSource = isPlainStringTreeObject(base) ? base : {};
-    const additionSource = isPlainStringTreeObject(additions) ? additions : {};
-    const keys = new Set([
-        ...Object.keys(baseSource),
-        ...Object.keys(additionSource)
-    ]);
-    const result = {};
-    keys.forEach(key => {
-        const baseValue = baseSource[key];
-        const additionValue = additionSource[key];
-        if (Array.isArray(baseValue) || Array.isArray(additionValue)) {
-            result[key] = Object.freeze([
-                ...(Array.isArray(baseValue) ? baseValue : []),
-                ...(Array.isArray(additionValue) ? additionValue : [])
-            ]);
-            return;
-        }
-        if (isPlainStringTreeObject(baseValue) || isPlainStringTreeObject(additionValue)) {
-            result[key] = mergeFrozenStringTree(baseValue, additionValue);
-            return;
-        }
-        result[key] = typeof additionValue === 'undefined' ? baseValue : additionValue;
-    });
-    return Object.freeze(result);
-}
 
 // ─── NPC response template banks ─────────────────────────────────────────────
 // Shape per-intent: state → register → tone → templates[]
