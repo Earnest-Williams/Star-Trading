@@ -209,7 +209,7 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
         fresh_request: Object.freeze({
             work: Object.freeze({
                 neutral: Object.freeze([
-                    'I can open a search for a {itemLabel}. If a {supplier} has one, I will hear about it.',
+                    'I can open a search for a {itemLabel}. If {supplier} has one, I will hear about it.',
                     'Nothing here today, but I can {askAround} for a {itemLabel}.',
                     'I will start with my regular names and see who can move a {itemLabel}.'
                 ]),
