@@ -36,6 +36,7 @@ import {
     createOrReinforceDialogueMemory,
     getActiveCustomerRequests
 } from './memory.js';
+import { isObject } from './common.js';
 import { state } from '../../state.js';
 
 function asString(value, fallback = '') {
@@ -100,7 +101,7 @@ const CONTACT_SERVICE_LABELS = Object.freeze({
 });
 
 function servicePayload(serviceType, payload) {
-    const source = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
+    const source = isObject(payload) ? payload : {};
     if (serviceType === CONTACT_SERVICE_TYPES.ORDERS) {
         return {
             commodityId: asString(source.commodityId, 'eq'),

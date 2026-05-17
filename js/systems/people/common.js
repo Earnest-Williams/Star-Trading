@@ -12,6 +12,12 @@ export function asNumber(value, fallback = 0) {
     return Number.isFinite(number) ? number : fallback;
 }
 
+export function asInteger(value, fallback) {
+    if (value === null || typeof value === 'undefined') return fallback;
+    const number = Number(value);
+    return Number.isInteger(number) ? number : fallback;
+}
+
 export function formatItemLabel(itemId) {
     return asString(itemId, 'part').replaceAll('_', ' ');
 }

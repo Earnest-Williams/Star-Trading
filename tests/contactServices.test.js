@@ -62,6 +62,7 @@ describe('contact service requests', () => {
 
         assert.equal(state.dialogueTasks.length, 1);
         assert.equal(first.task.taskType, DIALOGUE_TASK_TYPES.ARRANGE_PERMIT);
+        assert.equal(first.task.itemId, 'salvage');
         assert.equal(second.task.id, first.task.id);
         assert.equal(second.effectPart.payload.duplicateActiveTask, true);
         assert.equal(first.task.payloadKey, 'permit:salvage:sector:7');
@@ -78,6 +79,7 @@ describe('contact service requests', () => {
 
         assert.equal(resolved.length, 1);
         assert.equal(action.task.status, DIALOGUE_TASK_STATUSES.RESOLVED);
+        assert.equal(action.task.itemId, 'eq');
         assert.equal(state.dialogueOffers.length, 1);
         assert.equal(state.dialogueOffers[0].offerType, DIALOGUE_OFFER_TYPES.SOURCED_ORDER);
         assert.equal(state.dialogueOffers[0].serviceType, CONTACT_SERVICE_TYPES.ORDERS);
@@ -124,6 +126,7 @@ describe('contact service requests', () => {
         resolveDueDialogueTasks('test intel service');
 
         assert.equal(state.dialogueOffers.length, 0);
+        assert.equal(action.task.itemId, 'pirate_routes');
         assert.equal(state.player.factions.intel.length, 1);
         assert.equal(state.player.factions.intel[0].type, 'pirate_routes');
         assert.equal(state.player.factions.intel[0].sectorId, 7);

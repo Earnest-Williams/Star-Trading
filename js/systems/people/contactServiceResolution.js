@@ -1,19 +1,13 @@
 import { BALANCE } from '../../constants.js';
 import { addIntel } from '../../core/intel.js';
 import { state } from '../../state.js';
-import { asNumber, asString, formatItemLabel, isObject } from './common.js';
-import { touchDialogueConversation } from './conversations.js';
+import { asInteger, asNumber, asString, formatItemLabel, isObject } from './common.js';
+import { DIALOGUE_CONVERSATION_STATUSES, touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';
 import { DIALOGUE_TASK_STATUSES, DIALOGUE_TASK_TYPES } from './dialogueTasks.js';
 import { createDialogueMessage } from './messages.js';
 import { createDialogueOffer, DIALOGUE_OFFER_TYPES } from './offers.js';
 import { applyDialogueRelationshipDelta } from './relationships.js';
-
-function asInteger(value, fallback) {
-    if (value === null || typeof value === 'undefined') return fallback;
-    const number = Number(value);
-    return Number.isInteger(number) ? number : fallback;
-}
 
 function currentAbsoluteMinute() {
     const day = asInteger(state.player?.time?.day, 1);
@@ -45,7 +39,7 @@ function relationshipAdjustedPrice(basePrice, task) {
     const person = state.people?.[task.ownerPersonId] || null;
     const services = Array.isArray(person?.services) ? person.services : [];
     const discount = services.includes('discounts') ? 0.9 : 1;
-    const attemptPressure = 1 + (Math.max(0, asNumber(task?.resolutionAttempts, 0)) * 0.03);
+    const attemptPressure = 1 + (Math.max(0, asNumber(task?.resolutionAttempts, 0) - 1) * 0.03);
     return Math.max(25, Math.round(basePrice * discount * attemptPressure));
 }
 
@@ -184,7 +178,9 @@ export function resolveContactServiceTask(task, reason = 'hourly tick') {
 export function finishContactServiceResolution(task) {
     const ts = currentDialogueTimestamp();
     touchDialogueConversation(task.conversationId, {
-        status: task.status === DIALOGUE_TASK_STATUSES.RESOLVED ? 'resolved' : 'failed',
+        status: task.status === DIALOGUE_TASK_STATUSES.RESOLVED
+            ? DIALOGUE_CONVERSATION_STATUSES.RESOLVED
+            : DIALOGUE_CONVERSATION_STATUSES.FAILED,
         relatedTaskIds: [task.id],
         updatedAt: ts
     });
