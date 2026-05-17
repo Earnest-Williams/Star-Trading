@@ -19,7 +19,7 @@ function propertyValueEstimate(property) {
     const gross = property.units * property.rentDaily * property.occupancy;
     const net = gross - property.upkeepDaily - property.debtDaily;
     const conditionFactor = 0.65 + property.condition / 200;
-    return Math.max(0, Math.round((net + property.upkeepDaily) * PROPERTY_DEFAULTS.BASE_VALUE_MULTIPLIER * conditionFactor));
+    return Math.max(0, Math.round((net + property.debtDaily) * PROPERTY_DEFAULTS.BASE_VALUE_MULTIPLIER * conditionFactor));
 }
 
 export function normaliseProperty(property = {}) {
@@ -107,11 +107,22 @@ function competency(character, stat, effectKey) {
         + getSkillEffect(character, effectKey) * 4;
 }
 
+const PROPERTY_ACTION_BONUS_KEYS = Object.freeze({
+    setRentPosture: "rentForecastAccuracy",
+    performMaintenance: "propertyMaintenanceBonus",
+    screenTenants: "tenantScreeningBonus",
+    changeTenantMix: "tenantScreeningBonus",
+    convertPropertyUse: "storageYieldBonus",
+    addService: "serviceSlotYieldBonus",
+    refinanceProperty: "propertyRefinanceBonus",
+    hirePropertyManager: "propertyMaintenanceBonus"
+});
+
 export function resolvePropertyAction(property, actionId, character, options = {}) {
     const action = PROPERTY_ACTIONS[actionId];
     if (!action) return { ok: false, reason: `Unknown property action '${actionId}'.` };
     const asset = normaliseProperty(property);
-    const score = competency(character, action.stat, `${actionId}Bonus`);
+    const score = competency(character, action.stat, PROPERTY_ACTION_BONUS_KEYS[actionId] || `${actionId}Bonus`);
     const margin = score - CHAR_DEFAULTS.STAT_BASE;
     const updated = { ...asset };
     let creditsDelta = 0;
@@ -129,16 +140,23 @@ export function resolvePropertyAction(property, actionId, character, options = {
         creditsDelta -= 75;
         message = "Tenant screening improves information quality and occupancy risk.";
     } else if (actionId === "hirePropertyManager") {
+        if (!updated.manager) updated.upkeepDaily += 35;
         updated.manager = { quality: clamp(Math.round(score / 20), 1, 5), hiredDay: options.day || null };
-        updated.upkeepDaily += 35;
         message = "Delegation quality is mediated by command.";
     } else if (actionId === "refinanceProperty") {
+        if ((updated.eventCooldowns?.refinanceProperty || 0) > 0) {
+            return { ok: false, reason: "Refinance terms are already locked for today." };
+        }
         const reduction = score >= 85 ? 0.12 : score >= 65 ? 0.06 : 0.02;
         updated.debtDaily = roundMoney(updated.debtDaily * (1 - reduction));
+        updated.eventCooldowns = { ...updated.eventCooldowns, refinanceProperty: 1 };
         message = "Refinance terms are estimated and negotiated through acumen.";
     } else if (actionId === "convertPropertyUse") {
+        if (updated.units <= 1) {
+            return { ok: false, reason: "Cannot convert the last remaining residential unit." };
+        }
         updated.storageCapacity += 40;
-        updated.units = Math.max(1, updated.units - 1);
+        updated.units -= 1;
         updated.upkeepDaily += 20;
         message = "Conversion planning recommends the routine profitable use when competency is high.";
     } else if (actionId === "addService") {

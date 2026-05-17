@@ -22,6 +22,14 @@ function characterWithAcumen(acumen, skillNodeIds = []) {
     });
 }
 
+function baselineCharacter(overrides = {}) {
+    return normaliseCharacter({
+        stats: { nerve: 50, tradecraft: 50, fieldcraft: 50, command: 50, acumen: 50, ...(overrides.stats || {}) },
+        traits: overrides.traits || [],
+        skillNodeIds: overrides.skillNodeIds || []
+    });
+}
+
 describe('acumen chargen and save normalization', () => {
     it('includes acumen in the canonical stat list and validation', () => {
         assert.ok(CHAR_STATS.includes('acumen'));
@@ -104,5 +112,50 @@ describe('property daily tick and recommendations', () => {
         assert.equal(actionResult.ok, true);
         assert.ok(actionResult.property.condition > property.condition);
         assert.ok(getAvailablePropertyActions().includes('refinanceProperty'));
+    });
+
+    it('applies trait and skill bonus keys mapped per property action', () => {
+        const property = createStartingProperties('property_dockside_tenement', { siteId: 1 })[0];
+        const actor = baselineCharacter({ traits: ['habitat_superintendents_child'] });
+        const result = resolvePropertyAction(property, 'performMaintenance', actor, { spend: 0 });
+        assert.equal(result.ok, true);
+        assert.equal(result.score, 52);
+    });
+
+    it('does not stack upkeep when replacing an existing property manager', () => {
+        const property = createStartingProperties('property_dockside_tenement', { siteId: 1 })[0];
+        const actor = baselineCharacter({ stats: { command: 70 } });
+        const first = resolvePropertyAction(property, 'hirePropertyManager', actor, { day: 1 });
+        const second = resolvePropertyAction(first.property, 'hirePropertyManager', actor, { day: 2 });
+        assert.equal(first.ok, true);
+        assert.equal(second.ok, true);
+        assert.equal(second.property.upkeepDaily, first.property.upkeepDaily);
+    });
+
+    it('prevents converting the last residential unit for free storage growth', () => {
+        const property = createStartingProperties('property_market_arcade', { siteId: 2 })[0];
+        const singleUnitProperty = { ...property, units: 1 };
+        const result = resolvePropertyAction(singleUnitProperty, 'convertPropertyUse', baselineCharacter({ stats: { acumen: 70 } }));
+        assert.equal(result.ok, false);
+        assert.equal(result.reason, 'Cannot convert the last remaining residential unit.');
+    });
+
+    it('limits refinance to once per day', () => {
+        const property = createStartingProperties('property_market_arcade', { siteId: 2 })[0];
+        const actor = baselineCharacter({ stats: { acumen: 80 } });
+        const first = resolvePropertyAction(property, 'refinanceProperty', actor);
+        const second = resolvePropertyAction(first.property, 'refinanceProperty', actor);
+        assert.equal(first.ok, true);
+        assert.equal(second.ok, false);
+        assert.equal(second.reason, 'Refinance terms are already locked for today.');
+    });
+
+    it('uses NOI in value estimate by reducing value when upkeep increases', () => {
+        const property = createStartingProperties('property_dockside_tenement', { siteId: 1 })[0];
+        const lowUpkeep = resolvePropertyAction({ ...property, upkeepDaily: 100 }, 'setRentPosture', baselineCharacter());
+        const highUpkeep = resolvePropertyAction({ ...property, upkeepDaily: 300 }, 'setRentPosture', baselineCharacter());
+        assert.equal(lowUpkeep.ok, true);
+        assert.equal(highUpkeep.ok, true);
+        assert.ok(highUpkeep.property.valueEstimate < lowUpkeep.property.valueEstimate);
     });
 });
