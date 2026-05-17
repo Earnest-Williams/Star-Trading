@@ -1,4 +1,6 @@
 import { PERSON_ROLES } from '../../config/people.js';
+import { DIALOGUE_TEXT_LEXICON_ADDITIONS } from './dialogueTextStrings.js';
+import { mergeFrozenStringTree } from './common.js';
 
 // ─── Public vocabulary ────────────────────────────────────────────────────────
 
@@ -54,7 +56,7 @@ export const DEFAULT_RELATIONSHIP_AFFECT = Object.freeze({
 
 // ─── Lexicon banks ───────────────────────────────────────────────────────────
 
-export const DIALOGUE_LEXICONS = Object.freeze({
+const BASE_DIALOGUE_LEXICONS = Object.freeze({
     [DIALOGUE_LEXICON_IDS.DEFAULT]: Object.freeze({
         goodLead: Object.freeze(['a solid lead']),
         badStock: Object.freeze(['thin stock']),
@@ -96,6 +98,11 @@ export const DIALOGUE_LEXICONS = Object.freeze({
         risky: Object.freeze(['a risky pull'])
     })
 });
+
+export const DIALOGUE_LEXICONS = mergeFrozenStringTree(
+    BASE_DIALOGUE_LEXICONS,
+    DIALOGUE_TEXT_LEXICON_ADDITIONS
+);
 
 // ─── Role-to-profile mapping ──────────────────────────────────────────────────
 

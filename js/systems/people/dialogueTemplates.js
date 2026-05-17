@@ -1,4 +1,10 @@
 import { DIALOGUE_REGISTERS, DIALOGUE_TONES } from './dialogueVoice.js';
+import {
+    DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS,
+    DIALOGUE_TEXT_TEMPLATE_BANKS,
+    LOCATE_ITEM_RESULT_MESSAGE_ADDITIONS
+} from './dialogueTextStrings.js';
+import { mergeFrozenStringTree } from './common.js';
 
 export const DIALOGUE_INTENTS = Object.freeze({
     REQUEST_LOCATE_ITEM: 'request_locate_item',
@@ -392,7 +398,7 @@ const CHECK_BACK_LOCATE_ITEM_TEMPLATES = Object.freeze({
     })
 });
 
-export const DIALOGUE_TEMPLATE_BANKS = Object.freeze({
+const BASE_DIALOGUE_TEMPLATE_BANKS = Object.freeze({
     [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_TEMPLATES,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_TEMPLATES
 });
@@ -621,15 +627,21 @@ const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS = Object.freeze({
         CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.FOUND_ALREADY]
 });
 
-export const DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
+const BASE_DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
     [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS
 });
 
+export const DIALOGUE_PROMPT_TEMPLATE_BANKS = mergeFrozenStringTree(
+    BASE_DIALOGUE_PROMPT_TEMPLATE_BANKS,
+    DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS
+);
+
+
 // ─── Result message templates ─────────────────────────────────────────────────
 // Used by locateItemResolution for system messages, not NPC dialogue lines.
 
-export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
+const BASE_LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
     success: Object.freeze({
         worn: Object.freeze([
             'I found a worn {label} from a {source}. It is not pretty, but it will hold.',
@@ -671,3 +683,14 @@ export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
         ])
     })
 });
+
+export const DIALOGUE_TEMPLATE_BANKS = mergeFrozenStringTree(
+    BASE_DIALOGUE_TEMPLATE_BANKS,
+    DIALOGUE_TEXT_TEMPLATE_BANKS
+);
+
+
+export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = mergeFrozenStringTree(
+    BASE_LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES,
+    LOCATE_ITEM_RESULT_MESSAGE_ADDITIONS
+);
