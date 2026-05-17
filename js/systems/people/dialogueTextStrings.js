@@ -214,9 +214,9 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                     'No {itemLabel} here, but I know who to ask.',
                     'I will see who is moving a {itemLabel}.',
                     'I can open a lead for a {itemLabel} today.',
-                    'I can log the {itemLabel} request and start checking stock.',
-                    'I will put the {itemLabel} on the sourcing ledger.',
-                    'I can route a {itemLabel} request through my vendors.'
+                    'I can log the {itemLabel} request and {askAround} for stock.',
+                    'I will put the {itemLabel} on the sourcing ledger and check with {supplier}.',
+                    'I can route a {itemLabel} request through my {supplier} network.'
                 ]),
                 warm: Object.freeze([
                     'I will ask around for your {itemLabel} and keep it moving.',
