@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { resetState, state } from '../js/state.js';
 import {
+    DIALOGUE_FALLBACK_LINE,
+    DIALOGUE_LEXICON_IDS,
     DIALOGUE_REGISTERS,
     buildDialogueFrame,
     realizeDialogueLine
@@ -15,9 +17,15 @@ function seedPeople() {
             id: 'person-1',
             name: 'Vela Kade',
             role: 'fixer',
-            dialogueProfile: { register: DIALOGUE_REGISTERS.UNDERWORLD, stableSeed: 'voice-test' },
+            dialogueProfile: {
+                voiceId: 'scrapyard_plain',
+                lexiconId: DIALOGUE_LEXICON_IDS.SCRAPYARD_PLAIN,
+                defaultRegister: DIALOGUE_REGISTERS.NEUTRAL,
+                personalRegisterFamiliarity: 20,
+                personalRegisterTrust: 15
+            },
             relationships: {
-                player: { trust: -70, familiarity: 2, affect: { irritation: 80 }, tags: [] }
+                player: { trust: 30, familiarity: 25, affect: { warmth: 25 }, tags: [] }
             }
         }
     };
@@ -36,6 +44,6 @@ describe('dialogue realization voice integration', () => {
         const line = realizeDialogueLine(frame);
 
         assert.match(line, /nav chip/);
-        assert.match(line, /regret|shake loose/);
+        assert.notEqual(line, DIALOGUE_FALLBACK_LINE);
     });
 });

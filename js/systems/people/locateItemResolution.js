@@ -1,7 +1,7 @@
 import { BALANCE, NPC_FINDABLE_PART_DEFS } from '../../constants.js';
 import { state } from '../../state.js';
 import { random } from '../../utils.js';
-import { chooseStable } from './dialogueRealization.js';
+import { chooseStable } from './dialogueVoice.js';
 import { LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES } from './dialogueTemplates.js';
 import { asNumber, asString, formatItemLabel, isObject } from './common.js';
 import { getDialogueRelationship } from './relationships.js';

@@ -66,9 +66,12 @@ export function applyDialogueRelationshipDelta(personId, { trust = 0, familiarit
     const affectDelta = normaliseRelationshipAffect(affect);
     relationship.affect = normaliseRelationshipAffect({
         warmth: relationship.affect.warmth + affectDelta.warmth,
-        irritation: relationship.affect.irritation + affectDelta.irritation,
         respect: relationship.affect.respect + affectDelta.respect,
-        suspicion: relationship.affect.suspicion + affectDelta.suspicion
+        resentment: relationship.affect.resentment + affectDelta.resentment,
+        fear: relationship.affect.fear + affectDelta.fear,
+        envy: relationship.affect.envy + affectDelta.envy,
+        jealousy: relationship.affect.jealousy + affectDelta.jealousy,
+        attraction: relationship.affect.attraction + affectDelta.attraction
     });
     relationship.lastInteractionAt = currentDialogueTimestamp();
     addDialogueEvent({

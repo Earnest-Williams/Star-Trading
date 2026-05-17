@@ -5,6 +5,8 @@ import {
     DIALOGUE_FALLBACK_LINE,
     DIALOGUE_FRAME_STATES,
     DIALOGUE_INTENTS,
+    DIALOGUE_REGISTERS,
+    DIALOGUE_TONES,
     buildDialogueFrame,
     realizeDialogueLine,
     selectNestedTemplate
@@ -21,21 +23,25 @@ describe('dialogue template fallback', () => {
         assert.equal(realizeDialogueLine(frame), DIALOGUE_FALLBACK_LINE);
     });
 
-    it('falls back from missing register and tone variants', () => {
+    it('falls back from missing register and tone variants to neutral', () => {
+        // bank is state → register → tone (intent-specific portion passed to selectNestedTemplate)
         const bank = {
-            [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: {
-                [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: {
-                    plain: { neutral: ['fallback {itemLabel}'] }
+            [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: {
+                [DIALOGUE_REGISTERS.NEUTRAL]: {
+                    [DIALOGUE_TONES.NEUTRAL]: ['fallback {itemLabel}']
                 }
             }
         };
-        const frame = buildDialogueFrame(DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM, {
-            state: DIALOGUE_FRAME_STATES.FRESH_REQUEST,
-            ownerPersonId: 'person-1',
-            itemId: 'nav_chip',
-            slots: { itemLabel: 'nav chip', personName: 'Nara' }
-        });
+        // frame with work register + hostile tone: should fall back to neutral.neutral
+        const frame = {
+            ...buildDialogueFrame(DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM, {
+                state: DIALOGUE_FRAME_STATES.FRESH_REQUEST,
+                slots: { itemLabel: 'nav chip', personName: 'Nara' }
+            }),
+            register: DIALOGUE_REGISTERS.WORK,
+            tone: DIALOGUE_TONES.HOSTILE
+        };
 
-        assert.equal(selectNestedTemplate(bank, frame, 'underworld', 'hostile'), 'fallback {itemLabel}');
+        assert.equal(selectNestedTemplate(bank, frame), 'fallback {itemLabel}');
     });
 });

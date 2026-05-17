@@ -50,12 +50,17 @@ export {
     DEFAULT_DIALOGUE_PROFILE,
     DEFAULT_RELATIONSHIP_AFFECT,
     DIALOGUE_LEXICON_IDS,
+    DIALOGUE_LEXICONS,
     DIALOGUE_REGISTERS,
     DIALOGUE_TONES,
-    dialogueProfileForRole,
+    chooseStable,
+    deriveDialogueTone,
     ensurePersonDialogueProfile,
     normaliseDialogueProfile,
-    normaliseRelationshipAffect
+    normaliseRelationshipAffect,
+    resolveLexiconSlots,
+    selectDialogueRegister,
+    selectNestedTemplate
 } from './people/dialogueVoice.js';
 export {
     DIALOGUE_PART_TYPES,
@@ -177,15 +182,9 @@ export {
     runDialogueMaintenanceDaily
 } from './people/dialogueMaintenance.js';
 export {
-    DIALOGUE_LEXICONS,
     buildDialogueFrame,
-    chooseStable,
-    deriveDialogueTone,
     realizeDialogueLine,
     realizeDialoguePrompt,
-    resolveLexiconSlots,
-    selectDialogueRegister,
-    selectNestedTemplate,
     validateDialogueFrame
 } from './people/dialogueRealization.js';
 export {

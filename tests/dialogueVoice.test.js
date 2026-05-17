@@ -8,8 +8,8 @@ import {
     DIALOGUE_REGISTERS,
     DIALOGUE_TONES,
     applyDialogueRelationshipDelta,
-    createGeneratedPerson,
     buildDialogueFrame,
+    createGeneratedPerson,
     deriveDialogueTone,
     normaliseDialogueProfile,
     normaliseRelationshipAffect,
@@ -18,85 +18,108 @@ import {
 } from '../js/systems/people.js';
 
 describe('dialogue voice model', () => {
-    it('normalizes dialogue profiles with safe defaults', () => {
-        const profile = normaliseDialogueProfile({
-            register: 'bad-register',
-            fallbackRegister: DIALOGUE_REGISTERS.CASUAL,
-            toneBias: DIALOGUE_TONES.BRISK,
-            lexiconIds: ['missing', DIALOGUE_LEXICON_IDS.DOCK, DIALOGUE_LEXICON_IDS.DOCK],
-            stableSeed: '  person-7  '
-        });
-
-        assert.equal(profile.register, DIALOGUE_REGISTERS.PROFESSIONAL);
-        assert.equal(profile.fallbackRegister, DIALOGUE_REGISTERS.CASUAL);
-        assert.equal(profile.toneBias, DIALOGUE_TONES.BRISK);
-        assert.deepEqual(profile.lexiconIds, [DIALOGUE_LEXICON_IDS.DOCK]);
-        assert.equal(profile.stableSeed, 'person-7');
+    it('falls back to default lexiconId when missing or invalid', () => {
+        const profile = normaliseDialogueProfile({ lexiconId: 'invalid_lexicon' });
+        assert.equal(profile.lexiconId, DIALOGUE_LEXICON_IDS.DEFAULT);
     });
 
-    it('normalizes affect values into bounded numeric fields', () => {
+    it('falls back to neutral defaultRegister when missing', () => {
+        const profile = normaliseDialogueProfile({});
+        assert.equal(profile.defaultRegister, DIALOGUE_REGISTERS.NEUTRAL);
+    });
+
+    it('normalizes affect values that clamp to -100..100', () => {
         const affect = normaliseRelationshipAffect({
             warmth: 150,
-            irritation: '-20',
+            resentment: '-20',
             respect: 'bad',
-            suspicion: -150
+            fear: -150,
+            envy: 50,
+            jealousy: -200,
+            attraction: 100
         });
-
-        assert.deepEqual(affect, { warmth: 100, irritation: -20, respect: 0, suspicion: -100 });
+        assert.deepEqual(affect, {
+            warmth: 100,
+            respect: 0,
+            resentment: -20,
+            fear: -100,
+            envy: 50,
+            jealousy: -100,
+            attraction: 100
+        });
     });
 
-    it('selects a personal register from the NPC profile', () => {
-        const person = {
-            id: 'person-1',
-            dialogueProfile: { register: DIALOGUE_REGISTERS.UNDERWORLD }
-        };
-        const frame = buildDialogueFrame('request_locate_item', { ownerPersonId: 'person-1' });
-
-        assert.equal(selectDialogueRegister(frame, person), DIALOGUE_REGISTERS.UNDERWORLD);
+    it('missing affect values become 0', () => {
+        const affect = normaliseRelationshipAffect({});
+        assert.deepEqual(affect, {
+            warmth: 0,
+            respect: 0,
+            resentment: 0,
+            fear: 0,
+            envy: 0,
+            jealousy: 0,
+            attraction: 0
+        });
     });
 
-    it('derives hostile tone from relationship affect', () => {
+    it('selects personal register when familiarity and trust meet profile thresholds', () => {
+        const profile = normaliseDialogueProfile({
+            voiceId: 'plain_frontier',
+            lexiconId: DIALOGUE_LEXICON_IDS.DEFAULT,
+            defaultRegister: DIALOGUE_REGISTERS.NEUTRAL,
+            personalRegisterFamiliarity: 20,
+            personalRegisterTrust: 15
+        });
+        const frame = buildDialogueFrame('request_locate_item', {});
+        const relationship = { trust: 20, familiarity: 25 };
+
+        assert.equal(selectDialogueRegister(frame, profile, relationship), DIALOGUE_REGISTERS.PERSONAL);
+    });
+
+    it('derives hostile tone from low trust', () => {
         const tone = deriveDialogueTone(
             buildDialogueFrame('request_locate_item'),
-            { trust: 0, familiarity: 1, affect: { irritation: 75 }, tags: [] }
+            { trust: -50, familiarity: 1, affect: {}, tags: [] }
         );
 
         assert.equal(tone, DIALOGUE_TONES.HOSTILE);
     });
 
-    it('resolves lexicon slots deterministically', () => {
-        const person = {
-            id: 'person-1',
-            dialogueProfile: {
-                lexiconIds: [DIALOGUE_LEXICON_IDS.DOCK],
-                stableSeed: 'dock-seed'
-            }
-        };
+    it('resolves lexicon slots deterministically across repeated calls with non-empty strings', () => {
+        const profile = normaliseDialogueProfile({
+            voiceId: 'dock_direct',
+            lexiconId: DIALOGUE_LEXICON_IDS.DOCK_DIRECT,
+            defaultRegister: DIALOGUE_REGISTERS.WORK,
+            personalRegisterFamiliarity: 20,
+            personalRegisterTrust: 15
+        });
         const frame = buildDialogueFrame('request_locate_item', {
             ownerPersonId: 'person-1',
             itemId: 'nav_chip'
         });
 
-        assert.deepEqual(resolveLexiconSlots(frame, person), resolveLexiconSlots(frame, person));
-        assert.equal(resolveLexiconSlots(frame, person).contactChannel, 'Communications');
+        const slotsA = resolveLexiconSlots(frame, profile);
+        const slotsB = resolveLexiconSlots(frame, profile);
+        assert.deepEqual(slotsA, slotsB);
+        assert.ok(slotsA.askAround.length > 0);
+        assert.ok(slotsA.noStock.length > 0);
+        assert.ok(slotsA.supplier.length > 0);
     });
 
-
-
-    it('assigns normalized dialogue profiles to generated NPCs', () => {
+    it('assigns normalized dialogue profiles to generated NPCs based on role', () => {
         resetState();
         state.nextPersonId = 1;
         state.people = {};
         state.peopleBySector = {};
         state.peopleByCompany = {};
 
-        const person = createGeneratedPerson({ role: 'fixer', sectorId: 1 }, () => 0);
+        const fixer = createGeneratedPerson({ role: 'fixer', sectorId: 1 }, () => 0);
+        const factor = createGeneratedPerson({ role: 'factor', sectorId: 1 }, () => 0);
 
-        assert.equal(person.dialogueProfile.register, DIALOGUE_REGISTERS.UNDERWORLD);
-        assert.deepEqual(person.dialogueProfile.lexiconIds, [
-            DIALOGUE_LEXICON_IDS.UNDERWORLD,
-            DIALOGUE_LEXICON_IDS.STANDARD
-        ]);
+        assert.equal(fixer.dialogueProfile.lexiconId, DIALOGUE_LEXICON_IDS.SCRAPYARD_PLAIN);
+        assert.equal(fixer.dialogueProfile.defaultRegister, DIALOGUE_REGISTERS.NEUTRAL);
+        assert.equal(factor.dialogueProfile.lexiconId, DIALOGUE_LEXICON_IDS.DEFAULT);
+        assert.equal(factor.dialogueProfile.defaultRegister, DIALOGUE_REGISTERS.NEUTRAL);
     });
 
     it('repairs missing dialogue profiles and relationship affect during load normalisation', () => {
@@ -117,26 +140,32 @@ describe('dialogue voice model', () => {
 
         normaliseLoadedGame();
 
-        assert.equal(state.people['person-1'].dialogueProfile.register, DIALOGUE_REGISTERS.FORMAL);
+        assert.equal(
+            state.people['person-1'].dialogueProfile.lexiconId,
+            DIALOGUE_LEXICON_IDS.CORPORATE_PRECISE
+        );
         assert.deepEqual(state.people['person-1'].relationships.player.affect, {
             warmth: 0,
-            irritation: 0,
             respect: 0,
-            suspicion: 0
+            resentment: 0,
+            fear: 0,
+            envy: 0,
+            jealousy: 0,
+            attraction: 0
         });
     });
 
-    it('relationship deltas safely mutate affect values', () => {
+    it('relationship deltas safely mutate affect values within bounds', () => {
         resetState();
         state.player = { time: { day: 1, minuteOfDay: 600 } };
         state.people = { 'person-1': { id: 'person-1', name: 'Nara' } };
 
         const relationship = applyDialogueRelationshipDelta('person-1', {
-            affect: { warmth: 12, irritation: 250 },
+            affect: { warmth: 12, resentment: 250 },
             reason: 'test'
         });
 
         assert.equal(relationship.affect.warmth, 12);
-        assert.equal(relationship.affect.irritation, 100);
+        assert.equal(relationship.affect.resentment, 100);
     });
 });

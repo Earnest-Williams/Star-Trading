@@ -8,48 +8,21 @@ import {
     LOCATE_ITEM_REQUIRED_SLOTS
 } from './dialogueTemplates.js';
 import {
-    DEFAULT_RELATIONSHIP_AFFECT,
-    DIALOGUE_LEXICON_IDS,
+    DEFAULT_DIALOGUE_PROFILE,
     DIALOGUE_REGISTERS,
     DIALOGUE_TONES,
+    deriveDialogueTone,
     ensurePersonDialogueProfile,
-    normaliseDialogueProfile,
-    normaliseRelationshipAffect
+    resolveLexiconSlots,
+    selectDialogueRegister,
+    selectNestedTemplate
 } from './dialogueVoice.js';
 import { normaliseDialogueRelationship } from './relationships.js';
 
 const DIALOGUE_INTENT_VALUES = Object.values(DIALOGUE_INTENTS);
 const DIALOGUE_STATE_VALUES = Object.values(DIALOGUE_FRAME_STATES);
-const REGISTER_VALUES = Object.values(DIALOGUE_REGISTERS);
-const TONE_VALUES = Object.values(DIALOGUE_TONES);
-
-export const DIALOGUE_LEXICONS = Object.freeze({
-    [DIALOGUE_LEXICON_IDS.STANDARD]: Object.freeze({
-        contactChannel: Object.freeze(['Communications']),
-        acknowledgement: Object.freeze(['understood']),
-        signoff: Object.freeze(['I will send word'])
-    }),
-    [DIALOGUE_LEXICON_IDS.BROKER]: Object.freeze({
-        contactChannel: Object.freeze(['Communications']),
-        acknowledgement: Object.freeze(['noted']),
-        signoff: Object.freeze(['I will send word'])
-    }),
-    [DIALOGUE_LEXICON_IDS.DOCK]: Object.freeze({
-        contactChannel: Object.freeze(['Communications']),
-        acknowledgement: Object.freeze(['heard']),
-        signoff: Object.freeze(['I will ping you'])
-    }),
-    [DIALOGUE_LEXICON_IDS.BUREAUCRATIC]: Object.freeze({
-        contactChannel: Object.freeze(['Communications']),
-        acknowledgement: Object.freeze(['recorded']),
-        signoff: Object.freeze(['I will file an update'])
-    }),
-    [DIALOGUE_LEXICON_IDS.UNDERWORLD]: Object.freeze({
-        contactChannel: Object.freeze(['Communications']),
-        acknowledgement: Object.freeze(['clocked']),
-        signoff: Object.freeze(['I will pass word'])
-    })
-});
+const DIALOGUE_REGISTER_VALUES = Object.values(DIALOGUE_REGISTERS);
+const DIALOGUE_TONE_VALUES = Object.values(DIALOGUE_TONES);
 
 function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -78,14 +51,14 @@ function normalizeState(dialogueState) {
         : DIALOGUE_FRAME_STATES.FRESH_REQUEST;
 }
 
-function normalizeRegister(register, fallback = DIALOGUE_REGISTERS.PROFESSIONAL) {
+function normalizeRegister(register, fallback = DIALOGUE_REGISTERS.NEUTRAL) {
     const safeRegister = asString(register, fallback);
-    return REGISTER_VALUES.includes(safeRegister) ? safeRegister : fallback;
+    return DIALOGUE_REGISTER_VALUES.includes(safeRegister) ? safeRegister : fallback;
 }
 
 function normalizeTone(tone, fallback = DIALOGUE_TONES.NEUTRAL) {
     const safeTone = asString(tone, fallback);
-    return TONE_VALUES.includes(safeTone) ? safeTone : fallback;
+    return DIALOGUE_TONE_VALUES.includes(safeTone) ? safeTone : fallback;
 }
 
 function requiredSlotsForFrame(frame) {
@@ -96,21 +69,6 @@ function requiredSlotsForFrame(frame) {
         return LOCATE_ITEM_REQUIRED_SLOTS;
     }
     return [];
-}
-
-function stableHash(value) {
-    const text = asString(value, 'dialogue');
-    let hash = 2166136261;
-    for (let index = 0; index < text.length; index += 1) {
-        hash ^= text.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-    }
-    return hash >>> 0;
-}
-
-export function chooseStable(options, key) {
-    if (!Array.isArray(options) || options.length === 0) return null;
-    return options[stableHash(key) % options.length];
 }
 
 function fillTemplate(template, slots) {
@@ -131,91 +89,19 @@ function getFrameRelationship(person) {
     return normaliseDialogueRelationship(relationship || {});
 }
 
-export function selectDialogueRegister(frame, person = null, profile = null) {
-    const frameRegister = normalizeRegister(frame?.register, '');
-    if (frameRegister) return frameRegister;
-    const safeProfile = profile || (person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile());
-    return normalizeRegister(safeProfile?.register, DIALOGUE_REGISTERS.PROFESSIONAL);
-}
-
-export function deriveDialogueTone(frame, relationship = null, person = null, profile = null, affect = null) {
-    const explicitTone = normalizeTone(frame?.tone, '');
-    if (explicitTone) return explicitTone;
-    const safeRelationship = normaliseDialogueRelationship(relationship || {});
-    const safeAffect = normaliseRelationshipAffect(affect || safeRelationship.affect || DEFAULT_RELATIONSHIP_AFFECT);
-    if (safeRelationship.trust <= -40 || safeAffect.irritation >= 60 || safeAffect.suspicion >= 60) {
-        return DIALOGUE_TONES.HOSTILE;
-    }
-    if (safeRelationship.trust < -10 || safeAffect.suspicion >= 25) return DIALOGUE_TONES.WARY;
-    if (safeRelationship.trust >= 35 || safeAffect.warmth >= 35) return DIALOGUE_TONES.WARM;
-    const safeProfile = profile || (person ? ensurePersonDialogueProfile(person) : null);
-    return normalizeTone(safeProfile?.toneBias, DIALOGUE_TONES.NEUTRAL);
-}
-
-export function resolveLexiconSlots(frame, person = null, profile = null) {
-    const safeProfile = profile || (person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile());
-    const keyBase = [
-        frame?.intent,
-        frame?.state,
-        frame?.ownerPersonId,
-        frame?.itemId,
-        safeProfile?.stableSeed
-    ].map(value => asString(value, '')).join('|');
-    return (safeProfile?.lexiconIds || [DIALOGUE_LEXICON_IDS.STANDARD]).reduce((slots, lexiconId) => {
-        const lexicon = DIALOGUE_LEXICONS[lexiconId] || {};
-        Object.entries(lexicon).forEach(([slot, options]) => {
-            if (typeof slots[slot] === 'undefined') {
-                slots[slot] = chooseStable(options, `${keyBase}|${lexiconId}|${slot}`) || '';
-            }
-        });
-        return slots;
-    }, {});
-}
-
-export function selectNestedTemplate(bank, frame, register, tone) {
-    const stateBank = bank?.[frame.intent]?.[frame.state];
-    if (!isObject(stateBank)) return null;
-    const registers = [
-        normalizeRegister(register, DIALOGUE_REGISTERS.PROFESSIONAL),
-        normalizeRegister(frame.fallbackRegister, ''),
-        DIALOGUE_REGISTERS.PROFESSIONAL,
-        DIALOGUE_REGISTERS.PLAIN
-    ].filter(Boolean);
-    const tones = [
-        normalizeTone(tone, DIALOGUE_TONES.NEUTRAL),
-        DIALOGUE_TONES.NEUTRAL,
-        DIALOGUE_TONES.BRISK
-    ];
-    for (const candidateRegister of [...new Set(registers)]) {
-        const registerBank = stateBank[candidateRegister];
-        if (!isObject(registerBank)) continue;
-        for (const candidateTone of [...new Set(tones)]) {
-            const templates = registerBank[candidateTone];
-            const template = chooseStable(
-                templates,
-                `${frame.intent}|${frame.state}|${frame.ownerPersonId}|${frame.itemId}|${candidateRegister}|${candidateTone}`
-            );
-            if (template) return template;
-        }
-    }
-    return null;
-}
-
-function enrichFrameForRealization(frame) {
+function prepareFrameForRealization(frame) {
     const normalizedFrame = buildDialogueFrame(frame?.intent, frame);
     const person = getFramePerson(normalizedFrame);
     const relationship = getFrameRelationship(person);
-    const profile = person ? ensurePersonDialogueProfile(person) : normaliseDialogueProfile();
-    const affect = normaliseRelationshipAffect(relationship.affect || DEFAULT_RELATIONSHIP_AFFECT);
-    const register = selectDialogueRegister(normalizedFrame, null, profile);
-    const tone = deriveDialogueTone(normalizedFrame, relationship, null, profile, affect);
+    const profile = person ? ensurePersonDialogueProfile(person) : DEFAULT_DIALOGUE_PROFILE;
+    const register = selectDialogueRegister(normalizedFrame, profile, relationship);
+    const tone = deriveDialogueTone(normalizedFrame, relationship);
+    const enrichedFrame = { ...normalizedFrame, register, tone };
+    const lexiconSlots = resolveLexiconSlots(enrichedFrame, profile);
     return {
-        ...normalizedFrame,
-        register,
-        fallbackRegister: normalizedFrame.fallbackRegister || profile.fallbackRegister,
-        tone,
+        ...enrichedFrame,
         slots: {
-            ...resolveLexiconSlots(normalizedFrame, null, profile),
+            ...lexiconSlots,
             ...normalizedFrame.slots
         }
     };
@@ -234,9 +120,8 @@ export function buildDialogueFrame(intent, context = {}) {
         subjectId: asString(source.subjectId, 'player'),
         itemId: asString(source.itemId, 'unknown_part'),
         state: normalizeState(source.state),
-        register: normalizeRegister(source.register, ''),
-        fallbackRegister: normalizeRegister(source.fallbackRegister, ''),
-        tone: normalizeTone(source.tone, ''),
+        register: normalizeRegister(source.register),
+        tone: normalizeTone(source.tone),
         slots: { itemLabel: '', personName: '', ...normalizedSlots }
     };
 }
@@ -250,6 +135,8 @@ export function validateDialogueFrame(frame) {
     const errors = [];
     if (!DIALOGUE_INTENT_VALUES.includes(frame.intent)) errors.push('unknown intent');
     if (!DIALOGUE_STATE_VALUES.includes(frame.state)) errors.push('unknown state');
+    if (!DIALOGUE_REGISTER_VALUES.includes(frame.register)) errors.push('unknown register');
+    if (!DIALOGUE_TONE_VALUES.includes(frame.tone)) errors.push('unknown tone');
     return {
         valid: errors.length === 0 && missingSlots.length === 0,
         missingSlots,
@@ -258,27 +145,19 @@ export function validateDialogueFrame(frame) {
 }
 
 export function realizeDialogueLine(frame) {
-    const realizedFrame = enrichFrameForRealization(frame);
+    const realizedFrame = prepareFrameForRealization(frame);
     const validation = validateDialogueFrame(realizedFrame);
     if (!validation.valid) return DIALOGUE_FALLBACK_LINE;
-    const template = selectNestedTemplate(
-        DIALOGUE_TEMPLATE_BANKS,
-        realizedFrame,
-        realizedFrame.register,
-        realizedFrame.tone
-    );
+    const intentBank = DIALOGUE_TEMPLATE_BANKS[realizedFrame.intent];
+    const template = selectNestedTemplate(intentBank, realizedFrame);
     if (!template) return DIALOGUE_FALLBACK_LINE;
     return fillTemplate(template, realizedFrame.slots || {});
 }
 
 export function realizeDialoguePrompt(frame) {
-    const realizedFrame = enrichFrameForRealization(frame);
-    const template = selectNestedTemplate(
-        DIALOGUE_PROMPT_TEMPLATE_BANKS,
-        realizedFrame,
-        realizedFrame.register,
-        realizedFrame.tone
-    );
+    const realizedFrame = prepareFrameForRealization(frame);
+    const intentBank = DIALOGUE_PROMPT_TEMPLATE_BANKS[realizedFrame.intent];
+    const template = selectNestedTemplate(intentBank, realizedFrame);
     if (!template) return DIALOGUE_FALLBACK_LINE;
     return fillTemplate(template, realizedFrame.slots || {});
 }

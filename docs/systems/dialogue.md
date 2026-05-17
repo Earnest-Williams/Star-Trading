@@ -37,17 +37,58 @@ The locate-item request and check-back paths both write player utterance and sem
 
 ## NPC voice realization
 
-NPC voice data is durable on each person as `dialogueProfile`. Loaded saves repair missing or partial profiles during persistence normalisation, and generated contacts receive a role-based profile when they are created. Profiles select a preferred register, fallback register, lexicon ids, tone bias, and stable seed; they do not create gameplay effects by themselves.
+NPC dialogue is authored, deterministic, and frame-driven. The realization layer does
+not generate open-ended text. It selects a template from the current intent/state,
+then applies NPC voice data.
 
-Relationship voice data is durable under `person.relationships.player.affect`. Affect contains bounded numeric `warmth`, `irritation`, `respect`, and `suspicion` values. Relationship deltas may mutate those values safely, but tones are derived at realization time from trust and affect. Tones are presentation choices, not canonical relationship states.
+Each generated person carries a `dialogueProfile`:
+
+- `voiceId`: stable descriptive id for future grouping.
+- `lexiconId`: word-choice profile used to resolve vocabulary slots.
+- `defaultRegister`: `neutral`, `work`, or `personal`.
+- `personalRegisterFamiliarity`: minimum familiarity score for personal speech.
+- `personalRegisterTrust`: minimum trust score for personal speech.
+
+Registers describe the social situation:
+
+- `neutral`: ordinary public speech.
+- `work`: task-specific, transactional, professional speech.
+- `personal`: familiar speech unlocked by trust and familiarity.
+
+Emotional tones are derived from relationship state rather than stored as a single
+relationship label. Relationship `trust` and `affect` values (`warmth`, `respect`,
+`resentment`, `fear`, `envy`, `jealousy`, `attraction`) determine whether the surface
+tone is `neutral`, `warm`, `guarded`, `hostile`, `envious`, `jealous`, or `intimate`.
+Tones are presentation choices, not canonical relationship states.
+
+Template fallback order is:
+
+1. exact register + exact tone
+2. exact register + neutral tone
+3. neutral register + exact tone
+4. neutral register + neutral tone
+5. work register + exact tone
+6. work register + neutral tone
+7. global fallback line (`DIALOGUE_FALLBACK_LINE`)
+
+Lexicon slots such as `{goodLead}`, `{badStock}`, `{askAround}`, and `{supplier}`
+are resolved after register and tone selection from the NPC's `lexiconId` bank. This
+keeps per-NPC word choice consistent without duplicating every line for every NPC.
+Concrete game data uses `{itemLabel}` and `{personName}`.
 
 Realization remains deterministic and authored:
 
-- Callers may still build simple semantic frames with intent, state, ids, and slots.
-- `dialogueRealization.js` resolves the frame person from `state.people`, reads the player relationship, selects a register, derives a tone, resolves lexicon slots, and then selects from nested authored templates.
-- Template banks are shaped as `intent → state → register → tone → templates[]` and fall back through neutral/plain/professional variants when a narrow register or tone is missing.
-- Lexicon and template choices use stable keys, not random draws, so repeated realization of the same semantic frame produces the same text.
-- Templates may mention Communications only for states where a real offer/message surface exists, such as `offer_ready`; templates never grant offers, tasks, memories, reputation, inventory, or any other gameplay effect.
+- Callers build simple semantic frames with intent, state, ids, and slots.
+- `dialogueRealization.js` resolves the frame person from `state.people`, reads the
+  player relationship, selects register via `selectDialogueRegister`, derives tone via
+  `deriveDialogueTone`, resolves lexicon slots, and selects from nested authored templates.
+- Template banks are shaped as `state → register → tone → templates[]` per intent.
+- Lexicon and template choices use stable keys, not random draws, so repeated
+  realization of the same frame produces the same text.
+- Templates may mention Communications only for states where a real offer/message
+  surface exists, such as `offer_ready`; templates never grant offers, tasks, memories,
+  reputation, inventory, or any other gameplay effect.
+- Missing required data returns `DIALOGUE_FALLBACK_LINE`.
 
 ## Authority boundaries
 
