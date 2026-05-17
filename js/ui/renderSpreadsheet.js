@@ -336,6 +336,21 @@ function getComputed(key) {
     }
 }
 
+export function evaluateSpreadsheetCells(cells) {
+    const previousRawData = rawData;
+    const previousComputing = computing;
+    rawData = sanitizeRawData(cells);
+    computing = new Set();
+    try {
+        return Object.fromEntries(
+            Object.keys(rawData).map(key => [normalizeKey(key), getComputed(key)])
+        );
+    } finally {
+        rawData = previousRawData;
+        computing = previousComputing;
+    }
+}
+
 function formatComputed(value) {
     if (typeof value !== 'number') return value || '';
     if (Number.isInteger(value)) return String(value);

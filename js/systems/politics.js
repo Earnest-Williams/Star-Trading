@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, MARKET_COMMODITIES, PORT_TYPES } from '../constants.js';
+import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, MARKET_COMMODITIES } from '../constants.js';
+import { getPortType } from '../core/ports.js';
 import { clampRange, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, normaliseSectorInfluence, addSectorInfluence, getInfluenceSpread, getSectorStatusLabel } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';
@@ -288,7 +289,7 @@ export function updateFactionsDaily() {
 
 export function updatePortsDaily() {
     Object.values(state.ports).forEach(port => {
-        const type = PORT_TYPES[port.typeKey];
+        const type = getPortType(port);
         MARKET_COMMODITIES.forEach(c => {
             if (type.sells.includes(c)) {
                 const refill = Math.ceil(port.maxStock[c] * (POLITICS.PORT_ECONOMY.SELLER_REFILL_BASE + random() * POLITICS.PORT_ECONOMY.SELLER_REFILL_SPAN));

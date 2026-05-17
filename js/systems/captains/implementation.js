@@ -1,5 +1,6 @@
 import { state } from '../../state.js';
-import { FACTIONS, BALANCE, CAPTAIN_DEFS, MAJOR_FACTIONS, PORT_TYPES } from '../../constants.js';
+import { FACTIONS, BALANCE, CAPTAIN_DEFS, MAJOR_FACTIONS } from '../../constants.js';
+import { getPortType } from '../../core/ports.js';
 import { clampRange, log, random } from '../../utils.js';
 import { addSectorInfluence, getDominantInfluence } from '../../core/influence.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
@@ -374,7 +375,7 @@ function moveCaptainTowardInterestingSector(captain) {
 function captainTrade(captain) {
     const port = state.ports[captain.currentSector];
     if (!port) return false;
-    const type = PORT_TYPES[port.typeKey];
+    const type = getPortType(port);
     const factionId = port.factionId || type.factionId;
     let commodity = null;
     if (type.buys.length > 0) commodity = type.buys[Math.floor(random() * type.buys.length)];

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { getSectorNeighbors } from "../core/navigation.js";
-import { FACTIONS, MAJOR_FACTIONS, PORT_TYPES, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
+import { FACTIONS, MAJOR_FACTIONS, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
+import { getPortType } from "../core/ports.js";
 import { escapeHtml, formatTime, formatCommodity } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import {
@@ -95,8 +96,8 @@ function renderAssetsTab() {
     html += `<div class="commodity-row"><strong>Known Starbases & Ports</strong></div><div class="card-grid">`;
     Object.keys(ports).map(Number).filter(id => id === 1 || id === player.currentSector || universe[id].surveyed || getSectorNeighbors(player.currentSector).includes(id)).sort((a, b) => a - b).forEach(id => {
         const port = ports[id];
-        const type = PORT_TYPES[port.typeKey];
-        const faction = FACTIONS[port.factionId];
+        const type = getPortType(port);
+        const faction = FACTIONS[port.factionId] || FACTIONS[type.factionId];
         html += `<div class="card"><strong>Sector ${id}: ${escapeHtml(type.name)}</strong><br>`;
         html += `<span style="color:${faction.color}">${faction.icon} ${escapeHtml(faction.name)}</span><br>`;
         html += `<span class="muted">${escapeHtml(type.description)}</span><br>`;
