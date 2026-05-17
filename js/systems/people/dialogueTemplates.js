@@ -1,4 +1,9 @@
 import { DIALOGUE_REGISTERS, DIALOGUE_TONES } from './dialogueVoice.js';
+import {
+    DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS,
+    DIALOGUE_TEXT_TEMPLATE_BANKS,
+    LOCATE_ITEM_RESULT_MESSAGE_ADDITIONS
+} from './dialogueTextStrings.js';
 
 export const DIALOGUE_INTENTS = Object.freeze({
     REQUEST_LOCATE_ITEM: 'request_locate_item',
@@ -17,6 +22,37 @@ export const DIALOGUE_FRAME_STATES = Object.freeze({
 export const DIALOGUE_FALLBACK_LINE = 'I can check my notes and get back to you.';
 
 export const LOCATE_ITEM_REQUIRED_SLOTS = Object.freeze(['itemLabel', 'personName']);
+
+function isPlainStringTreeObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeFrozenStringTree(base = {}, additions = {}) {
+    const baseSource = isPlainStringTreeObject(base) ? base : {};
+    const additionSource = isPlainStringTreeObject(additions) ? additions : {};
+    const keys = new Set([
+        ...Object.keys(baseSource),
+        ...Object.keys(additionSource)
+    ]);
+    const result = {};
+    keys.forEach(key => {
+        const baseValue = baseSource[key];
+        const additionValue = additionSource[key];
+        if (Array.isArray(baseValue) || Array.isArray(additionValue)) {
+            result[key] = Object.freeze([
+                ...(Array.isArray(baseValue) ? baseValue : []),
+                ...(Array.isArray(additionValue) ? additionValue : [])
+            ]);
+            return;
+        }
+        if (isPlainStringTreeObject(baseValue) || isPlainStringTreeObject(additionValue)) {
+            result[key] = mergeFrozenStringTree(baseValue, additionValue);
+            return;
+        }
+        result[key] = typeof additionValue === 'undefined' ? baseValue : additionValue;
+    });
+    return Object.freeze(result);
+}
 
 // ─── NPC response template banks ─────────────────────────────────────────────
 // Shape per-intent: state → register → tone → templates[]
@@ -392,7 +428,7 @@ const CHECK_BACK_LOCATE_ITEM_TEMPLATES = Object.freeze({
     })
 });
 
-export const DIALOGUE_TEMPLATE_BANKS = Object.freeze({
+const BASE_DIALOGUE_TEMPLATE_BANKS = Object.freeze({
     [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_TEMPLATES,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_TEMPLATES
 });
@@ -621,15 +657,21 @@ const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS = Object.freeze({
         CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS[DIALOGUE_FRAME_STATES.FOUND_ALREADY]
 });
 
-export const DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
+const BASE_DIALOGUE_PROMPT_TEMPLATE_BANKS = Object.freeze({
     [DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM]: REQUEST_LOCATE_ITEM_PLAYER_PROMPTS_WITH_FOLLOWUPS,
     [DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM]: CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS
 });
 
+export const DIALOGUE_PROMPT_TEMPLATE_BANKS = mergeFrozenStringTree(
+    BASE_DIALOGUE_PROMPT_TEMPLATE_BANKS,
+    DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS
+);
+
+
 // ─── Result message templates ─────────────────────────────────────────────────
 // Used by locateItemResolution for system messages, not NPC dialogue lines.
 
-export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
+const BASE_LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
     success: Object.freeze({
         worn: Object.freeze([
             'I found a worn {label} from a {source}. It is not pretty, but it will hold.',
@@ -671,3 +713,14 @@ export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
         ])
     })
 });
+
+export const DIALOGUE_TEMPLATE_BANKS = mergeFrozenStringTree(
+    BASE_DIALOGUE_TEMPLATE_BANKS,
+    DIALOGUE_TEXT_TEMPLATE_BANKS
+);
+
+
+export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = mergeFrozenStringTree(
+    BASE_LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES,
+    LOCATE_ITEM_RESULT_MESSAGE_ADDITIONS
+);

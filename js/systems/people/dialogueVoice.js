@@ -1,4 +1,5 @@
 import { PERSON_ROLES } from '../../config/people.js';
+import { DIALOGUE_TEXT_LEXICON_ADDITIONS } from './dialogueTextStrings.js';
 
 // ─── Public vocabulary ────────────────────────────────────────────────────────
 
@@ -32,6 +33,37 @@ const REGISTER_VALUES = Object.freeze(Object.values(DIALOGUE_REGISTERS));
 const TONE_VALUES = Object.freeze(Object.values(DIALOGUE_TONES));
 const LEXICON_VALUES = Object.freeze(Object.values(DIALOGUE_LEXICON_IDS));
 
+function isPlainLexiconObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeFrozenLexiconTree(base = {}, additions = {}) {
+    const baseSource = isPlainLexiconObject(base) ? base : {};
+    const additionSource = isPlainLexiconObject(additions) ? additions : {};
+    const keys = new Set([
+        ...Object.keys(baseSource),
+        ...Object.keys(additionSource)
+    ]);
+    const result = {};
+    keys.forEach(key => {
+        const baseValue = baseSource[key];
+        const additionValue = additionSource[key];
+        if (Array.isArray(baseValue) || Array.isArray(additionValue)) {
+            result[key] = Object.freeze([
+                ...(Array.isArray(baseValue) ? baseValue : []),
+                ...(Array.isArray(additionValue) ? additionValue : [])
+            ]);
+            return;
+        }
+        if (isPlainLexiconObject(baseValue) || isPlainLexiconObject(additionValue)) {
+            result[key] = mergeFrozenLexiconTree(baseValue, additionValue);
+            return;
+        }
+        result[key] = typeof additionValue === 'undefined' ? baseValue : additionValue;
+    });
+    return Object.freeze(result);
+}
+
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_DIALOGUE_PROFILE = Object.freeze({
@@ -54,7 +86,7 @@ export const DEFAULT_RELATIONSHIP_AFFECT = Object.freeze({
 
 // ─── Lexicon banks ───────────────────────────────────────────────────────────
 
-export const DIALOGUE_LEXICONS = Object.freeze({
+const BASE_DIALOGUE_LEXICONS = Object.freeze({
     [DIALOGUE_LEXICON_IDS.DEFAULT]: Object.freeze({
         goodLead: Object.freeze(['a solid lead']),
         badStock: Object.freeze(['thin stock']),
@@ -96,6 +128,11 @@ export const DIALOGUE_LEXICONS = Object.freeze({
         risky: Object.freeze(['a risky pull'])
     })
 });
+
+export const DIALOGUE_LEXICONS = mergeFrozenLexiconTree(
+    BASE_DIALOGUE_LEXICONS,
+    DIALOGUE_TEXT_LEXICON_ADDITIONS
+);
 
 // ─── Role-to-profile mapping ──────────────────────────────────────────────────
 
