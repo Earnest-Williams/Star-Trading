@@ -78,15 +78,14 @@ export function getVisibleMissionCount(missions, sectorId) {
 export function getSectorNeighborsForState(briefingState, sectorId) {
     const sector = briefingState.universe?.[sectorId];
     if (!sector || !Array.isArray(sector.jumpGates)) return [];
-    return sector.jumpGates
+    const neighborIds = sector.jumpGates
         .filter(gate => (
             gate
             && gate.status !== "closed"
             && briefingState.universe?.[gate.destinationSectorId]
         ))
-        .map(gate => gate.destinationSectorId)
-        .filter((id, index, list) => list.indexOf(id) === index)
-        .sort((a, b) => a - b);
+        .map(gate => gate.destinationSectorId);
+    return [...new Set(neighborIds)].sort((a, b) => a - b);
 }
 
 export function suggestThreatBriefing(briefingState, sector) {
@@ -230,12 +229,10 @@ export function suggestLogisticsBriefing(briefingState, logisticsSnapshotBuilder
 }
 
 export function countCommsSignals(briefingState) {
-    return [
-        ...(briefingState.dialogueMessages || []),
-        ...(briefingState.dialogueOffers || []),
-        ...(briefingState.dataCargo?.playerHold?.privatePayloads || []),
-        ...(briefingState.dataCargo?.secureContracts || [])
-    ].length;
+    return (briefingState.dialogueMessages?.length || 0)
+        + (briefingState.dialogueOffers?.length || 0)
+        + (briefingState.dataCargo?.playerHold?.privatePayloads?.length || 0)
+        + (briefingState.dataCargo?.secureContracts?.length || 0);
 }
 
 export function suggestCommsBriefing(briefingState) {
