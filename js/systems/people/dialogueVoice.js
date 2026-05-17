@@ -158,29 +158,39 @@ function hasValidProfile(profile) {
         && isKnownValue(profile.defaultRegister, REGISTER_VALUES)
         && typeof profile.voiceId === 'string'
         && profile.voiceId.trim().length > 0
-        && typeof profile.personalRegisterFamiliarity === 'number'
-        && typeof profile.personalRegisterTrust === 'number';
+        && Number.isFinite(profile.personalRegisterFamiliarity)
+        && Number.isFinite(profile.personalRegisterTrust);
+}
+
+function normaliseDialogueProfileFromSource(source, fallback) {
+    return {
+        voiceId: asString(source.voiceId, fallback.voiceId),
+        lexiconId: isKnownValue(source.lexiconId, LEXICON_VALUES)
+            ? source.lexiconId
+            : fallback.lexiconId,
+        defaultRegister: isKnownValue(source.defaultRegister, REGISTER_VALUES)
+            ? source.defaultRegister
+            : fallback.defaultRegister,
+        personalRegisterFamiliarity: Number.isFinite(source.personalRegisterFamiliarity)
+            ? source.personalRegisterFamiliarity
+            : fallback.personalRegisterFamiliarity,
+        personalRegisterTrust: Number.isFinite(source.personalRegisterTrust)
+            ? source.personalRegisterTrust
+            : fallback.personalRegisterTrust
+    };
+}
+
+function normaliseDialogueProfileWithFallback(profile, fallbackProfile) {
+    const source = isObject(profile) ? profile : {};
+    const fallback = normaliseDialogueProfile(fallbackProfile);
+    return normaliseDialogueProfileFromSource(source, fallback);
 }
 
 // ─── Normalisers ─────────────────────────────────────────────────────────────
 
 export function normaliseDialogueProfile(profile = {}) {
     const source = isObject(profile) ? profile : {};
-    return {
-        voiceId: asString(source.voiceId, DEFAULT_DIALOGUE_PROFILE.voiceId),
-        lexiconId: isKnownValue(source.lexiconId, LEXICON_VALUES)
-            ? source.lexiconId
-            : DEFAULT_DIALOGUE_PROFILE.lexiconId,
-        defaultRegister: isKnownValue(source.defaultRegister, REGISTER_VALUES)
-            ? source.defaultRegister
-            : DEFAULT_DIALOGUE_PROFILE.defaultRegister,
-        personalRegisterFamiliarity: typeof source.personalRegisterFamiliarity === 'number'
-            ? source.personalRegisterFamiliarity
-            : DEFAULT_DIALOGUE_PROFILE.personalRegisterFamiliarity,
-        personalRegisterTrust: typeof source.personalRegisterTrust === 'number'
-            ? source.personalRegisterTrust
-            : DEFAULT_DIALOGUE_PROFILE.personalRegisterTrust
-    };
+    return normaliseDialogueProfileFromSource(source, DEFAULT_DIALOGUE_PROFILE);
 }
 
 export function normaliseRelationshipAffect(affect = {}) {
@@ -207,7 +217,11 @@ export function ensurePersonDialogueProfile(person) {
     if (hasValidProfile(person.dialogueProfile)) {
         return person.dialogueProfile;
     }
-    person.dialogueProfile = dialogueProfileForRole(person.role);
+    const roleProfile = dialogueProfileForRole(person.role);
+    person.dialogueProfile = normaliseDialogueProfileWithFallback(
+        person.dialogueProfile,
+        roleProfile
+    );
     return person.dialogueProfile;
 }
 

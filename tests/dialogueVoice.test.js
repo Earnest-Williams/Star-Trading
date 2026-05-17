@@ -155,6 +155,39 @@ describe('dialogue voice model', () => {
         });
     });
 
+
+    it('repairs partial dialogue profiles without discarding valid voice settings', () => {
+        resetState();
+        state.player = { time: { day: 1, minuteOfDay: 600 }, cargo: {}, factions: {} };
+        state.world = { roles: {} };
+        state.universe = {};
+        state.ports = {};
+        state.planets = {};
+        state.missions = [];
+        state.people = {
+            'person-1': {
+                id: 'person-1',
+                role: 'customs_officer',
+                dialogueProfile: {
+                    voiceId: 'customs_override',
+                    lexiconId: DIALOGUE_LEXICON_IDS.CORPORATE_PRECISE,
+                    defaultRegister: DIALOGUE_REGISTERS.WORK
+                },
+                relationships: { player: { trust: 5 } }
+            }
+        };
+
+        normaliseLoadedGame();
+
+        assert.deepEqual(state.people['person-1'].dialogueProfile, {
+            voiceId: 'customs_override',
+            lexiconId: DIALOGUE_LEXICON_IDS.CORPORATE_PRECISE,
+            defaultRegister: DIALOGUE_REGISTERS.WORK,
+            personalRegisterFamiliarity: 20,
+            personalRegisterTrust: 15
+        });
+    });
+
     it('relationship deltas safely mutate affect values within bounds', () => {
         resetState();
         state.player = { time: { day: 1, minuteOfDay: 600 } };
