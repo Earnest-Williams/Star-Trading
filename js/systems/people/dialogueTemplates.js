@@ -17,7 +17,9 @@ import { mergeFrozenStringTree } from './common.js';
 
 export const DIALOGUE_INTENTS = Object.freeze({
     REQUEST_LOCATE_ITEM: 'request_locate_item',
-    CHECK_BACK_LOCATE_ITEM: 'check_back_locate_item'
+    CHECK_BACK_LOCATE_ITEM: 'check_back_locate_item',
+    START_PERSONAL_CHAT: 'start_personal_chat',
+    DEEPEN_RELATIONSHIP: 'deepen_relationship'
 });
 
 export const DIALOGUE_FRAME_STATES = Object.freeze({
@@ -26,7 +28,15 @@ export const DIALOGUE_FRAME_STATES = Object.freeze({
     REMEMBERED_REQUEST: 'remembered_request',
     OFFER_READY: 'offer_ready',
     FOUND_ALREADY: 'found_already',
-    FAILED_PREVIOUS: 'failed_previous'
+    FAILED_PREVIOUS: 'failed_previous',
+    CASUAL_OPEN: 'casual_open',
+    GETTING_FAMILIAR: 'getting_familiar',
+    PERSONAL_INTEREST: 'personal_interest',
+    FLIRTING: 'flirting',
+    ROMANTIC_TENSION: 'romantic_tension',
+    AFFECTION_CONFESSED: 'affection_confessed',
+    REASSURANCE: 'reassurance',
+    PARTING: 'parting'
 });
 
 export const DIALOGUE_FALLBACK_LINE = 'I can check my notes and get back to you.';
