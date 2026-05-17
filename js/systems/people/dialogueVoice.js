@@ -1,5 +1,6 @@
 import { PERSON_ROLES } from '../../config/people.js';
 import { DIALOGUE_TEXT_LEXICON_ADDITIONS } from './dialogueTextStrings.js';
+import { DIALOGUE_BROAD_LEXICON_ADDITIONS } from './dialogueBroadTextStrings.js';
 import { mergeFrozenStringTree } from './common.js';
 
 // ─── Public vocabulary ────────────────────────────────────────────────────────
@@ -100,8 +101,11 @@ const BASE_DIALOGUE_LEXICONS = Object.freeze({
 });
 
 export const DIALOGUE_LEXICONS = mergeFrozenStringTree(
-    BASE_DIALOGUE_LEXICONS,
-    DIALOGUE_TEXT_LEXICON_ADDITIONS
+    mergeFrozenStringTree(
+        BASE_DIALOGUE_LEXICONS,
+        DIALOGUE_TEXT_LEXICON_ADDITIONS
+    ),
+    DIALOGUE_BROAD_LEXICON_ADDITIONS
 );
 
 // ─── Role-to-profile mapping ──────────────────────────────────────────────────
