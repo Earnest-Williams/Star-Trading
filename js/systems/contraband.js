@@ -31,6 +31,32 @@ function inspectorFactionId() {
     return contrabandBalance().INSPECTOR_FACTION_ID;
 }
 
+
+function latestContrabandBustPayload() {
+    if (!Array.isArray(state.worldEvents)) return null;
+    const event = state.worldEvents.find(item => item && item.type === 'contraband_bust');
+    if (!event || !isObject(event.payload)) return null;
+
+    const currentDay = state.player && state.player.time
+        ? Number(state.player.time.day) || 1
+        : 1;
+    const eventDay = Number(event.day) || currentDay;
+    if (currentDay - eventDay > contrabandBalance().ENFORCEMENT_RECENT_BUST_DAYS) return null;
+    return event.payload;
+}
+
+function bustSeverity(confiscatedUnits, contrabandHeat, factionHeatAfter) {
+    if (factionHeatAfter >= contrabandBalance().ENFORCEMENT_PURSUIT_HEAT) return 'severe';
+    if (
+        factionHeatAfter >= contrabandBalance().ENFORCEMENT_WARRANT_HEAT
+        || contrabandHeat >= contrabandBalance().ENFORCEMENT_WARRANT_HEAT
+    ) {
+        return 'major';
+    }
+    if (confiscatedUnits > 0 || contrabandHeat > 0) return 'minor';
+    return 'none';
+}
+
 function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -363,13 +389,27 @@ export function runInspectionCheck() {
     if (profile.manifest.units === 0) return false;
     if (random() >= profile.detectionChance) return false;
 
+    const previousStatus = getContrabandEnforcementStatus();
     const confiscated = profile.manifest.units;
+    const factionHeatBefore = getFactionHeat(inspectorFactionId());
     state.player.contrabandHold = [];
     addFactionHeat(
         inspectorFactionId(),
         Math.min(contrabandBalance().MAX_BUST_HEAT, contrabandBalance().BUST_BASE_HEAT + confiscated),
         'contraband discovered'
     );
+    const factionHeatAfter = getFactionHeat(inspectorFactionId());
+    const severity = bustSeverity(confiscated, profile.manifest.heat, factionHeatAfter);
+    const result = {
+        detected: true,
+        sectorId: state.player.currentSector,
+        inspectorFactionId: inspectorFactionId(),
+        confiscatedUnits: confiscated,
+        contrabandHeat: profile.manifest.heat,
+        factionHeatBefore,
+        factionHeatAfter,
+        severity
+    };
     addFactionRep(
         receiverFactionId(),
         -Math.min(contrabandBalance().MAX_BUST_REP_LOSS, confiscated),
@@ -382,9 +422,58 @@ export function runInspectionCheck() {
         factionId: inspectorFactionId(),
         text: `SDA inspectors found and confiscated ${confiscated} contraband units.`,
         importance: contrabandBalance().BUST_EVENT_IMPORTANCE,
-        alert: true
+        alert: true,
+        payload: result
     });
-    return true;
+
+    const nextStatus = getContrabandEnforcementStatus();
+    if (previousStatus === 'watched' && nextStatus === 'warrant_risk') {
+        addWorldEvent({
+            type: 'enforcement_pressure_increased',
+            sectorId: state.player.currentSector,
+            factionId: inspectorFactionId(),
+            text: 'SDA enforcement pressure increased after repeated contraband violations.',
+            importance: contrabandBalance().BUST_EVENT_IMPORTANCE,
+            alert: true,
+            payload: {
+                previousStatus,
+                nextStatus,
+                factionHeatBefore,
+                factionHeatAfter,
+                bustSeverity: severity
+            }
+        });
+    }
+
+    return result;
+}
+
+export function getContrabandEnforcementStatus() {
+    const heat = getFactionHeat(inspectorFactionId());
+    const recentBust = latestContrabandBustPayload();
+    const recentSeverity = recentBust && typeof recentBust.severity === 'string'
+        ? recentBust.severity
+        : 'none';
+
+    if (
+        heat >= contrabandBalance().ENFORCEMENT_PURSUIT_HEAT
+        || recentSeverity === 'severe'
+    ) {
+        return 'active_warrant_candidate';
+    }
+    if (
+        heat >= contrabandBalance().ENFORCEMENT_WARRANT_HEAT
+        || recentSeverity === 'major'
+    ) {
+        return 'warrant_risk';
+    }
+    if (
+        heat >= contrabandBalance().ENFORCEMENT_WARNING_HEAT
+        || recentSeverity === 'minor'
+    ) {
+        return 'watched';
+    }
+    return 'none';
 }
 
 export function canDeliverContraband(sectorId = state.player && state.player.currentSector) {

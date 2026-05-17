@@ -57,6 +57,10 @@ disconnected endpoints are invalid data, not a reason to create a fallback path.
 `state.simulationTrace` and `state.nextSimulationTraceId` are persisted so debug
 and causality context survives save/load. Missing trace fields are safe to fill
 through normalization because old saves simply start with an empty trace ledger.
+Persistent `worldEvents` may also carry a compact `payload` object when a
+simulation event needs durable cause data, such as structured contraband bust
+results; old events without payloads remain valid and are treated as having no
+structured payload.
 
 ## Persistence adapters
 
