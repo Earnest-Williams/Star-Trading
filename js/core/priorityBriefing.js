@@ -1,4 +1,5 @@
-import { MARKET_COMMODITIES, PORT_TYPES } from "../constants.js";
+import { MARKET_COMMODITIES } from "../constants.js";
+import { getPortType } from "./ports.js";
 import { buildLogisticsSnapshot } from "../systems/tradeRoutes.js";
 import { formatCommodity, formatCredits } from "../utils.js";
 
@@ -51,8 +52,7 @@ export function normalisePriorityBriefingState(priorityBriefing) {
 
 export function hasCargoToSell(port, cargo = {}) {
     if (!port) return false;
-    const type = PORT_TYPES[port.typeKey];
-    if (!type) return false;
+    const type = getPortType(port);
     return MARKET_COMMODITIES.some(commodity => {
         const holdAmount = cargo?.[commodity] || 0;
         return holdAmount > 0 && type.buys.includes(commodity);
@@ -61,8 +61,7 @@ export function hasCargoToSell(port, cargo = {}) {
 
 export function hasGoodsToBuy(port) {
     if (!port) return false;
-    const type = PORT_TYPES[port.typeKey];
-    if (!type) return false;
+    const type = getPortType(port);
     return MARKET_COMMODITIES.some(commodity => {
         const stock = port.stock?.[commodity] || 0;
         return stock > 0 && type.sells.includes(commodity);

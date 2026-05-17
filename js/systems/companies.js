@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { COMPANY_ARCHETYPES, COMPANY_NAME_PARTS } from '../config/companies.js';
-import { PORT_TYPES } from '../constants.js';
+import { getPortType, normalisePortTypeKey } from '../core/ports.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { createGeneratedPerson, resetPeopleState } from './people.js';
 import { hasEconomicActivity } from '../utils.js';
@@ -14,9 +14,11 @@ function chooseCompanyType(sectorId) {
     const port = state.ports[sectorId];
     if (sector?.front || port?.hiddenFactionId === 'vc') return 'black_market_front';
     if (sector?.asteroids) return 'mining_contractor';
-    if (port?.typeKey === 'refinery') return 'refinery_operator';
-    if (port?.typeKey === 'agricultural') return 'agri_collective';
-    if (port?.typeKey === 'industrial' || port?.typeKey === 'consumer') return 'industrial_supplier';
+    const typeKey = port ? normalisePortTypeKey(port) : null;
+    if (typeKey === 'mining') return 'mining_contractor';
+    if (typeKey === 'refinery') return 'refinery_operator';
+    if (typeKey === 'agricultural') return 'agri_collective';
+    if (typeKey === 'industrial' || typeKey === 'consumer') return 'industrial_supplier';
     if (port) return 'import_export';
     return state.planets[sectorId] ? 'haulage' : 'security_contractor';
 }
@@ -72,7 +74,8 @@ export function seedCompaniesAndPeople(rng) {
         const type = chooseCompanyType(sectorId);
         createCompany(sectorId, type, rng);
         const port = state.ports[sectorId];
-        const isHub = port && (PORT_TYPES[port.typeKey]?.sells?.length > 0 || port.typeKey === 'stardock');
+        const portType = port ? getPortType(port) : null;
+        const isHub = port && (portType.sells.length > 0 || port.typeKey === 'stardock');
         if (isHub) createCompany(sectorId, type === 'import_export' ? 'haulage' : 'import_export', rng);
     });
 }

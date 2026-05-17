@@ -1,5 +1,6 @@
 import { state } from '../../state.js';
-import { BALANCE, COMMODITIES, MARKET_COMMODITIES, PORT_TYPES } from '../../constants.js';
+import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../constants.js';
+import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../../utils.js';
 import { addSectorInfluence } from '../../core/influence.js';
@@ -124,7 +125,7 @@ export function getLogisticsNode(sectorId) {
     const port = state.ports[sectorId];
     const planet = state.planets[sectorId];
     if (port) {
-        const type = PORT_TYPES[port.typeKey];
+        const type = getPortType(port);
         return {
             sectorId, kind: "port",
             name: `${type.name} S${sectorId}`,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
-import { BALANCE, PORT_TYPES } from '../../js/constants.js';
+import { BALANCE } from '../../js/constants.js';
+import { getPortType } from '../../js/core/ports.js';
 import { createPlayer, generateUniverse } from '../../js/core/universe.js';
 import { resetState, state } from '../../js/state.js';
 import { initSessionRng } from '../../js/utils.js';
@@ -51,8 +52,7 @@ export function findPortForCommodity(commodity, mode) {
     assert.ok(mode === 'buy' || mode === 'sell', `unsupported trade mode ${mode}`);
 
     const entry = Object.entries(state.ports).find(([, port]) => {
-        const portType = PORT_TYPES[port.typeKey];
-        if (!portType) return false;
+        const portType = getPortType(port);
 
         const supportedCommodities = mode === 'buy' ? portType.sells : portType.buys;
         return supportedCommodities.includes(commodity);

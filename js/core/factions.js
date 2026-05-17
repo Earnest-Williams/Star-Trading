@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, CARGO_COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS, PORT_TYPES } from '../constants.js';
+import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, CARGO_COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS } from '../constants.js';
+import { getPortType, normalisePortTypeKey } from './ports.js';
 import { clampRange, hasCargo, log } from '../utils.js';
 import { addSectorInfluence, getInfluenceSpread } from './influence.js';
 import { EventBus } from '../events.js';
@@ -280,7 +281,8 @@ export function getFactionLabel(rep) {
 export function getFactionBarPercent(rep) { return Math.max(0, Math.min(100, Math.round(((rep + 500) / 1500) * 100))); }
 
 export function getFactionPriceMultiplier(port, mode) {
-    const factionId = port.factionId || (port.typeKey && PORT_TYPES[port.typeKey] ? PORT_TYPES[port.typeKey].factionId : "fu") || "fu";
+    const type = getPortType(port);
+    const factionId = port.factionId || type.factionId || "fu";
     const rep = getFactionRep(factionId);
     const privateRep = getPrivateFactionRep(factionId);
     const trust = getFactionTrust(factionId);
@@ -329,7 +331,7 @@ export function hasGuildJoinAccess(guildId) {
     const port = state.ports[state.player.currentSector];
     const planet = state.planets[state.player.currentSector];
     const sector = state.universe[state.player.currentSector];
-    if (req.allowedPortTypes && port && req.allowedPortTypes.includes(port.typeKey)) return true;
+    if (req.allowedPortTypes && port && req.allowedPortTypes.includes(normalisePortTypeKey(port))) return true;
     if (req.allowedRegions && sector && req.allowedRegions.includes(sector.region)) return true;
     if (req.allowsPlayerColony && planet && planet.owner === "Player") return true;
     return false;

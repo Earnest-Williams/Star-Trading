@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { FACTIONS, NPC_FINDABLE_PARTS, PORT_TYPES, PLANET_TYPES } from "../constants.js";
+import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES } from "../constants.js";
+import { getPortType } from "../core/ports.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
 import { renderCaptainChipsForSector } from "./renderCaptains.js";
@@ -115,7 +116,7 @@ export function renderSectorContents() {
     if (sector.front) html += `<div class="amber"><strong>Front suspicion:</strong> ${sector.front.suspicion}/100.</div>`;
     if (sector.pirateThreat > 0) html += `<div class="red"><strong>Pirate threat:</strong> ${sector.pirateThreat}</div>`;
     if (port) {
-        const type = PORT_TYPES[port.typeKey];
+        const type = getPortType(port);
         const faction = FACTIONS[port.factionId];
         html += `<div class="green"><strong>Port:</strong> ${escapeHtml(type.name)}</div>`;
         if (faction) html += `<div><strong>Public Authority:</strong> <span style="color:${faction.color}">${faction.icon} ${escapeHtml(faction.name)}</span></div>`;
@@ -209,7 +210,7 @@ export function renderMapInspector() {
     if (dominant) html += `<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span>`;
     if (sector.localAuthority) html += `<span class="sector-chip">${escapeHtml(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId)}</span>`;
     if (state.companyIdsBySector?.[id]?.length) html += `<span class="sector-chip">Companies ${state.companyIdsBySector[id].length}</span>`;
-    if (ports[id]) html += `<span class="sector-chip">Port: ${escapeHtml(PORT_TYPES[ports[id].typeKey].name)}</span>`;
+    if (ports[id]) html += `<span class="sector-chip">Port: ${escapeHtml(getPortType(ports[id]).name)}</span>`;
     if (getSectorStatusLabel(id) === "Contested") html += `<span class="sector-chip amber">Political contest</span>`;
     if (sector.front) html += `<span class="sector-chip amber">Front suspicion ${sector.front.suspicion}</span>`;
     if (planets[id]) html += `<span class="sector-chip">Planet: ${escapeHtml(PLANET_TYPES[planets[id].typeKey].name)}</span>`;

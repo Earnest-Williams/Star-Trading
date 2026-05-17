@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { FACTIONS, PLANET_TYPES, PORT_TYPES } from "../constants.js";
+import { FACTIONS, PLANET_TYPES } from "../constants.js";
+import { getPortType } from "../core/ports.js";
 import { getSectorFactionId, getSectorStatusLabel } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
@@ -281,7 +282,7 @@ function sectorTooltipHtml(id) {
     if (dominant) chips.push(`${dominant.icon} ${dominant.short}`);
     if (sector.localAuthority) chips.push(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId);
     if (state.companyIdsBySector?.[id]?.length) chips.push(`Companies: ${state.companyIdsBySector[id].length}`);
-    if (ports[id]) chips.push(`Port: ${PORT_TYPES[ports[id].typeKey].name}`);
+    if (ports[id]) chips.push(`Port: ${getPortType(ports[id]).name}`);
     if (planets[id]) chips.push(`Planet: ${PLANET_TYPES[planets[id].typeKey].name}`);
     if (sector.asteroids) chips.push("Asteroids");
     if (sector.pirateThreat > 0) chips.push(`Pirates ${sector.pirateThreat}`);
