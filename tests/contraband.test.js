@@ -170,6 +170,39 @@ describe('contraband enforcement status', () => {
         assert.equal(state.worldEvents[0].payload.nextStatus, 'warrant_risk');
     });
 
+    it('uses max bust severity within window even when a later minor bust follows', () => {
+        // Seed worldEvents directly: major bust first (older), minor bust second (newer/index 0)
+        state.worldEvents = [
+            {
+                id: 2, day: 1, minute: 30, type: 'contraband_bust',
+                payload: { severity: 'minor', confiscatedUnits: 1, contrabandHeat: 4, factionHeatBefore: 10, factionHeatAfter: 16 }
+            },
+            {
+                id: 1, day: 1, minute: 0, type: 'contraband_bust',
+                payload: { severity: 'major', confiscatedUnits: 5, contrabandHeat: 20, factionHeatBefore: 0, factionHeatAfter: 10 }
+            }
+        ];
+        // Even though the most recent bust is minor, status must reflect the maximum
+        // severity ('major') still within the window → warrant_risk, not watched
+        assert.equal(getContrabandEnforcementStatus(), 'warrant_risk');
+    });
+
+    it('emits a pressure event when status jumps directly from none to warrant_risk', () => {
+        initSessionRng(7);
+        assert.equal(getContrabandEnforcementStatus(), 'none');
+        assert.equal(acquireContraband('black_market_eq', 5), true);
+
+        const result = runInspectionCheck();
+
+        assert.ok(result && result.detected, 'inspection should detect contraband');
+        assert.equal(result.severity, 'major');
+        assert.equal(getContrabandEnforcementStatus(), 'warrant_risk');
+        const pressureEvent = state.worldEvents.find(e => e.type === 'enforcement_pressure_increased');
+        assert.ok(pressureEvent, 'enforcement_pressure_increased event should be emitted');
+        assert.equal(pressureEvent.payload.previousStatus, 'none');
+        assert.equal(pressureEvent.payload.nextStatus, 'warrant_risk');
+    });
+
     it('derives warrant risk from SDA heat without authoring a bounty record', () => {
         state.player.factions.heat.sda = 20;
 

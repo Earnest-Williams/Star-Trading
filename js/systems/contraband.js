@@ -32,17 +32,25 @@ function inspectorFactionId() {
 }
 
 
-function latestContrabandBustPayload() {
-    if (!Array.isArray(state.worldEvents)) return null;
-    const event = state.worldEvents.find(item => item && item.type === 'contraband_bust');
-    if (!event || !isObject(event.payload)) return null;
+const SEVERITY_RANK = Object.freeze({ none: 0, minor: 1, major: 2, severe: 3 });
 
+function maxRecentContrabandBustPayload() {
+    if (!Array.isArray(state.worldEvents)) return null;
     const currentDay = state.player && state.player.time
         ? Number(state.player.time.day) || 1
         : 1;
-    const eventDay = Number(event.day) || currentDay;
-    if (currentDay - eventDay > contrabandBalance().ENFORCEMENT_RECENT_BUST_DAYS) return null;
-    return event.payload;
+    const window = contrabandBalance().ENFORCEMENT_RECENT_BUST_DAYS;
+    let best = null;
+    for (const item of state.worldEvents) {
+        if (!item || item.type !== 'contraband_bust') continue;
+        if (!isObject(item.payload)) continue;
+        const eventDay = Number(item.day) || currentDay;
+        if (currentDay - eventDay > window) continue;
+        if (best === null || (SEVERITY_RANK[item.payload.severity] ?? 0) > (SEVERITY_RANK[best.severity] ?? 0)) {
+            best = item.payload;
+        }
+    }
+    return best;
 }
 
 function bustSeverity(confiscatedUnits, contrabandHeat, factionHeatAfter) {
@@ -384,6 +392,10 @@ export function getInspectionProfile(sectorId = state.player && state.player.cur
     };
 }
 
+function isHighPressureStatus(status) {
+    return status === 'warrant_risk' || status === 'active_warrant_candidate';
+}
+
 export function runInspectionCheck() {
     const profile = getInspectionProfile();
     if (profile.manifest.units === 0) return false;
@@ -427,7 +439,7 @@ export function runInspectionCheck() {
     });
 
     const nextStatus = getContrabandEnforcementStatus();
-    if (previousStatus === 'watched' && nextStatus === 'warrant_risk') {
+    if (!isHighPressureStatus(previousStatus) && isHighPressureStatus(nextStatus)) {
         addWorldEvent({
             type: 'enforcement_pressure_increased',
             sectorId: state.player.currentSector,
@@ -450,7 +462,7 @@ export function runInspectionCheck() {
 
 export function getContrabandEnforcementStatus() {
     const heat = getFactionHeat(inspectorFactionId());
-    const recentBust = latestContrabandBustPayload();
+    const recentBust = maxRecentContrabandBustPayload();
     const recentSeverity = recentBust && typeof recentBust.severity === 'string'
         ? recentBust.severity
         : 'none';
