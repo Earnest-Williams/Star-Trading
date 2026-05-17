@@ -33,53 +33,73 @@ const REQUEST_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                '{noStock}, but I can {askAround} a {itemLabel}.'
+                '{noStock}, but I can {askAround} for a {itemLabel}.',
+                '{noStock}. I can start asking after a {itemLabel}.',
+                'I do not have a {itemLabel} here, but I can {askAround}.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'For you, I can {askAround} a {itemLabel}. Leave it with me.'
+                'For you, I can {askAround} a {itemLabel}. Leave it with me.',
+                'I can put feelers out for a {itemLabel}. I will let you know what turns up.',
+                'I will make time for it. A {itemLabel}, yes?'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'I can {askAround} a {itemLabel}, but I will keep the search quiet.'
+                'I can {askAround} a {itemLabel}, but I will keep the search quiet.',
+                'I can ask after a {itemLabel}. No names unless I need them.',
+                'I will see who has a {itemLabel} without making noise.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'I will {askAround} a {itemLabel}, but do not make me regret the favor.'
+                'I will {askAround} a {itemLabel}, but do not make me regret the favor.',
+                'Fine. I will ask after a {itemLabel}. Keep your end simple.',
+                'I can look for a {itemLabel}. Do not waste my time.'
             ]),
             [DIALOGUE_TONES.ENVIOUS]: Object.freeze([
-                'I can find a {itemLabel}. Some of us have to work for our parts.'
+                'I can find a {itemLabel}. Some of us have to work for our parts.',
+                'A {itemLabel}. Of course. I will see what your luck buys today.'
             ]),
             [DIALOGUE_TONES.JEALOUS]: Object.freeze([
-                '{noStock}, but I can {askAround} a {itemLabel}. Just for you.'
+                '{noStock}, but I can {askAround} a {itemLabel}. Just for you.',
+                'I can ask around for a {itemLabel}. I suppose you came to me first.'
             ]),
             [DIALOGUE_TONES.INTIMATE]: Object.freeze([
-                'Leave it with me. I will find you a {itemLabel}.'
+                'Leave it with me. I will find you a {itemLabel}.',
+                'I will handle the {itemLabel} myself. You will hear from me.'
             ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'Nothing on hand, but I can ask around for a {itemLabel}.'
+                'Nothing on hand, but I can ask around for a {itemLabel}.',
+                'No {itemLabel} here, but I can ask around.',
+                'I can look for a {itemLabel}. It may take a little time.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'I can ask around for a {itemLabel} for you.'
+                'I can ask around for a {itemLabel} for you.',
+                'I will see who can spare a {itemLabel}.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'I can look for a {itemLabel}, though I will keep it quiet.'
+                'I can look for a {itemLabel}, though I will keep it quiet.',
+                'I can make a quiet search for a {itemLabel}.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'I will look for a {itemLabel}, but do not make me regret it.'
+                'I will look for a {itemLabel}, but do not make me regret it.',
+                'I will look for a {itemLabel}. Do not press me for miracles.'
             ])
         }),
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'Nothing now, but I will track down a {itemLabel}.'
+                'Nothing now, but I will track down a {itemLabel}.',
+                'I do not have one, but I will find a {itemLabel}.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'I will find you a {itemLabel}.'
+                'I will find you a {itemLabel}.',
+                'Leave the {itemLabel} with me. I will work on it.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'I can look, quietly. A {itemLabel}.'
+                'I can look, quietly. A {itemLabel}.',
+                'I can ask carefully about a {itemLabel}.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'Fine. I will look for a {itemLabel}.'
+                'Fine. I will look for a {itemLabel}.',
+                'I will look. Do not make the {itemLabel} my problem twice.'
             ]),
             [DIALOGUE_TONES.ENVIOUS]: Object.freeze([
                 'Some contacts you have. I can still find a {itemLabel}.'
@@ -95,45 +115,62 @@ const REQUEST_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.ACTIVE_TASK]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'Still looking for that {itemLabel}. I will send word when I have news.'
+                'Still looking for that {itemLabel}. I will send word when I have news.',
+                'The {itemLabel} search is still open. No useful lead yet.',
+                'I am still asking after that {itemLabel}.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'Still working on your {itemLabel}. I will send word soon.'
+                'Still working on your {itemLabel}. I will send word soon.',
+                'I have not dropped your {itemLabel}. I will send word when I have something.',
+                'Your {itemLabel} is still on my list.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'Still looking for that {itemLabel}. I will keep you posted if the trail stays clean.'
+                'Still looking for that {itemLabel}. I will keep you posted if the trail stays clean.',
+                'The {itemLabel} search is moving slowly. I am being careful.',
+                'I am still checking on that {itemLabel}, quietly.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'Still looking for that {itemLabel}. You will hear when I have something.'
+                'Still looking for that {itemLabel}. You will hear when I have something.',
+                'No {itemLabel} yet. I will say something when there is something to say.',
+                'The {itemLabel} is not in my hand yet. Wait.'
             ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'Still looking. I will send word on the {itemLabel}.'
+                'Still looking. I will send word on the {itemLabel}.',
+                'No answer yet on the {itemLabel}.',
+                'The {itemLabel} is still pending.'
             ])
         }),
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'Still on it. The {itemLabel}.'
+                'Still on it. The {itemLabel}.',
+                'I am still watching for the {itemLabel}.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'I have not forgotten your {itemLabel}. I will send word.'
+                'I have not forgotten your {itemLabel}. I will send word.',
+                'Your {itemLabel} is still on my mind.'
             ])
         })
     }),
     [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'Your {itemLabel} request is still in my notes. I will send word.'
+                'Your {itemLabel} request is still in my notes. I will send word.',
+                'I still have the {itemLabel} request open.',
+                'The {itemLabel} is still logged. I have not closed it.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'Still have your {itemLabel} in my notes. I will send word as soon as I have news.'
+                'Still have your {itemLabel} in my notes. I will send word as soon as I have news.',
+                'Your {itemLabel} is still on my sheet. I will tell you when I have a lead.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'The {itemLabel} request is in my notes. I will move carefully.'
+                'The {itemLabel} request is in my notes. I will move carefully.',
+                'I still have the {itemLabel} request. I am keeping the circle small.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'The {itemLabel} request is in my notes. Wait for word.'
+                'The {itemLabel} request is in my notes. Wait for word.',
+                'I have not lost the {itemLabel} request. Do not ask me every hour.'
             ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
@@ -153,16 +190,24 @@ const REQUEST_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.OFFER_READY]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'I found a {itemLabel}. Check Communications when you are ready.'
+                'I found a {itemLabel}. Check Communications when you are ready.',
+                'There is a {itemLabel} offer waiting in Communications.',
+                'I have a line on a {itemLabel}. Review it in Communications.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'Found your {itemLabel}. Check Communications when you are ready.'
+                'Found your {itemLabel}. Check Communications when you are ready.',
+                'I found your {itemLabel}. The details are in Communications.',
+                'Your {itemLabel} came through. Check Communications.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'I found a {itemLabel}. Check Communications if you still want it.'
+                'I found a {itemLabel}. Check Communications if you still want it.',
+                'A {itemLabel} is available. The details are in Communications.',
+                'I have a {itemLabel} lead. Review it before it goes stale.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'Your {itemLabel} is waiting in Communications. Decide quickly.'
+                'Your {itemLabel} is waiting in Communications. Decide quickly.',
+                'I found the {itemLabel}. Read the offer and move.',
+                'The {itemLabel} offer is up. Do not make me chase you for an answer.'
             ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
@@ -185,7 +230,9 @@ const REQUEST_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.FOUND_ALREADY]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'You already picked up that {itemLabel}. Ask again if you need another.'
+                'You already picked up that {itemLabel}. Ask again if you need another.',
+                'That {itemLabel} is already settled.',
+                'The last {itemLabel} request is complete. A new one needs a new ask.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
                 'You already picked up that {itemLabel}. I can look for another if you need it.'
@@ -214,16 +261,21 @@ const REQUEST_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.FAILED_PREVIOUS]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'I struck out last time, but I can {askAround} for a {itemLabel} again.'
+                'I struck out last time, but I can {askAround} for a {itemLabel} again.',
+                'Last search came up empty. I can reopen the hunt for a {itemLabel}.',
+                'No luck last time. I can start over on the {itemLabel}.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'I struck out last time. I can restart the search for your {itemLabel}.'
+                'I struck out last time. I can restart the search for your {itemLabel}.',
+                'Last time did not work out. I can try again for your {itemLabel}.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'I struck out last time. I can look again, carefully, for a {itemLabel}.'
+                'I struck out last time. I can look again, carefully, for a {itemLabel}.',
+                'The last {itemLabel} search went nowhere. I can make another careful pass.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'The last search failed. If you want another search for a {itemLabel}, ask plainly.'
+                'The last search failed. If you want another search for a {itemLabel}, ask plainly.',
+                'The {itemLabel} did not turn up. Say so if you want me to waste another pass.'
             ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
@@ -246,16 +298,21 @@ const CHECK_BACK_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'There is no active {itemLabel} request on the books.'
+                'There is no active {itemLabel} request on the books.',
+                'I do not have a live {itemLabel} request from you.',
+                'Nothing is open for a {itemLabel} right now.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'I do not have an active {itemLabel} request open yet.'
+                'I do not have an active {itemLabel} request open yet.',
+                'I do not see a {itemLabel} request from you. I can open one if you want.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
-                'No active {itemLabel} request on the books.'
+                'No active {itemLabel} request on the books.',
+                'No {itemLabel} request is open under your name.'
             ]),
             [DIALOGUE_TONES.HOSTILE]: Object.freeze([
-                'No active {itemLabel} request.'
+                'No active {itemLabel} request.',
+                'There is no {itemLabel} request. Ask first, then check back.'
             ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
@@ -274,10 +331,13 @@ const CHECK_BACK_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                'I still have your {itemLabel} request in my notes. I will send word when I have news.'
+                'I still have your {itemLabel} request in my notes. I will send word when I have news.',
+                'Your {itemLabel} is still listed. No result yet.',
+                'The {itemLabel} request is still open on my end.'
             ]),
             [DIALOGUE_TONES.WARM]: Object.freeze([
-                'Your {itemLabel} request is still in my notes. I will send word as soon as I have news.'
+                'Your {itemLabel} request is still in my notes. I will send word as soon as I have news.',
+                'I still have your {itemLabel} in the queue. I will tell you when it moves.'
             ]),
             [DIALOGUE_TONES.GUARDED]: Object.freeze([
                 'The {itemLabel} request is still in my notes. I will send word if the trail stays clean.'
@@ -342,18 +402,44 @@ export const DIALOGUE_TEMPLATE_BANKS = Object.freeze({
 const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
     [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you find a {itemLabel} for me?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['Could you find a {itemLabel} for me?']),
-            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Can you quietly find a {itemLabel} for me?']),
-            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['Can you find a {itemLabel}, or not?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'Can you find a {itemLabel} for me?',
+                'Can you ask around for a {itemLabel}?',
+                'I am looking for a {itemLabel}. Can you help?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'Could you find a {itemLabel} for me?',
+                'Would you help me track down a {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze([
+                'Can you quietly find a {itemLabel} for me?',
+                'Can you keep a quiet eye out for a {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze([
+                'Can you find a {itemLabel}, or not?',
+                'Can you get a {itemLabel} without turning this into a lecture?'
+            ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you find a {itemLabel}?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'Can you find a {itemLabel}?',
+                'Do you know where I can get a {itemLabel}?',
+                'Can you look for a {itemLabel}?'
+            ])
         }),
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Can you find a {itemLabel} for me?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['Would you find a {itemLabel} for me?']),
-            [DIALOGUE_TONES.INTIMATE]: Object.freeze(['I need a {itemLabel}. Can you find one?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'Can you find a {itemLabel} for me?',
+                'Can you help me get a {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'Would you find a {itemLabel} for me?',
+                'Could you help me with a {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.INTIMATE]: Object.freeze([
+                'I need a {itemLabel}. Can you find one?',
+                'Can you find me a {itemLabel}? I trust your hands on this.'
+            ])
         })
     }),
     [DIALOGUE_FRAME_STATES.FAILED_PREVIOUS]: Object.freeze({
@@ -379,30 +465,69 @@ const REQUEST_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
 const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
     [DIALOGUE_FRAME_STATES.ACTIVE_TASK]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Any news on that {itemLabel}?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['Any news on my {itemLabel}?']),
-            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Any quiet news on that {itemLabel}?']),
-            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['Any news on that {itemLabel} yet?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'Any news on that {itemLabel}?',
+                'Have you heard anything about the {itemLabel}?',
+                'Where are we on the {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'Any news on my {itemLabel}?',
+                'Did anything turn up on my {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze([
+                'Any quiet news on that {itemLabel}?',
+                'Any safe word on the {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze([
+                'Any news on that {itemLabel} yet?',
+                'Do you have the {itemLabel} lead yet, or not?'
+            ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['News on that {itemLabel}?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'News on that {itemLabel}?',
+                'Anything on the {itemLabel}?',
+                'Any word on the {itemLabel}?'
+            ])
         }),
         [DIALOGUE_REGISTERS.PERSONAL]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Any news on the {itemLabel}?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['Heard anything on my {itemLabel}?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'Any news on the {itemLabel}?',
+                'Did the {itemLabel} turn up?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'Heard anything on my {itemLabel}?',
+                'Any luck with my {itemLabel}?'
+            ])
         })
     }),
     [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['What is the status of that {itemLabel}?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'What is the status of that {itemLabel}?',
+                'Do we have a {itemLabel} request open?',
+                'Did I already ask you about a {itemLabel}?'
+            ])
         })
     }),
     [DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Do you still have my {itemLabel} request?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['Do you still have my {itemLabel} in your notes?']),
-            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Is the {itemLabel} request still open?']),
-            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['You still have that {itemLabel} request, right?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'Do you still have my {itemLabel} request?',
+                'Is my {itemLabel} request still on your list?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'Do you still have my {itemLabel} in your notes?',
+                'You still remember my {itemLabel}, right?'
+            ]),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze([
+                'Is the {itemLabel} request still open?',
+                'Is my {itemLabel} request still on the quiet list?'
+            ]),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze([
+                'You still have that {itemLabel} request, right?',
+                'Tell me you did not lose the {itemLabel} request.'
+            ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['Is my {itemLabel} request still open?'])
@@ -414,10 +539,22 @@ const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
     }),
     [DIALOGUE_FRAME_STATES.OFFER_READY]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You found the {itemLabel}?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['You found my {itemLabel}?']),
-            [DIALOGUE_TONES.GUARDED]: Object.freeze(['Is the {itemLabel} ready to review?']),
-            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['Show me the {itemLabel} offer.'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'You found the {itemLabel}?',
+                'Is the {itemLabel} offer ready?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'You found my {itemLabel}?',
+                'Did my {itemLabel} come through?'
+            ]),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze([
+                'Is the {itemLabel} ready to review?',
+                'Is there a real offer on the {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze([
+                'Show me the {itemLabel} offer.',
+                'Let me see the {itemLabel} terms.'
+            ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['You found a {itemLabel}?'])
@@ -445,10 +582,22 @@ const CHECK_BACK_LOCATE_ITEM_PLAYER_PROMPTS = Object.freeze({
     }),
     [DIALOGUE_FRAME_STATES.FAILED_PREVIOUS]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
-            [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['The last {itemLabel} search failed?']),
-            [DIALOGUE_TONES.WARM]: Object.freeze(['No luck on my {itemLabel} last time?']),
-            [DIALOGUE_TONES.GUARDED]: Object.freeze(['The {itemLabel} trail went cold?']),
-            [DIALOGUE_TONES.HOSTILE]: Object.freeze(['You missed on the {itemLabel}?'])
+            [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
+                'The last {itemLabel} search failed?',
+                'No result on the {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.WARM]: Object.freeze([
+                'No luck on my {itemLabel} last time?',
+                'Did my {itemLabel} search come up empty?'
+            ]),
+            [DIALOGUE_TONES.GUARDED]: Object.freeze([
+                'The {itemLabel} trail went cold?',
+                'Nothing safe came through on the {itemLabel}?'
+            ]),
+            [DIALOGUE_TONES.HOSTILE]: Object.freeze([
+                'You missed on the {itemLabel}?',
+                'So the {itemLabel} search failed?'
+            ])
         }),
         [DIALOGUE_REGISTERS.NEUTRAL]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze(['No luck on the {itemLabel}?'])
@@ -484,29 +633,41 @@ export const LOCATE_ITEM_RESULT_MESSAGE_TEMPLATES = Object.freeze({
     success: Object.freeze({
         worn: Object.freeze([
             'I found a worn {label} from a {source}. It is not pretty, but it will hold.',
-            'A {source} had a worn {label}. It is rough, but serviceable.'
+            'A {source} had a worn {label}. It is rough, but serviceable.',
+            'A {source} can part with a worn {label}. It has seen use, but it is available.',
+            'I have a worn {label} lined up through a {source}. It should do the job.'
         ]),
         pristine: Object.freeze([
             'I found a pristine {label} through a {source}. It is clean stock and ready for trade.',
-            'A {source} came through with a pristine {label}. It is ready for trade.'
+            'A {source} came through with a pristine {label}. It is ready for trade.',
+            'A pristine {label} is available through a {source}. The price reflects the condition.',
+            'I found a pristine {label}. The {source} will not hold it forever.'
         ]),
         default: Object.freeze([
             'I found a {condition} {label} through a {source}. It is available for trade when you are ready.',
-            'A {source} located a {condition} {label}. It is available when you are ready.'
+            'A {source} located a {condition} {label}. It is available when you are ready.',
+            'I have a {condition} {label} offer from a {source}. Review it when you are ready.',
+            'A {condition} {label} turned up through a {source}. The offer is waiting.'
         ])
     }),
     failure: Object.freeze({
         pirate_pressure: Object.freeze([
             'No luck on the {label}. The routes are hot and suppliers are holding stock back.',
-            'No lead on the {label}. Pirate pressure has the route brokers locked down.'
+            'No lead on the {label}. Pirate pressure has the route brokers locked down.',
+            'The {label} did not turn up. Too many raiders on the lanes and nobody wants exposure.',
+            'No reliable {label} source answered. Pirate pressure has everyone sitting tight.'
         ]),
         market_pressure: Object.freeze([
             'No luck on the {label}. The local brokers are dry and prices are moving against us.',
-            'No lead on the {label}. The market is thin and the useful stock is overpriced.'
+            'No lead on the {label}. The market is thin and the useful stock is overpriced.',
+            'The {label} market is against us. Nothing came in at a price worth sending.',
+            'No useful {label} lead. Local sellers either have nothing or want too much.'
         ]),
         default: Object.freeze([
             'No luck on the {label}. I did not find a lead worth putting aside.',
-            'No lead on the {label}. Nothing reliable came through.'
+            'No lead on the {label}. Nothing reliable came through.',
+            'The {label} search came up empty this pass.',
+            'I asked around for the {label}. Nothing worth your credits turned up.'
         ])
     })
 });

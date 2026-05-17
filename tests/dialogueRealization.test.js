@@ -93,7 +93,10 @@ describe('dialogue realization', () => {
             slots: { itemLabel: 'nav chip', personName: 'Nara Keel' }
         });
 
-        assert.equal(realizeDialoguePrompt(frame), 'Any news on that nav chip?');
+        const prompt = realizeDialoguePrompt(frame);
+
+        assert.match(prompt, /nav chip/);
+        assert.notEqual(prompt, DIALOGUE_FALLBACK_LINE);
     });
 
     it('maps locate-item player prompt states to valid prompts', () => {
