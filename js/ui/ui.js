@@ -23,6 +23,7 @@ import { renderCommunicationsScreen } from './renderComms.js';
 import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsheet.js';
 import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
 import { renderNextStepsPanel } from './onboarding.js';
+import { dismissPriorityBriefing } from '../core/priorityBriefingActions.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -293,7 +294,11 @@ const rendererRegistrations = [
         StateSlice.MISSIONS,
         StateSlice.TRADE_ROUTES,
         StateSlice.CURRENT_SCREEN,
-        StateSlice.SELECTED_SECTOR
+        StateSlice.SELECTED_SECTOR,
+        StateSlice.DATA_CARGO,
+        StateSlice.DIALOGUE,
+        StateSlice.FACTIONS,
+        StateSlice.PRIORITY_BRIEFING
     ]]
 ];
 let rendererUnsubscribers = [];
@@ -327,6 +332,7 @@ export function registerUIActions() {
     registerAction('showScreen', showScreen);
     registerAction('showCommunications', () => showScreen('communications'));
     registerAction('selectSector', id => selectSector(parseInt(id, 10)));
+    registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
 
     // Exploration
     registerAction('surveySector', surveySector);

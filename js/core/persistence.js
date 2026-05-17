@@ -25,6 +25,7 @@ import { normaliseDialogueProposals } from '../systems/people/proposals.js';
 import { normaliseDialogueRelationship } from '../systems/people/relationships.js';
 import { ensurePersonDialogueProfile } from '../systems/people/dialogueVoice.js';
 import { normaliseSimulationTrace } from './simulationTrace.js';
+import { normalisePriorityBriefingState } from './priorityBriefing.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -169,6 +170,7 @@ export function buildLoadedState(data) {
     loadedState.nextTradeRouteId = data.nextTradeRouteId || (loadedState.tradeRoutes.length + 1);
     loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
     loadedState.ambientTrade = data.ambientTrade || loadedState.ambientTrade;
+    loadedState.priorityBriefing = normalisePriorityBriefingState(data.priorityBriefing);
     loadedState.dataCargo = data.dataCargo || loadedState.dataCargo;
     loadedState.rng = data.rng || null;
     normaliseLoadedGame(loadedState);
@@ -368,6 +370,7 @@ export const SAVE_STATE_FIELDS = [
     "nextTradeRouteId",
     "nextMissionId",
     "ambientTrade",
+    "priorityBriefing",
     "dataCargo",
     "rng"
 ];

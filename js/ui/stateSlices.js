@@ -13,6 +13,7 @@ export const StateSlice = {
     ENTANGLEMENTS: 'entanglements',
     WORLD_EVENTS: 'worldEvents',
     DIALOGUE: 'dialogue',
+    PRIORITY_BRIEFING: 'priorityBriefing',
 
     CURRENT_SCREEN: 'currentScreen',
     REPUTATION_TAB: 'reputationTab',
