@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { beforeEach, describe, it } from 'node:test';
 
 import { ARCHETYPE_PRESETS, CHAR_DEFAULTS, CHAR_STATS, PLATFORM_PACKAGES } from '../js/config/chargen.js';
 import { buildCharacterFromSpec, validateBuild } from '../js/core/characterBuild.js';
 import { createPlayerFromBuild } from '../js/core/universe.js';
 import { normaliseCharacter } from '../js/core/characters.js';
+import { state, resetState } from '../js/state.js';
 import {
     createStartingProperties,
+    applyPlayerPropertyAction,
     getAvailablePropertyActions,
     getPropertyRecommendation,
     resolvePropertyAction,
@@ -74,9 +76,42 @@ describe('property starting platforms', () => {
         assert.equal(properties[0].siteId, 7);
         assert.equal(properties[0].storageCapacity, 320);
     });
+
+    it('keeps ship, employer, rental, and property starts compatible', () => {
+        const ship = createPlayerFromBuild({
+            statSpend: { nerve: 0, tradecraft: 0, fieldcraft: 0, command: 0, acumen: 0 },
+            originTraitId: 'dockside_brokers_apprentice',
+            careerTraitIds: [],
+            platform: { type: 'ship_tier1_tramp', employerLaneId: null }
+        });
+        const employer = createPlayerFromBuild({
+            statSpend: { nerve: 0, tradecraft: 0, fieldcraft: 0, command: 0, acumen: 0 },
+            originTraitId: 'dockside_brokers_apprentice',
+            careerTraitIds: [],
+            platform: { type: 'employer_salary_no_ship', employerLaneId: 'hc_extractor' }
+        });
+        const rental = createPlayerFromBuild({
+            statSpend: { nerve: 0, tradecraft: 0, fieldcraft: 0, command: 0, acumen: 0 },
+            originTraitId: 'dockside_brokers_apprentice',
+            careerTraitIds: [],
+            platform: { type: 'rental_cutter_no_ship', employerLaneId: null }
+        });
+        const property = createPlayerFromBuild(ARCHETYPE_PRESETS.station_landlord.build);
+
+        assert.equal(ship.ship.name, 'Tramp Freighter');
+        assert.equal(employer.employment.runtimeType, 'employed_salary');
+        assert.equal(employer.ship.name, 'Company Courier');
+        assert.equal(rental.employment.runtimeType, 'ship_rented');
+        assert.equal(rental.ship.name, 'Rented Merchant Cutter');
+        assert.equal(property.ship, null);
+        assert.equal(property.properties.length, 1);
+    });
 });
 
 describe('property daily tick and recommendations', () => {
+    beforeEach(() => {
+        resetState();
+    });
     it('collects rent and applies upkeep and debt deterministically', () => {
         const property = createStartingProperties('property_dockside_tenement', { siteId: 1 })[0];
         const result = tickPropertyDaily(property);
@@ -104,6 +139,50 @@ describe('property daily tick and recommendations', () => {
         const recommendation = getPropertyRecommendation(property, skilled);
         assert.equal(recommendation.quality, 'max');
         assert.equal(recommendation.actionId, 'convertPropertyUse');
+    });
+
+    it('points low-skill landlords toward intel or help before major property moves', () => {
+        const property = createStartingProperties('property_repair_bay_share', { siteId: 5 })[0];
+        const low = getPropertyRecommendation(property, baselineCharacter({
+            stats: { acumen: 38, command: 38, fieldcraft: 38, tradecraft: 38, nerve: 38 }
+        }));
+
+        assert.equal(low.quality, 'low');
+        assert.equal(low.actionId, 'gather_intel');
+        assert.match(low.text, /Gather intel|hire help/i);
+    });
+
+    it('uses multiple property competencies to choose a practical high-skill action', () => {
+        const property = {
+            ...createStartingProperties('property_repair_bay_share', { siteId: 6 })[0],
+            condition: 42,
+            occupancy: 0.86
+        };
+        const skilled = baselineCharacter({
+            stats: { acumen: 82, command: 78, fieldcraft: 94, tradecraft: 76, nerve: 74 },
+            skillNodeIds: ['pressure_valve_maintenance']
+        });
+        const recommendation = getPropertyRecommendation(property, skilled);
+
+        assert.equal(recommendation.quality, 'high');
+        assert.equal(recommendation.actionId, 'performMaintenance');
+        assert.equal(recommendation.pressure, 'maintenance urgency');
+    });
+
+    it('applies property screen actions through player-owned system helpers', () => {
+        const property = createStartingProperties('property_dockside_tenement', { siteId: 8 })[0];
+        state.player = {
+            credits: 1000,
+            time: { day: 4 },
+            character: baselineCharacter({ stats: { command: 78 } }),
+            properties: [property]
+        };
+        const result = applyPlayerPropertyAction(property.id, 'hirePropertyManager');
+
+        assert.equal(result.ok, true);
+        assert.equal(result.propertyId, property.id);
+        assert.equal(state.player.properties[0].manager.hiredDay, 4);
+        assert.equal(result.creditsAfter, 1000);
     });
 
     it('keeps property helpers renderer-independent', () => {

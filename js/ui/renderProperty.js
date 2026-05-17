@@ -10,6 +10,14 @@ function percent(value) {
     return `${Math.round(value * 100)}%`;
 }
 
+function actionLabel(actionId) {
+    return [...actionId].map((char, index) => {
+        const separator = index > 0 && char >= "A" && char <= "Z" ? " " : "";
+        const labelChar = index === 0 ? char.toUpperCase() : char;
+        return `${separator}${labelChar}`;
+    }).join("");
+}
+
 export function renderPropertyScreen() {
     const properties = Array.isArray(state.player?.properties) ? state.player.properties : [];
     if (properties.length === 0) {
@@ -27,7 +35,7 @@ export function renderPropertyScreen() {
             <div>Storage ${property.storageCapacity} | Service slots ${property.serviceSlots} | Value estimate ${formatCredits(property.valueEstimate)}</div>
             <div class="small blue">Recommended action: ${escapeHtml(recommendation.text)}</div>
             <div class="small muted">Recommendation quality ${escapeHtml(recommendation.quality)}; estimate accuracy about ${percent(recommendation.estimateAccuracy)}.</div>
-            <div class="compact-actions">${actions.map(action => `<button disabled title="Property action simulation exists; command wiring is follow-up work.">${escapeHtml(action)}</button>`).join('')}</div>
+            <div class="compact-actions">${actions.map(action => `<button data-action="propertyAction" data-arg0="${escapeHtml(property.id)}" data-arg1="${escapeHtml(action)}">${escapeHtml(actionLabel(action))}</button>`).join('')}</div>
         </div>`;
     }).join('');
 }

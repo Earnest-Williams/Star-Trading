@@ -153,6 +153,13 @@ obvious, directly recommended, or automatically resolved. At low competency, the
 same situation may expose only partial information, misleading estimates,
 increased danger, higher cost, delayed execution, or a need to hire help.
 
+Stationary careers follow this same doctrine. A property owner should make
+active choices about rent, tenants, upkeep, debt, storage, services, and local
+influence, while character-mediated system helpers perform the analysis.
+Property recommendations must therefore expose tradeoffs such as storage income
+versus inspection exposure without requiring renderer-only math or a passive
+daily-credit drip.
+
 ### Non-goals
 
 - No mandatory player-solved brainteasers that bypass character stats, traits,

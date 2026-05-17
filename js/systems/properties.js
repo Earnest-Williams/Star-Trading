@@ -120,6 +120,29 @@ function competency(character, stat, effectKey) {
         + getSkillEffect(character, effectKey) * 4;
 }
 
+function combinedCompetency(character, stat, effectKeys = []) {
+    return effectKeys.reduce((score, effectKey) => (
+        score + getTraitBonus(character, effectKey) + getSkillEffect(character, effectKey) * 4
+    ), getCharacterStat(character, stat));
+}
+
+function getPropertyActionOptions(actionId, property) {
+    const asset = normaliseProperty(property);
+    if (actionId === "setRentPosture") {
+        if (asset.occupancy >= 0.88 && asset.condition >= 62) return { posture: "high" };
+        if (asset.occupancy < 0.7 || asset.rentPosture === "high") return { posture: "low" };
+        return { posture: "market" };
+    }
+    if (actionId === "performMaintenance") return { spend: 250 };
+    if (actionId === "screenTenants") return {};
+    if (actionId === "changeTenantMix") return { tenantMix: "screened_mixed" };
+    if (actionId === "convertPropertyUse") return {};
+    if (actionId === "addService") return {};
+    if (actionId === "refinanceProperty") return {};
+    if (actionId === "hirePropertyManager") return { day: state.player?.time?.day || null };
+    return {};
+}
+
 export function resolvePropertyAction(property, actionId, character, options = {}) {
     const action = PROPERTY_ACTIONS[actionId];
     if (!action) return { ok: false, reason: `Unknown property action '${actionId}'.` };
@@ -174,41 +197,225 @@ export function resolvePropertyAction(property, actionId, character, options = {
     return { ok: true, property: normaliseProperty(updated), creditsDelta, score, message };
 }
 
-export function getPropertyRecommendation(property, character) {
-    const asset = normaliseProperty(property);
-    const economics = summarisePropertyEconomics(asset);
-    const acumen = competency(character, "acumen", "rentForecastAccuracy");
-    const skillGuidance = getSkillEffect(character, "conversionGuidance") + getSkillEffect(character, "rentForecastAccuracy");
-    if (acumen >= 98 || skillGuidance >= 2) {
-        const conversionGain = Math.round(Math.max(0, asset.storageCapacity * 0.18 + asset.serviceSlots * 14));
+function estimateRentPosture(asset, economics) {
+    if (asset.occupancy >= 0.88 && asset.condition >= 62) {
         return {
-            quality: "max",
-            estimateAccuracy: 0.98,
-            actionId: conversionGain > 20 ? "convertPropertyUse" : "setRentPosture",
-            text: `Best routine option: convert low-yield space to bonded storage; expected net improves by about ${conversionGain} credits/day with inspection exposure noted.`
+            actionId: "setRentPosture",
+            score: Math.round(asset.units * asset.rentDaily * 0.06),
+            text: "raise rent posture toward high while monitoring vacancy drag",
+            pressure: "rent posture"
         };
     }
-    if (acumen >= 80) {
+    if (asset.occupancy < 0.68 || (asset.rentPosture === "high" && asset.occupancy < 0.78)) {
         return {
-            quality: "high",
-            estimateAccuracy: 0.9,
-            actionId: asset.condition < 65 ? "performMaintenance" : "convertPropertyUse",
-            text: "Converting low-yield units to bonded storage likely raises income, but deferred maintenance and inspections should be budgeted."
-        };
-    }
-    if (acumen >= 62) {
-        return {
-            quality: "medium",
-            estimateAccuracy: 0.7,
-            actionId: economics.netIncome < 0 ? "setRentPosture" : "performMaintenance",
-            text: "Expected net income is positive, but deferred maintenance may reduce yield."
+            actionId: "setRentPosture",
+            score: Math.round(Math.max(20, Math.abs(economics.netIncome) * 0.12)),
+            text: "ease rent posture to rebuild occupancy before chasing nominal rent",
+            pressure: "rent posture"
         };
     }
     return {
-        quality: "low",
-        estimateAccuracy: 0.45,
-        actionId: null,
-        text: "This property appears profitable, but your estimate is uncertain. Hire help or gather better ledgers before committing major capital."
+        actionId: "setRentPosture",
+        score: Math.round(Math.max(5, economics.grossRent * 0.02)),
+        text: "hold market rent posture until another pressure dominates",
+        pressure: "rent posture"
+    };
+}
+
+function estimateMaintenance(asset) {
+    const urgency = Math.max(0, 78 - asset.condition);
+    const infrastructureRisk = asset.tags.includes("infrastructure") || asset.tags.includes("repair") ? 12 : 0;
+    return {
+        actionId: "performMaintenance",
+        score: Math.round(urgency * 3 + infrastructureRisk),
+        text: asset.condition < 55
+            ? "fund maintenance now; condition risk is threatening occupancy and service reliability"
+            : "schedule preventive maintenance before decay becomes a crisis",
+        pressure: "maintenance urgency"
+    };
+}
+
+function estimateTenantMix(asset) {
+    const vacancyPressure = Math.max(0, 0.82 - asset.occupancy) * 160;
+    const commercialBonus = asset.tags.includes("retail") || asset.tags.includes("dockside") ? 14 : 0;
+    return {
+        actionId: asset.occupancy < 0.75 ? "screenTenants" : "changeTenantMix",
+        score: Math.round(vacancyPressure + commercialBonus),
+        text: asset.occupancy < 0.75
+            ? "screen tenants and gather better arrears intel before changing lease terms"
+            : "target a steadier tenant mix for fewer arrears and fewer disputes",
+        pressure: "tenant mix"
+    };
+}
+
+function estimateDebtPressure(asset, economics) {
+    const debtShare = economics.grossRent > 0 ? asset.debtDaily / economics.grossRent : 1;
+    return {
+        actionId: "refinanceProperty",
+        score: Math.round(debtShare * 80 + (economics.netIncome < 0 ? 30 : 0)),
+        text: "refinance or restructure debt before daily income is trapped by creditors",
+        pressure: "debt pressure"
+    };
+}
+
+function estimateStorageConversion(asset) {
+    const storageDemand = asset.tags.includes("warehouse") || asset.tags.includes("import_export") ? 38 : 12;
+    const lowYieldUnits = Math.max(0, asset.units - Math.ceil(asset.units * asset.occupancy));
+    const conversionGain = Math.round(storageDemand + asset.storageCapacity * 0.08 + lowYieldUnits * 18 - CONVERSION_UPKEEP_DAILY);
+    return {
+        actionId: "convertPropertyUse",
+        score: asset.units > 1 ? conversionGain : -20,
+        text: "convert low-yield units to bonded storage for income, accepting inspection exposure",
+        pressure: "storage conversion",
+        estimatedDelta: conversionGain
+    };
+}
+
+function estimateServiceExpansion(asset) {
+    const serviceDemand = asset.tags.includes("services") || asset.tags.includes("berths") || asset.tags.includes("repair") ? 42 : 16;
+    return {
+        actionId: "addService",
+        score: Math.round(serviceDemand + asset.serviceSlots * 8 - 30),
+        text: "add staffed services if management capacity can absorb the extra disputes",
+        pressure: "service expansion"
+    };
+}
+
+function getPropertyCompetencies(character) {
+    const acumen = combinedCompetency(character, "acumen", [
+        "rentForecastAccuracy",
+        "propertyValuationBonus",
+        "refinanceAccuracy"
+    ]);
+    const command = combinedCompetency(character, "command", [
+        "serviceSlotYieldBonus",
+        "occupancyStabilityBonus",
+        "propertyManagementBonus"
+    ]);
+    const fieldcraft = combinedCompetency(character, "fieldcraft", [
+        "propertyMaintenanceBonus",
+        "conditionForecastAccuracy"
+    ]);
+    const tradecraft = combinedCompetency(character, "tradecraft", [
+        "tenantScreeningBonus",
+        "contractRiskVisibility",
+        "brokerageBonus"
+    ]);
+    const nerve = combinedCompetency(character, "nerve", [
+        "propertyCrisisBonus",
+        "rentCollectionBonus",
+        "upkeepDeferralBonus"
+    ]);
+    const average = Math.round((acumen + command + fieldcraft + tradecraft + nerve) / 5);
+    const routineInsight = getSkillEffect(character, "propertyRoutineAutomation")
+        + getSkillEffect(character, "conversionGuidance")
+        + getSkillEffect(character, "storageDemandInsight");
+    return { acumen, command, fieldcraft, tradecraft, nerve, average, routineInsight };
+}
+
+function getRecommendationQuality(competencies) {
+    if (competencies.average >= 92 || competencies.routineInsight >= 3) return "max";
+    if (competencies.average >= 78 || competencies.acumen >= 88) return "high";
+    if (competencies.average >= 60 || competencies.acumen >= 66) return "medium";
+    return "low";
+}
+
+function recommendationAccuracy(quality) {
+    if (quality === "max") return 0.98;
+    if (quality === "high") return 0.88;
+    if (quality === "medium") return 0.68;
+    return 0.42;
+}
+
+export function getPropertyRecommendation(property, character) {
+    const asset = normaliseProperty(property);
+    const economics = summarisePropertyEconomics(asset);
+    const competencies = getPropertyCompetencies(character);
+    const candidates = [
+        estimateRentPosture(asset, economics),
+        estimateMaintenance(asset),
+        estimateTenantMix(asset),
+        estimateDebtPressure(asset, economics),
+        estimateStorageConversion(asset),
+        estimateServiceExpansion(asset)
+    ].sort((a, b) => b.score - a.score);
+    const best = candidates[0];
+    const quality = getRecommendationQuality(competencies);
+    const estimateAccuracy = recommendationAccuracy(quality);
+    if (quality === "max") {
+        const routineText = best.actionId === "convertPropertyUse"
+            ? `Best routine option: converting two low-yield units to bonded storage likely improves net income by about ${Math.max(1, best.estimatedDelta || best.score)} credits/day, but increases inspection exposure.`
+            : `Best routine option: ${best.text}; expected pressure score ${Math.max(1, best.score)}.`;
+        return {
+            quality,
+            estimateAccuracy,
+            actionId: best.actionId,
+            confidence: 0.96,
+            pressure: best.pressure,
+            competencies,
+            candidates,
+            text: routineText
+        };
+    }
+    if (quality === "high") {
+        return {
+            quality,
+            estimateAccuracy,
+            actionId: best.actionId,
+            confidence: 0.86,
+            pressure: best.pressure,
+            competencies,
+            candidates,
+            text: `Practical course: ${best.text}. Net income is about ${economics.netIncome} credits/day before the tradeoff.`
+        };
+    }
+    if (quality === "medium") {
+        const secondary = candidates[1];
+        return {
+            quality,
+            estimateAccuracy,
+            actionId: best.actionId,
+            confidence: 0.64,
+            pressure: best.pressure,
+            competencies,
+            candidates,
+            text: `Likely issue: ${best.pressure}. Compare it against ${secondary.pressure} before committing capital.`
+        };
+    }
+    return {
+        quality,
+        estimateAccuracy,
+        actionId: "gather_intel",
+        confidence: 0.36,
+        pressure: "uncertain ledgers",
+        competencies,
+        candidates,
+        text: "Vague warning: the ledgers, tenants, and building condition do not line up cleanly. Gather intel, screen tenants, or hire help before making a major property move."
+    };
+}
+
+export function applyPlayerPropertyAction(propertyId, actionId, options = {}) {
+    if (!state.player || !Array.isArray(state.player.properties)) {
+        return { ok: false, reason: "No player property ledger is available." };
+    }
+    const index = state.player.properties.findIndex(property => property.id === propertyId);
+    if (index < 0) return { ok: false, reason: `Unknown owned property '${propertyId}'.` };
+    const property = state.player.properties[index];
+    const actionOptions = { ...getPropertyActionOptions(actionId, property), ...options };
+    const result = resolvePropertyAction(
+        property,
+        actionId,
+        state.player.character,
+        actionOptions
+    );
+    if (!result.ok) return result;
+    state.player.properties[index] = result.property;
+    state.player.credits = Math.max(0, Math.floor((state.player.credits || 0) + result.creditsDelta));
+    return {
+        ...result,
+        propertyId,
+        actionId,
+        creditsAfter: state.player.credits
     };
 }
 

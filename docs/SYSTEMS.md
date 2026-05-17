@@ -133,7 +133,10 @@ belong in core or system helpers so low, average, and high competency outcomes
 can be tested without a DOM. Relevant stats are nerve, tradecraft, fieldcraft,
 command, and acumen; traits and skill nodes may further adjust execution.
 Market recommendations live in `js/systems/market.js` so trade analysis remains
-character-mediated rather than a renderer-only arithmetic puzzle.
+character-mediated rather than a renderer-only arithmetic puzzle. Property
+recommendations and action resolution follow the same pattern in
+`js/systems/properties.js`: renderers show the analysis and buttons, while
+system helpers evaluate competency bands and return outcome data.
 
 ## Property, stationary careers, and local assets
 
@@ -144,7 +147,12 @@ in `js/config/chargen.js`, UI in `js/ui/renderProperty.js`, and tests under
 rolls, maintenance, tenant mix, storage conversion, services, finance, local
 influence, and delegated logistics should all resolve through system helpers.
 
-The first property system supports deterministic daily rent/upkeep/debt ticks,
-character-mediated actions, and acumen-sensitive recommendations. Follow-up work
-should wire more actions into command buttons and connect property demand to
+The property system supports deterministic daily rent/upkeep/debt ticks,
+character-mediated recommendations, player-owned action application, and
+renderer-independent action outcomes. Recommendations evaluate rent posture,
+maintenance urgency, tenant mix, debt pressure, storage conversion, and service
+expansion through acumen, command, fieldcraft, tradecraft, nerve, traits, and
+skill-node effects. Property screen buttons call `applyPlayerPropertyAction`,
+which delegates to `resolvePropertyAction`; no hidden simulation rules belong in
+`js/ui/renderProperty.js`. Follow-up work should connect property demand to
 markets, route overflow, inspections, people, and faction politics.
