@@ -63,6 +63,8 @@ import {
     markDialogueMessageRead,
     rejectDialogueOffer,
     requestContactService,
+    startPersonalChat,
+    deepenRelationship,
     touchDialogueConversation,
     DIALOGUE_CONVERSATION_STATUSES
 } from '../systems/people.js';
@@ -219,7 +221,8 @@ const rendererRegistrations = [
         StateSlice.PLANETS,
         StateSlice.TRADE_ROUTES,
         StateSlice.CAPTAINS,
-        StateSlice.DATA_CARGO
+        StateSlice.DATA_CARGO,
+        StateSlice.DIALOGUE
     ]],
 
     ['screen', renderCurrentScreen, [
@@ -402,6 +405,18 @@ export function registerUIActions() {
         if (serviceType === 'intel') payload.topic = value || 'local_activity';
         const result = requestContactService(personId, serviceType, payload);
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
+    });
+    registerAction('startPersonalChat', personId => {
+        const result = startPersonalChat(personId);
+        if (!result.ok) return false;
+        state.selectedDialogueConversationId = result.conversationId;
+        return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
+    });
+    registerAction('deepenRelationship', (personId, topicTag) => {
+        const result = deepenRelationship(personId, topicTag);
+        if (!result.ok) return false;
+        state.selectedDialogueConversationId = result.conversationId;
+        return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
     });
     registerAction('markDialogueMessageRead', messageId => {
         const result = markDialogueMessageRead(parseInt(messageId, 10));
