@@ -423,9 +423,9 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                     'The last {itemLabel} pass failed. I can try a different route.',
                     'No lead came through before. I can reopen the {itemLabel} search.',
                     'The {itemLabel} did not surface last time, but I can ask again.',
-                    'The previous {itemLabel} search closed without stock. I can reroute it.',
-                    'No vendor filled the {itemLabel} request last time. I can reopen the ledger.',
-                    'The last {itemLabel} route went dry. A new request can restart it.'
+                    'The previous {itemLabel} search closed without stock. I can {askAround} again.',
+                    'No {supplier} filled the {itemLabel} request last time. I can reopen the ledger.',
+                    'The last {itemLabel} route went dry. I can {askAround} for a new lead.'
                 ]),
                 warm: Object.freeze([
                     'I missed last time. I can take another run at your {itemLabel}.',
