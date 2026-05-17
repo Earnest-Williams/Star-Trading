@@ -62,4 +62,17 @@ describe('market recommendations', () => {
         assert.ok(recommendation.confidence > 0.9);
         assert.ok(recommendation.price > 0);
     });
+
+    it('uses a natural wait message when the commodity has no market lane at the port', () => {
+        const port = miningPort();
+        const recommendation = getMarketRecommendation(
+            port,
+            'water',
+            character({ acumen: 98, tradecraft: 90 })
+        );
+
+        assert.equal(recommendation.actionId, 'wait');
+        assert.equal(recommendation.price, null);
+        assert.match(recommendation.message, /suggest waiting/i);
+    });
 });

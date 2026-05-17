@@ -17,21 +17,23 @@ function roundPercent(value) {
     return Math.round(value * 1000) / 10;
 }
 
+const RECOMMENDATION_BALANCE = BALANCE.MARKET.RECOMMENDATION;
+
 function getMarketCompetency(character) {
     const acumen = getCharacterStat(character, "acumen");
     const tradecraft = getCharacterStat(character, "tradecraft");
-    return acumen * 0.7
-        + tradecraft * 0.3
-        + getTraitBonus(character, "marketInsight") * 5
-        + getTraitBonus(character, "propertyValuationBonus") * 2
-        + getSkillEffect(character, "marketInsight") * 6
-        + getSkillEffect(character, "valuationAccuracy") * 4;
+    return acumen * RECOMMENDATION_BALANCE.COMPETENCY_ACUMEN_WEIGHT
+        + tradecraft * RECOMMENDATION_BALANCE.COMPETENCY_TRADECRAFT_WEIGHT
+        + getTraitBonus(character, "marketInsight") * RECOMMENDATION_BALANCE.COMPETENCY_TRAIT_MARKET_INSIGHT_MULTIPLIER
+        + getTraitBonus(character, "propertyValuationBonus") * RECOMMENDATION_BALANCE.COMPETENCY_TRAIT_PROPERTY_VALUATION_MULTIPLIER
+        + getSkillEffect(character, "marketInsight") * RECOMMENDATION_BALANCE.COMPETENCY_SKILL_MARKET_INSIGHT_MULTIPLIER
+        + getSkillEffect(character, "valuationAccuracy") * RECOMMENDATION_BALANCE.COMPETENCY_SKILL_VALUATION_ACCURACY_MULTIPLIER;
 }
 
 function describeMarketQuality(competency) {
-    if (competency >= 95) return "max";
-    if (competency >= 80) return "high";
-    if (competency >= 62) return "medium";
+    if (competency >= RECOMMENDATION_BALANCE.QUALITY_MAX_MIN) return "max";
+    if (competency >= RECOMMENDATION_BALANCE.QUALITY_HIGH_MIN) return "high";
+    if (competency >= RECOMMENDATION_BALANCE.QUALITY_MEDIUM_MIN) return "medium";
     return "low";
 }
 
@@ -40,8 +42,10 @@ export function getMarketRecommendation(port, commodity, character, options = {}
         return {
             quality: "low",
             actionId: "wait",
+            price: null,
             estimateAccuracy: 0,
             confidence: 0,
+            stockRatio: 0,
             message: "Market data is unavailable; hire help or gather intel before committing capital."
         };
     }
@@ -56,8 +60,12 @@ export function getMarketRecommendation(port, commodity, character, options = {}
     const buyPrice = canBuy ? getPortPrice(port, commodity, "buy") : null;
     const sellPrice = canSell ? getPortPrice(port, commodity, "sell") : null;
     const scarcitySignal = 1 - stockRatio;
-    const buyScore = canBuy ? stockRatio * 100 - (buyPrice || 0) / 20 : -Infinity;
-    const sellScore = canSell ? scarcitySignal * 100 + (sellPrice || 0) / 20 : -Infinity;
+    const buyScore = canBuy
+        ? stockRatio * RECOMMENDATION_BALANCE.SCORE_STOCK_SCALE - (buyPrice || 0) / RECOMMENDATION_BALANCE.SCORE_PRICE_DIVISOR
+        : -Infinity;
+    const sellScore = canSell
+        ? scarcitySignal * RECOMMENDATION_BALANCE.SCORE_STOCK_SCALE + (sellPrice || 0) / RECOMMENDATION_BALANCE.SCORE_PRICE_DIVISOR
+        : -Infinity;
     const bestAvailableAction = canBuy || canSell
         ? (buyScore >= sellScore ? "buy" : "sell")
         : "wait";
@@ -65,8 +73,17 @@ export function getMarketRecommendation(port, commodity, character, options = {}
     const relevantPrice = actionId === "buy" ? buyPrice : sellPrice;
     const competency = getMarketCompetency(character);
     const quality = describeMarketQuality(competency);
-    const estimateAccuracy = clamp((competency - 40) / 60, 0.1, 0.98);
-    const confidence = clamp(estimateAccuracy * (canBuy || canSell ? 1 : 0.35), 0, 0.98);
+    const estimateAccuracy = clamp(
+        (competency - RECOMMENDATION_BALANCE.ESTIMATE_ACCURACY_MIN_COMPETENCY)
+            / RECOMMENDATION_BALANCE.ESTIMATE_ACCURACY_COMPETENCY_RANGE,
+        RECOMMENDATION_BALANCE.ESTIMATE_ACCURACY_MIN,
+        RECOMMENDATION_BALANCE.ESTIMATE_ACCURACY_MAX
+    );
+    const confidence = clamp(
+        estimateAccuracy * (canBuy || canSell ? 1 : RECOMMENDATION_BALANCE.NO_ACTION_CONFIDENCE_MULTIPLIER),
+        0,
+        RECOMMENDATION_BALANCE.MAX_CONFIDENCE
+    );
 
     if (quality === "max") {
         return {
@@ -76,7 +93,9 @@ export function getMarketRecommendation(port, commodity, character, options = {}
             estimateAccuracy,
             confidence,
             stockRatio,
-            message: `Best routine option: ${actionId} ${formatCommodity(commodity)} at ${formatCredits(relevantPrice || 0)} with ${roundPercent(confidence)}% confidence.`
+            message: actionId === "wait"
+                ? `No favorable routine options for ${formatCommodity(commodity)}; market conditions suggest waiting.`
+                : `Best routine option: ${actionId} ${formatCommodity(commodity)} at ${formatCredits(relevantPrice || 0)} with ${roundPercent(confidence)}% confidence.`
         };
     }
     if (quality === "high") {
@@ -87,7 +106,9 @@ export function getMarketRecommendation(port, commodity, character, options = {}
             estimateAccuracy,
             confidence,
             stockRatio,
-            message: `${formatCommodity(commodity)} ${actionId} terms look favorable; estimates are narrow enough for routine execution.`
+            message: actionId === "wait"
+                ? `No favorable routine options for ${formatCommodity(commodity)}; market conditions suggest waiting.`
+                : `${formatCommodity(commodity)} ${actionId} terms look favorable; estimates are narrow enough for routine execution.`
         };
     }
     if (quality === "medium") {
@@ -98,7 +119,9 @@ export function getMarketRecommendation(port, commodity, character, options = {}
             estimateAccuracy,
             confidence,
             stockRatio,
-            message: `${formatCommodity(commodity)} appears workable, but price and stock risk still need a cautious margin.`
+            message: actionId === "wait"
+                ? `No favorable routine options for ${formatCommodity(commodity)}; market conditions suggest waiting.`
+                : `${formatCommodity(commodity)} appears workable, but price and stock risk still need a cautious margin.`
         };
     }
     return {
