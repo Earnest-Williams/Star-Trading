@@ -15,11 +15,24 @@ function roundMoney(value) {
     return Math.round(value * 100) / 100;
 }
 
+const MANAGER_UPKEEP_DAILY = 35;
+const CONVERSION_UPKEEP_DAILY = 20;
+const PROPERTY_ACTION_BONUS_KEYS = Object.freeze({
+    setRentPosture: "rentForecastAccuracy",
+    performMaintenance: "propertyMaintenanceBonus",
+    screenTenants: "tenantScreeningBonus",
+    changeTenantMix: "tenantScreeningBonus",
+    convertPropertyUse: "storageYieldBonus",
+    addService: "serviceSlotYieldBonus",
+    refinanceProperty: "propertyRefinanceBonus",
+    hirePropertyManager: "propertyMaintenanceBonus"
+});
+
 function propertyValueEstimate(property) {
     const gross = property.units * property.rentDaily * property.occupancy;
-    const net = gross - property.upkeepDaily - property.debtDaily;
+    const noi = gross - property.upkeepDaily;
     const conditionFactor = 0.65 + property.condition / 200;
-    return Math.max(0, Math.round((net + property.debtDaily) * PROPERTY_DEFAULTS.BASE_VALUE_MULTIPLIER * conditionFactor));
+    return Math.max(0, Math.round(noi * PROPERTY_DEFAULTS.BASE_VALUE_MULTIPLIER * conditionFactor));
 }
 
 export function normaliseProperty(property = {}) {
@@ -107,17 +120,6 @@ function competency(character, stat, effectKey) {
         + getSkillEffect(character, effectKey) * 4;
 }
 
-const PROPERTY_ACTION_BONUS_KEYS = Object.freeze({
-    setRentPosture: "rentForecastAccuracy",
-    performMaintenance: "propertyMaintenanceBonus",
-    screenTenants: "tenantScreeningBonus",
-    changeTenantMix: "tenantScreeningBonus",
-    convertPropertyUse: "storageYieldBonus",
-    addService: "serviceSlotYieldBonus",
-    refinanceProperty: "propertyRefinanceBonus",
-    hirePropertyManager: "propertyMaintenanceBonus"
-});
-
 export function resolvePropertyAction(property, actionId, character, options = {}) {
     const action = PROPERTY_ACTIONS[actionId];
     if (!action) return { ok: false, reason: `Unknown property action '${actionId}'.` };
@@ -140,7 +142,7 @@ export function resolvePropertyAction(property, actionId, character, options = {
         creditsDelta -= 75;
         message = "Tenant screening improves information quality and occupancy risk.";
     } else if (actionId === "hirePropertyManager") {
-        if (!updated.manager) updated.upkeepDaily += 35;
+        if (updated.manager === null || updated.manager === undefined) updated.upkeepDaily += MANAGER_UPKEEP_DAILY;
         updated.manager = { quality: clamp(Math.round(score / 20), 1, 5), hiredDay: options.day || null };
         message = "Delegation quality is mediated by command.";
     } else if (actionId === "refinanceProperty") {
@@ -157,7 +159,7 @@ export function resolvePropertyAction(property, actionId, character, options = {
         }
         updated.storageCapacity += 40;
         updated.units -= 1;
-        updated.upkeepDaily += 20;
+        updated.upkeepDaily += CONVERSION_UPKEEP_DAILY;
         message = "Conversion planning recommends the routine profitable use when competency is high.";
     } else if (actionId === "addService") {
         updated.serviceSlots += 1;
