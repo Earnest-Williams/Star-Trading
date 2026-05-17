@@ -211,17 +211,26 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'I can open a search for a {itemLabel}. If {supplier} has one, I will hear about it.',
                     'Nothing here today, but I can {askAround} for a {itemLabel}.',
-                    'I will start with my regular names and see who can move a {itemLabel}.'
+                    'I will start with my regular names and see who can move a {itemLabel}.',
+                    'I can log the {itemLabel} request and {askAround} through my routes.',
+                    'I will put the {itemLabel} on the sourcing ledger and check with {supplier}.',
+                    'I can check with {supplier} for a {itemLabel} and report back.'
                 ]),
                 warm: Object.freeze([
                     'I can do that. I will {askAround} for your {itemLabel}.',
                     'I will put your {itemLabel} ahead of the casual asks.',
-                    'Leave it with me. I will see who can spare a {itemLabel}.'
+                    'Leave it with me. I will see who can spare a {itemLabel}.',
+                    'I will keep your {itemLabel} request moving until a supplier answers.',
+                    'I can handle the {itemLabel} search for you.',
+                    'Your {itemLabel} request gets a real pass from me.'
                 ]),
                 guarded: Object.freeze([
                     'I can look for a {itemLabel}, but I will keep the request narrow.',
                     'I will ask about a {itemLabel} without putting your name on the board.',
-                    'I can make a quiet pass for a {itemLabel}.'
+                    'I can make a quiet pass for a {itemLabel}.',
+                    'I will keep the {itemLabel} request off the common route.',
+                    'I can ask trusted vendors about the {itemLabel} only.',
+                    'The {itemLabel} search stays narrow until I know more.'
                 ]),
                 hostile: Object.freeze([
                     'I can look for a {itemLabel}. Then you wait like everyone else.',
@@ -263,11 +272,17 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
             personal: Object.freeze({
                 neutral: Object.freeze([
                     'I will look for the {itemLabel}.',
-                    'I can help with the {itemLabel}.'
+                    'I can help with the {itemLabel}.',
+                    'I will keep your request in mind while I ask.',
+                    'I can take your request and look for the {itemLabel}.',
+                    'I will handle it and see who has the {itemLabel}.'
                 ]),
                 warm: Object.freeze([
                     'I will find your {itemLabel}, or at least find out who has one.',
-                    'I will make time for your {itemLabel}.'
+                    'I will make time for your {itemLabel}.',
+                    'I have your request. I will handle the {itemLabel}.',
+                    'I will keep the {itemLabel} in mind until I have an answer.',
+                    'Leave your {itemLabel} request with me.'
                 ]),
                 guarded: Object.freeze([
                     'I will ask people I trust about the {itemLabel}.',
@@ -284,7 +299,10 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'The {itemLabel} search is active. I am waiting on replies.',
                     'No usable lead yet, but the {itemLabel} request is still open.',
-                    'I have feelers out on the {itemLabel}.'
+                    'I have feelers out on the {itemLabel}.',
+                    'The {itemLabel} request is still open on my ledger.',
+                    'The {itemLabel} search is routed and pending.',
+                    'No vendor has closed on the {itemLabel} yet.'
                 ]),
                 warm: Object.freeze([
                     'I am still working your {itemLabel}. You will hear from me.',
@@ -302,7 +320,10 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
             personal: Object.freeze({
                 warm: Object.freeze([
                     'I have not forgotten your {itemLabel}.',
-                    'I am still on your {itemLabel}.'
+                    'I am still on your {itemLabel}.',
+                    'I have not forgotten your request.',
+                    'Your request is still with me.',
+                    'I am keeping your {itemLabel} in mind.'
                 ]),
                 intimate: Object.freeze([
                     'I am still carrying your {itemLabel} request myself.'
@@ -314,11 +335,17 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'Your {itemLabel} request is still recorded.',
                     'I still have the {itemLabel} on my sheet.',
-                    'The {itemLabel} request has not been closed.'
+                    'The {itemLabel} request has not been closed.',
+                    'The {itemLabel} request remains open on my ledger.',
+                    'I still have the {itemLabel} search filed for follow-up.',
+                    'The {itemLabel} request is recorded and waiting on a supplier.'
                 ]),
                 warm: Object.freeze([
                     'Your {itemLabel} is still in my notes. I will not let it drift.',
-                    'I still have your {itemLabel} marked for follow-up.'
+                    'I still have your {itemLabel} marked for follow-up.',
+                    'I have not forgotten your {itemLabel} request.',
+                    'Your {itemLabel} is still moving through my follow-up list.',
+                    'I kept your {itemLabel} request in the active notes.'
                 ]),
                 guarded: Object.freeze([
                     'The {itemLabel} request is still open and quiet.',
@@ -328,6 +355,13 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                     'I still have the {itemLabel} written down. Do not mistake silence for neglect.',
                     'The {itemLabel} is still on the list. Stop prodding.'
                 ])
+            }),
+            personal: Object.freeze({
+                warm: Object.freeze([
+                    'I still have your request on file.',
+                    'Your request is still recorded in my notes.',
+                    'I kept the {itemLabel} on my follow-up list.'
+                ])
             })
         }),
         offer_ready: Object.freeze({
@@ -335,7 +369,10 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'A {itemLabel} came through. The offer is waiting in Communications.',
                     'I have a {itemLabel} available. Review the terms in Communications.',
-                    'The {itemLabel} lead resolved. Check Communications before it expires.'
+                    'The {itemLabel} lead resolved. Check Communications before it expires.',
+                    'The {itemLabel} offer is logged and ready for review.',
+                    'A supplier answered on the {itemLabel}. The terms are in Communications.',
+                    'The {itemLabel} sourcing request has an offer attached.'
                 ]),
                 warm: Object.freeze([
                     'Your {itemLabel} came through. I put the offer in Communications.',
@@ -353,7 +390,10 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
             personal: Object.freeze({
                 warm: Object.freeze([
                     'I found your {itemLabel}. It is waiting for you.',
-                    'Your {itemLabel} came through. Go look at the offer.'
+                    'Your {itemLabel} came through. Go look at the offer.',
+                    'I kept your {itemLabel} aside. Check the offer.',
+                    'Your request came through. The {itemLabel} is waiting.',
+                    'I found your {itemLabel} and held it for you.'
                 ]),
                 intimate: Object.freeze([
                     'I held your {itemLabel} aside. Check Communications.'
@@ -382,11 +422,17 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'The last {itemLabel} pass failed. I can try a different route.',
                     'No lead came through before. I can reopen the {itemLabel} search.',
-                    'The {itemLabel} did not surface last time, but I can ask again.'
+                    'The {itemLabel} did not surface last time, but I can ask again.',
+                    'The previous {itemLabel} search closed without stock. I can {askAround} again.',
+                    'No {supplier} filled the {itemLabel} request last time. I can reopen the ledger.',
+                    'The last {itemLabel} route went dry. I can {askAround} for a new lead.'
                 ]),
                 warm: Object.freeze([
                     'I missed last time. I can take another run at your {itemLabel}.',
-                    'The first pass failed, but I can keep trying for your {itemLabel}.'
+                    'The first pass failed, but I can keep trying for your {itemLabel}.',
+                    'I have not forgotten your request. I can try the {itemLabel} again.',
+                    'I will handle it if the {itemLabel} appears on another pass.',
+                    'Your request stayed with me. I can look for the {itemLabel} again.'
                 ]),
                 guarded: Object.freeze([
                     'The last {itemLabel} trail died. I can reopen it carefully.',
@@ -395,6 +441,13 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                 hostile: Object.freeze([
                     'The last {itemLabel} search failed. Ask clearly if you want another.',
                     'I missed once. I will not pretend the next pass is guaranteed.'
+                ])
+            }),
+            personal: Object.freeze({
+                warm: Object.freeze([
+                    'I have not forgotten your request. I can try the {itemLabel} again.',
+                    'I will handle it if the {itemLabel} appears on another pass.',
+                    'Your request stayed with me. I can look for the {itemLabel} again.'
                 ])
             })
         })
