@@ -213,19 +213,28 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                     'I can put the request out for a {itemLabel}.',
                     'No {itemLabel} here, but I know who to ask.',
                     'I will see who is moving a {itemLabel}.',
-                    'I can open a lead for a {itemLabel} today.'
+                    'I can open a lead for a {itemLabel} today.',
+                    'I can log the {itemLabel} request and start checking stock.',
+                    'I will put the {itemLabel} on the sourcing ledger.',
+                    'I can route a {itemLabel} request through my vendors.'
                 ]),
                 warm: Object.freeze([
                     'I will ask around for your {itemLabel} and keep it moving.',
                     'I can help with that {itemLabel}. I will start now.',
                     'Leave the {itemLabel} with me. I know a few doors to knock on.',
-                    'I will see who can spare a {itemLabel} for you.'
+                    'I will see who can spare a {itemLabel} for you.',
+                    'I will keep your {itemLabel} request moving through the right channels.',
+                    'I can start the {itemLabel} search and keep you posted.',
+                    'I will handle the {itemLabel} sourcing request for you.'
                 ]),
                 guarded: Object.freeze([
                     'I can look for a {itemLabel}, but I will keep the circle small.',
                     'I will ask carefully about a {itemLabel}.',
                     'I can make a quiet pass for a {itemLabel}.',
-                    'I will keep the {itemLabel} search off the public board.'
+                    'I will keep the {itemLabel} search off the public board.',
+                    'I can open the {itemLabel} request without widening the route.',
+                    'I will check trusted vendors for the {itemLabel} only.',
+                    'The {itemLabel} search can stay narrow while I ask.'
                 ]),
                 hostile: Object.freeze([
                     'I will look for a {itemLabel}. Do not turn this into trouble.',
@@ -270,12 +279,18 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'I will look for the {itemLabel}.',
                     'I can help you find a {itemLabel}.',
-                    'I will see what I can do about the {itemLabel}.'
+                    'I will see what I can do about the {itemLabel}.',
+                    'I will keep your request in mind while I ask.',
+                    'I can take your request and see who has the {itemLabel}.',
+                    'I will handle it and look for the {itemLabel}.'
                 ]),
                 warm: Object.freeze([
                     'I will find your {itemLabel}.',
                     'You need a {itemLabel}; I will work on it.',
-                    'I will make the {itemLabel} search a priority.'
+                    'I will make the {itemLabel} search a priority.',
+                    'I have your request. I will handle the {itemLabel}.',
+                    'I will keep the {itemLabel} in mind until I have an answer.',
+                    'Leave your {itemLabel} request with me.'
                 ]),
                 guarded: Object.freeze([
                     'I can look, but quietly. The {itemLabel}.',
@@ -303,7 +318,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                     'The {itemLabel} search is open. I am still working it.',
                     'I have not closed the {itemLabel} lead yet.',
                     'The {itemLabel} is still on my list.',
-                    'I am waiting on answers about the {itemLabel}.'
+                    'I am waiting on answers about the {itemLabel}.',
+                    'The {itemLabel} request is still active in the ledger.',
+                    'I have the {itemLabel} search routed and pending.',
+                    'No vendor has closed on the {itemLabel} yet.'
                 ]),
                 warm: Object.freeze([
                     'I am still working on your {itemLabel}.',
@@ -351,7 +369,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 ]),
                 warm: Object.freeze([
                     'I have not forgotten your {itemLabel}.',
-                    'I am still chasing your {itemLabel}.'
+                    'I am still chasing your {itemLabel}.',
+                    'I have not forgotten your request.',
+                    'Your request is still with me.',
+                    'I am keeping your {itemLabel} in mind.'
                 ]),
                 guarded: Object.freeze([
                     'I am still looking, carefully, for the {itemLabel}.'
@@ -366,7 +387,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'The {itemLabel} request is still in my ledger.',
                     'I still have your {itemLabel} request recorded.',
-                    'Your {itemLabel} is still an open request.'
+                    'Your {itemLabel} is still an open request.',
+                    'The {itemLabel} request remains open on my ledger.',
+                    'I still have the {itemLabel} search filed for follow-up.',
+                    'The {itemLabel} request is recorded and waiting on a lead.'
                 ]),
                 warm: Object.freeze([
                     'Your {itemLabel} is still in my notes. I will keep it moving.',
@@ -388,7 +412,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 ]),
                 warm: Object.freeze([
                     'Your {itemLabel} is still on my mind.',
-                    'I have your {itemLabel} written down. I will not lose it.'
+                    'I have your {itemLabel} written down. I will not lose it.',
+                    'I have not forgotten your request.',
+                    'Your request is still with me.',
+                    'I kept your {itemLabel} in mind.'
                 ]),
                 guarded: Object.freeze([
                     'I still have the {itemLabel}. Quietly.'
@@ -400,7 +427,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'I found a {itemLabel}. The offer is waiting in Communications.',
                     'A {itemLabel} came through. Review the offer in Communications.',
-                    'The {itemLabel} lead is ready. Check Communications.'
+                    'The {itemLabel} lead is ready. Check Communications.',
+                    'The {itemLabel} offer is logged and ready for review.',
+                    'A vendor answered on the {itemLabel}. The terms are in Communications.',
+                    'The {itemLabel} sourcing request has an offer attached.'
                 ]),
                 warm: Object.freeze([
                     'Your {itemLabel} came through. The details are in Communications.',
@@ -427,7 +457,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 ]),
                 warm: Object.freeze([
                     'I found your {itemLabel}. It is waiting for you.',
-                    'Your {itemLabel} came through. Go review it.'
+                    'Your {itemLabel} came through. Go review it.',
+                    'I kept your {itemLabel} aside. Check the offer.',
+                    'Your request came through. The {itemLabel} is waiting.',
+                    'I found your {itemLabel} and held it for you.'
                 ]),
                 intimate: Object.freeze([
                     'I held a {itemLabel} for you. Check Communications.'
@@ -461,7 +494,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'The last {itemLabel} search failed, but I can try another route.',
                     'No result last time. I can restart the {itemLabel} search.',
-                    'The {itemLabel} did not turn up before. I can reopen it.'
+                    'The {itemLabel} did not turn up before. I can reopen it.',
+                    'The previous {itemLabel} search closed without stock. I can reroute it.',
+                    'No vendor filled the {itemLabel} request last time. I can reopen the ledger.',
+                    'The last {itemLabel} route went dry. A new request can restart it.'
                 ]),
                 warm: Object.freeze([
                     'I missed last time, but I can try again for your {itemLabel}.',
@@ -481,7 +517,10 @@ export const DIALOGUE_TEXT_TEMPLATE_BANKS = Object.freeze({
                     'I missed on the {itemLabel}. I can try again.'
                 ]),
                 warm: Object.freeze([
-                    'I missed your {itemLabel} last time. I will try again.'
+                    'I missed your {itemLabel} last time. I will try again.',
+                    'I have not forgotten your request. I can try the {itemLabel} again.',
+                    'I will handle it better this pass if the {itemLabel} appears.',
+                    'Your request stayed with me. I can look for the {itemLabel} again.'
                 ])
             })
         })
@@ -626,7 +665,10 @@ export const DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS = Object.freeze({
                 neutral: Object.freeze([
                     'Can you source a {itemLabel}?',
                     'Can you put out word for a {itemLabel}?',
-                    'Can you check your contacts for a {itemLabel}?'
+                    'Can you check your contacts for a {itemLabel}?',
+                    'Can you open a sourcing request for a {itemLabel}?',
+                    'Can you ask your vendors about a {itemLabel}?',
+                    'Can you put a {itemLabel} search on your ledger?'
                 ]),
                 warm: Object.freeze([
                     'Could you help me find a {itemLabel}?',
@@ -663,7 +705,10 @@ export const DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS = Object.freeze({
             work: Object.freeze({
                 neutral: Object.freeze([
                     'Any movement on that {itemLabel}?',
-                    'Is the {itemLabel} search still active?'
+                    'Is the {itemLabel} search still active?',
+                    'Where is my {itemLabel} request in your queue?',
+                    'Are your vendors still checking for a {itemLabel}?',
+                    'Is the {itemLabel} still on your sourcing list?'
                 ]),
                 warm: Object.freeze([
                     'Any news on my {itemLabel}?'
@@ -680,7 +725,10 @@ export const DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS = Object.freeze({
             work: Object.freeze({
                 neutral: Object.freeze([
                     'Can you try the {itemLabel} search again?',
-                    'Can you reopen the {itemLabel} search?'
+                    'Can you reopen the {itemLabel} search?',
+                    'Can you run the {itemLabel} request through another route?',
+                    'Can you put the {itemLabel} back on your vendor list?',
+                    'Can you restart sourcing for a {itemLabel}?'
                 ]),
                 warm: Object.freeze([
                     'Could you try again for my {itemLabel}?'
@@ -716,7 +764,10 @@ export const DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS = Object.freeze({
             work: Object.freeze({
                 neutral: Object.freeze([
                     'Any update on that {itemLabel}?',
-                    'Where does the {itemLabel} search stand?'
+                    'Where does the {itemLabel} search stand?',
+                    'Do you have a status on the {itemLabel} request?',
+                    'Is my {itemLabel} still pending with your contacts?',
+                    'Has any vendor answered on the {itemLabel}?'
                 ]),
                 warm: Object.freeze([
                     'Any luck with my {itemLabel}?'
@@ -733,7 +784,10 @@ export const DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS = Object.freeze({
             work: Object.freeze({
                 neutral: Object.freeze([
                     'You still have my {itemLabel} request, right?',
-                    'Is the {itemLabel} still on your list?'
+                    'Is the {itemLabel} still on your list?',
+                    'You still have the {itemLabel} written down?',
+                    'Is my {itemLabel} request still active?',
+                    'Have you kept my {itemLabel} in mind?'
                 ]),
                 warm: Object.freeze([
                     'You still remember my {itemLabel}?'
@@ -750,7 +804,10 @@ export const DIALOGUE_TEXT_PROMPT_TEMPLATE_BANKS = Object.freeze({
             work: Object.freeze({
                 neutral: Object.freeze([
                     'Is the {itemLabel} offer ready?',
-                    'Did the {itemLabel} come through?'
+                    'Did the {itemLabel} come through?',
+                    'Is there a {itemLabel} offer in Communications?',
+                    'Do you have terms for the {itemLabel}?',
+                    'Did a vendor finally answer on the {itemLabel}?'
                 ]),
                 warm: Object.freeze([
                     'You found my {itemLabel}?'

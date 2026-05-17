@@ -10,7 +10,10 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'You caught me between work and pretending I was done with work. What can I do for you?',
                     'I have a few minutes. Talk to me.',
                     'No crisis in your voice. That is new. What is on your mind?',
-                    'If this is not about freight, parts, or trouble, I might even enjoy it.'
+                    'If this is not about freight, parts, or trouble, I might even enjoy it.',
+                    'No open request on my desk, so conversation is an option.',
+                    'I can spare a plain minute if this is just a check-in.',
+                    'You are not here with a manifest. That changes the pace.'
                 ]),
                 warm: Object.freeze([
                     'I was hoping you would stop by without a problem to solve.',
@@ -54,7 +57,10 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'You wanted to talk. I can do that.',
                     'I am off the public channel for a minute. What is it?',
                     'All right. No ledger, no manifest. Just us talking.',
-                    'I can put the day down for a moment.'
+                    'I can put the day down for a moment.',
+                    'I can make this about us for a minute.',
+                    'I have room to hear you without the station between us.',
+                    'Your voice can have my attention before the work does.'
                 ]),
                 warm: Object.freeze([
                     'For you, I can always make a little time.',
@@ -78,7 +84,10 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'I missed this. Just hearing from you.',
                     'You can have whatever time I can steal.',
                     'I am better when you are near. Do not make me say that twice.',
-                    'I am happy you are here.'
+                    'I am happy you are here.',
+                    'I like when you come to me just because you want to.',
+                    'Stay a little. I wanted this kind of visit.',
+                    'I am glad it is you on the other side of the door.'
                 ])
             })
         }),
@@ -88,7 +97,10 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'You keep showing up. I am starting to think that is deliberate.',
                     'I know your ship by sound now. That should probably worry me.',
                     'You are becoming familiar traffic around here.',
-                    'I am learning your habits. You are more predictable than you think.'
+                    'I am learning your habits. You are more predictable than you think.',
+                    'Your visits have become part of the station rhythm.',
+                    'I recognize your timing now.',
+                    'You are no longer a stranger passing through my day.'
                 ]),
                 warm: Object.freeze([
                     'I am getting used to you being around. That is not a complaint.',
@@ -132,13 +144,19 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'We have talked enough that silence is not awkward anymore.',
                     'I know a little about you now. Enough to know there is more.',
                     'You are becoming someone I expect to see.',
-                    'I remember what you tell me. More than I expected to.'
+                    'I remember what you tell me. More than I expected to.',
+                    'I know the small things now, and they stay with me.',
+                    'You are becoming someone I make room for.',
+                    'I notice the shape you leave in my day.'
                 ]),
                 warm: Object.freeze([
                     'I like knowing small things about you.',
                     'I like that you keep coming back.',
                     'I am starting to look forward to these talks.',
-                    'You are not background noise to me.'
+                    'You are not background noise to me.',
+                    'I like that your stories are starting to feel familiar.',
+                    'I look forward to hearing what changed since last time.',
+                    'You feel less like traffic and more like someone returning.'
                 ]),
                 guarded: Object.freeze([
                     'I am not used to wanting someone to understand me.',
@@ -160,7 +178,10 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'I have wondered what you are like when you are not working an angle.',
                     'You talk about routes and cargo. I am more interested in what keeps you moving.',
                     'Tell me something that would not fit on a manifest.',
-                    'I want to know who you are when nobody is buying or selling.'
+                    'I want to know who you are when nobody is buying or selling.',
+                    'I am asking about you, not your route.',
+                    'Tell me something that is not useful to a deal.',
+                    'I want the version that does not belong in a report.'
                 ]),
                 warm: Object.freeze([
                     'I want to know more about you. Not your ship. You.',
@@ -204,13 +225,19 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'Tell me something about yourself that is not useful.',
                     'What do you miss when you are out on the lanes?',
                     'What kind of quiet do you look for?',
-                    'Who taught you to keep moving?'
+                    'Who taught you to keep moving?',
+                    'Tell me something you would only say when you feel safe.',
+                    'What do you carry with you when the ship is quiet?',
+                    'I want to know the parts of you the lanes do not get.'
                 ]),
                 warm: Object.freeze([
                     'I like your stories when you forget to make them impressive.',
                     'Tell me what you wanted before the lanes got hold of you.',
                     'I want to know what makes you soften.',
-                    'I am listening because I want to, not because I need something.'
+                    'I am listening because I want to, not because I need something.',
+                    'I like hearing about the person behind the captain.',
+                    'Tell me what matters to you when nobody is asking for cargo.',
+                    'I want to understand what home means to you.'
                 ]),
                 guarded: Object.freeze([
                     'If I ask too much, tell me. I am still learning where the edges are.',
@@ -232,7 +259,10 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'Careful. You keep looking at me like that and I will start negotiating from advantage.',
                     'That smile has probably caused station incidents.',
                     'You are distracting when you are trying not to be.',
-                    'I see why people let you talk them into bad ideas.'
+                    'I see why people let you talk them into bad ideas.',
+                    'That look is a negotiation tactic, whether you admit it or not.',
+                    'You make charm look like standard equipment.',
+                    'I should charge you for distracting the room.'
                 ]),
                 warm: Object.freeze([
                     'You are trouble, and I am annoyed by how much I like that.',
@@ -276,13 +306,19 @@ export const DIALOGUE_RELATIONSHIP_TEMPLATE_BANKS = Object.freeze({
                     'You are enjoying yourself. I can tell.',
                     'I should make you work harder for that reaction.',
                     'You have a talent for making a room smaller.',
-                    'You are very pleased with yourself right now.'
+                    'You are very pleased with yourself right now.',
+                    'You know exactly how that lands with me.',
+                    'I can tell when you are trying to make me smile.',
+                    'You make it hard to pretend this is casual.'
                 ]),
                 warm: Object.freeze([
                     'I like when you flirt with me. There, I said it.',
                     'You make it difficult to keep my composure.',
                     'I missed this part of you.',
-                    'I like your attention on me.'
+                    'I like your attention on me.',
+                    'I like when you choose me for that smile.',
+                    'Keep looking at me like that and I will forget my next sentence.',
+                    'I missed the way you make the room feel closer.'
                 ]),
                 guarded: Object.freeze([
                     'Do not tease me unless you mean it.',
