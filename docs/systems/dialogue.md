@@ -35,6 +35,19 @@ Templates live in `js/systems/people/dialogueTemplates.js`. Realization is inten
 
 The locate-item request and check-back paths both write player utterance and semantic intent parts first, then add the realized NPC utterance to the same `locate-item:<personId>:<itemId>` conversation. Request actions may still propose memories and tasks. Check-back actions only inspect the authoritative memory/task/offer tables and add transcript parts; they do not create duplicate tasks.
 
+## Relationship conversation text
+
+Relationship conversation copy lives in
+`js/systems/people/dialogueRelationshipTextStrings.js`. These banks add authored
+English strings for `start_personal_chat` and `deepen_relationship` frames such as
+`casual_open`, `getting_familiar`, `personal_interest`, `flirting`,
+`romantic_tension`, `affection_confessed`, `reassurance`, and `parting`.
+
+This batch is content-only. It provides player prompt and NPC response templates
+for casual, familiar, flirty, jealous, guarded, and intimate presentation. It
+does not grant offers, create tasks, record memories, mutate inventory, change
+reputation, or change relationship state on its own.
+
 ## NPC voice realization
 
 NPC dialogue is authored, deterministic, and frame-driven. The realization layer does
