@@ -358,9 +358,9 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
             }),
             personal: Object.freeze({
                 warm: Object.freeze([
-                    'I have not forgotten your request.',
-                    'Your request is still with me.',
-                    'I kept your {itemLabel} in mind.'
+                    'I still have your request on file.',
+                    'Your request is still recorded in my notes.',
+                    'I kept the {itemLabel} on my follow-up list.'
                 ])
             })
         }),
