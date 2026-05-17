@@ -158,8 +158,28 @@ function hasValidProfile(profile) {
         && isKnownValue(profile.defaultRegister, REGISTER_VALUES)
         && typeof profile.voiceId === 'string'
         && profile.voiceId.trim().length > 0
-        && typeof profile.personalRegisterFamiliarity === 'number'
-        && typeof profile.personalRegisterTrust === 'number';
+        && Number.isFinite(profile.personalRegisterFamiliarity)
+        && Number.isFinite(profile.personalRegisterTrust);
+}
+
+function normaliseDialogueProfileWithFallback(profile, fallbackProfile) {
+    const source = isObject(profile) ? profile : {};
+    const fallback = normaliseDialogueProfile(fallbackProfile);
+    return {
+        voiceId: asString(source.voiceId, fallback.voiceId),
+        lexiconId: isKnownValue(source.lexiconId, LEXICON_VALUES)
+            ? source.lexiconId
+            : fallback.lexiconId,
+        defaultRegister: isKnownValue(source.defaultRegister, REGISTER_VALUES)
+            ? source.defaultRegister
+            : fallback.defaultRegister,
+        personalRegisterFamiliarity: Number.isFinite(source.personalRegisterFamiliarity)
+            ? source.personalRegisterFamiliarity
+            : fallback.personalRegisterFamiliarity,
+        personalRegisterTrust: Number.isFinite(source.personalRegisterTrust)
+            ? source.personalRegisterTrust
+            : fallback.personalRegisterTrust
+    };
 }
 
 // ─── Normalisers ─────────────────────────────────────────────────────────────
@@ -174,10 +194,10 @@ export function normaliseDialogueProfile(profile = {}) {
         defaultRegister: isKnownValue(source.defaultRegister, REGISTER_VALUES)
             ? source.defaultRegister
             : DEFAULT_DIALOGUE_PROFILE.defaultRegister,
-        personalRegisterFamiliarity: typeof source.personalRegisterFamiliarity === 'number'
+        personalRegisterFamiliarity: Number.isFinite(source.personalRegisterFamiliarity)
             ? source.personalRegisterFamiliarity
             : DEFAULT_DIALOGUE_PROFILE.personalRegisterFamiliarity,
-        personalRegisterTrust: typeof source.personalRegisterTrust === 'number'
+        personalRegisterTrust: Number.isFinite(source.personalRegisterTrust)
             ? source.personalRegisterTrust
             : DEFAULT_DIALOGUE_PROFILE.personalRegisterTrust
     };
@@ -207,7 +227,11 @@ export function ensurePersonDialogueProfile(person) {
     if (hasValidProfile(person.dialogueProfile)) {
         return person.dialogueProfile;
     }
-    person.dialogueProfile = dialogueProfileForRole(person.role);
+    const roleProfile = dialogueProfileForRole(person.role);
+    person.dialogueProfile = normaliseDialogueProfileWithFallback(
+        person.dialogueProfile,
+        roleProfile
+    );
     return person.dialogueProfile;
 }
 
