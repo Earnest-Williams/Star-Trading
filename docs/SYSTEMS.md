@@ -124,3 +124,25 @@ working for existing imports and tests.
 - `js/systems/entanglements.js` re-exports the entanglements package.
 - `js/new/intel.js` and `js/new/contraband.js` are compatibility entry points,
   not canonical stores.
+
+## Challenge resolution and puzzle-like interactions
+
+Challenge-like content follows the player-choice, character-execution doctrine.
+Renderers may display options and recommendations, but hidden resolution rules
+belong in core or system helpers so low, average, and high competency outcomes
+can be tested without a DOM. Relevant stats are nerve, tradecraft, fieldcraft,
+command, and acumen; traits and skill nodes may further adjust execution.
+
+## Property, stationary careers, and local assets
+
+Property and landlord behavior lives in `js/systems/properties.js`, with authored
+property constants in `js/config/properties.js`, starting platform property data
+in `js/config/chargen.js`, UI in `js/ui/renderProperty.js`, and tests under
+`tests/properties.test.js`. Property careers are not passive idle income: rent
+rolls, maintenance, tenant mix, storage conversion, services, finance, local
+influence, and delegated logistics should all resolve through system helpers.
+
+The first property system supports deterministic daily rent/upkeep/debt ticks,
+character-mediated actions, and acumen-sensitive recommendations. Follow-up work
+should wire more actions into command buttons and connect property demand to
+markets, route overflow, inspections, people, and faction politics.

@@ -18,7 +18,7 @@ export function setChargenBuild(buildSpec) {
 
 export function readChargenBuildFromDom(documentRef = document) {
     const statSpend = {};
-    ["nerve", "tradecraft", "fieldcraft", "command"].forEach(stat => {
+    CHAR_STATS.forEach(stat => {
         const input = documentRef.getElementById(`chargen-${stat}`);
         statSpend[stat] = input ? Number(input.value) : 0;
     });

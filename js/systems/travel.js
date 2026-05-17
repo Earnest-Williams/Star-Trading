@@ -20,6 +20,10 @@ export function moveTo(target) {
         log("No direct jump corridor to that sector.");
         return;
     }
+    if (!state.player.ship) {
+        log("You need an assigned ship or hired transport before leaving the site.");
+        return;
+    }
     const transitMinutes = state.player.ship.travelMinutesPerCorridor;
     if (!spendTime(transitMinutes)) return;
     carryPublicSnapshotForPlayer(state.player.currentSector);

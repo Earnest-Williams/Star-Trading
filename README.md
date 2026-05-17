@@ -16,6 +16,20 @@ character traits, and factional pressure into one simulation.
 **Current status:** active solo prototype with chargen, persistence, save
 migration, tests, CI-ready scripts, and ongoing systems/UI work.
 
+
+## Design principle: player choice, character execution
+
+Star-Trading challenges are character-mediated. The player chooses goals,
+methods, risk tolerance, timing, and resource commitment; the character performs
+the actual tests. Trade analysis, route planning, negotiation, repair,
+inspection evasion, property management, finance, decoding, and crisis response
+should resolve from stats, traits, tools, property, staff, contacts, intel, and
+preparation.
+
+High relevant competency should make routine challenges simple, obvious,
+automatic, or low-risk. Low relevant competency should create uncertainty,
+partial information, higher costs, delay, risk, or the need for outside help.
+
 ## Quick links
 
 - [Documentation index](./docs/README.md)

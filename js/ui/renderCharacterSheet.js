@@ -1,4 +1,4 @@
-import { EMPLOYER_LANES, PLATFORM_PACKAGES } from '../config/chargen.js';
+import { CHAR_STATS, EMPLOYER_LANES, PLATFORM_PACKAGES } from '../config/chargen.js';
 import { getTraitDefinition } from '../config/traits.js';
 import { state } from '../state.js';
 import { escapeHtml } from '../utils.js';
@@ -13,7 +13,7 @@ function renderCharacterBlock(label, character, employment = null) {
     const traits = Array.isArray(character?.traits) ? character.traits : [];
     const bonuses = describeActiveBonuses(character);
     let html = `<div class="subpanel"><strong>${escapeHtml(label)}</strong>`;
-    html += `<div>Nerve ${stats.nerve || 50} | Tradecraft ${stats.tradecraft || 50} | Fieldcraft ${stats.fieldcraft || 50} | Command ${stats.command || 50}</div>`;
+    html += `<div>${CHAR_STATS.map(stat => `${stat[0].toUpperCase()}${stat.slice(1)} ${stats[stat] || 50}`).join(" | ")}</div>`;
     html += `<div>Platform: ${escapeHtml(platform ? platform.label : "Unknown")}</div>`;
     if (employer || employment) {
         html += `<div>Employer: ${escapeHtml(employer ? employer.label : employment?.laneId || "Assigned")} ${employment?.rank ? `(${escapeHtml(employment.rank)})` : ""}</div>`;

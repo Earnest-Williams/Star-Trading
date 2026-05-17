@@ -133,3 +133,33 @@ Also update:
 - `docs/SYSTEMS.md` for canonical system ownership changes;
 - `docs/SAVE_FORMAT.md` for persistence or migration changes;
 - `docs/magic-numbers.md` when moving or introducing balance-number homes.
+
+## Character-mediated challenge boundary
+
+Star-Trading does not treat puzzle-like content as a direct test of the
+player’s personal decoding, arithmetic, reflex, memory, or optimization skill.
+The player chooses what the character attempts and how much risk, time, money,
+equipment, intel, staff, crew support, political capital, or fallback support to
+commit. The character performs the test.
+
+Challenge difficulty should come from missing or insufficient in-world
+capability. Relevant stats, traits, skill nodes, ship systems, property, staff,
+crew, contacts, intel, tools, and preparation should reduce uncertainty, reveal
+better options, lower costs, shorten time, reduce risk, or convert the attempt
+into automatic success.
+
+At very high relevant competency, the correct or safest solution should often be
+obvious, directly recommended, or automatically resolved. At low competency, the
+same situation may expose only partial information, misleading estimates,
+increased danger, higher cost, delayed execution, or a need to hire help.
+
+### Non-goals
+
+- No mandatory player-solved brainteasers that bypass character stats, traits,
+  skills, tools, property, intel, staff, crew, or preparation.
+- No reflex, timing, or manual dexterity challenges as required resolution for
+  core simulation outcomes.
+- No renderer-only puzzle rules that cannot be tested through core/system
+  helpers.
+- No challenge whose difficulty remains fixed when the relevant character
+  capability is maxed.

@@ -222,7 +222,8 @@ export function renderMapInspector() {
     html += renderDataFreshnessLine(id);
     html += `<div class="compact-actions">`;
     if (id === player.currentSector) html += `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
-    else if (adjacent) html += `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;
+    else if (adjacent && player.ship) html += `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;
+    else if (adjacent) html += '<span class="muted">Direct corridor available, but you have no assigned ship.</span>';
     else html += `<span class="muted">No direct jump corridor. Connected corridors: ${getSectorNeighbors(id).join(", ")}</span>`;
     html += `</div>`;
     el.innerHTML = html;

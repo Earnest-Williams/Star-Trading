@@ -8,6 +8,7 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 
 export function applyShipDamage(amount) {
+    if (!state.player.ship) return;
     let remaining = amount;
     const shieldHit = Math.min(state.player.shields, remaining);
     state.player.shields -= shieldHit;

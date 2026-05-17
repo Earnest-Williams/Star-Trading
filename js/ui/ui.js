@@ -19,6 +19,7 @@ import { renderAllMissionScreen } from './renderMissions.js';
 import { renderReputationScreen } from './renderReputation.js';
 import { renderLogisticsScreen } from './renderLogistics.js';
 import { renderCharacterSheet } from './renderCharacterSheet.js';
+import { renderPropertyScreen } from './renderProperty.js';
 import { renderCommunicationsScreen } from './renderComms.js';
 import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsheet.js';
 import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
@@ -108,7 +109,7 @@ export function handleActionClick(event) {
 // =====================================================
 const GAMEPLAY_SCREENS = new Set([
     'sector', 'market', 'colony', 'missions', 'logistics',
-    'reputation', 'communications', 'spreadsheet', 'shipyard', 'character'
+    'reputation', 'communications', 'spreadsheet', 'shipyard', 'property', 'character'
 ]);
 
 export function showScreen(screen) {
@@ -137,7 +138,7 @@ export function setReputationTab(tab) {
 // SCREEN-LEVEL RENDERERS (registered with Renderer)
 // =====================================================
 function renderTopTabs() {
-    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'communications', 'spreadsheet', 'shipyard', 'character'].forEach(screen => {
+    ['sector', 'market', 'colony', 'missions', 'logistics', 'reputation', 'communications', 'spreadsheet', 'shipyard', 'property', 'character'].forEach(screen => {
         const el = document.getElementById(`top-${screen}`);
         if (!el) return;
         if (screen === state.currentScreen) el.classList.add('active-tab');
@@ -190,6 +191,11 @@ function renderCurrentScreen() {
     if (currentScreen === 'logistics') {
         title.innerHTML = 'Trade Routes &amp; Supply Chains';
         document.getElementById('actions').innerHTML = renderLogisticsScreen();
+        return;
+    }
+    if (currentScreen === 'property') {
+        title.innerHTML = 'Property';
+        document.getElementById('actions').innerHTML = renderPropertyScreen();
         return;
     }
     if (currentScreen === 'character') {

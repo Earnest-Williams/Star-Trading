@@ -77,7 +77,7 @@ export function formatTime(minutes) {
 }
 
 export function getCargoUsed() { return CARGO_COMMODITIES.reduce((sum, c) => sum + (state.player.cargo[c] || 0), 0); }
-export function getFreeHolds() { return Math.max(0, state.player.ship.maxHolds - getCargoUsed()); }
+export function getFreeHolds() { return state.player.ship ? Math.max(0, state.player.ship.maxHolds - getCargoUsed()) : 0; }
 
 export function hasCargo(cost) {
     if (!cost) return true;

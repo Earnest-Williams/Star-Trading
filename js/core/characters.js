@@ -9,7 +9,8 @@ export const CHARACTER_SCHEMA_FIELDS = Object.freeze([
     "platform",
     "contacts",
     "packageIds",
-    "equipment"
+    "equipment",
+    "skillNodeIds"
 ]);
 
 function normaliseStats(stats) {
@@ -39,7 +40,8 @@ const CHARACTER_FIELD_NORMALIZERS = Object.freeze({
     platform: value => normalisePlatform(value),
     contacts: value => Array.isArray(value) ? value : [],
     packageIds: value => Array.isArray(value) ? value : [],
-    equipment: value => Array.isArray(value) ? value : []
+    equipment: value => Array.isArray(value) ? value : [],
+    skillNodeIds: value => Array.isArray(value) ? value : []
 });
 const IDENTITY_FIELD_NORMALIZER = value => value;
 
@@ -74,6 +76,7 @@ export function createCharacter(overrides = {}) {
         contacts: [],
         packageIds: [],
         equipment: [],
+        skillNodeIds: [],
         ...overrides
     });
 }

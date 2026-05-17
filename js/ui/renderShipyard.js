@@ -9,6 +9,10 @@ import { updateUI } from "./renderer.js";
 export function renderShipyardPanel() {
     const { player } = state;
     if (player.currentSector !== state.world?.roles?.shipyardSiteId) { console.log("Shipyard services are only available at StarDock."); return; }
+    if (!player.ship) {
+        document.getElementById("actions").innerHTML = '<h4>StarDock Shipyard</h4><div class="card">No assigned ship. Property and local careers remain available; acquiring a hull is follow-up work.</div>';
+        return;
+    }
     let html = `<h4>StarDock Shipyard</h4>`;
     html += `<button data-action="repairShip">Repair Hull/Shields</button>`;
     html += `<button data-action="buyFighters">Buy 10 Fighters</button>`;
@@ -23,7 +27,7 @@ export function renderShipyardPanel() {
 export function buyUpgrade(key) {
     const { player } = state;
     const up = UPGRADE_DEFS[key];
-    if (player.currentSector !== state.world?.roles?.shipyardSiteId || !up) return;
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId || !player.ship || !up) return;
     let finalCost = up.credits;
     if (key === "mining") finalCost = Math.round(finalCost * (1 - getGuildTier("miners") * 0.05));
     if (key === "cargo" || key === "engine") finalCost = Math.round(finalCost * (1 - getGuildTier("traders") * 0.04));
@@ -45,7 +49,7 @@ export function buyUpgrade(key) {
 
 export function repairShip() {
     const { player } = state;
-    if (player.currentSector !== state.world?.roles?.shipyardSiteId) return;
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId || !player.ship) return;
     const shieldMissing = player.ship.maxShields - player.shields;
     const hullMissing = player.ship.maxHull - player.hull;
     const cost = Math.ceil(shieldMissing * BALANCE.REPAIR_SHIELD_COST + hullMissing * BALANCE.REPAIR_HULL_COST);
@@ -62,7 +66,7 @@ export function repairShip() {
 
 export function buyFighters() {
     const { player } = state;
-    if (player.currentSector !== state.world?.roles?.shipyardSiteId) return;
+    if (player.currentSector !== state.world?.roles?.shipyardSiteId || !player.ship) return;
     const amount = Math.min(10, player.ship.maxFighters - player.fighters);
     if (amount <= 0) { log("Your fighter bay is full."); return; }
     const cost = amount * BALANCE.FIGHTER_COST;

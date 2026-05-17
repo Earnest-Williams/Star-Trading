@@ -6,6 +6,14 @@ jump-gate corridors whose feasibility depends on Euclidean distance plus local
 metric shear. Pulse-energy logistics, captain economies, faction politics,
 character traits, and capped ambient trade create an interconnected simulation.
 
+
+## Key invariants
+
+- Player-facing challenges are character-mediated: the player chooses the
+  approach, while character stats, traits, assets, ship systems, property,
+  staff, crew, intel, contacts, tools, and preparation determine execution
+  difficulty, information quality, risk, cost, time, and success.
+
 ## Runtime architecture
 
 ```text
@@ -186,3 +194,18 @@ and `js/systems/` so it can be tested with Node's built-in test runner.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md), [SYSTEMS.md](./SYSTEMS.md), and
 [SAVE_FORMAT.md](./SAVE_FORMAT.md) for deeper maintenance guidance.
+
+## How to add a challenge or puzzle-like interaction
+
+1. Define what player choice the interaction creates: approach, resource
+   commitment, risk tolerance, timing, fallback, escalation, or delegation.
+2. Define which character capabilities execute the attempt.
+3. Route resolution through canonical character, trait, skill, asset, ship,
+   intel, faction, market, route, property, or domain helpers rather than
+   renderer-only logic.
+4. Ensure high relevant competency can trivialize, strongly guide, or nearly
+   trivialize routine challenges.
+5. Ensure low relevant competency creates uncertainty, partial information,
+   cost, delay, risk, failure, or dependence on outside help.
+6. Add tests for low, average, and high competency outcomes.
+7. Update player-facing documentation when challenge resolution changes.
