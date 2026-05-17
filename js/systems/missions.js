@@ -16,14 +16,13 @@ import { getFreshnessSummaryForSector, normaliseDataCargoState } from '../core/d
 import { areSectorsConnected, getSectorPathDistance } from '../core/navigation.js';
 import { getMissionIssuerCompany } from './companies.js';
 import { getPrimaryCompanyContact } from './people.js';
-import { getPortType, normalisePortTypeKeys } from '../core/ports.js';
+import { getPortType } from '../core/ports.js';
 
 export { prepareMissionOpportunity };
 
 export function activePortSectors() { return Object.keys(state.ports).map(Number); }
 
 function activePortEntries() {
-    normalisePortTypeKeys(state.ports);
     return activePortSectors()
         .map(sectorId => ({ sectorId, port: state.ports[sectorId] }))
         .filter(entry => entry.port && typeof entry.port === 'object' && !Array.isArray(entry.port))
@@ -59,13 +58,14 @@ export function makeBaseMission(title, originSector, rewardCredits, expiresInDay
 }
 
 export function makeDeliveryMission() {
-    const sourceEntries = activePortEntries()
+    const entries = activePortEntries();
+    const sourceEntries = entries
         .filter(entry => entry.sectorId !== 1 && entry.type.sells.length > 0);
     if (sourceEntries.length < 1) return null;
     const source = sourceEntries[Math.floor(random() * sourceEntries.length)];
     const origin = source.sectorId;
     const commodity = source.type.sells[0];
-    const destinations = activePortEntries()
+    const destinations = entries
         .filter(entry => entry.sectorId !== origin && entry.type.buys.includes(commodity))
         .map(entry => entry.sectorId);
     if (destinations.length < 1) return null;
