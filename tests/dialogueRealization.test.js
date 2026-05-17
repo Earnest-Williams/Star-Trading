@@ -95,4 +95,50 @@ describe('dialogue realization', () => {
 
         assert.equal(realizeDialoguePrompt(frame), 'Any news on that nav chip?');
     });
+
+    it('maps locate-item player prompt states to valid prompts', () => {
+        const promptStates = [
+            [
+                DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.FRESH_REQUEST
+            ],
+            [
+                DIALOGUE_INTENTS.REQUEST_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.FAILED_PREVIOUS
+            ],
+            [
+                DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.ACTIVE_TASK
+            ],
+            [
+                DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.REMEMBERED_REQUEST
+            ],
+            [
+                DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.OFFER_READY
+            ],
+            [
+                DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.FOUND_ALREADY
+            ],
+            [
+                DIALOGUE_INTENTS.CHECK_BACK_LOCATE_ITEM,
+                DIALOGUE_FRAME_STATES.FAILED_PREVIOUS
+            ]
+        ];
+
+        promptStates.forEach(([intent, state]) => {
+            const frame = buildDialogueFrame(intent, {
+                ownerPersonId: 'person-1',
+                itemId: 'nav_chip',
+                state,
+                slots: { itemLabel: 'nav chip', personName: 'Nara Keel' }
+            });
+            const prompt = realizeDialoguePrompt(frame);
+
+            assert.notEqual(prompt, DIALOGUE_FALLBACK_LINE);
+            assert.match(prompt, /nav chip/);
+        });
+    });
 });
