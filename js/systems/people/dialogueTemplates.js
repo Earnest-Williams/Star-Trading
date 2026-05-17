@@ -33,7 +33,7 @@ const REQUEST_LOCATE_ITEM_TEMPLATES = Object.freeze({
     [DIALOGUE_FRAME_STATES.FRESH_REQUEST]: Object.freeze({
         [DIALOGUE_REGISTERS.WORK]: Object.freeze({
             [DIALOGUE_TONES.NEUTRAL]: Object.freeze([
-                '{noStock}, but I can {askAround} a {itemLabel}.',
+                '{noStock}, but I can {askAround} for a {itemLabel}.',
                 '{noStock}. I can start asking after a {itemLabel}.',
                 'I do not have a {itemLabel} here, but I can {askAround}.'
             ]),
