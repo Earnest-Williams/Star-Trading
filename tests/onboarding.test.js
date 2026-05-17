@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import { buildNextActionSuggestions } from '../js/ui/onboarding.js';
 import { resetState, state } from '../js/state.js';
 
-describe('first-run onboarding suggestions', () => {
+describe('priority briefing compatibility export', () => {
     afterEach(() => {
         resetState();
     });
 
-    it('suggests map inspection, market review, and local missions from current state', () => {
+    it('suggests corridor pinning, market review, and local contracts from current state', () => {
         state.player = {
             currentSector: 1,
             cargo: { ore: 0, org: 0, eq: 0, pulse_canister: 0, heavy_pulse_module: 0 }
@@ -38,15 +38,15 @@ describe('first-run onboarding suggestions', () => {
         assert.deepEqual(
             suggestions.map(suggestion => suggestion.title),
             [
-                'Inspect your current site',
-                'Check the market spread',
-                'Take a local contract',
-                'Review operational messages'
+                'Current site not pinned',
+                'Local contract postings',
+                'Local surplus available',
+                'Comms console idle'
             ]
         );
         assert.deepEqual(suggestions[0].args, [1]);
-        assert.deepEqual(suggestions[1].args, ['market']);
-        assert.deepEqual(suggestions[2].args, ['missions']);
+        assert.deepEqual(suggestions[1].args, ['missions']);
+        assert.deepEqual(suggestions[2].args, ['market']);
     });
 
     it('falls back to corridor scouting when the current site is already selected', () => {
@@ -66,7 +66,7 @@ describe('first-run onboarding suggestions', () => {
 
         const suggestions = buildNextActionSuggestions();
 
-        assert.equal(suggestions[0].title, 'Scout a direct jump corridor');
+        assert.equal(suggestions[0].title, 'Direct jump available');
         assert.equal(suggestions[0].action, 'moveTo');
         assert.deepEqual(suggestions[0].args, [7]);
     });

@@ -961,14 +961,48 @@ select:focus-visible {
     margin-top: 10px;
 }
 
-.next-step-item {
-    border-left: 3px solid var(--line-strong);
-    padding: 6px 8px;
+.priority-briefing-item {
+    border-left: var(--border-thick) solid var(--line-strong);
+    padding: 8px 10px;
     margin: 6px 0;
     background: var(--bg-panel-raised);
 }
 
-.next-step-item button {
+.priority-briefing-item.priority-info {
+    border-left-color: var(--accent-cyan);
+}
+
+.priority-briefing-item.priority-safe {
+    border-left-color: var(--accent-green);
+}
+
+.priority-briefing-item.priority-caution {
+    border-left-color: var(--amber);
+}
+
+.priority-briefing-item.priority-urgent {
+    border-left-color: var(--red);
+}
+
+.priority-briefing-signal {
+    color: var(--text-muted);
+    font-size: 0.75em;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.priority-briefing-title {
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.priority-briefing-why {
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+.priority-briefing-item button {
     margin-top: 5px;
 }
 
