@@ -212,9 +212,9 @@ export const DIALOGUE_BROAD_TEMPLATE_BANKS = Object.freeze({
                     'I can open a search for a {itemLabel}. If {supplier} has one, I will hear about it.',
                     'Nothing here today, but I can {askAround} for a {itemLabel}.',
                     'I will start with my regular names and see who can move a {itemLabel}.',
-                    'I can log the {itemLabel} request and run it through my vendor routes.',
-                    'I will put the {itemLabel} on the sourcing ledger today.',
-                    'I can check stock channels for a {itemLabel} and report back.'
+                    'I can log the {itemLabel} request and {askAround} through my routes.',
+                    'I will put the {itemLabel} on the sourcing ledger and check with {supplier}.',
+                    'I can check with {supplier} for a {itemLabel} and report back.'
                 ]),
                 warm: Object.freeze([
                     'I can do that. I will {askAround} for your {itemLabel}.',
