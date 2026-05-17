@@ -449,22 +449,37 @@ describe('loadGame — validation before live state swap', () => {
         resetState();
     });
 
-    it('does not touch live state when normalisation rejects malformed save content', () => {
-        const badSave = minimalSave(SAVE_VERSION);
-        badSave.ports = {
+    it('normalises unknown port type keys while loading legacy save content', () => {
+        const legacySave = minimalSave(SAVE_VERSION);
+        legacySave.universe = { 1: { id: 1, jumpGates: [], region: 'Core' } };
+        legacySave.ports = {
             1: { typeKey: 'missing-port-type', stock: { ore: 0, org: 0, eq: 0 } }
         };
-        state.player = minimalSave(SAVE_VERSION).player;
-        state.player.credits = 1234;
         const messages = [];
         setPersistenceAdapters({
-            storage: { getItem() { return JSON.stringify(badSave); } },
+            storage: { getItem() { return JSON.stringify(legacySave); } },
             logger: message => messages.push(message)
         });
 
-        assert.equal(loadGame(), false);
-        assert.equal(state.player.credits, 1234);
-        assert.ok(messages.includes('Could not load save data. The save failed validation or normalisation.'));
+        assert.equal(loadGame(), true);
+        assert.equal(state.ports[1].typeKey, 'consumer');
+        assert.equal(state.ports[1].factionId, 'fu');
+        assert.ok(messages.includes('Game loaded'));
+    });
+
+    it('infers missing port type keys from legacy inventory when possible', () => {
+        const legacySave = minimalSave(SAVE_VERSION);
+        legacySave.universe = { 1: { id: 1, jumpGates: [], region: 'Core' } };
+        legacySave.ports = {
+            1: { stock: { ore: 5000, org: 10, eq: 20 } }
+        };
+        setPersistenceAdapters({
+            storage: { getItem() { return JSON.stringify(legacySave); } }
+        });
+
+        assert.equal(loadGame(), true);
+        assert.equal(state.ports[1].typeKey, 'mining');
+        assert.equal(state.ports[1].factionId, 'hc');
     });
 });
 

@@ -1,15 +1,16 @@
 import { state } from "../state.js";
-import { FACTIONS, PORT_TYPES, BALANCE, MARKET_COMMODITIES } from "../constants.js";
+import { FACTIONS, BALANCE, MARKET_COMMODITIES } from "../constants.js";
 import { escapeHtml, formatCommodity } from "../utils.js";
 import { getFactionRep, getFactionLabel } from "../core/factions.js";
 import { getPortPrice } from "../systems/market.js";
 import { renderMissionBoard } from "./renderMissions.js";
+import { getPortType } from "../core/ports.js";
 
 export function renderMarketPanel() {
     const { player, ports } = state;
     const port = ports[player.currentSector];
     if (!port) { console.log("No port here."); return; }
-    const type = PORT_TYPES[port.typeKey];
+    const type = getPortType(port);
     const faction = FACTIONS[port.factionId];
     let html = `<h4>${escapeHtml(type.name)}</h4>`;
     if (faction) html += `<div>Authority: <span style="color:${faction.color}">${faction.icon} ${escapeHtml(faction.name)}</span> (${getFactionLabel(getFactionRep(faction.id))}, rep ${getFactionRep(faction.id)})</div>`;

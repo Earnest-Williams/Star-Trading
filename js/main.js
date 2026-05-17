@@ -295,6 +295,9 @@ export const App = (() => {
         resetTimeHooks();
         _unsubs.forEach(unsub => unsub());
         _unsubs = [];
+        unbindTopbarButtons();
+        _unsubscribeMapInteraction();
+        _unsubscribeMapInteraction = () => {};
         disposeUI();
         initUI();
         startSimulation(worldgenSettings, buildSpec);
@@ -399,6 +402,7 @@ export const App = (() => {
     }
 
     function bindTopbarButtons() {
+        unbindTopbarButtons();
         document.querySelectorAll('.topbar button').forEach(btn => {
             const fn = () => executeAction({ type: 'showScreen', args: [btn.dataset.screen] });
             btn.addEventListener('click', fn);
@@ -412,6 +416,11 @@ export const App = (() => {
         addTopbarListener('btn-load', () => executeAction({ type: 'loadGame' }));
         addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
         addTopbarListener('btn-center-map', () => centerMapOnSector());
+    }
+
+    function unbindTopbarButtons() {
+        _topbarListeners.forEach(({ el, fn }) => el.removeEventListener('click', fn));
+        _topbarListeners = [];
     }
 
     function renderChargen() {
@@ -445,8 +454,7 @@ export const App = (() => {
         _unsubs.forEach(unsub => unsub());
         _unsubs = [];
         EventBus.reset();
-        _topbarListeners.forEach(({ el, fn }) => el.removeEventListener('click', fn));
-        _topbarListeners = [];
+        unbindTopbarButtons();
         _shellListeners.forEach(({ el, event, fn }) => el.removeEventListener(event, fn));
         _shellListeners = [];
         _unsubscribeMapInteraction();
