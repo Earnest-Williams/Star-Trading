@@ -122,6 +122,21 @@ function renderLocalPeopleDialogueActions(sectorId) {
     }).filter(Boolean).join("");
 }
 
+
+function renderDataFreshnessChip(sectorId) {
+    const freshness = getFreshnessSummaryForSector(sectorId);
+    if (freshness.liveLocal) {
+        return `<span class="sector-chip">Data: live local</span>`;
+    }
+    if (!freshness.known) {
+        return `<span class="sector-chip muted">Data: unknown</span>`;
+    }
+    const coldTitle = freshness.label === "stale" || freshness.label === "cold"
+        ? ` title="Public data ${escapeHtml(freshness.label)}: last observed Day ${freshness.lastObservedDay}"`
+        : "";
+    return `<span class="sector-chip"${coldTitle}>Data: ${escapeHtml(freshness.label)} / D${freshness.lastObservedDay}</span>`;
+}
+
 function renderDataFreshnessLine(sectorId) {
     const freshness = getFreshnessSummaryForSector(sectorId);
     if (freshness.liveLocal) {
@@ -277,32 +292,47 @@ export function renderMapInspector() {
     const id = selectedSectorId || player.currentSector;
     const sector = universe[id];
     if (!sector) {
-        el.innerHTML = `<span class="muted">Select a sector on the map.</span>`;
+        el.classList.add("map-inspector--empty");
+        el.innerHTML = "";
         return;
     }
+    el.classList.remove("map-inspector--empty");
     const dominant = FACTIONS[getSectorFactionId(id)];
     const adjacent = getSectorNeighbors(player.currentSector).includes(id);
-    let html = `<strong>Selected Site ${id}</strong> - ${escapeHtml(sector.name)}<br>`;
-    if (sector.coord) html += `<span class="sector-chip">(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})</span>`;
-    html += `<span class="sector-chip">${escapeHtml(getSiteTypeLabel(sector.siteType))}</span><span class="sector-chip">${escapeHtml(sector.region)}</span><span class="sector-chip">${escapeHtml(getSectorStatusLabel(id))}</span>`;
-    if (dominant) html += `<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span>`;
-    if (sector.localAuthority) html += `<span class="sector-chip">${escapeHtml(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId)}</span>`;
-    if (state.companyIdsBySector?.[id]?.length) html += `<span class="sector-chip">Companies ${state.companyIdsBySector[id].length}</span>`;
-    if (ports[id]) html += `<span class="sector-chip">Port: ${escapeHtml(getPortType(ports[id]).name)}</span>`;
-    if (getSectorStatusLabel(id) === "Contested") html += `<span class="sector-chip amber">Political contest</span>`;
-    if (sector.front) html += `<span class="sector-chip amber">Front suspicion ${sector.front.suspicion}</span>`;
-    if (planets[id]) html += `<span class="sector-chip">Planet: ${escapeHtml(PLANET_TYPES[planets[id].typeKey].name)}</span>`;
-    if (sector.asteroids) html += `<span class="sector-chip">Asteroids</span>`;
-    if (sector.pirateThreat > 0) html += `<span class="sector-chip red">Pirates ${sector.pirateThreat}</span>`;
+    const statusLabel = getSectorStatusLabel(id);
+    const factChips = [];
+    if (sector.coord) factChips.push(`<span class="sector-chip">(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})</span>`);
+    factChips.push(`<span class="sector-chip">${escapeHtml(getSiteTypeLabel(sector.siteType))}</span>`);
+    factChips.push(`<span class="sector-chip">${escapeHtml(sector.region)}</span>`);
+    if (dominant) factChips.push(`<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${escapeHtml(dominant.short)}</span>`);
+    if (sector.localAuthority) factChips.push(`<span class="sector-chip">${escapeHtml(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId)}</span>`);
+    if (state.companyIdsBySector?.[id]?.length) factChips.push(`<span class="sector-chip">Companies ${state.companyIdsBySector[id].length}</span>`);
+    if (ports[id]) factChips.push(`<span class="sector-chip">Port: ${escapeHtml(getPortType(ports[id]).name)}</span>`);
+    if (sector.front) factChips.push(`<span class="sector-chip amber">Front suspicion ${sector.front.suspicion}</span>`);
+    if (planets[id]) factChips.push(`<span class="sector-chip">Planet: ${escapeHtml(PLANET_TYPES[planets[id].typeKey].name)}</span>`);
+    if (sector.asteroids) factChips.push(`<span class="sector-chip">Asteroids</span>`);
+    if (sector.pirateThreat > 0) factChips.push(`<span class="sector-chip red">Pirates ${sector.pirateThreat}</span>`);
     const routeCount = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === id || r.destinationSector === id)).length;
-    if (routeCount > 0) html += `<span class="sector-chip green">Routes ${routeCount}</span>`;
-    html += renderCaptainChipsForSector(id);
-    html += renderDataFreshnessLine(id);
-    html += `<div class="compact-actions">`;
-    if (id === player.currentSector) html += `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
-    else if (adjacent && player.ship) html += `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;
-    else if (adjacent) html += '<span class="muted">Direct corridor available, but you have no assigned ship.</span>';
-    else html += `<span class="muted">No direct jump corridor. Connected corridors: ${getSectorNeighbors(id).join(", ")}</span>`;
-    html += `</div>`;
-    el.innerHTML = html;
+    if (routeCount > 0) factChips.push(`<span class="sector-chip green">Routes ${routeCount}</span>`);
+    factChips.push(renderDataFreshnessChip(id));
+
+    const captainHtml = renderCaptainChipsForSector(id);
+    let actionHtml = "";
+    if (id === player.currentSector) {
+        actionHtml = `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
+    } else if (adjacent && player.ship) {
+        actionHtml = `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;
+    } else if (adjacent) {
+        actionHtml = '<span class="muted">Direct corridor available, but you have no assigned ship.</span>';
+    } else {
+        actionHtml = `<span class="muted">No direct jump corridor. Connected corridors: ${getSectorNeighbors(id).join(", ")}</span>`;
+    }
+
+    el.innerHTML = `<div class="map-inspector-title-row">`
+        + `<div class="map-inspector-title"><strong>Site ${id} — ${escapeHtml(sector.name)}</strong></div>`
+        + `<span class="sector-chip map-inspector-status">${escapeHtml(statusLabel)}</span>`
+        + `</div>`
+        + `<div class="map-inspector-facts">${factChips.join("")}</div>`
+        + (captainHtml ? `<div class="map-inspector-captains">${captainHtml}</div>` : "")
+        + `<div class="map-inspector-actions">${actionHtml}</div>`;
 }

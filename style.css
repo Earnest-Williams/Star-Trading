@@ -632,12 +632,67 @@ select:focus-visible {
     min-height: 0;
 }
 
-.map-wrap.map-expanded #mapInspector {
-    flex: 0 0 auto;
+.map-inspector-overlay {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    z-index: 3;
+    max-width: 520px;
+    margin-top: 0;
+    min-height: 0;
+    background: rgba(13, 19, 24, 0.94);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
-#mapInspector {
-    margin-top: 10px;
-    min-height: 92px;
+
+.map-wrap.map-expanded .map-inspector-overlay {
+    max-width: 600px;
+}
+
+.map-inspector-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.map-inspector-title {
+    font-size: 1.05em;
+}
+
+.map-inspector-status {
+    flex: 0 0 auto;
+    margin-top: 0;
+}
+
+.map-inspector-facts {
+    margin: 0 -2px;
+}
+
+.map-inspector-captains {
+    margin-top: 6px;
+}
+
+.map-inspector-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--line-dim);
+}
+
+.map-inspector-actions button {
+    margin: 0;
+}
+
+.map-inspector-overlay.map-inspector--empty {
+    pointer-events: none;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    padding: 0;
 }
 .menu-grid {
     display: grid;
@@ -1233,6 +1288,12 @@ select:focus-visible {
     .map-expand-button {
         left: 8px;
         width: calc(100% - 16px);
+    }
+    .map-inspector-overlay {
+        left: 8px;
+        right: 8px;
+        bottom: 56px;
+        max-width: none;
     }
     .map-tooltip {
         max-width: calc(100vw - 30px);
