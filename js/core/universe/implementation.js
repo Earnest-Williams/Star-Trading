@@ -59,8 +59,8 @@ function getPortFillRatio(portType, commodity) {
 
 export function makePort(typeKey) {
     const portType = PORT_TYPES[typeKey];
-    const stock = {};
-    const maxStock = {};
+    const stock = makeStock();
+    const maxStock = makeStock();
     MARKET_COMMODITIES.forEach(commodity => {
         maxStock[commodity] = PORT_DEFAULTS.MAX_STOCK[commodity] || 1;
         stock[commodity] = Math.floor(maxStock[commodity] * getPortFillRatio(portType, commodity));
