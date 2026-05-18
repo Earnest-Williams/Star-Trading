@@ -185,6 +185,22 @@ describe('property daily tick and recommendations', () => {
         assert.equal(result.creditsAfter, 1000);
     });
 
+    it('blocks property actions that cost more credits than the player has', () => {
+        const property = createStartingProperties('property_dockside_tenement', { siteId: 8 })[0];
+        state.player = {
+            credits: 40,
+            time: { day: 4 },
+            character: baselineCharacter({ stats: { fieldcraft: 72 } }),
+            properties: [property]
+        };
+        const result = applyPlayerPropertyAction(property.id, 'performMaintenance');
+
+        assert.equal(result.ok, false);
+        assert.equal(result.reason, 'Insufficient credits to perform performMaintenance.');
+        assert.equal(state.player.credits, 40);
+        assert.equal(state.player.properties[0].condition, property.condition);
+    });
+
     it('keeps property helpers renderer-independent', () => {
         const property = createStartingProperties('property_repair_bay_share', { siteId: 4 })[0];
         const actionResult = resolvePropertyAction(property, 'performMaintenance', characterWithAcumen(55), { spend: 200 });

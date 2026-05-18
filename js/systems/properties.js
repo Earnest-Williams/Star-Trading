@@ -285,7 +285,8 @@ function getPropertyCompetencies(character) {
     const acumen = combinedCompetency(character, "acumen", [
         "rentForecastAccuracy",
         "propertyValuationBonus",
-        "refinanceAccuracy"
+        "refinanceAccuracy",
+        "debtPressureVisibility"
     ]);
     const command = combinedCompetency(character, "command", [
         "serviceSlotYieldBonus",
@@ -294,12 +295,14 @@ function getPropertyCompetencies(character) {
     ]);
     const fieldcraft = combinedCompetency(character, "fieldcraft", [
         "propertyMaintenanceBonus",
-        "conditionForecastAccuracy"
+        "conditionForecastAccuracy",
+        "infrastructureRiskReduction"
     ]);
     const tradecraft = combinedCompetency(character, "tradecraft", [
         "tenantScreeningBonus",
         "contractRiskVisibility",
-        "brokerageBonus"
+        "brokerageBonus",
+        "leaseTermAccuracy"
     ]);
     const nerve = combinedCompetency(character, "nerve", [
         "propertyCrisisBonus",
@@ -409,8 +412,12 @@ export function applyPlayerPropertyAction(propertyId, actionId, options = {}) {
         actionOptions
     );
     if (!result.ok) return result;
+    const currentCredits = state.player.credits || 0;
+    if (result.creditsDelta < 0 && Math.abs(result.creditsDelta) > currentCredits) {
+        return { ok: false, reason: `Insufficient credits to perform ${actionId}.` };
+    }
     state.player.properties[index] = result.property;
-    state.player.credits = Math.max(0, Math.floor((state.player.credits || 0) + result.creditsDelta));
+    state.player.credits = Math.max(0, Math.floor(currentCredits + result.creditsDelta));
     return {
         ...result,
         propertyId,
