@@ -295,6 +295,272 @@ select:focus-visible {
     text-align: center;
 }
 
+
+.captain-rail {
+    display: none;
+}
+
+.captain-header,
+.captain-core-stats,
+.cargo-mini-list,
+.ship-status-meters,
+.captain-actions {
+    border: var(--border-thin) solid var(--line-dim);
+    background: var(--bg-deck);
+    padding: 7px;
+    margin-bottom: 8px;
+}
+
+.captain-kicker,
+.section-label,
+.stat-label,
+.status-label {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.captain-kicker,
+.section-label {
+    font-size: 0.78em;
+}
+
+.captain-header h3 {
+    margin: 0;
+    line-height: 1;
+}
+
+.captain-ship-name {
+    color: var(--text-primary);
+    font-size: 1.12em;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.captain-core-stats {
+    display: grid;
+    gap: 4px;
+}
+
+.captain-stat {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 6px;
+    align-items: baseline;
+}
+
+.stat-value,
+.status-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cargo-mini-list {
+    display: grid;
+    gap: 4px;
+}
+
+.cargo-row {
+    display: grid;
+    grid-template-columns: 26px minmax(44px, 1fr) 48px 28px;
+    gap: 5px;
+    align-items: center;
+    min-height: 19px;
+}
+
+.cargo-icon {
+    border: 1px solid var(--line-dim);
+    color: var(--text-primary);
+    text-align: center;
+    font-size: 0.78em;
+    line-height: 1.25;
+}
+
+.cargo-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cargo-bar,
+.status-meter,
+.faction-bar {
+    position: relative;
+    overflow: hidden;
+}
+
+.cargo-bar {
+    height: 7px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line-dim);
+}
+
+.cargo-bar span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--accent-cyan);
+}
+
+.cargo-qty {
+    color: var(--text-primary);
+    text-align: right;
+}
+
+.ship-status-meters {
+    display: grid;
+    gap: 5px;
+}
+
+.status-meter-row {
+    display: grid;
+    grid-template-columns: 52px minmax(68px, 1fr) 52px;
+    gap: 6px;
+    align-items: center;
+}
+
+.status-meter-row.compact {
+    opacity: 0.9;
+}
+
+.status-meter {
+    height: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+}
+
+.status-meter-fill {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--accent-green);
+}
+
+.shields-fill,
+.fighters-fill {
+    background: var(--accent-cyan);
+}
+
+.holds-fill {
+    background: var(--accent-amber);
+}
+
+.hull-fill {
+    background: var(--accent-green);
+}
+
+.political-readout {
+    padding: 7px;
+}
+
+.faction-strip {
+    cursor: pointer;
+    grid-template-columns: 52px minmax(62px, 1fr) 54px;
+    margin: 4px 0;
+}
+
+.faction-strip:hover,
+.faction-strip:focus-within {
+    background: var(--bg-panel-hot);
+}
+
+.faction-mark,
+.faction-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.faction-mark {
+    font-size: 0.95em;
+}
+
+.political-meta {
+    color: var(--text-muted);
+    font-size: 0.84em;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.political-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.political-actions button {
+    margin: 0;
+    min-height: 28px;
+    padding: 4px 5px;
+}
+
+.captain-actions .menu-grid button {
+    min-height: 30px;
+    padding: 4px 5px;
+}
+
+#gameShell.layout-left-collapsed .left-sidebar .captain-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.captain-rail-warning {
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--line-dim);
+    background: var(--bg-deck);
+}
+
+.captain-rail-warning.active {
+    background: var(--accent-red);
+    border-color: var(--accent-red);
+    box-shadow: 0 0 8px var(--accent-red);
+}
+
+.captain-rail-ship {
+    color: var(--text-primary);
+    font-size: 1.4em;
+    line-height: 1;
+}
+
+.captain-rail-credit {
+    color: var(--accent-green);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    max-height: 94px;
+    overflow: hidden;
+    font-size: 0.82em;
+}
+
+.captain-rail-meter {
+    width: 12px;
+    height: 54px;
+    display: flex;
+    align-items: end;
+    background: var(--bg-deck);
+    border: 1px solid var(--line);
+}
+
+.captain-rail-meter span {
+    display: block;
+    width: 100%;
+    height: 0%;
+    background: var(--accent-green);
+}
+
+.captain-rail-meter.shield span {
+    background: var(--accent-cyan);
+}
+
 .row {
     margin: 4px 0;
 }

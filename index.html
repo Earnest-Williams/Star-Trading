@@ -111,26 +111,59 @@
         <div id="game">
             <div class="left-sidebar panel">
                 <button id="btn-toggle-left-sidebar" class="sidebar-toggle" type="button" aria-controls="game" aria-expanded="true">Collapse Captain</button>
-                <div class="sidebar-content">
-                <h3>Captain</h3>
-                <div><strong>Ship:</strong> <span id="shipName"></span></div>
-                <div>Credits: <span id="credits" class="green"></span></div>
-                <div>Day/Time: <span id="dayTime" class="green"></span></div>
-                <div>Sector: <span id="sectorNum"></span> (<span id="sectorName"></span>)</div>
-                <hr>
-                <div>Cargo: <span id="cargoSummary"></span></div>
-                <div>Holds: <span id="holds" class="green"></span></div>
-                <div>Fighters: <span id="fighters"></span></div>
-                <div>Shields: <span id="shields"></span></div>
-                <div>Hull: <span id="hull"></span></div>
-                <div id="factionPanel" class="subpanel"></div>
-                <hr>
-                <div class="menu-grid">
-                    <button id="btn-rest">Rest</button>
-                    <button id="btn-save">Save</button>
-                    <button id="btn-load">Load</button>
-                    <button id="btn-intel">Intel</button>
+                <div class="captain-rail" aria-label="Collapsed captain status">
+                    <div id="captainRailWarning" class="captain-rail-warning" title="Priority warning"></div>
+                    <div id="captainRailShip" class="captain-rail-ship" title="Ship">◆</div>
+                    <div id="captainRailCredits" class="captain-rail-credit" title="Credits">0c</div>
+                    <div class="captain-rail-meter" title="Hull"><span id="captainRailHull"></span></div>
+                    <div class="captain-rail-meter shield" title="Shields"><span id="captainRailShields"></span></div>
                 </div>
+                <div class="sidebar-content">
+                <section class="captain-header" aria-label="Captain overview">
+                    <div class="captain-kicker">CAPTAIN</div>
+                    <h3 id="captainTitle">Captain</h3>
+                    <div class="captain-ship-name"><span id="shipName"></span></div>
+                </section>
+                <section class="captain-core-stats" aria-label="Captain core stats">
+                    <div class="captain-stat"><span class="stat-label">Credits</span><span id="credits" class="green stat-value"></span></div>
+                    <div class="captain-stat"><span class="stat-label">Day/Time</span><span id="dayTime" class="green stat-value"></span></div>
+                    <div class="captain-stat sector-stat"><span class="stat-label">Sector</span><span class="stat-value">S<span id="sectorNum"></span> <span id="sectorName"></span></span></div>
+                </section>
+                <section class="cargo-mini-list" aria-label="Cargo manifest">
+                    <div class="section-label">Cargo</div>
+                    <div id="cargoSummary"></div>
+                </section>
+                <section class="ship-status-meters" aria-label="Ship status meters">
+                    <div class="status-meter-row">
+                        <span class="status-label">Hull</span>
+                        <span class="status-meter"><span id="hullMeter" class="status-meter-fill hull-fill"></span></span>
+                        <span id="hull" class="status-value"></span>
+                    </div>
+                    <div class="status-meter-row">
+                        <span class="status-label">Shields</span>
+                        <span class="status-meter"><span id="shieldsMeter" class="status-meter-fill shields-fill"></span></span>
+                        <span id="shields" class="status-value"></span>
+                    </div>
+                    <div class="status-meter-row">
+                        <span class="status-label">Holds</span>
+                        <span class="status-meter"><span id="holdsMeter" class="status-meter-fill holds-fill"></span></span>
+                        <span id="holds" class="green status-value"></span>
+                    </div>
+                    <div class="status-meter-row compact">
+                        <span class="status-label">Fighters</span>
+                        <span class="status-meter"><span id="fightersMeter" class="status-meter-fill fighters-fill"></span></span>
+                        <span id="fighters" class="status-value"></span>
+                    </div>
+                </section>
+                <div id="factionPanel" class="subpanel political-readout"></div>
+                <section class="captain-actions" aria-label="Captain utility actions">
+                    <div class="menu-grid">
+                        <button id="btn-rest">Rest</button>
+                        <button id="btn-save">Save</button>
+                        <button id="btn-load">Load</button>
+                        <button id="btn-intel">Intel</button>
+                    </div>
+                </section>
                 <div id="planetInfo" class="subpanel" style="display:none"></div>
                 <div id="priorityFeed" class="subpanel">
                     <strong>Attention</strong>

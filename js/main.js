@@ -229,6 +229,7 @@ export const App = (() => {
         }
         document.addEventListener("contextmenu", suppressContextMenu);
         document.body.addEventListener('click', handleActionClick);
+        document.body.addEventListener('keydown', handleActionClick);
     }
 
     function handleShellClick(target) {
@@ -461,6 +462,7 @@ export const App = (() => {
         _unsubscribeMapInteraction = () => {};
         document.removeEventListener("contextmenu", suppressContextMenu);
         document.body.removeEventListener('click', handleActionClick);
+        document.body.removeEventListener('keydown', handleActionClick);
         disposeUI();
         resetState();
         gameplayInitialized = false;
