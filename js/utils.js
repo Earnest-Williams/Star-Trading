@@ -59,14 +59,10 @@ export function escapeHtml(s) {
 }
 
 export function clampRange(value, min, max) { return Math.max(min, Math.min(max, Math.round(value))); }
-export function makeStock(ore, org, eq, pulseCanister = 0, heavyPulseModule = 0) {
-    return {
-        ore,
-        org,
-        eq,
-        pulse_canister: pulseCanister,
-        heavy_pulse_module: heavyPulseModule
-    };
+export function makeStock(values = {}) {
+    const stock = Object.fromEntries(CARGO_COMMODITIES.map(commodity => [commodity, 0]));
+    Object.assign(stock, values);
+    return stock;
 }
 export function formatCredits(value) { return Math.floor(value).toLocaleString(); }
 export function formatCommodity(commodity) { return COMMODITY_NAMES[commodity] || commodity; }

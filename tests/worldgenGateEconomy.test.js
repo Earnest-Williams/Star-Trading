@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { state } from '../js/state.js';
 import { calculateGatePulseCost } from '../js/core/universe.js';
 import { areSectorsConnected, getSectorNeighbors } from '../js/core/navigation.js';
-import { BALANCE, MARKET_COMMODITIES } from '../js/constants.js';
+import { BALANCE, MANUFACTURED_COMMODITIES, MARKET_COMMODITIES, PROCESSED_COMMODITIES, PULSE_COMMODITIES, RAW_COMMODITIES } from '../js/constants.js';
 import { tradeCommodity } from '../js/systems/market.js';
+import { COMPANY_ARCHETYPES, COMPANY_PRODUCTION_PROFILES, RAW_GOOD_ORIGINS, VALUE_ADDED_GOOD_CHAINS } from '../js/config/companies.js';
 import { assertInRange, assertPositive } from './helpers/assertions.js';
 import {
     defaultWorldgenSettings,
@@ -73,6 +74,39 @@ describe('sparse 3D world generation and gate economy', () => {
         assertPositive(state.player.cargo.pulse_canister, 'player pulse canister cargo');
         assert.ok(state.player.credits < startingCredits);
     });
+
+    it('seeds the first industrial-web commodity slice in generated markets', () => {
+        const expectedCommodities = [
+            'heavy_metals',
+            'rare_earths',
+            'water_ice',
+            'refined_metals',
+            'polymers',
+            'coolants',
+            'fertilizer',
+            'machinery',
+            'repair_parts',
+            'electronics',
+            'medical_supplies',
+            'construction_kits',
+            'gate_coils',
+            'control_cores'
+        ];
+        expectedCommodities.forEach(commodity => {
+            assert.ok(MARKET_COMMODITIES.includes(commodity), `${commodity} should be market cargo`);
+        });
+
+        const miningPort = Object.values(state.ports).find(port => port.typeKey === 'mining');
+        const refineryPort = Object.values(state.ports).find(port => port.typeKey === 'refinery');
+        const industrialPort = Object.values(state.ports).find(port => port.typeKey === 'industrial');
+
+        assert.ok(miningPort, 'generated world should include a mining port');
+        assert.ok(refineryPort, 'generated world should include a refinery port');
+        assert.ok(industrialPort, 'generated world should include an industrial port');
+        assertPositive(miningPort.stock.heavy_metals, 'mining heavy metals stock');
+        assertPositive(refineryPort.stock.refined_metals, 'refinery refined metals stock');
+        assertPositive(industrialPort.stock.control_cores, 'industrial control cores stock');
+    });
 });
 
 describe('economic connectivity, companies, people, and polities', () => {
@@ -128,6 +162,82 @@ describe('economic connectivity, companies, people, and polities', () => {
                     state.universe[id].localAuthority,
                     `economic sector ${id} should have a local authority`
                 );
+            });
+        });
+
+        it('lets import/export houses trade all legal goods while specializing individually', () => {
+            const houses = Object.values(state.companies).filter(company => company.type === 'import_export');
+            assert.ok(houses.length > 0, 'generated world should include import/export houses');
+            houses.forEach(company => {
+                assert.deepEqual(company.orderProfile.exports, MARKET_COMMODITIES);
+                assert.deepEqual(company.orderProfile.imports, MARKET_COMMODITIES);
+                assert.ok(company.orderProfile.specialtyGoods.length > 0);
+                assert.ok(company.orderProfile.specialtyGoods.every(commodity => MARKET_COMMODITIES.includes(commodity)));
+                if (company.orderProfile.routeFocus) {
+                    assert.equal(company.orderProfile.routeFocus.originSector, company.sectorId);
+                    assert.ok(state.universe[company.orderProfile.routeFocus.destinationSector]);
+                }
+            });
+        });
+
+        it('seeds ship refitters and rare capped dockyards', () => {
+            const homeCompanies = (state.companyIdsBySector[state.world.roles.homeSiteId] || [])
+                .map(id => state.companies[id]);
+            assert.ok(homeCompanies.some(company => company.type === 'ship_refitter'));
+            assert.ok(homeCompanies.some(company => company.type === 'dockyard'));
+
+            Object.values(state.universe).forEach(sector => {
+                const companies = (state.companyIdsBySector[sector.id] || []).map(id => state.companies[id]);
+                const dockyards = companies.filter(company => company.type === 'dockyard');
+                if (sector.station || sector.siteType === 'way_station') {
+                    assert.ok(dockyards.length <= 2, `station sector ${sector.id} has too many dockyards`);
+                }
+                if (state.planets[sector.id]) {
+                    assert.ok(dockyards.length <= 3, `planet sector ${sector.id} has too many dockyards`);
+                }
+            });
+        });
+
+        it('maps raw and value-added goods to business origins and inputs', () => {
+            Object.entries(COMPANY_ARCHETYPES).forEach(([type, archetype]) => {
+                const profile = COMPANY_PRODUCTION_PROFILES[type];
+                assert.ok(profile, `${type} should define a production profile`);
+                assert.deepEqual(archetype.exports, profile.outputs);
+                assert.deepEqual(archetype.imports, profile.inputs);
+            });
+
+            Object.values(state.companies).forEach(company => {
+                assert.deepEqual(company.orderProfile.productionProfile.outputs, company.orderProfile.exports);
+                assert.deepEqual(company.orderProfile.productionProfile.inputs, company.orderProfile.imports);
+            });
+
+            RAW_COMMODITIES.forEach(commodity => {
+                const origins = RAW_GOOD_ORIGINS[commodity] || [];
+                assert.ok(origins.length > 0, `${commodity} should have a raw origin business`);
+                origins.forEach(type => {
+                    const profile = COMPANY_PRODUCTION_PROFILES[type];
+                    assert.ok(profile, `${type} should have a production profile`);
+                    assert.ok(profile.outputs.includes(commodity), `${type} should originate ${commodity}`);
+                });
+            });
+
+            const valueAddedCommodities = PROCESSED_COMMODITIES
+                .concat(MANUFACTURED_COMMODITIES)
+                .concat(PULSE_COMMODITIES);
+            valueAddedCommodities.forEach(commodity => {
+                const chain = VALUE_ADDED_GOOD_CHAINS[commodity];
+                assert.ok(chain, `${commodity} should define a value-added chain`);
+                assert.ok(chain.inputs.length > 0, `${commodity} should have inputs`);
+                assert.ok(chain.originBusinesses.length > 0, `${commodity} should have origin businesses`);
+                chain.originBusinesses.forEach(type => {
+                    const profile = COMPANY_PRODUCTION_PROFILES[type];
+                    assert.ok(profile, `${type} should have a production profile`);
+                    assert.ok(profile.outputs.includes(commodity), `${type} should output ${commodity}`);
+                    chain.inputs.forEach(input => {
+                        const usesInput = profile.inputs.includes(input) || profile.outputs.includes(input);
+                        assert.ok(usesInput, `${type} should import or make ${input} for ${commodity}`);
+                    });
+                });
             });
         });
 

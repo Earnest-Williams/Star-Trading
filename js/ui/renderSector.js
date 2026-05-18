@@ -154,7 +154,7 @@ export function renderPlanetSummary(planet) {
     }
     html += `Colonists: ${planet.colonists}<br>`;
     if (planet.owner === "Player") {
-        const shortages = planet.shortages || makeStock(0, 0, 0);
+        const shortages = planet.shortages || makeStock();
         html += `Satisfaction: ${planet.satisfaction || 0} | Shortages: Ore ${shortages.ore || 0} / Org ${shortages.org || 0} / Eq ${shortages.eq || 0}<br>`;
     }
     html += `Stock: Ore ${planet.stock.ore} / Org ${planet.stock.org} / Eq ${planet.stock.eq}<br>`;

@@ -30,7 +30,7 @@ function isProfitableAmbientFlow(source, sink, commodity) {
 }
 
 export function runAmbientTradeDaily() {
-    const summary = { day: state.player.time.day, moved: makeStock(0, 0, 0), flows: 0 };
+    const summary = { day: state.player.time.day, moved: makeStock(), flows: 0 };
     const nodes = getAllLogisticsNodes();
     MARKET_COMMODITIES.forEach(commodity => {
         const sources = nodes
