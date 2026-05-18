@@ -13,6 +13,7 @@ import { cullOldPublicSnapshots, expirePrivatePayloads, runAmbientDataPropagatio
 import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../systems/secureCourier.js';
 import { decayDialogueMemories, expireDialogueOffers, resolveDueDialogueTasks, runDialogueMaintenanceDaily } from '../systems/people.js';
 import { runPlayerPropertiesDaily } from '../systems/properties.js';
+import { runLogisticsObjectivesDaily } from '../systems/logisticsObjectives.js';
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', run: () => produceColonies() },
@@ -30,6 +31,7 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'secure_payload_expiry', run: () => failExpiredSecurePayloads() },
     { id: 'captain_daily_actions', run: reason => updateCaptainsDaily(reason) },
     { id: 'social_entanglements', run: () => updateEntanglementsDaily() },
+    { id: 'logistics_objectives', run: () => runLogisticsObjectivesDaily() },
     { id: 'dialogue_memory_decay', run: reason => decayDialogueMemories(reason) },
     { id: 'dialogue_maintenance', run: reason => runDialogueMaintenanceDaily(reason) },
     { id: 'daily_world_event', run: () => recordDailyWorldEvent() }
@@ -75,7 +77,7 @@ export function expireFactionIntel() {
 function recordDailyWorldEvent() {
     addWorldEvent({
         type: 'daily_tick',
-        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, property ledgers settled, ambient trade and public data moved, markets shifted, captains acted, entanglements shifted, factions moved, and sector threats advanced.`,
+        text: `Day ${state.player.time.day} opened: colonies produced goods, explicit trade routes ran, property ledgers settled, ambient trade and public data moved, markets shifted, captains acted, entanglements shifted, factions moved, and sector threats advanced, and logistics objectives were evaluated.`,
         importance: 2,
         alert: false
     });

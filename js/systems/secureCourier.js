@@ -1,6 +1,7 @@
 import { state } from '../state.js';
 import { BALANCE, FACTIONS } from '../constants.js';
 import { EventBus } from '../events.js';
+import { recordLogisticsDelivery } from './logisticsObjectives.js';
 import { normaliseDataCargoState } from '../core/dataCargo.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addFactionRep, addFactionTrust, getFactionRep, getFactionTrust } from '../core/factions.js';
@@ -253,6 +254,13 @@ export function completeSecurePayload(payloadId) {
     if (payload.destinationSectorId !== Number(state.player.currentSector)) return false;
     const delivered = takeSecurePayload(payloadId);
     state.player.credits = (Number(state.player.credits) || 0) + delivered.value;
+    recordLogisticsDelivery({
+        source: "secure_delivery",
+        sectorId: delivered.destinationSectorId,
+        commodity: "eq",
+        amount: Math.max(1, Math.floor(delivered.value / BALANCE.DATA_CARGO.SECURE_DELIVERY_LOGISTICS_AMOUNT_DIVISOR)),
+        profit: delivered.value
+    });
     addFactionRep(delivered.factionId, Math.max(BALANCE.DATA_CARGO.SECURE_DELIVERY_MIN_REP_GAIN, Math.floor(delivered.value / BALANCE.DATA_CARGO.SECURE_DELIVERY_VALUE_REP_DIVISOR)), 'secure courier delivery');
     addFactionTrust(delivered.factionId, BALANCE.DATA_CARGO.SECURE_DELIVERY_TRUST_GAIN, 'secure courier delivery');
     if (delivered.targetFactionId && delivered.targetFactionId !== delivered.factionId) {

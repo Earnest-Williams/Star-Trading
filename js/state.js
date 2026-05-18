@@ -65,6 +65,8 @@ export function createInitialState() {
         nextEntanglementId: 1,
         tradeRoutes: [],
         nextTradeRouteId: 1,
+        logisticsObjectives: [],
+        nextLogisticsObjectiveId: 1,
         starField: [],
         nextMissionId: 1,
         selectedSectorId: 1,

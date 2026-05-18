@@ -2,6 +2,7 @@ import { FACTIONS, COMMODITIES } from "../constants.js";
 import { escapeHtml, formatCredits, formatCommodity, makeStock } from "../utils.js";
 import { getColonyDailyNeeds } from "../systems/colonies.js";
 import { buildLogisticsSnapshot, getRouteEscortCandidates } from "../systems/tradeRoutes.js";
+import { buildLogisticsObjectivesSnapshot, describeObjectiveCommodityProgress } from "../systems/logisticsObjectives.js";
 import { captainDisplayName } from "../systems/captains.js";
 
 export function renderLogisticsScreen() {
@@ -9,6 +10,7 @@ export function renderLogisticsScreen() {
     let html = `<h4>Explicit Trade Routes & Convoy Wings</h4>`;
     html += `<div class="small muted">Jump gates and corridors are infrastructure. Trade routes are explicit commercial plans operated by you or eligible captains. Ambient trade is aggregate background traffic and is not directly controllable.</div>`;
     html += renderRouteCreationPanel(snapshot);
+    html += renderLogisticsObjectivesPanel();
     html += renderActiveRoutesPanel(snapshot);
     html += renderColonyNeedsPanel(snapshot);
     return html;
@@ -32,6 +34,44 @@ function renderRouteCreationPanel(snapshot) {
         html += `</div>`;
     });
     if (!found) html += `<div class="muted">No useful unscheduled flows from this sector. Try a port that exports goods, or build colony production first.</div>`;
+    html += `</div>`;
+    return html;
+}
+
+function renderLogisticsObjectivesPanel() {
+    const entries = buildLogisticsObjectivesSnapshot();
+    let html = `<div class="commodity-row"><strong>Logistics Objectives & Sector Campaigns</strong>`;
+    if (entries.length === 0) return html + `<div class="muted">No faction logistics objectives are currently visible.</div></div>`;
+    entries.forEach(entry => {
+        const { objective, recommendations, forecastQuality } = entry;
+        const faction = objective.sponsorFactionId && FACTIONS[objective.sponsorFactionId]
+            ? FACTIONS[objective.sponsorFactionId]
+            : null;
+        const progressText = describeObjectiveCommodityProgress(objective) || "No cargo quota";
+        html += `<div class="card"><strong>${escapeHtml(objective.title)}</strong> ${faction ? `<span style="color:${faction.color}">${faction.icon} ${faction.short}</span>` : ""}<br>`;
+        html += `<span class="small muted">${escapeHtml(objective.description)}</span><br>`;
+        html += `Status: ${objective.status} | Target S${objective.targetSectorId} | Deadline Day ${objective.deadlineDay} | Forecast quality: ${forecastQuality}<br>`;
+        html += `<progress max="100" value="${Math.round(objective.progress.percent)}"></progress> ${Math.round(objective.progress.percent)}% | Score ${objective.progress.score}<br>`;
+        html += `Cargo: ${progressText} | Route runs ${objective.progress.routeRuns} | Failed runs ${objective.progress.failedRuns}<br>`;
+        if (objective.stageDefinitions.length > 0) {
+            const stage = objective.stageDefinitions[objective.progress.activeStageIndex];
+            html += `Campaign stage: ${stage ? escapeHtml(stage.label) : "Political effects pending/complete"}<br>`;
+        }
+        html += `<span class="small muted">Consequence: ${escapeHtml(objective.politicalConsequence || "Local pressure shifts with delivery outcomes.")}</span><br>`;
+        if (objective.status === "available") html += `<button data-action="acceptLogisticsObjective" data-arg0="${objective.id}">Accept</button>`;
+        if (objective.status === "active") html += `<button data-action="abandonLogisticsObjective" data-arg0="${objective.id}">Abandon</button>`;
+        if (recommendations.length > 0) {
+            html += `<div class="small"><strong>Route recommendations:</strong>`;
+            recommendations.forEach(option => {
+                const routeLabel = option.routeId ? `Route #${option.routeId}` : `new route ${formatCredits(option.setupCost)}c setup`;
+                html += `<div>${routeLabel}: S${option.originSectorId} → S${option.targetSectorId} ${formatCommodity(option.commodity)}, risk ${option.projectedRisk}, reliability ${option.reliability}, est margin ${formatCredits(option.profit)}c/day</div>`;
+            });
+            html += `</div>`;
+        } else {
+            html += `<div class="small muted">No valid real corridor recommendation. If connectivity breaks, progress will stall until the route graph is restored.</div>`;
+        }
+        html += `</div>`;
+    });
     html += `</div>`;
     return html;
 }

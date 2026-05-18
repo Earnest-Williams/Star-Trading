@@ -8,6 +8,7 @@ import { getPortType } from '../core/ports.js';
 import { getCharacterStat } from '../core/characterChecks.js';
 import { getTraitBonus } from '../core/traitHooks.js';
 import { getSkillEffect } from '../core/skillHooks.js';
+import { recordLogisticsDelivery } from './logisticsObjectives.js';
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -178,6 +179,13 @@ export function tradeCommodity(commodity, mode) {
         state.player.cargo[commodity] = Math.max(0, (state.player.cargo[commodity] || 0) - amount);
         port.stock[commodity] = Math.min(port.maxStock[commodity] || 1, (port.stock[commodity] || 0) + amount);
         log(`Sold ${amount} ${formatCommodity(commodity)} for ${formatCredits(amount * price)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
+        recordLogisticsDelivery({
+            source: "market_trade",
+            sectorId: state.player.currentSector,
+            commodity,
+            amount,
+            profit: amount * price
+        });
         if (amount >= BALANCE.TRADE_BATCH) {
             applyPoliticalEffect({ factionId: port.factionId, publicRep: BALANCE.MARKET.ROUTINE_PUBLIC_REP_GAIN, trust: BALANCE.MARKET.ROUTINE_TRUST_GAIN, sectorId: state.player.currentSector, influence: BALANCE.MARKET.ROUTINE_SELL_INFLUENCE_GAIN, reason: "supply-chain support", memoryKey: "reliableJobs" });
             if (commodity === "eq" && port.hiddenFactionId === "vc") {
