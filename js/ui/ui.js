@@ -25,6 +25,7 @@ import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsh
 import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
 import { renderNextStepsPanel } from './onboarding.js';
 import { dismissPriorityBriefing } from '../core/priorityBriefingActions.js';
+import { acceptLogisticsObjective, abandonLogisticsObjective } from '../systems/logisticsObjectives.js';
 
 // Captain UI (needs dependency injection)
 import {
@@ -377,6 +378,8 @@ export function registerUIActions() {
     registerAction('closeTradeRoute', closeTradeRoute);
     registerAction('assignCaptainToRoute', assignCaptainToRoute);
     registerAction('unassignRouteEscort', unassignRouteEscort);
+    registerAction('acceptLogisticsObjective', acceptLogisticsObjective);
+    registerAction('abandonLogisticsObjective', abandonLogisticsObjective);
 
     // Time
     registerAction('restUntilMorning', restUntilMorning);

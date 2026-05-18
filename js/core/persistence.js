@@ -28,6 +28,7 @@ import { normaliseSimulationTrace } from './simulationTrace.js';
 import { normalisePriorityBriefingState } from './priorityBriefing.js';
 import { getPortType } from './ports.js';
 import { normaliseProperty } from '../systems/properties.js';
+import { normaliseLogisticsObjectives } from '../systems/logisticsObjectives.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -170,6 +171,8 @@ export function buildLoadedState(data) {
     loadedState.nextEntanglementId = data.nextEntanglementId || (loadedState.entanglements.length + 1);
     loadedState.tradeRoutes = Array.isArray(data.tradeRoutes) ? data.tradeRoutes : [];
     loadedState.nextTradeRouteId = data.nextTradeRouteId || (loadedState.tradeRoutes.length + 1);
+    loadedState.logisticsObjectives = Array.isArray(data.logisticsObjectives) ? data.logisticsObjectives : [];
+    loadedState.nextLogisticsObjectiveId = data.nextLogisticsObjectiveId || (loadedState.logisticsObjectives.length + 1);
     loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
     loadedState.ambientTrade = data.ambientTrade || loadedState.ambientTrade;
     loadedState.priorityBriefing = normalisePriorityBriefingState(data.priorityBriefing);
@@ -274,6 +277,10 @@ export function migrateSave(data) {
         data.tradeRoutes = data.tradeRoutes || [];
         data.nextTradeRouteId = data.nextTradeRouteId || 1;
     }
+    if (v < 19) {
+        data.logisticsObjectives = data.logisticsObjectives || [];
+        data.nextLogisticsObjectiveId = data.nextLogisticsObjectiveId || 1;
+    }
     // v8: sector.politicalMemory added — normaliseLoadedGame rebuilds missing entries
     // v9→v10: seed added; factionRelations moved from top-level into player object
     // v10: session RNG state added — normaliseLoadedGame restores missing entries
@@ -370,6 +377,8 @@ export const SAVE_STATE_FIELDS = [
     "nextEntanglementId",
     "tradeRoutes",
     "nextTradeRouteId",
+    "logisticsObjectives",
+    "nextLogisticsObjectiveId",
     "nextMissionId",
     "ambientTrade",
     "priorityBriefing",
@@ -556,6 +565,7 @@ function normaliseCurrentLoadedGame() {
     }
     normaliseEntanglements();
     normaliseTradeRoutes();
+    normaliseLogisticsObjectives();
     if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(), flows: 0 };
     if (!state.ambientTrade.moved) state.ambientTrade.moved = makeStock();
     MARKET_COMMODITIES.forEach(commodity => {

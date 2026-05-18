@@ -8,6 +8,7 @@ import { spendTime } from '../core/time.js';
 import { Notifications } from '../ui/notifications.js';
 import { getTraitBonus } from '../core/traitHooks.js';
 import { getColonyActionAdjustment, getPoliticalActionAdjustment } from '../core/characterChecks.js';
+import { recordLogisticsDelivery } from './logisticsObjectives.js';
 
 export function foundColony() {
     const planet = state.planets[state.player.currentSector];
@@ -104,6 +105,12 @@ export function depositToColony(commodity) {
     if (!spendTime(BALANCE.TRADE_TIME_MINUTES)) return;
     state.player.cargo[commodity] -= amount;
     planet.stock[commodity] += amount;
+    recordLogisticsDelivery({
+        source: "colony_deposit",
+        sectorId: state.player.currentSector,
+        commodity,
+        amount
+    });
     log(`Deposited ${amount} ${formatCommodity(commodity)} at the colony.`);
 }
 

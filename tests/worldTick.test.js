@@ -28,6 +28,7 @@ describe('world tick phase order', () => {
                 'secure_payload_expiry',
                 'captain_daily_actions',
                 'social_entanglements',
+                'logistics_objectives',
                 'dialogue_memory_decay',
                 'dialogue_maintenance',
                 'daily_world_event'
