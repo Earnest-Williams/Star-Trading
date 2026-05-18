@@ -83,6 +83,10 @@ function isStateSliceArray(value) {
 }
 
 export function handleActionClick(event) {
+    if (event.type === 'keydown') {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        event.preventDefault();
+    }
     const target = event.target.closest('[data-action]');
     if (!target) return;
     const action = target.dataset.action;

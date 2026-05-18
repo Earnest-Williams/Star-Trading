@@ -7,6 +7,8 @@ import { Renderer } from "./renderer.js";
 import { showScreen, setReputationTab } from "./ui.js";
 import { getPlayerDataHoldSummary } from "../core/dataCargo.js";
 
+const CARGO_MINI_LIST_LIMIT = 5;
+
 export function getPriorityItems() {
     const { missions, planets, tradeRoutes, player, universe } = state;
     const items = [];
@@ -112,7 +114,7 @@ function renderCargoMiniList(player, ship) {
             quantity: player.cargo[commodity] || 0
         }))
         .filter(item => item.quantity > 0);
-    const visible = loaded.slice(0, 5);
+    const visible = loaded.slice(0, CARGO_MINI_LIST_LIMIT);
     const hiddenLoaded = Math.max(0, loaded.length - visible.length);
     const emptyCount = CARGO_COMMODITIES.length - loaded.length;
     let html = "";
@@ -150,10 +152,11 @@ function updateCaptainRail(player, ship) {
     updateCaptainRailWarning();
 }
 
-function updateCaptainRailWarning() {
+function updateCaptainRailWarning(items) {
     const warning = document.getElementById("captainRailWarning");
     if (!warning) return;
-    const urgentItems = getPriorityItems().filter(item => item.urgent);
+    const list = items || getPriorityItems();
+    const urgentItems = list.filter(item => item.urgent);
     warning.classList.toggle("active", urgentItems.length > 0);
     warning.title = urgentItems.length > 0 ? urgentItems[0].text : "No urgent priority items";
 }
@@ -195,7 +198,7 @@ export function renderFactionPanel() {
         const heat = getFactionHeat(id);
         const heatLabel = heat > 30 ? ` H${heat}` : "";
         const tooltip = `${faction.name}: ${faction.description} | ${getFactionLabel(rep)}${heatLabel}. Click for Network.`;
-        html += `<div class="faction-line faction-strip" data-action="showScreen" data-arg0="reputation" title="${escapeHtml(tooltip)}">`;
+        html += `<div class="faction-line faction-strip" role="button" tabindex="0" data-action="showScreen" data-arg0="reputation" title="${escapeHtml(tooltip)}">`;
         html += `<span class="faction-mark" style="color:${faction.color}"><span class="faction-icon">${faction.icon}</span>${faction.short}</span>`;
         html += `<span class="faction-bar"><span class="faction-fill" style="width:${getFactionBarPercent(rep)}%; background:${faction.color}"></span></span>`;
         html += `<span class="faction-label">${getFactionLabel(rep)}${heatLabel}</span></div>`;
@@ -252,7 +255,7 @@ function missionDescription(m) {
 
 export function renderPriorityFeed() {
     const items = getPriorityItems();
-    updateCaptainRailWarning();
+    updateCaptainRailWarning(items);
     const list = document.getElementById("priorityList");
     if (!list) return;
     if (items.length === 0) {
