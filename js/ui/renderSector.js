@@ -35,10 +35,30 @@ function renderLocalCompanies(sectorId) {
 }
 
 
+function formatCommandActionButton(action) {
+    const disabled = action.disabled ? " disabled" : "";
+    const argAttributes = (action.args || [])
+        .map((arg, index) => ` data-arg${index}="${escapeHtml(String(arg))}"`)
+        .join("");
+    return `<button data-action="${escapeHtml(action.action)}"${argAttributes}${disabled}>${escapeHtml(action.label)}</button>`;
+}
+
+function renderCommandAccordionSection(id, title, body, count = null) {
+    const countBadge = count === null ? "" : `<span class="accordion-count">${count}</span>`;
+    return `<section class="accordion-section is-open" data-accordion-id="${escapeHtml(id)}">`
+        + `<button class="accordion-header" type="button" data-accordion-toggle aria-expanded="true">`
+        + `<span>${escapeHtml(title)}</span>${countBadge}<span class="accordion-caret" aria-hidden="true">▾</span>`
+        + `</button>`
+        + `<div class="accordion-body">${body}</div>`
+        + `</section>`;
+}
+
 function renderLocalPeopleDialogueActions(sectorId) {
     const ids = state.peopleBySector?.[sectorId] || [];
     const people = ids.map(id => state.people?.[id]).filter(Boolean);
-    if (people.length === 0) return "";
+    if (people.length === 0) {
+        return `<div class="muted small">No local contacts broadcasting availability.</div>`;
+    }
     const defaultPartId = NPC_FINDABLE_PARTS[0] || "fujiwattit";
     const serviceButtons = [
         { service: "parts", label: "Source Part", arg2: defaultPartId },
@@ -46,28 +66,65 @@ function renderLocalPeopleDialogueActions(sectorId) {
         { service: "permits", label: "Request Permit", arg2: "local_access" },
         { service: "intel", label: "Ask for Intel", arg2: "local_activity" }
     ];
-    const sections = people.slice(0, 3).map(person => {
+    const serviceLabels = {
+        parts: "Parts",
+        orders: "Orders",
+        permits: "Permits",
+        intel: "Intel",
+        discounts: "Discounts"
+    };
+    return people.slice(0, 3).map(person => {
         const services = Array.isArray(person.services) ? person.services : [];
-        const buttons = serviceButtons
+        const actions = serviceButtons
             .filter(button => services.includes(button.service))
             .map(button => {
                 if (button.service === "parts") {
                     const actionState = getContactDialogueActionState(person.id, button.arg2);
-                    const disabled = actionState.disabled ? " disabled" : "";
-                    const action = actionState.action || "requestContactService";
-                    return `<button data-action="${escapeHtml(action)}" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(button.arg2)}"${disabled}>${escapeHtml(button.label)}</button>`;
+                    return {
+                        action: actionState.action || "requestContactService",
+                        args: [person.id, button.arg2],
+                        disabled: actionState.disabled,
+                        label: button.label
+                    };
                 }
-                return `<button data-action="requestContactService" data-arg0="${escapeHtml(person.id)}" data-arg1="${escapeHtml(button.service)}" data-arg2="${escapeHtml(button.arg2)}">${escapeHtml(button.label)}</button>`;
-            }).join("");
+                return {
+                    action: "requestContactService",
+                    args: [person.id, button.service, button.arg2],
+                    disabled: false,
+                    label: button.label
+                };
+            });
         const relationship = normaliseDialogueRelationship(person.relationships?.player || {});
         const canDeepen = relationship && relationship.familiarity >= MIN_DEEPEN_FAMILIARITY;
-        const deepenDisabled = canDeepen ? "" : " disabled";
-        const relationshipButtons = `<button data-action="startPersonalChat" data-arg0="${escapeHtml(person.id)}">Talk personally</button>`
-            + `<button data-action="deepenRelationship" data-arg0="${escapeHtml(person.id)}" data-arg1="stories"${deepenDisabled}>Talk more</button>`;
-        const allButtons = `${buttons}${relationshipButtons}`;
-        return `<div>${escapeHtml(person.name)}: ${allButtons}</div>`;
+        actions.push({
+            action: "startPersonalChat",
+            args: [person.id],
+            disabled: false,
+            label: "Talk personally"
+        });
+        actions.push({
+            action: "deepenRelationship",
+            args: [person.id, "stories"],
+            disabled: !canDeepen,
+            label: "Talk more"
+        });
+        const primaryAction = actions.find(action => !action.disabled) || actions[0];
+        const secondaryActions = actions.filter(action => action !== primaryAction);
+        const company = person.companyId ? state.companies?.[person.companyId] : null;
+        const roleLabel = company?.name || person.role || "Local contact";
+        const chips = services.length > 0
+            ? services.map(service => `<span class="service-chip">${escapeHtml(serviceLabels[service] || service)}</span>`).join("")
+            : `<span class="service-chip muted">Unlisted</span>`;
+        const secondaryHtml = secondaryActions.length > 0
+            ? `<button class="contact-more-toggle" type="button" aria-expanded="false">More</button>`
+                + `<div class="contact-secondary-actions" hidden>${secondaryActions.map(formatCommandActionButton).join("")}</div>`
+            : "";
+        return `<article class="contact-card">`
+            + `<div class="contact-card-header"><strong>${escapeHtml(person.name)}</strong><span class="muted">${escapeHtml(roleLabel)}</span></div>`
+            + `<div class="contact-service-chips">${chips}</div>`
+            + `<div class="contact-actions primary-action">${formatCommandActionButton(primaryAction)}${secondaryHtml}</div>`
+            + `</article>`;
     }).filter(Boolean).join("");
-    return sections ? `<div class="commodity-row"><strong>Local Contacts</strong><br>${sections}</div>` : "";
 }
 
 function renderDataFreshnessLine(sectorId) {
@@ -164,31 +221,57 @@ export function renderPlanetSummary(planet) {
 
 export function renderMenuPanel() {
     const { player, universe, ports, planets } = state;
-    let html = `<div><strong>Outbound Gates</strong></div>`;
-    getOutboundJumpGates(player.currentSector).forEach(gate => {
+    const outboundGates = getOutboundJumpGates(player.currentSector);
+    const gateCards = outboundGates.map(gate => {
         const target = gate.destinationSectorId;
         const s = universe[target];
+        if (!s) return "";
         const dominant = FACTIONS[getSectorFactionId(target)];
-        html += `<div class="nav-card"><strong>Site ${target}</strong> <span class="muted">${escapeHtml(getSiteTypeLabel(s.siteType))} / ${escapeHtml(s.region)}</span><br>`;
-        if (dominant) html += `<span style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span> `;
-        if (ports[target]) html += `Port `;
-        if (planets[target]) html += `Planet `;
-        if (s.asteroids) html += `Asteroids `;
-        if (s.pirateThreat > 0) html += `<span class="red">Pirates ${s.pirateThreat}</span>`;
+        const badges = [];
+        if (ports[target]) badges.push(`<span class="sector-chip">Port</span>`);
+        if (planets[target]) badges.push(`<span class="sector-chip">Planet</span>`);
+        if (s.asteroids) badges.push(`<span class="sector-chip">Asteroids</span>`);
+        if (s.pirateThreat > 0) badges.push(`<span class="sector-chip red">Pirates ${s.pirateThreat}</span>`);
         const gateLabel = escapeHtml(gate.id || gate.corridorId || `gate to ${target}`);
-        const span = typeof gate.effectiveSpanCost === "number" ? ` | span ${gate.effectiveSpanCost.toFixed(2)}` : "";
-        html += `<br><span class="muted">Gate ${gateLabel}${span}</span><br><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`;
-    });
-    html += `<div class="commodity-row"><strong>Menus</strong><div class="menu-grid">`;
-    html += `<button data-action="showScreen" data-arg0="sector">Sector</button>`;
-    html += `<button data-action="showScreen" data-arg0="missions">Missions</button>`;
-    html += `<button data-action="showScreen" data-arg0="logistics">Logistics</button>`;
-    html += `<button data-action="showScreen" data-arg0="reputation">Reputation</button>`;
-    if (ports[player.currentSector]) html += `<button data-action="showScreen" data-arg0="market">Market</button>`;
-    if (planets[player.currentSector]) html += `<button data-action="showScreen" data-arg0="colony">Colony</button>`;
-    if (state.world?.roles?.shipyardSiteId === player.currentSector) html += `<button data-action="showScreen" data-arg0="shipyard">Shipyard</button>`;
-    html += `</div></div>`;
-    html += renderLocalPeopleDialogueActions(player.currentSector);
+        const span = typeof gate.effectiveSpanCost === "number"
+            ? `<span class="sector-chip">Span ${gate.effectiveSpanCost.toFixed(2)}</span>`
+            : "";
+        const factionLabel = dominant
+            ? `<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${escapeHtml(dominant.short)}</span>`
+            : `<span class="sector-chip muted">Independent</span>`;
+        return `<article class="nav-card gate-card">`
+            + `<div class="gate-card-title"><strong>Site ${target}</strong><span class="muted">${escapeHtml(s.name || `Site ${target}`)}</span></div>`
+            + `<div class="gate-meta"><span class="sector-chip">${escapeHtml(getSiteTypeLabel(s.siteType))}</span><span class="sector-chip">${escapeHtml(s.region)}</span>${factionLabel}</div>`
+            + `<div class="gate-badges">${badges.join("") || `<span class="sector-chip muted">Deep Space</span>`}</div>`
+            + `<div class="gate-id-row"><span class="sector-chip">Gate ${gateLabel}</span>${span}</div>`
+            + `<div class="gate-actions"><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`
+            + `</article>`;
+    }).filter(Boolean).join("");
+    const gatesBody = gateCards || `<div class="muted small">No outbound jump gates registered.</div>`;
+
+    const contactsBody = renderLocalPeopleDialogueActions(player.currentSector);
+
+    const shortcuts = [
+        { screen: "sector", label: "◎ Sector", highlight: false },
+        { screen: "missions", label: "◇ Missions", highlight: false },
+        { screen: "logistics", label: "⇄ Logistics", highlight: false },
+        { screen: "reputation", label: "◬ Reputation", highlight: false }
+    ];
+    if (ports[player.currentSector]) shortcuts.push({ screen: "market", label: "◈ Market", highlight: true });
+    if (planets[player.currentSector]) shortcuts.push({ screen: "colony", label: "⬡ Colony", highlight: true });
+    if (state.world?.roles?.shipyardSiteId === player.currentSector) {
+        shortcuts.push({ screen: "shipyard", label: "✚ Shipyard", highlight: true });
+    }
+    const menusBody = `<div class="menu-grid command-shortcuts">`
+        + shortcuts.map(shortcut => {
+            const activeClass = shortcut.highlight ? " shortcut-available" : "";
+            return `<button class="shortcut-button${activeClass}" data-action="showScreen" data-arg0="${escapeHtml(shortcut.screen)}">${escapeHtml(shortcut.label)}</button>`;
+        }).join("")
+        + `</div>`;
+
+    const html = renderCommandAccordionSection("outbound-gates", "Outbound Gates", gatesBody, outboundGates.length)
+        + renderCommandAccordionSection("local-contacts", "Local Contacts", contactsBody, Math.min((state.peopleBySector?.[player.currentSector] || []).length, 3))
+        + renderCommandAccordionSection("menus", "Menus", menusBody, shortcuts.length);
     document.getElementById("commandList").innerHTML = html;
 }
 

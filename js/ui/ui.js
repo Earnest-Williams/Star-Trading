@@ -255,7 +255,8 @@ const rendererRegistrations = [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
         StateSlice.PORTS,
-        StateSlice.PLANETS
+        StateSlice.PLANETS,
+        StateSlice.DIALOGUE
     ]],
 
     ['acceptedMissions', renderAcceptedMissions, [
@@ -369,6 +370,37 @@ function bindLayoutControls() {
 
             Renderer.invalidate('map');
         });
+    });
+}
+
+function bindCommandConsoleControls() {
+    if (document.body.dataset.commandConsoleBound === '1') return;
+    document.body.dataset.commandConsoleBound = '1';
+
+    document.addEventListener('click', event => {
+        const accordionToggle = event.target.closest('[data-accordion-toggle]');
+        if (accordionToggle) {
+            event.preventDefault();
+            const section = accordionToggle.closest('.accordion-section');
+            const body = section?.querySelector('.accordion-body');
+            if (!section || !body) return;
+            const open = !section.classList.contains('is-open');
+            section.classList.toggle('is-open', open);
+            accordionToggle.setAttribute('aria-expanded', String(open));
+            body.hidden = !open;
+            return;
+        }
+
+        const contactToggle = event.target.closest('.contact-more-toggle');
+        if (!contactToggle) return;
+        event.preventDefault();
+        const card = contactToggle.closest('.contact-card');
+        const secondary = card?.querySelector('.contact-secondary-actions');
+        if (!card || !secondary) return;
+        const open = secondary.hidden;
+        secondary.hidden = !open;
+        contactToggle.setAttribute('aria-expanded', String(open));
+        contactToggle.textContent = open ? 'Less' : 'More';
     });
 }
 
@@ -542,6 +574,7 @@ export function initUI() {
     registerUIRenderers();
     registerUIActions();
     bindLayoutControls();
+    bindCommandConsoleControls();
     uiInitialized = true;
 }
 

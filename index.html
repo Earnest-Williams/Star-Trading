@@ -196,10 +196,14 @@
             <div class="right-sidebar panel">
                 <button id="btn-toggle-right-sidebar" class="sidebar-toggle" type="button" aria-controls="game" aria-expanded="true">Collapse Navigation</button>
                 <div class="sidebar-content">
-                <h3>Navigation</h3>
-                <div id="commandList" class="subpanel"></div>
-                <h3>Accepted Missions</h3>
-                <div id="acceptedMissions" class="subpanel"></div>
+                <h3>Command Console</h3>
+                <div id="commandList" class="subpanel command-stack"></div>
+                <section class="accordion-section subpanel is-open" data-accordion-id="accepted-missions">
+                    <button class="accordion-header" type="button" data-accordion-toggle aria-expanded="true">
+                        <span>Accepted Missions</span><span class="accordion-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div id="acceptedMissions" class="accordion-body"></div>
+                </section>
                 </div>
             </div>
         </div>
