@@ -76,6 +76,56 @@ h4 {
     gap: 10px;
 }
 
+#gameShell.layout-left-collapsed #game {
+    grid-template-columns: 44px minmax(0, 1fr) 300px;
+}
+
+#gameShell.layout-right-collapsed #game {
+    grid-template-columns: 240px minmax(0, 1fr) 44px;
+}
+
+#gameShell.layout-left-collapsed.layout-right-collapsed #game {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+}
+
+.left-sidebar,
+.right-sidebar,
+.main-viewport {
+    min-width: 0;
+}
+
+.left-sidebar,
+.right-sidebar {
+    align-self: start;
+    overflow: hidden;
+}
+
+.sidebar-toggle {
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 8px;
+    padding: 5px 4px;
+    line-height: 1.05;
+}
+
+#gameShell.layout-left-collapsed .left-sidebar,
+#gameShell.layout-right-collapsed .right-sidebar {
+    padding: 6px 4px;
+}
+
+#gameShell.layout-left-collapsed .left-sidebar .sidebar-content,
+#gameShell.layout-right-collapsed .right-sidebar .sidebar-content {
+    display: none;
+}
+
+#gameShell.layout-left-collapsed .left-sidebar .sidebar-toggle,
+#gameShell.layout-right-collapsed .right-sidebar .sidebar-toggle {
+    writing-mode: vertical-rl;
+    min-height: 130px;
+    margin: 0;
+    padding: 6px 2px;
+}
+
 .panel {
     position: relative;
     background: var(--bg-panel);
@@ -736,13 +786,18 @@ select:focus-visible {
     #notificationFeed {
         display: none;
     }
-    #game > .panel:first-child {
+    #gameShell.layout-left-collapsed #game,
+    #gameShell.layout-right-collapsed #game,
+    #gameShell.layout-left-collapsed.layout-right-collapsed #game {
+        grid-template-columns: 1fr;
+    }
+    .left-sidebar {
         order: 1;
     }
-    #game > div:nth-child(2) {
+    .main-viewport {
         order: 0;
     }
-    #game > .panel:last-child {
+    .right-sidebar {
         order: 2;
     }
     h1 {
