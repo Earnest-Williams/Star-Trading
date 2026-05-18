@@ -47,6 +47,7 @@ import {
     assignCaptainToRoute, unassignRouteEscort, getLogisticsNode
 } from '../systems/tradeRoutes.js';
 import { acceptMission, completeMission } from '../systems/missions.js';
+import { applyPlayerPropertyAction } from '../systems/properties.js';
 import { saveGame, loadGame } from '../core/persistence.js';
 import {
     acceptFactionAsk, completeFactionAsk, sellIntel, joinGuild, promoteGuild
@@ -363,6 +364,12 @@ export function registerUIActions() {
 
     // Combat
     registerAction('fightPirates', fightPirates);
+
+    // Properties
+    registerAction('propertyAction', (propertyId, actionId) => {
+        const result = applyPlayerPropertyAction(propertyId, actionId);
+        return result.ok ? stateChanged(StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false;
+    });
 
     // Trade routes
     registerAction('createTradeRoute', createTradeRoute);

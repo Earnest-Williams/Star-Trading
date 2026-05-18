@@ -29,7 +29,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Rent Ledger Discipline",
         description: "Improves rent, arrears, upkeep, and occupancy forecasting.",
-        effects: { rentForecastAccuracy: 1, arrearsVisibility: 1 }
+        effects: { rentForecastAccuracy: 1, arrearsVisibility: 1, propertyRoutineAutomation: 1 }
     }),
     vacancy_triage: skillNode({
         id: "vacancy_triage",
@@ -38,7 +38,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Vacancy Triage",
         description: "Strongly guides routine rent and tenant screening decisions.",
-        effects: { occupancyForecastAccuracy: 1, tenantScreeningBonus: 1 }
+        effects: { occupancyForecastAccuracy: 1, tenantScreeningBonus: 1, leaseTermAccuracy: 1 }
     }),
     pressure_valve_maintenance: skillNode({
         id: "pressure_valve_maintenance",
@@ -47,7 +47,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Pressure-Valve Maintenance",
         description: "Reduces routine condition decay and reveals repair priorities.",
-        effects: { propertyMaintenanceBonus: 1, conditionForecastAccuracy: 1 }
+        effects: { propertyMaintenanceBonus: 1, conditionForecastAccuracy: 1, infrastructureRiskReduction: 1 }
     }),
     favor_map: skillNode({
         id: "favor_map",
@@ -65,7 +65,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Debt Stack Modeling",
         description: "Improves refinance estimates and routine valuation guidance.",
-        effects: { propertyValuationBonus: 1, refinanceAccuracy: 1 }
+        effects: { propertyValuationBonus: 1, refinanceAccuracy: 1, debtPressureVisibility: 1 }
     }),
     bonded_storage_layout: skillNode({
         id: "bonded_storage_layout",
@@ -74,7 +74,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Bonded Storage Layout",
         description: "Finds better storage conversions without asking the player to solve the layout puzzle.",
-        effects: { storageYieldBonus: 1, conversionGuidance: 1 }
+        effects: { storageYieldBonus: 1, conversionGuidance: 1, storageDemandInsight: 1 }
     }),
     counterparty_read: skillNode({
         id: "counterparty_read",
@@ -83,7 +83,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Counterparty Read",
         description: "Improves deal quality and identifies routine traps in station brokerage.",
-        effects: { brokerageBonus: 1, contractRiskVisibility: 1 }
+        effects: { brokerageBonus: 1, contractRiskVisibility: 1, leaseTermAccuracy: 1 }
     }),
     lane_capacity_model: skillNode({
         id: "lane_capacity_model",
@@ -92,7 +92,7 @@ export const SKILL_NODES = Object.freeze({
         cost: 1,
         label: "Lane Capacity Model",
         description: "Connects property storage decisions to route pressure and service demand.",
-        effects: { routeReliabilityBonus: 1, storageDemandInsight: 1 }
+        effects: { routeReliabilityBonus: 1, storageDemandInsight: 1, propertyRoutineAutomation: 1 }
     }),
     source_confidence_index: skillNode({
         id: "source_confidence_index",
