@@ -1,7 +1,7 @@
 import { state, APP_MODES } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
 import { StateSlice, stateChanged } from './stateSlices.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE, UI_LABELS } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 import { executeAction, registerAction, resetActions } from '../core/commands.js';
 
@@ -400,7 +400,7 @@ function bindCommandConsoleControls() {
         const open = secondary.hidden;
         secondary.hidden = !open;
         contactToggle.setAttribute('aria-expanded', String(open));
-        contactToggle.textContent = open ? 'Less' : 'More';
+        contactToggle.textContent = open ? UI_LABELS.contactLessToggle : UI_LABELS.contactMoreToggle;
     });
 }
 

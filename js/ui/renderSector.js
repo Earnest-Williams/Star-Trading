@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES } from "../constants.js";
+import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS } from "../constants.js";
 import { getPortType } from "../core/ports.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
@@ -45,11 +45,13 @@ function formatCommandActionButton(action) {
 
 function renderCommandAccordionSection(id, title, body, count = null) {
     const countBadge = count === null ? "" : `<span class="accordion-count">${count}</span>`;
-    return `<section class="accordion-section is-open" data-accordion-id="${escapeHtml(id)}">`
-        + `<button class="accordion-header" type="button" data-accordion-toggle aria-expanded="true">`
+    const existing = document.querySelector(`.accordion-section[data-accordion-id="${CSS.escape(id)}"]`);
+    const isOpen = existing ? existing.classList.contains('is-open') : true;
+    return `<section class="accordion-section${isOpen ? " is-open" : ""}" data-accordion-id="${escapeHtml(id)}">`
+        + `<button class="accordion-header" type="button" data-accordion-toggle aria-expanded="${isOpen}">`
         + `<span>${escapeHtml(title)}</span>${countBadge}<span class="accordion-caret" aria-hidden="true">▾</span>`
         + `</button>`
-        + `<div class="accordion-body">${body}</div>`
+        + `<div class="accordion-body"${isOpen ? "" : " hidden=\"\""}>${body}</div>`
         + `</section>`;
 }
 
@@ -66,13 +68,6 @@ function renderLocalPeopleDialogueActions(sectorId) {
         { service: "permits", label: "Request Permit", arg2: "local_access" },
         { service: "intel", label: "Ask for Intel", arg2: "local_activity" }
     ];
-    const serviceLabels = {
-        parts: "Parts",
-        orders: "Orders",
-        permits: "Permits",
-        intel: "Intel",
-        discounts: "Discounts"
-    };
     return people.slice(0, 3).map(person => {
         const services = Array.isArray(person.services) ? person.services : [];
         const actions = serviceButtons
@@ -113,7 +108,7 @@ function renderLocalPeopleDialogueActions(sectorId) {
         const company = person.companyId ? state.companies?.[person.companyId] : null;
         const roleLabel = company?.name || person.role || "Local contact";
         const chips = services.length > 0
-            ? services.map(service => `<span class="service-chip">${escapeHtml(serviceLabels[service] || service)}</span>`).join("")
+            ? services.map(service => `<span class="service-chip">${escapeHtml(CONTACT_SERVICE_LABELS[service] || service)}</span>`).join("")
             : `<span class="service-chip muted">Unlisted</span>`;
         const secondaryHtml = secondaryActions.length > 0
             ? `<button class="contact-more-toggle" type="button" aria-expanded="false">More</button>`

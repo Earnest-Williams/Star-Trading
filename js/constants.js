@@ -552,6 +552,19 @@ export const NPC_FINDABLE_PART_DEFS = Object.freeze({
 export const NPC_FINDABLE_PARTS = Object.freeze(Object.keys(NPC_FINDABLE_PART_DEFS));
 export const DEBUG_MODE = true;
 
+export const CONTACT_SERVICE_LABELS = Object.freeze({
+    parts: "Parts",
+    orders: "Orders",
+    permits: "Permits",
+    intel: "Intel",
+    discounts: "Discounts"
+});
+
+export const UI_LABELS = Object.freeze({
+    contactMoreToggle: "More",
+    contactLessToggle: "Less"
+});
+
 export const FACTIONS = {
     sda: { id: "sda", type: "major", name: "StarDock Authority", short: "SDA", color: "#44aaff", icon: "★", description: "Core government enforcing law, traffic control, and StarDock access.", startingRep: 25 },
     fu: { id: "fu", type: "major", name: "Frontier Union", short: "FU", color: "#00ff88", icon: "☼", description: "Loose coalition of settlers, free ports, and frontier colonies.", startingRep: 15 },
