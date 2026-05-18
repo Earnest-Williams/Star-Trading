@@ -669,6 +669,10 @@ select:focus-visible {
     margin: 0 -2px;
 }
 
+.map-inspector-captains {
+    margin-top: 6px;
+}
+
 .map-inspector-actions {
     display: flex;
     flex-wrap: wrap;
@@ -683,8 +687,12 @@ select:focus-visible {
     margin: 0;
 }
 
-.map-inspector-empty {
+.map-inspector-overlay.map-inspector--empty {
     pointer-events: none;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    padding: 0;
 }
 .menu-grid {
     display: grid;

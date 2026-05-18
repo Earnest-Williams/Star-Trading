@@ -292,9 +292,11 @@ export function renderMapInspector() {
     const id = selectedSectorId || player.currentSector;
     const sector = universe[id];
     if (!sector) {
-        el.innerHTML = `<span class="muted map-inspector-empty">Select a sector on the map.</span>`;
+        el.classList.add("map-inspector--empty");
+        el.innerHTML = "";
         return;
     }
+    el.classList.remove("map-inspector--empty");
     const dominant = FACTIONS[getSectorFactionId(id)];
     const adjacent = getSectorNeighbors(player.currentSector).includes(id);
     const statusLabel = getSectorStatusLabel(id);
@@ -302,12 +304,7 @@ export function renderMapInspector() {
     if (sector.coord) factChips.push(`<span class="sector-chip">(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})</span>`);
     factChips.push(`<span class="sector-chip">${escapeHtml(getSiteTypeLabel(sector.siteType))}</span>`);
     factChips.push(`<span class="sector-chip">${escapeHtml(sector.region)}</span>`);
-    if (statusLabel === "Contested") {
-        factChips.push(`<span class="sector-chip amber">Political contest</span>`);
-    } else {
-        factChips.push(`<span class="sector-chip">${escapeHtml(statusLabel)}</span>`);
-    }
-    if (dominant) factChips.push(`<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${dominant.short}</span>`);
+    if (dominant) factChips.push(`<span class="sector-chip" style="color:${dominant.color}">${dominant.icon} ${escapeHtml(dominant.short)}</span>`);
     if (sector.localAuthority) factChips.push(`<span class="sector-chip">${escapeHtml(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId)}</span>`);
     if (state.companyIdsBySector?.[id]?.length) factChips.push(`<span class="sector-chip">Companies ${state.companyIdsBySector[id].length}</span>`);
     if (ports[id]) factChips.push(`<span class="sector-chip">Port: ${escapeHtml(getPortType(ports[id]).name)}</span>`);
@@ -317,9 +314,9 @@ export function renderMapInspector() {
     if (sector.pirateThreat > 0) factChips.push(`<span class="sector-chip red">Pirates ${sector.pirateThreat}</span>`);
     const routeCount = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === id || r.destinationSector === id)).length;
     if (routeCount > 0) factChips.push(`<span class="sector-chip green">Routes ${routeCount}</span>`);
-    factChips.push(renderCaptainChipsForSector(id));
     factChips.push(renderDataFreshnessChip(id));
 
+    const captainHtml = renderCaptainChipsForSector(id);
     let actionHtml = "";
     if (id === player.currentSector) {
         actionHtml = `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
@@ -336,5 +333,6 @@ export function renderMapInspector() {
         + `<span class="sector-chip map-inspector-status">${escapeHtml(statusLabel)}</span>`
         + `</div>`
         + `<div class="map-inspector-facts">${factChips.join("")}</div>`
+        + (captainHtml ? `<div class="map-inspector-captains">${captainHtml}</div>` : "")
         + `<div class="map-inspector-actions">${actionHtml}</div>`;
 }
