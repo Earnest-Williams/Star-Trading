@@ -42,6 +42,7 @@ const MAP_LAYER_DEFS = [
 ];
 let mapAnimationFrameId = 0;
 let mapAnimationTime = 0;
+let mapOverviewLastSig = '';
 
 export function invalidateMapProjectionCache() {
     mapProjectionSignature = '';
@@ -120,12 +121,6 @@ function getMapCamera() {
 }
 
 function getMapLayers() {
-    if (!state.mapLayers) state.mapLayers = {};
-    MAP_LAYER_DEFS.forEach(layer => {
-        if (typeof state.mapLayers[layer.key] !== "boolean") {
-            state.mapLayers[layer.key] = true;
-        }
-    });
     return state.mapLayers;
 }
 
@@ -148,8 +143,7 @@ function toggleMapLayerPanel() {
 
 function toggleMapHelp() {
     state.mapHelpOpen = !state.mapHelpOpen;
-    renderMapToolbar();
-    renderMapHelp();
+    Renderer.sliceChanged(StateSlice.MAP_VIEW);
 }
 
 function scheduleMapAnimationFrame() {
@@ -496,6 +490,10 @@ function renderMapHelp() {
 function drawMapOverview(ids, rect) {
     const canvas = document.getElementById("mapOverview");
     if (!canvas) return;
+    const viewport = getViewport();
+    const sig = `${viewport.scale}|${viewport.offsetX}|${viewport.offsetY}|${rect.width}|${rect.height}|${state.player.currentSector}|${state.selectedSectorId}|${ids.length}`;
+    if (sig === mapOverviewLastSig) return;
+    mapOverviewLastSig = sig;
     const ctx = canvas.getContext("2d");
     const overviewRect = prepareMapCanvas(canvas, ctx);
     ctx.clearRect(0, 0, overviewRect.width, overviewRect.height);
@@ -526,7 +524,6 @@ function drawMapOverview(ids, rect) {
         ctx.fill();
     });
 
-    const viewport = getViewport();
     const viewLeft = (-viewport.offsetX / viewport.scale) * scaleX + padding;
     const viewTop = (-viewport.offsetY / viewport.scale) * scaleY + padding;
     const viewWidth = (rect.width / viewport.scale) * scaleX;
@@ -536,9 +533,12 @@ function drawMapOverview(ids, rect) {
     ctx.strokeRect(viewLeft, viewTop, viewWidth, viewHeight);
 }
 
-export function drawMap() {
+export function renderMapOverlay() {
     renderMapToolbar();
     renderMapHelp();
+}
+
+export function drawMap() {
     const canvas = document.getElementById("map");
     if (!canvas) return;
     const { universe, planets, ports, player, selectedSectorId, starField, hoveredSectorId } = state;
@@ -818,8 +818,7 @@ export function setupMapInteraction() {
         if (event.key === "Escape") {
             if (state.mapHelpOpen) {
                 state.mapHelpOpen = false;
-                renderMapToolbar();
-                renderMapHelp();
+                Renderer.sliceChanged(StateSlice.MAP_VIEW);
                 return;
             }
             setMapExpanded(false);

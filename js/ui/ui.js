@@ -11,7 +11,7 @@ import {
     renderPriorityFeed, renderSectorActionMenu, renderActionHotbar, injectLogisticsModule
 } from './renderHUD.js';
 import { renderSectorContents, renderMenuPanel, renderMapInspector } from './renderSector.js';
-import { drawMap, selectSector } from './renderMap.js';
+import { drawMap, selectSector, renderMapOverlay } from './renderMap.js';
 import { renderMarketPanel } from './renderMarket.js';
 import { renderColonyPanel } from './renderColony.js';
 import { renderShipyardPanel, buyUpgrade, repairShip, buyFighters } from './renderShipyard.js';
@@ -290,6 +290,10 @@ const rendererRegistrations = [
         StateSlice.SELECTED_SECTOR,
         StateSlice.MAP_VIEW,
         StateSlice.DATA_CARGO
+    ]],
+
+    ['mapOverlay', renderMapOverlay, [
+        StateSlice.MAP_VIEW
     ]],
 
     ['mapInspector', renderMapInspector, [
