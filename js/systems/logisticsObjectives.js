@@ -242,9 +242,15 @@ export function normaliseLogisticsObjective(objective) {
 
 export function normaliseLogisticsObjectives() {
     if (!Array.isArray(state.logisticsObjectives)) state.logisticsObjectives = [];
+    const currentDay = getCurrentDay();
     state.logisticsObjectives = state.logisticsObjectives
         .map(objective => normaliseLogisticsObjective(objective))
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter(objective => {
+            if (!CLOSED_STATUSES.has(objective.status)) return true;
+            const age = Math.max(0, currentDay - finiteInteger(objective.lastEvaluatedDay, currentDay));
+            return age <= Math.max(0, finiteInteger(BALANCE.LOGISTICS_OBJECTIVE.CLOSED_OBJECTIVE_RETENTION_DAYS, 30));
+        });
     state.nextLogisticsObjectiveId = Math.max(
         finiteInteger(state.nextLogisticsObjectiveId, 1),
         state.logisticsObjectives.reduce((best, objective) => Math.max(best, objective.id + 1), 1)
@@ -568,10 +574,12 @@ export function runLogisticsObjectivesDaily() {
 
 function getObjectiveRouteRecommendations(objective) {
     const targetSectorId = objective.targetSectorId;
-    return Object.keys(state.ports)
-        .map(Number)
-        .concat(Object.keys(state.planets).map(Number))
-        .filter((sectorId, index, all) => sectorId !== targetSectorId && all.indexOf(sectorId) === index)
+    const sectorIds = new Set([
+        ...Object.keys(state.ports).map(Number),
+        ...Object.keys(state.planets).map(Number)
+    ]);
+    sectorIds.delete(targetSectorId);
+    return Array.from(sectorIds)
         .map(originSectorId => {
             const metrics = deriveRouteMetrics(originSectorId, targetSectorId);
             if (!metrics.path) return null;

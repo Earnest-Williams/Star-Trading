@@ -258,7 +258,7 @@ export function completeSecurePayload(payloadId) {
         source: "secure_delivery",
         sectorId: delivered.destinationSectorId,
         commodity: "eq",
-        amount: Math.max(1, Math.floor(delivered.value / 100)),
+        amount: Math.max(1, Math.floor(delivered.value / BALANCE.DATA_CARGO.SECURE_DELIVERY_LOGISTICS_AMOUNT_DIVISOR)),
         profit: delivered.value
     });
     addFactionRep(delivered.factionId, Math.max(BALANCE.DATA_CARGO.SECURE_DELIVERY_MIN_REP_GAIN, Math.floor(delivered.value / BALANCE.DATA_CARGO.SECURE_DELIVERY_VALUE_REP_DIVISOR)), 'secure courier delivery');

@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resetState, state } from '../js/state.js';
+import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
 import { initSessionRng } from '../js/utils.js';
 import { runTradeRoute } from '../js/systems/tradeRoutes.js';
@@ -87,6 +88,20 @@ describe('logistics objectives', () => {
 
         assert.equal(state.logisticsObjectives[0].id, 7);
         assert.equal(state.nextLogisticsObjectiveId, 20);
+    });
+
+    it('drops stale closed objectives while keeping recent and active ones', () => {
+        state.player.time.day = 50;
+        state.logisticsObjectives = [
+            { id: 1, templateId: 'shortage_relief_colony_org', targetSectorId: 3, status: 'completed', lastEvaluatedDay: 19 },
+            { id: 2, templateId: 'shortage_relief_colony_org', targetSectorId: 3, status: 'failed', lastEvaluatedDay: 20 },
+            { id: 3, templateId: 'shortage_relief_colony_org', targetSectorId: 3, status: 'active', lastEvaluatedDay: 1 }
+        ];
+
+        normaliseLogisticsObjectives();
+
+        assert.equal(BALANCE.LOGISTICS_OBJECTIVE.CLOSED_OBJECTIVE_RETENTION_DAYS, 30);
+        assert.deepEqual(state.logisticsObjectives.map(objective => objective.id), [2, 3]);
     });
 
     it('credits active objectives from completed real trade-route runs', () => {
