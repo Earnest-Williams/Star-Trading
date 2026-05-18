@@ -323,6 +323,51 @@ function registerUIRenderers() {
     );
 }
 
+function bindLayoutControls() {
+    const gameShell = document.getElementById('gameShell');
+    if (!gameShell) return;
+
+    const controls = [
+        {
+            id: 'btn-toggle-left-sidebar',
+            className: 'layout-left-collapsed',
+            expandedLabel: 'Collapse Captain',
+            collapsedLabel: 'Expand Captain'
+        },
+        {
+            id: 'btn-toggle-right-sidebar',
+            className: 'layout-right-collapsed',
+            expandedLabel: 'Collapse Navigation',
+            collapsedLabel: 'Expand Navigation'
+        }
+    ];
+
+    const syncControl = control => {
+        const button = document.getElementById(control.id);
+        if (!button) return;
+        const collapsed = gameShell.classList.contains(control.className);
+        button.textContent = collapsed ? control.collapsedLabel : control.expandedLabel;
+        button.setAttribute('aria-expanded', String(!collapsed));
+    };
+
+    controls.forEach(control => {
+        const button = document.getElementById(control.id);
+        if (!button) return;
+
+        syncControl(control);
+
+        if (button.dataset.layoutControlBound === '1') return;
+        button.dataset.layoutControlBound = '1';
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            gameShell.classList.toggle(control.className);
+            syncControl(control);
+
+            Renderer.invalidate('map');
+        });
+    });
+}
+
 // =====================================================
 // INJECT CROSS-MODULE DEPENDENCIES
 // =====================================================
@@ -492,6 +537,7 @@ export function initUI() {
     injectUIDependencies();
     registerUIRenderers();
     registerUIActions();
+    bindLayoutControls();
     uiInitialized = true;
 }
 

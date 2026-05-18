@@ -109,7 +109,9 @@
             <button id="top-shipyard" data-screen="shipyard">Shipyard</button>
         </div>
         <div id="game">
-            <div class="panel">
+            <div class="left-sidebar panel">
+                <button id="btn-toggle-left-sidebar" class="sidebar-toggle" type="button" aria-controls="game" aria-expanded="true">Collapse Captain</button>
+                <div class="sidebar-content">
                 <h3>Captain</h3>
                 <div><strong>Ship:</strong> <span id="shipName"></span></div>
                 <div>Credits: <span id="credits" class="green"></span></div>
@@ -138,9 +140,10 @@
                     <strong>Priority Briefing</strong>
                     <div id="nextStepsList"></div>
                 </div>
+                </div>
             </div>
 
-            <div>
+            <div class="main-viewport">
                 <div class="map-wrap">
                     <div class="map-stage">
                         <div class="map-toolbar"><button id="btn-center-map" type="button">Center on Current Sector</button></div>
@@ -157,11 +160,14 @@
                 <div class="log" id="log"></div>
             </div>
 
-            <div class="panel">
+            <div class="right-sidebar panel">
+                <button id="btn-toggle-right-sidebar" class="sidebar-toggle" type="button" aria-controls="game" aria-expanded="true">Collapse Navigation</button>
+                <div class="sidebar-content">
                 <h3>Navigation</h3>
                 <div id="commandList" class="subpanel"></div>
                 <h3>Accepted Missions</h3>
                 <div id="acceptedMissions" class="subpanel"></div>
+                </div>
             </div>
         </div>
     </div>
