@@ -272,30 +272,151 @@ export function renderPriorityFeed() {
     });
 }
 
-export function renderSectorActionMenu() {
-    const { player, universe, ports, planets } = state;
-    const sector = universe[player.currentSector];
-    const hasPort = Boolean(ports[player.currentSector]);
-    const hasPlanet = Boolean(planets[player.currentSector]);
-    let html = `<h4>Available Actions</h4><div class="card-grid">`;
-    const navigationButtons = player.ship
-        ? getSectorNeighbors(player.currentSector).map(target => `<button data-action="moveTo" data-arg0="${target}">Use Jump Gate ${target} (${player.ship.travelMinutesPerCorridor}m)</button>`).join("")
-        : '<span class="muted">No ship assigned. Property careers can operate locally until you hire transport or acquire a hull.</span>';
-    html += `<div class="card"><strong>Navigation</strong><br><span class="muted">Choose a direct jump corridor from the right panel or click the map.</span><br>${navigationButtons}</div>`;
-    html += `<div class="card"><strong>Survey</strong><br>Reveal hidden fronts, precise asteroid data, and better map intel.<br><button data-action="surveySector">Survey Sector (60m)</button></div>`;
-    if (hasPort) html += `<div class="card"><strong>Port</strong><br>Trade, missions, and local faction pressure.<br><button data-action="showScreen" data-arg0="market">Open Market</button></div>`;
-    if (sector.asteroids) html += `<div class="card"><strong>Asteroids</strong><br>Mine ore and shift industrial influence.<br><button data-action="mineAsteroids">Mine Asteroids (120m)</button></div>`;
-    if (hasPlanet) html += `<div class="card"><strong>Planet</strong><br>Found or manage colony politics and production.<br><button data-action="showScreen" data-arg0="colony">Open Colony Menu</button></div>`;
-    if (sector.pirateThreat > 0) html += `<div class="card"><strong>Pirates</strong><br>Clear threats, gain SDA favor, anger the Cartel.<br><button data-action="fightPirates">Fight Pirates (60m)</button></div>`;
-    if (player.currentSector === state.world?.roles?.shipyardSiteId) html += `<div class="card"><strong>Shipyard</strong><br>Upgrade, repair, and resupply.<br><button data-action="showScreen" data-arg0="shipyard">Open Shipyard</button></div>`;
+function renderHotbarButton(item) {
+    const attrs = [`class="action-hotbar-button${item.emphasis ? " is-primary" : ""}"`];
+    if (item.action) attrs.push(`data-action="${escapeHtml(item.action)}"`);
+    if (item.disabled) attrs.push("disabled");
+    (item.args || []).slice(0, 5).forEach((arg, index) => {
+        attrs.push(`data-arg${index}="${escapeHtml(String(arg))}"`);
+    });
+    const time = item.time ? `<span class="action-hotbar-time">${escapeHtml(item.time)}</span>` : "";
+    return `<button ${attrs.join(" ")}>`
+        + `<span class="action-hotbar-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`
+        + `<span class="action-hotbar-copy"><span class="action-hotbar-label">${escapeHtml(item.label)}</span>`
+        + `<span class="action-hotbar-subtitle">${escapeHtml(item.subtitle)}</span></span>`
+        + time
+        + `</button>`;
+}
 
-    // Lazy import for logistics check to avoid circular
+function getSectorHotbarItems() {
+    const { player, universe, ports, planets, selectedSectorId } = state;
+    const sector = universe[player.currentSector];
+    if (!sector) return [];
+
+    const neighbors = getSectorNeighbors(player.currentSector);
+    const selectedAdjacent = neighbors.includes(selectedSectorId);
+    const selectedSector = universe[selectedSectorId];
+    const navigationItem = selectedAdjacent
+        ? {
+            icon: "⇢",
+            label: `Gate S${selectedSectorId}`,
+            subtitle: selectedSector ? `Use jump gate to ${selectedSector.name}` : "Use selected jump gate",
+            time: player.ship ? `${player.ship.travelMinutesPerCorridor}m` : "No ship",
+            action: player.ship ? "moveTo" : null,
+            args: player.ship ? [selectedSectorId] : [],
+            disabled: !player.ship,
+            emphasis: Boolean(player.ship)
+        }
+        : {
+            icon: "◎",
+            label: "Navigation",
+            subtitle: neighbors.length > 0 ? "Pick a gate in the right console" : "No outbound gates",
+            action: "showScreen",
+            args: ["sector"],
+            disabled: neighbors.length === 0,
+            emphasis: true
+        };
+
+    const items = [
+        navigationItem,
+        {
+            icon: "◌",
+            label: "Survey",
+            subtitle: "Reveal local intel",
+            time: "60m",
+            action: "surveySector"
+        }
+    ];
+
+    if (ports[player.currentSector]) {
+        items.push({
+            icon: "◈",
+            label: "Market",
+            subtitle: "Port trading",
+            action: "showScreen",
+            args: ["market"]
+        });
+    }
+    if (sector.asteroids) {
+        items.push({
+            icon: "◆",
+            label: "Asteroids",
+            subtitle: "Mine ore",
+            time: "120m",
+            action: "mineAsteroids"
+        });
+    }
+    if (planets[player.currentSector]) {
+        items.push({
+            icon: "⬡",
+            label: "Colony",
+            subtitle: "Planet operations",
+            action: "showScreen",
+            args: ["colony"]
+        });
+    }
+    if (player.currentSector === state.world?.roles?.shipyardSiteId) {
+        items.push({
+            icon: "✚",
+            label: "Shipyard",
+            subtitle: "Repairs & upgrades",
+            action: "showScreen",
+            args: ["shipyard"]
+        });
+    }
+
     const { getLogisticsNode } = _logisticsModule;
     if (getLogisticsNode && getLogisticsNode(player.currentSector)) {
-        html += `<div class="card"><strong>Logistics</strong><br>Create persistent supply routes and hire convoy escorts.<br><button data-action="showScreen" data-arg0="logistics">Open Logistics</button></div>`;
+        items.push({
+            icon: "⇄",
+            label: "Logistics",
+            subtitle: "Routes & convoys",
+            action: "showScreen",
+            args: ["logistics"]
+        });
     }
-    html += `</div>`;
-    return html;
+    if (sector.pirateThreat > 0) {
+        items.push({
+            icon: "⚔",
+            label: "Pirates",
+            subtitle: `Threat ${sector.pirateThreat}`,
+            time: "60m",
+            action: "fightPirates"
+        });
+    }
+
+    return items;
+}
+
+export function renderActionHotbar() {
+    const el = document.getElementById("actionHotbar");
+    if (!el) return;
+    if (state.appMode !== "inGame" || state.currentScreen !== "sector" || !state.player) {
+        el.hidden = true;
+        el.innerHTML = "";
+        return;
+    }
+
+    const items = getSectorHotbarItems();
+    if (items.length === 0) {
+        el.hidden = true;
+        el.innerHTML = "";
+        return;
+    }
+
+    const primaryItems = items.slice(0, 7);
+    const overflowItems = items.slice(7);
+    const overflow = overflowItems.length > 0
+        ? `<details class="action-hotbar-more"><summary>More</summary><div class="action-hotbar-more-list">${overflowItems.map(renderHotbarButton).join("")}</div></details>`
+        : "";
+
+    el.hidden = false;
+    el.innerHTML = `<div class="action-hotbar-header"><span>Action Hotbar</span><span class="muted">Sector ${state.player.currentSector}</span></div>`
+        + `<div class="action-hotbar-list">${primaryItems.map(renderHotbarButton).join("")}${overflow}</div>`;
+}
+
+export function renderSectorActionMenu() {
+    return `<div class="sector-actions-note small muted">Primary sector actions are available in the bottom hotbar. Use the right command console for exact outbound gate selection and local contacts.</div>`;
 }
 
 // Injected by main.js to avoid circular: renderHUD.js → tradeRoutes → market → guilds → ...
