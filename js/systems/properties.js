@@ -313,7 +313,7 @@ export function getPropertyDemandSignals(property, context = {}) {
     return { ...market, signals };
 }
 
-function marketTenantBias(type, asset, market) {
+function marketTenantBias(type, asset, market, context = {}) {
     const profile = PROPERTY_TENANT_TYPES[type];
     let score = 0;
     if (profile.tags.includes("route")) score += market.routeOutages * 14 + market.highTradeVolume / 12;
@@ -321,7 +321,7 @@ function marketTenantBias(type, asset, market) {
     if (profile.tags.includes("commercial")) score += market.shortagePressure * 8;
     if (profile.tags.includes("import_export")) score += market.demandScore / 2;
     if (profile.tags.includes("black_market")) score += market.shortagePressure * 16 + market.piratePressure * 4;
-    if (profile.tags.includes("paperwork")) score += getPropertyInspectionExposure(asset, { market }).exposure * 0.4;
+    if (profile.tags.includes("paperwork")) score += (context.inspection || getPropertyInspectionExposure(asset, { market })).exposure * 0.4;
     if (asset.tags.includes("repair") && profile.tags.includes("repair")) score += 18;
     if (asset.tags.includes("warehouse") && profile.tags.includes("import_export")) score += 16;
     if (asset.tags.includes("berths") && profile.tags.includes("route")) score += 16;
@@ -332,7 +332,7 @@ export function scorePropertyTenant(property, tenant, character, context = {}) {
     const asset = normaliseProperty(property);
     const market = context.market || getPropertyMarketContext(asset, context);
     const candidate = normaliseTenantEntity(tenant);
-    const competencies = getPropertyCompetencies(character);
+    const competencies = context.competencies || getPropertyCompetencies(character);
     const baseScore = candidate.rentYield * 35
         + candidate.reliability * 0.55
         - candidate.disputeRisk * 55
@@ -343,7 +343,7 @@ export function scorePropertyTenant(property, tenant, character, context = {}) {
     const competencyClarity = (competencies.tradecraft + competencies.command) / 40;
     const score = Math.round(
         baseScore
-            + marketTenantBias(candidate.type, asset, market)
+            + marketTenantBias(candidate.type, asset, market, context)
             - inspectionPenalty
             + competencyClarity
     );
@@ -353,17 +353,17 @@ export function scorePropertyTenant(property, tenant, character, context = {}) {
 
 export function recommendPropertyTenantMix(property, character, context = {}) {
     const asset = normaliseProperty(property);
-    const market = getPropertyMarketContext(asset, context);
-    const competencies = getPropertyCompetencies(character);
+    const market = context.market || getPropertyMarketContext(asset, context);
+    const competencies = context.competencies || getPropertyCompetencies(character);
     const quality = getRecommendationQuality(competencies);
     const current = asset.tenants.map(tenant => scorePropertyTenant(
         asset,
         tenant,
         character,
-        { ...context, market }
+        { ...context, market, competencies }
     ));
     const candidates = Object.keys(PROPERTY_TENANT_TYPES)
-        .map(type => scorePropertyTenant(asset, { type }, character, { ...context, market }))
+        .map(type => scorePropertyTenant(asset, { type }, character, { ...context, market, competencies }))
         .sort((a, b) => b.score - a.score);
     const weakTenant = current.find(result => result.recommendation === "replace");
     const best = candidates[0];
@@ -658,7 +658,7 @@ export function getPropertyRecommendation(property, character, context = {}) {
     const economics = summarisePropertyEconomics(asset);
     const competencies = getPropertyCompetencies(character);
     const market = getPropertyMarketContext(asset, context);
-    const tenantPlan = recommendPropertyTenantMix(asset, character, { ...context, market });
+    const tenantPlan = recommendPropertyTenantMix(asset, character, { ...context, market, competencies });
     const candidates = [
         estimateRentPosture(asset, economics, market),
         estimateMaintenance(asset),
