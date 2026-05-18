@@ -311,8 +311,7 @@ function getSectorHotbarItems() {
             icon: "◎",
             label: "Navigation",
             subtitle: neighbors.length > 0 ? "Pick a gate in the right console" : "No outbound gates",
-            action: "showScreen",
-            args: ["sector"],
+            action: null,
             disabled: neighbors.length === 0,
             emphasis: true
         };
@@ -411,7 +410,7 @@ export function renderActionHotbar() {
         : "";
 
     el.hidden = false;
-    el.innerHTML = `<div class="action-hotbar-header"><span>Action Hotbar</span><span class="muted">Sector ${state.player.currentSector}</span></div>`
+    el.innerHTML = `<div class="action-hotbar-header"><span>Action Hotbar</span><span class="muted">Sector ${escapeHtml(String(state.player.currentSector))}</span></div>`
         + `<div class="action-hotbar-list">${primaryItems.map(renderHotbarButton).join("")}${overflow}</div>`;
 }
 
