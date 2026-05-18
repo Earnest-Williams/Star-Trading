@@ -8,7 +8,7 @@ import { executeAction, registerAction, resetActions } from '../core/commands.js
 // Render subsystems
 import {
     renderHeader, renderFactionPanel, renderAcceptedMissions,
-    renderPriorityFeed, renderSectorActionMenu, injectLogisticsModule
+    renderPriorityFeed, renderSectorActionMenu, renderActionHotbar, injectLogisticsModule
 } from './renderHUD.js';
 import { renderSectorContents, renderMenuPanel, renderMapInspector } from './renderSector.js';
 import { drawMap, selectSector } from './renderMap.js';
@@ -249,6 +249,17 @@ const rendererRegistrations = [
         StateSlice.DATA_CARGO,
         StateSlice.DIALOGUE,
         StateSlice.REPUTATION_TAB
+    ]],
+
+    ['actionHotbar', renderActionHotbar, [
+        StateSlice.APP_MODE,
+        StateSlice.CURRENT_SCREEN,
+        StateSlice.PLAYER,
+        StateSlice.UNIVERSE,
+        StateSlice.PORTS,
+        StateSlice.PLANETS,
+        StateSlice.TRADE_ROUTES,
+        StateSlice.SELECTED_SECTOR
     ]],
 
     ['menu', renderMenuPanel, [

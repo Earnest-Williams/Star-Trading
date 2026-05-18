@@ -835,6 +835,143 @@ select:focus-visible {
     border: var(--border-thin) solid var(--line);
     padding: 10px;
 }
+
+.action-hotbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-top: 10px;
+    padding: 8px;
+    background: linear-gradient(180deg, rgba(17, 26, 32, 0.96), rgba(3, 5, 6, 0.98));
+    box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.34);
+}
+
+.action-hotbar[hidden] {
+    display: none;
+}
+
+.action-hotbar-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 2px 6px;
+    color: var(--text-primary);
+    font-size: 0.82em;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.action-hotbar-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 6px;
+    align-items: stretch;
+}
+
+.action-hotbar-button {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: center;
+    width: 100%;
+    min-height: 58px;
+    margin: 0;
+    padding: 6px 8px;
+    border-color: var(--line);
+    background: var(--bg-deck);
+    text-align: left;
+}
+
+.action-hotbar-button.is-primary {
+    border-color: var(--accent-green);
+    box-shadow: inset 0 0 0 1px var(--line), 0 0 10px rgba(57, 255, 20, 0.14);
+}
+
+.action-hotbar-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.action-hotbar-button:disabled:hover,
+.action-hotbar-button:disabled:focus-visible {
+    background: var(--bg-deck);
+    border-color: var(--line);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.action-hotbar-icon {
+    color: var(--accent-cyan);
+    font-size: 1.55em;
+    line-height: 1;
+}
+
+.action-hotbar-copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+}
+
+.action-hotbar-label,
+.action-hotbar-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.action-hotbar-label {
+    color: var(--text-primary);
+    font-size: 0.96em;
+    letter-spacing: 0.1em;
+}
+
+.action-hotbar-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+    text-transform: none;
+}
+
+.action-hotbar-time {
+    align-self: start;
+    border: 1px solid var(--line-dim);
+    padding: 0 5px;
+    color: var(--accent-amber);
+    font-size: 0.78em;
+    letter-spacing: 0.06em;
+}
+
+.action-hotbar-more {
+    position: relative;
+    min-width: 128px;
+}
+
+.action-hotbar-more summary {
+    display: grid;
+    place-items: center;
+    min-height: 58px;
+    border: var(--border-thin) solid var(--line);
+    background: var(--bg-deck);
+    color: var(--text-primary);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.action-hotbar-more-list {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    display: grid;
+    min-width: 220px;
+    gap: 6px;
+    padding: 6px;
+    border: var(--border-thin) solid var(--line);
+    background: var(--bg-panel);
+    box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.35);
+}
+
 .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1239,6 +1376,15 @@ select:focus-visible {
     .tab-button {
         min-width: 104px;
         flex: 0 0 auto;
+    }
+    .action-hotbar-list {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+    .action-hotbar-button,
+    .action-hotbar-more {
+        flex: 0 0 178px;
     }
     #newGamePanel label,
     #newGamePanel .advanced-settings {
