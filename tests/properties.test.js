@@ -11,10 +11,15 @@ import {
     applyPlayerPropertyAction,
     evaluateDelegatedPropertyFreight,
     getAvailablePropertyActions,
+    getCompanyLeasingNeeds,
+    getPropertyCompanyTenantMatches,
     getPropertyDemandSignals,
     getPropertyInspectionExposure,
     getPropertyRecommendation,
+    getPropertySupplyChainContext,
+    getPropertyTenantEconomicEffects,
     getPropertyTenantHooks,
+    getStationaryPropertyContracts,
     normaliseProperty,
     recommendPropertyTenantMix,
     resolvePropertyAction,
@@ -489,6 +494,121 @@ describe('property simulation integrations', () => {
         assert.equal(Number.isNaN(signals.demandScore), false);
         assert.equal(Number.isNaN(inspection.exposure), false);
         assert.equal(freight.amount, 25);
+    });
+
+
+    it('makes property demand supply-chain aware by port type', () => {
+        const refineryWarehouse = integratedProperty({
+            siteId: 3,
+            kind: 'warehouse',
+            tags: ['warehouse', 'bonded_storage']
+        });
+        state.universe[3] = { id: 3, jumpGates: [], pirateThreat: 0, region: 'Core' };
+        state.ports[3] = {
+            typeKey: 'refinery',
+            stock: { ore: 100, water_ice: 40, control_cores: 20, refined_metals: 5000 },
+            maxStock: { ore: 5000, water_ice: 5000, control_cores: 1000, refined_metals: 5000 },
+            basePrices: {}
+        };
+
+        const chain = getPropertySupplyChainContext(refineryWarehouse);
+
+        assert.equal(chain.portTypeKey, 'refinery');
+        assert.ok(chain.focusCommodities.includes('ore'));
+        assert.ok(chain.focusCommodities.includes('control_cores'));
+        assert.ok(chain.relevantShortages.includes('water_ice'));
+        assert.ok(chain.storagePressure > 0);
+    });
+
+    it('matches tenant demand profiles to nearby company commodity chains', () => {
+        state.companies = {
+            refinery: {
+                id: 'refinery',
+                name: 'Helion Factors',
+                type: 'refinery_operator',
+                sectorId: 1,
+                orderProfile: {
+                    productionProfile: {
+                        inputs: ['ore', 'water_ice', 'control_cores'],
+                        outputs: ['refined_metals', 'polymers']
+                    }
+                }
+            }
+        };
+        state.companyIdsBySector = { 1: ['refinery'] };
+        const matches = getPropertyCompanyTenantMatches(
+            integratedProperty({ tags: ['warehouse', 'bonded_storage'] }),
+            integratedPropertyCharacter({ acumen: 92, tradecraft: 90, command: 88 })
+        );
+
+        assert.equal(matches[0].tenantType, 'refinery_tenants');
+        assert.ok(matches[0].needs.includes('input_storage'));
+        assert.ok(matches[0].score >= 72);
+    });
+
+    it('derives production-profile leasing needs from companies', () => {
+        const dockyardNeeds = getCompanyLeasingNeeds({
+            id: 'dockyard',
+            name: 'Kepler Works',
+            type: 'dockyard'
+        });
+        const importerNeeds = getCompanyLeasingNeeds({
+            id: 'importer',
+            name: 'Bluewake Exchange',
+            type: 'import_export'
+        });
+
+        assert.ok(dockyardNeeds.inputs.includes('gate_coils') || dockyardNeeds.outputs.includes('gate_coils'));
+        assert.ok(dockyardNeeds.needs.includes('berth_access'));
+        assert.ok(dockyardNeeds.needs.includes('repair_access'));
+        assert.ok(importerNeeds.needs.includes('bonded_cargo_services'));
+    });
+
+    it('applies tenant profiles to rent, upkeep, reputation, and contract flow', () => {
+        const base = summarisePropertyEconomics(integratedProperty());
+        const commercial = summarisePropertyEconomics(integratedProperty({
+            tenants: [{ type: 'company_agents' }, { type: 'dockyard_tenants' }]
+        }));
+        const effects = getPropertyTenantEconomicEffects(integratedProperty({
+            tenants: [{ type: 'company_agents' }, { type: 'dockyard_tenants' }]
+        }));
+
+        assert.ok(commercial.grossRent > base.grossRent);
+        assert.ok(commercial.upkeep > base.upkeep);
+        assert.ok(effects.contractFlow > 0.6);
+        assert.ok(effects.reputationEffect > 0);
+    });
+
+    it('raises inspection exposure for risky supply-chain tenants', () => {
+        const quiet = getPropertyInspectionExposure(integratedProperty({ tenants: [{ type: 'clerks' }] }));
+        const risky = getPropertyInspectionExposure(integratedProperty({
+            tenants: [{ type: 'black_market_tenants' }],
+            tags: ['warehouse', 'bonded_storage']
+        }));
+
+        assert.ok(risky.exposure > quiet.exposure);
+        assert.match(risky.band, /routine|elevated|severe/);
+    });
+
+    it('generates stationary delegated logistics contracts from storage and route pressure', () => {
+        state.companies = {
+            importer: {
+                id: 'importer',
+                name: 'Aster Exchange',
+                type: 'import_export',
+                sectorId: 1
+            }
+        };
+        state.companyIdsBySector = { 1: ['importer'] };
+        const contracts = getStationaryPropertyContracts(
+            integratedProperty({ tags: ['warehouse', 'bonded_storage', 'berths'], storedGoods: { ore: 40 } }),
+            integratedPropertyCharacter({ acumen: 94, tradecraft: 92, command: 90, nerve: 82 })
+        );
+
+        assert.ok(contracts.some(contract => contract.type === 'reserve_storage'));
+        assert.ok(contracts.some(contract => contract.type === 'finance_input_shipment'));
+        assert.ok(contracts.some(contract => contract.type === 'delegated_logistics'));
+        assert.ok(contracts[0].score >= contracts[contracts.length - 1].score);
     });
 
     it('evaluates delegated freight outcomes from route, captain, and character quality', () => {

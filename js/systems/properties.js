@@ -1,4 +1,7 @@
 import { PLATFORM_PACKAGES } from '../config/chargen.js';
+import { COMMODITY_NAMES, PORT_TYPES } from '../constants.js';
+import { COMPANY_PRODUCTION_PROFILES } from '../config/companies.js';
+import { getPortType, normalisePortTypeKey } from '../core/ports.js';
 import {
     PROPERTY_ACTIONS,
     PROPERTY_ACTION_LIST,
@@ -56,6 +59,16 @@ function normaliseTenantEntity(tenant = {}, index = 0) {
         rentYield: nonNegativeNumber(source.rentYield, profile.rentYield),
         disputeRisk: clamp(finiteNumber(source.disputeRisk, profile.disputeRisk), 0, 1),
         serviceDemand: clamp(finiteNumber(source.serviceDemand, profile.serviceDemand), 0, 1),
+        inspectionRisk: clamp(finiteNumber(source.inspectionRisk, profile.inspectionRisk || 0), -1, 1),
+        maintenanceLoad: clamp(finiteNumber(source.maintenanceLoad, profile.maintenanceLoad || 0), 0, 1),
+        reputationEffect: clamp(finiteNumber(source.reputationEffect, profile.reputationEffect || 0), -1, 1),
+        contractFlow: clamp(finiteNumber(source.contractFlow, profile.contractFlow || 0), 0, 1),
+        commodityFocus: Array.isArray(source.commodityFocus)
+            ? source.commodityFocus.slice()
+            : Array.from(profile.commodityFocus || []),
+        leasingNeeds: Array.isArray(source.leasingNeeds)
+            ? source.leasingNeeds.slice()
+            : Array.from(profile.leasingNeeds || []),
         tags: Array.isArray(source.tags) ? source.tags.slice() : profile.tags.slice()
     };
 }
@@ -129,13 +142,62 @@ export function createStartingProperties(platformType, context = {}) {
     return property ? [property] : [];
 }
 
+export function getPropertyTenantEconomicEffects(property) {
+    const asset = normaliseProperty(property);
+    if (asset.tenants.length === 0) {
+        return {
+            rentMultiplier: 1,
+            serviceDemand: 0,
+            maintenanceLoad: 0,
+            inspectionRisk: 0,
+            contractFlow: 0,
+            reputationEffect: 0,
+            upkeepDaily: 0
+        };
+    }
+    const tenantCount = asset.tenants.length;
+    const totals = asset.tenants.reduce((summary, tenant) => ({
+        rentYield: summary.rentYield + tenant.rentYield,
+        serviceDemand: summary.serviceDemand + tenant.serviceDemand,
+        maintenanceLoad: summary.maintenanceLoad + tenant.maintenanceLoad,
+        inspectionRisk: summary.inspectionRisk + tenant.inspectionRisk,
+        contractFlow: summary.contractFlow + tenant.contractFlow,
+        reputationEffect: summary.reputationEffect + tenant.reputationEffect
+    }), {
+        rentYield: 0,
+        serviceDemand: 0,
+        maintenanceLoad: 0,
+        inspectionRisk: 0,
+        contractFlow: 0,
+        reputationEffect: 0
+    });
+    const serviceSlotBuffer = Math.min(tenantCount, asset.serviceSlots) * 0.08;
+    const averageServiceDemand = totals.serviceDemand / tenantCount;
+    const averageMaintenanceLoad = totals.maintenanceLoad / tenantCount;
+    const upkeepDaily = roundMoney(
+        tenantCount * 6
+            + Math.max(0, averageServiceDemand - serviceSlotBuffer) * 18
+            + averageMaintenanceLoad * Math.max(8, asset.units * 3)
+    );
+    return {
+        rentMultiplier: clamp(totals.rentYield / tenantCount, 0.55, 1.8),
+        serviceDemand: roundMoney(averageServiceDemand),
+        maintenanceLoad: roundMoney(averageMaintenanceLoad),
+        inspectionRisk: roundMoney(totals.inspectionRisk / tenantCount),
+        contractFlow: roundMoney(totals.contractFlow / tenantCount),
+        reputationEffect: roundMoney(totals.reputationEffect / tenantCount),
+        upkeepDaily
+    };
+}
+
 export function summarisePropertyEconomics(property) {
     const asset = normaliseProperty(property);
-    const grossRent = roundMoney(asset.units * asset.rentDaily * asset.occupancy);
-    const upkeep = roundMoney(asset.upkeepDaily);
+    const tenantEffects = getPropertyTenantEconomicEffects(asset);
+    const grossRent = roundMoney(asset.units * asset.rentDaily * asset.occupancy * tenantEffects.rentMultiplier);
+    const upkeep = roundMoney(asset.upkeepDaily + tenantEffects.upkeepDaily);
     const debt = roundMoney(asset.debtDaily);
     const netIncome = roundMoney(grossRent - upkeep - debt);
-    return { grossRent, upkeep, debt, netIncome };
+    return { grossRent, upkeep, debt, netIncome, tenantEffects };
 }
 
 export function tickPropertyDaily(property) {
@@ -143,7 +205,11 @@ export function tickPropertyDaily(property) {
     const economics = summarisePropertyEconomics(asset);
     const rentPressure = asset.rentPosture === "high" ? PROPERTY_DEFAULTS.HIGH_RENT_OCCUPANCY_DRAG
         : asset.rentPosture === "low" ? -PROPERTY_DEFAULTS.LOW_RENT_OCCUPANCY_GAIN : 0;
-    const conditionDecay = PROPERTY_DEFAULTS.DAILY_CONDITION_DECAY + Math.max(0, 70 - asset.condition) / 2000;
+    const tenantEffects = economics.tenantEffects || getPropertyTenantEconomicEffects(asset);
+    const tenantMaintenanceDecay = tenantEffects.maintenanceLoad * 0.025;
+    const conditionDecay = PROPERTY_DEFAULTS.DAILY_CONDITION_DECAY
+        + tenantMaintenanceDecay
+        + Math.max(0, 70 - asset.condition) / 2000;
     const nextCondition = clamp(asset.condition - conditionDecay, PROPERTY_DEFAULTS.CONDITION_MIN, PROPERTY_DEFAULTS.CONDITION_MAX);
     const conditionOccupancyDrag = asset.condition < 45 ? 0.01 : asset.condition > 80 ? -0.004 : 0;
     const nextOccupancy = clamp(asset.occupancy - rentPressure - conditionOccupancyDrag, PROPERTY_DEFAULTS.OCCUPANCY_MIN, PROPERTY_DEFAULTS.OCCUPANCY_MAX);
@@ -302,15 +368,184 @@ function getPropertyMarketContext(property, context = {}) {
     };
 }
 
+function uniqueList(values) {
+    return Array.from(new Set(values.filter(value => typeof value === "string" && value.length > 0)));
+}
+
+function intersectCount(left, right) {
+    const rightSet = new Set(right);
+    return uniqueList(left).filter(value => rightSet.has(value)).length;
+}
+
+function commodityLabel(commodity) {
+    return COMMODITY_NAMES[commodity] || commodity.replaceAll("_", " ");
+}
+
+function getConnectedSiteIds(siteId, sector) {
+    const gates = Array.isArray(sector?.jumpGates) ? sector.jumpGates : [];
+    return Array.from(new Set(
+        gates
+            .map(gate => Number(gate.destinationSectorId))
+            .concat([siteId])
+            .filter(id => Number.isFinite(id))
+    ));
+}
+
+function getLocalCompanies(siteId, sector, source) {
+    if (Array.isArray(source.companies)) return source.companies.filter(Boolean);
+    const companies = state.companies || {};
+    const idsBySector = state.companyIdsBySector || {};
+    const connectedSiteIds = getConnectedSiteIds(siteId, sector);
+    const ids = connectedSiteIds.flatMap(id => idsBySector[id] || []);
+    return ids.map(id => companies[id]).filter(Boolean);
+}
+
+function companyProductionProfile(company) {
+    const profile = company?.orderProfile?.productionProfile;
+    if (profile) {
+        return {
+            inputs: uniqueList(profile.inputs || []),
+            outputs: uniqueList(profile.outputs || []),
+            mode: profile.mode || COMPANY_PRODUCTION_PROFILES[company.type]?.mode || "commerce"
+        };
+    }
+    const configured = COMPANY_PRODUCTION_PROFILES[company?.type] || COMPANY_PRODUCTION_PROFILES.import_export;
+    return {
+        inputs: uniqueList(configured.inputs || []),
+        outputs: uniqueList(configured.outputs || []),
+        mode: configured.mode || "commerce"
+    };
+}
+
+export function getCompanyLeasingNeeds(company) {
+    const profile = companyProductionProfile(company);
+    const type = company?.type || "import_export";
+    const needs = ["office_space"];
+    if (profile.inputs.length > 0) needs.push("input_storage");
+    if (profile.outputs.length > 0) needs.push("output_storage");
+    if (["haulage", "import_export", "dockyard", "ship_refitter"].includes(type)) {
+        needs.push("berth_access");
+    }
+    if (["haulage", "dockyard", "ship_refitter", "security_contractor"].includes(type)) {
+        needs.push("repair_access");
+    }
+    if (["import_export", "black_market_front"].includes(type)) {
+        needs.push("bonded_cargo_services");
+    }
+    if (["dockyard", "black_market_front", "security_contractor"].includes(type)) {
+        needs.push("security");
+    }
+    needs.push("staff_housing");
+    return {
+        companyId: company?.id || null,
+        companyName: company?.name || "Unlisted Company",
+        companyType: type,
+        productionMode: profile.mode,
+        inputs: profile.inputs,
+        outputs: profile.outputs,
+        needs: uniqueList(needs)
+    };
+}
+
+function getAssetCommodityFocus(asset, port, portTypeKey) {
+    const portType = port ? getPortType(port) : PORT_TYPES[portTypeKey] || PORT_TYPES.consumer;
+    let focus = [];
+    if (asset.kind === "warehouse" || asset.tags.includes("warehouse")) {
+        focus = focus.concat(portType.buys || [], portType.sells || []);
+    }
+    if (asset.kind === "repair_bay" || asset.tags.includes("repair")) {
+        focus = focus.concat(["repair_parts", "electronics", "machinery", "construction_kits", "control_cores", "gate_coils"]);
+    }
+    if (asset.kind === "market_arcade" || asset.tags.includes("retail")) {
+        focus = focus.concat(["medical_supplies", "eq", "electronics", "org", "water_ice"]);
+    }
+    if (asset.tags.includes("berths")) {
+        focus = focus.concat(["repair_parts", "pulse_canister", "gate_coils", "control_cores"]);
+    }
+    if (asset.kind === "tenement" || asset.tags.includes("residential")) {
+        focus = focus.concat(["water_ice", "org", "medical_supplies", "eq"]);
+    }
+    return uniqueList(focus.length > 0 ? focus : (portType.buys || []).concat(portType.sells || []));
+}
+
+function getShortageAndSurplus(port) {
+    if (!port) return { shortages: [], surplus: [] };
+    const commodities = uniqueList(Object.keys({ ...(port.stock || {}), ...(port.maxStock || {}) }));
+    const shortages = [];
+    const surplus = [];
+    commodities.forEach(commodity => {
+        const maxStock = Math.max(1, finiteNumber(port.maxStock?.[commodity], 1));
+        const ratio = nonNegativeNumber(port.stock?.[commodity]) / maxStock;
+        if (ratio < 0.32) shortages.push(commodity);
+        if (ratio > 0.82) surplus.push(commodity);
+    });
+    return { shortages, surplus };
+}
+
+function routePressureCommodities(routes, siteId) {
+    return uniqueList(routes
+        .filter(route => route && (route.originSector === siteId || route.destinationSector === siteId))
+        .filter(route => route.status === "paused" || route.status === "closed" || nonNegativeNumber(route.starvedDays) > 0)
+        .map(route => route.commodity));
+}
+
+export function getPropertySupplyChainContext(property, context = {}) {
+    const asset = normaliseProperty(property);
+    const source = context && typeof context === "object" ? context : {};
+    const market = source.market || getPropertyMarketContext(asset, source);
+    const port = market.port;
+    const portTypeKey = port ? normalisePortTypeKey(port) : "consumer";
+    const portType = port ? getPortType(port) : PORT_TYPES[portTypeKey] || PORT_TYPES.consumer;
+    const stock = getShortageAndSurplus(port);
+    const routePressure = routePressureCommodities(market.localRoutes, market.siteId);
+    const companies = getLocalCompanies(market.siteId, market.sector, source);
+    const companyNeeds = companies.map(company => getCompanyLeasingNeeds(company));
+    const companyInputs = uniqueList(companyNeeds.flatMap(need => need.inputs));
+    const companyOutputs = uniqueList(companyNeeds.flatMap(need => need.outputs));
+    const focusCommodities = getAssetCommodityFocus(asset, port, portTypeKey);
+    const relevantShortages = uniqueList(stock.shortages.filter(commodity => focusCommodities.includes(commodity)));
+    const relevantRoutePressure = uniqueList(routePressure.filter(commodity => focusCommodities.includes(commodity)));
+    const companyStorageDemand = companyNeeds.reduce((total, need) => {
+        const storageNeeds = intersectCount(need.needs, ["input_storage", "output_storage", "bonded_cargo_services"]);
+        const commodityOverlap = intersectCount(focusCommodities, need.inputs.concat(need.outputs));
+        return total + storageNeeds * 8 + commodityOverlap * 4;
+    }, 0);
+    const storagePressure = Math.round(
+        relevantShortages.length * 14
+            + relevantRoutePressure.length * 16
+            + stock.surplus.filter(commodity => focusCommodities.includes(commodity)).length * 8
+            + companyStorageDemand
+    );
+    return {
+        portTypeKey,
+        portTypeName: portType.name,
+        buyLanes: (portType.buys || []).slice(),
+        sellLanes: (portType.sells || []).slice(),
+        shortages: stock.shortages,
+        surplus: stock.surplus,
+        routePressureCommodities: routePressure,
+        focusCommodities,
+        relevantShortages,
+        relevantRoutePressure,
+        companyNeeds,
+        companyInputs,
+        companyOutputs,
+        storagePressure
+    };
+}
+
 export function getPropertyDemandSignals(property, context = {}) {
     const market = getPropertyMarketContext(property, context);
+    const supplyChain = getPropertySupplyChainContext(property, { ...context, market });
     const signals = [];
     if (market.cargoOverflow > 0) signals.push("cargo overflow");
     if (market.shortagePressure > 0) signals.push("local shortages");
     if (market.routeOutages > 0) signals.push("route outages");
     if (market.piratePressure > 0) signals.push("pirate pressure");
     if (market.highTradeVolume > 0) signals.push("trade volume");
-    return { ...market, signals };
+    if (supplyChain.storagePressure > 0) signals.push("supply-chain storage pressure");
+    if (supplyChain.companyNeeds.length > 0) signals.push("company leasing demand");
+    return { ...market, supplyChain, signals };
 }
 
 function marketTenantBias(type, asset, market, context = {}) {
@@ -321,6 +556,10 @@ function marketTenantBias(type, asset, market, context = {}) {
     if (profile.tags.includes("commercial")) score += market.shortagePressure * 8;
     if (profile.tags.includes("import_export")) score += market.demandScore / 2;
     if (profile.tags.includes("black_market")) score += market.shortagePressure * 16 + market.piratePressure * 4;
+    const supplyChain = context.supplyChain || getPropertySupplyChainContext(asset, { ...context, market });
+    score += intersectCount(profile.commodityFocus || [], supplyChain.focusCommodities) * 5;
+    score += intersectCount(profile.commodityFocus || [], supplyChain.relevantShortages) * 7;
+    score += intersectCount(profile.leasingNeeds || [], supplyChain.companyNeeds.flatMap(need => need.needs)) * 4;
     if (profile.tags.includes("paperwork")) score += (context.inspection || getPropertyInspectionExposure(asset, { market })).exposure * 0.4;
     if (asset.tags.includes("repair") && profile.tags.includes("repair")) score += 18;
     if (asset.tags.includes("warehouse") && profile.tags.includes("import_export")) score += 16;
@@ -335,7 +574,10 @@ export function scorePropertyTenant(property, tenant, character, context = {}) {
     const competencies = context.competencies || getPropertyCompetencies(character);
     const baseScore = candidate.rentYield * 35
         + candidate.reliability * 0.55
+        + candidate.contractFlow * 18
+        + candidate.reputationEffect * 20
         - candidate.disputeRisk * 55
+        - candidate.maintenanceLoad * Math.max(0, 14 - asset.condition / 8)
         - candidate.serviceDemand * Math.max(0, 10 - asset.serviceSlots * 5);
     const inspectionPenalty = candidate.tags.includes("inspection_risk")
         ? getPropertyInspectionExposure(asset, { market }).exposure * 0.18
@@ -408,10 +650,11 @@ export function getPropertyInspectionExposure(property, context = {}) {
     const source = context && typeof context === "object" ? context : {};
     const market = source.market || getPropertyMarketContext(asset, source);
     const tenantExposure = asset.tenants.reduce((total, tenant) => {
-        if (tenant.tags.includes("black_market")) return total + 34;
-        if (tenant.tags.includes("inspection_risk")) return total + 18;
-        if (tenant.tags.includes("paperwork")) return total - 10;
-        return total;
+        const profileExposure = Math.round((tenant.inspectionRisk || 0) * 38);
+        if (tenant.tags.includes("black_market")) return total + 34 + profileExposure;
+        if (tenant.tags.includes("inspection_risk")) return total + 18 + profileExposure;
+        if (tenant.tags.includes("paperwork")) return total - 10 + profileExposure;
+        return total + profileExposure;
     }, 0);
     const storageExposure = asset.storageCapacity > 0 || asset.tags.includes("warehouse") ? 14 : 0;
     const bondedExposure = asset.tags.includes("bonded_storage") || asset.tags.includes("import_export") ? 16 : 0;
@@ -550,13 +793,15 @@ function estimateMaintenance(asset) {
     };
 }
 
-function estimateTenantMix(asset, market) {
+function estimateTenantMix(asset, market, supplyChain = null) {
+    const chain = supplyChain || getPropertySupplyChainContext(asset, { market });
     const vacancyPressure = Math.max(0, 0.82 - asset.occupancy) * 160;
     const commercialBonus = asset.tags.includes("retail") || asset.tags.includes("dockside") ? 14 : 0;
     const marketBonus = market.shortagePressure * 10 + market.highTradeVolume / 20;
+    const companyBonus = chain.companyNeeds.length * 8 + chain.storagePressure / 8;
     return {
         actionId: asset.occupancy < 0.75 ? "screenTenants" : "changeTenantMix",
-        score: Math.round(vacancyPressure + commercialBonus + marketBonus),
+        score: Math.round(vacancyPressure + commercialBonus + marketBonus + companyBonus),
         text: asset.occupancy < 0.75
             ? "screen tenants and gather better arrears intel before changing lease terms"
             : "target a steadier tenant mix for fewer arrears and fewer disputes",
@@ -574,27 +819,36 @@ function estimateDebtPressure(asset, economics) {
     };
 }
 
-function estimateStorageConversion(asset, market) {
+function estimateStorageConversion(asset, market, supplyChain = null) {
+    const chain = supplyChain || getPropertySupplyChainContext(asset, { market });
     const storageDemand = (asset.tags.includes("warehouse") || asset.tags.includes("import_export") ? 38 : 12)
         + market.cargoOverflow * 120
         + market.shortagePressure * 12
         + market.routeOutages * 18
+        + chain.storagePressure
         + Math.min(30, market.highTradeVolume / 12);
     const lowYieldUnits = Math.max(0, asset.units - Math.ceil(asset.units * asset.occupancy));
     const conversionGain = Math.round(storageDemand + asset.storageCapacity * 0.08 + lowYieldUnits * 18 - CONVERSION_UPKEEP_DAILY);
     return {
         actionId: "convertPropertyUse",
         score: asset.units > 1 ? conversionGain : -20,
-        text: "convert low-yield units to bonded storage for income, accepting inspection exposure",
+        text: chain.relevantShortages.length > 0
+            ? `convert low-yield units to bonded storage for ${chain.relevantShortages.map(commodityLabel).slice(0, 3).join(", ")} gaps`
+            : "convert low-yield units to bonded storage for income, accepting inspection exposure",
         pressure: "storage conversion",
         estimatedDelta: conversionGain
     };
 }
 
-function estimateServiceExpansion(asset, market) {
+function estimateServiceExpansion(asset, market, supplyChain = null) {
+    const chain = supplyChain || getPropertySupplyChainContext(asset, { market });
+    const berthNeed = chain.companyNeeds.filter(need => need.needs.includes("berth_access")).length * 9;
+    const repairNeed = chain.companyNeeds.filter(need => need.needs.includes("repair_access")).length * 11;
     const serviceDemand = (asset.tags.includes("services") || asset.tags.includes("berths") || asset.tags.includes("repair") ? 42 : 16)
         + market.piratePressure * 12
         + market.routeOutages * 10
+        + berthNeed
+        + repairNeed
         + Math.min(24, market.highTradeVolume / 16);
     return {
         actionId: "addService",
@@ -658,21 +912,26 @@ export function getPropertyRecommendation(property, character, context = {}) {
     const economics = summarisePropertyEconomics(asset);
     const competencies = getPropertyCompetencies(character);
     const market = getPropertyMarketContext(asset, context);
-    const tenantPlan = recommendPropertyTenantMix(asset, character, { ...context, market, competencies });
+    const supplyChain = getPropertySupplyChainContext(asset, { ...context, market });
+    const tenantPlan = recommendPropertyTenantMix(asset, character, { ...context, market, competencies, supplyChain });
     const candidates = [
         estimateRentPosture(asset, economics, market),
         estimateMaintenance(asset),
-        estimateTenantMix(asset, market),
+        estimateTenantMix(asset, market, supplyChain),
         estimateDebtPressure(asset, economics),
-        estimateStorageConversion(asset, market),
-        estimateServiceExpansion(asset, market)
+        estimateStorageConversion(asset, market, supplyChain),
+        estimateServiceExpansion(asset, market, supplyChain)
     ].sort((a, b) => b.score - a.score);
     const best = candidates[0];
     const quality = getRecommendationQuality(competencies);
     const estimateAccuracy = recommendationAccuracy(quality);
     if (quality === "max") {
+        const shortageText = supplyChain.relevantShortages.length > 0
+            ? supplyChain.relevantShortages.map(commodityLabel).slice(0, 3).join(" and ")
+            : supplyChain.focusCommodities.map(commodityLabel).slice(0, 2).join(" and ");
+        const tenantText = tenantPlan.bestTenant?.label || "an import/export tenant";
         const routineText = best.actionId === "convertPropertyUse"
-            ? `Best routine option: converting low-yield units to bonded storage likely changes net income by about ${best.estimatedDelta || best.score} credits/day, but increases inspection exposure.`
+            ? `The local ${supplyChain.portTypeName} is short ${shortageText}. Converting vacant units to bonded storage and courting ${tenantText} is the best routine move.`
             : `Best routine option: ${best.text}; expected pressure score ${Math.max(1, best.score)}.`;
         return {
             quality,
@@ -683,6 +942,7 @@ export function getPropertyRecommendation(property, character, context = {}) {
             competencies,
             candidates,
             market,
+            supplyChain,
             tenantPlan,
             inspection: getPropertyInspectionExposure(asset, { ...context, market }),
             tenantHooks: getPropertyTenantHooks(asset),
@@ -699,6 +959,7 @@ export function getPropertyRecommendation(property, character, context = {}) {
             competencies,
             candidates,
             market,
+            supplyChain,
             tenantPlan,
             inspection: getPropertyInspectionExposure(asset, { ...context, market }),
             tenantHooks: getPropertyTenantHooks(asset),
@@ -716,6 +977,7 @@ export function getPropertyRecommendation(property, character, context = {}) {
             competencies,
             candidates,
             market,
+            supplyChain,
             tenantPlan,
             inspection: getPropertyInspectionExposure(asset, { ...context, market }),
             tenantHooks: getPropertyTenantHooks(asset),
@@ -731,11 +993,176 @@ export function getPropertyRecommendation(property, character, context = {}) {
         competencies,
         candidates,
         market,
+        supplyChain,
         tenantPlan,
         inspection: getPropertyInspectionExposure(asset, { ...context, market }),
         tenantHooks: getPropertyTenantHooks(asset),
-        text: "Vague warning: the ledgers, tenants, and building condition do not line up cleanly. Gather intel, screen tenants, or hire help before making a major property move."
+        text: "Vague warning: the ledgers, tenant demand, and market snapshots do not line up cleanly. Gather intel, pull ledgers, buy fresher market snapshots, screen tenants, or hire help from a broker before making a major property move."
     };
+}
+
+function tenantTypeForCompany(companyType) {
+    if (companyType === "refinery_operator") return "refinery_tenants";
+    if (companyType === "dockyard" || companyType === "ship_refitter") return "dockyard_tenants";
+    if (companyType === "agri_collective") return "agri_tenants";
+    if (companyType === "black_market_front") return "black_market_tenants";
+    if (companyType === "haulage") return "captains";
+    return "company_agents";
+}
+
+function assetNeedCoverage(asset, needs) {
+    let score = 0;
+    if (needs.includes("input_storage") || needs.includes("output_storage")) {
+        score += asset.storageCapacity > 0 || asset.tags.includes("warehouse") ? 22 : -8;
+    }
+    if (needs.includes("bonded_cargo_services")) {
+        score += asset.tags.includes("bonded_storage") || asset.tags.includes("import_export") ? 18 : -4;
+    }
+    if (needs.includes("berth_access")) score += asset.tags.includes("berths") ? 20 : -5;
+    if (needs.includes("repair_access")) score += asset.tags.includes("repair") ? 20 : -6;
+    if (needs.includes("office_space")) score += asset.units > 0 ? 8 : 0;
+    if (needs.includes("staff_housing")) score += asset.kind === "tenement" || asset.units > 2 ? 8 : 0;
+    if (needs.includes("security")) score += asset.tags.includes("security") ? 10 : 0;
+    return score;
+}
+
+export function getPropertyCompanyTenantMatches(property, character, context = {}) {
+    const asset = normaliseProperty(property);
+    const market = context.market || getPropertyMarketContext(asset, context);
+    const supplyChain = context.supplyChain || getPropertySupplyChainContext(asset, { ...context, market });
+    const competencies = context.competencies || getPropertyCompetencies(character);
+    return supplyChain.companyNeeds.map(need => {
+        const tenantType = tenantTypeForCompany(need.companyType);
+        const tenantScore = scorePropertyTenant(
+            asset,
+            { type: tenantType },
+            character,
+            { ...context, market, supplyChain, competencies }
+        );
+        const commodityOverlap = intersectCount(
+            supplyChain.focusCommodities,
+            need.inputs.concat(need.outputs)
+        );
+        const score = Math.round(
+            tenantScore.score
+                + assetNeedCoverage(asset, need.needs)
+                + commodityOverlap * 6
+                + intersectCount(need.inputs, supplyChain.shortages) * 7
+        );
+        return {
+            companyId: need.companyId,
+            companyName: need.companyName,
+            companyType: need.companyType,
+            tenantType,
+            tenantLabel: PROPERTY_TENANT_TYPES[tenantType].label,
+            needs: need.needs,
+            inputs: need.inputs,
+            outputs: need.outputs,
+            score,
+            recommendation: score >= 96 ? "court" : score >= 72 ? "screen" : "wait"
+        };
+    }).sort((a, b) => b.score - a.score);
+}
+
+function contractScore(competencies, base, risk, exposure) {
+    return Math.round(
+        base
+            + competencies.acumen * 0.28
+            + competencies.tradecraft * 0.24
+            + competencies.command * 0.2
+            + competencies.nerve * 0.12
+            - risk * 18
+            - exposure * 0.16
+    );
+}
+
+export function getStationaryPropertyContracts(property, character, context = {}) {
+    const asset = normaliseProperty(property);
+    const market = context.market || getPropertyMarketContext(asset, context);
+    const supplyChain = context.supplyChain || getPropertySupplyChainContext(asset, { ...context, market });
+    const competencies = context.competencies || getPropertyCompetencies(character);
+    const inspection = getPropertyInspectionExposure(asset, { ...context, market });
+    const matches = getPropertyCompanyTenantMatches(asset, character, { ...context, market, supplyChain, competencies });
+    const primaryCommodity = supplyChain.relevantShortages[0]
+        || supplyChain.routePressureCommodities[0]
+        || supplyChain.focusCommodities[0]
+        || "ore";
+    const destinationRoute = market.localRoutes.find(route => route.commodity === primaryCommodity)
+        || market.localRoutes[0]
+        || null;
+    const destinationSector = destinationRoute
+        ? (destinationRoute.originSector === asset.siteId ? destinationRoute.destinationSector : destinationRoute.originSector)
+        : asset.siteId;
+    const opportunities = [];
+    if (asset.storageCapacity > 0 || asset.tags.includes("warehouse")) {
+        opportunities.push({
+            type: "reserve_storage",
+            label: "Reserve storage for a company",
+            commodity: primaryCommodity,
+            companyId: matches[0]?.companyId || null,
+            capitalExposure: "low",
+            termDays: 14,
+            fallbackPlan: "release capacity to spot bonded cargo",
+            score: contractScore(competencies, 42 + supplyChain.storagePressure, 0.18, inspection.exposure),
+            text: `Reserve storage around ${commodityLabel(primaryCommodity)} pressure without personally flying freight.`
+        });
+        opportunities.push({
+            type: "finance_input_shipment",
+            label: "Finance an input shipment",
+            commodity: primaryCommodity,
+            companyId: matches[0]?.companyId || null,
+            capitalExposure: "medium",
+            termDays: 21,
+            fallbackPlan: "sell financed cargo into the local buy lane",
+            score: contractScore(competencies, 52 + supplyChain.relevantShortages.length * 14, 0.34, inspection.exposure),
+            text: `Finance ${commodityLabel(primaryCommodity)} into a documented shortage, then let carriers move it.`
+        });
+    }
+    opportunities.push({
+        type: "host_office_tenant",
+        label: "Host an office tenant",
+        commodity: primaryCommodity,
+        companyId: matches[0]?.companyId || null,
+        capitalExposure: "low",
+        termDays: 30,
+        fallbackPlan: "convert lease to a screened merchant desk",
+        score: contractScore(competencies, 38 + matches.length * 8, 0.12, inspection.exposure),
+        text: "Host company paperwork and contract flow for remote brokerage income."
+    });
+    if (asset.tags.includes("berths")) {
+        opportunities.push({
+            type: "lease_berth_rights",
+            label: "Lease berth rights to a haulage line",
+            commodity: primaryCommodity,
+            companyId: matches.find(match => match.companyType === "haulage")?.companyId || matches[0]?.companyId || null,
+            capitalExposure: "medium",
+            termDays: 20,
+            fallbackPlan: "auction the slot to delayed route captains",
+            score: contractScore(competencies, 48 + market.routeOutages * 16, 0.22, inspection.exposure),
+            text: "Monetize berth scarcity created by delayed routes and carrier demand."
+        });
+    }
+    if (destinationSector !== asset.siteId) {
+        const delegated = evaluateDelegatedPropertyFreight(asset, character, {
+            destinationSector,
+            commodity: primaryCommodity,
+            amount: Math.max(10, asset.storedGoods[primaryCommodity] || 10),
+            riskPosture: context.riskPosture || "balanced"
+        });
+        opportunities.push({
+            type: "delegated_logistics",
+            label: "Contract a captain to move stored goods",
+            commodity: primaryCommodity,
+            companyId: matches[0]?.companyId || null,
+            capitalExposure: "variable",
+            termDays: 7,
+            fallbackPlan: "hold inventory for the next buyer snapshot",
+            delegated,
+            score: contractScore(competencies, 34 + delegated.evaluationScore / 2, 0.3, inspection.exposure),
+            text: delegated.text
+        });
+    }
+    return opportunities.sort((a, b) => b.score - a.score);
 }
 
 export function applyPlayerPropertyAction(propertyId, actionId, options = {}) {
