@@ -491,7 +491,7 @@ function drawMapOverview(ids, rect) {
     const canvas = document.getElementById("mapOverview");
     if (!canvas) return;
     const viewport = getViewport();
-    const sig = `${viewport.scale}|${viewport.offsetX}|${viewport.offsetY}|${rect.width}|${rect.height}|${state.player.currentSector}|${state.selectedSectorId}|${ids.length}`;
+    const sig = [viewport.scale, viewport.offsetX, viewport.offsetY, rect.width, rect.height, state.player.currentSector, state.selectedSectorId, ids.length].join(',');
     if (sig === mapOverviewLastSig) return;
     mapOverviewLastSig = sig;
     const ctx = canvas.getContext("2d");
