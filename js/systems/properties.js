@@ -142,8 +142,7 @@ export function createStartingProperties(platformType, context = {}) {
     return property ? [property] : [];
 }
 
-export function getPropertyTenantEconomicEffects(property) {
-    const asset = normaliseProperty(property);
+function calculateTenantEconomicEffects(asset) {
     if (asset.tenants.length === 0) {
         return {
             rentMultiplier: 1,
@@ -190,9 +189,13 @@ export function getPropertyTenantEconomicEffects(property) {
     };
 }
 
+export function getPropertyTenantEconomicEffects(property) {
+    return calculateTenantEconomicEffects(normaliseProperty(property));
+}
+
 export function summarisePropertyEconomics(property) {
     const asset = normaliseProperty(property);
-    const tenantEffects = getPropertyTenantEconomicEffects(asset);
+    const tenantEffects = calculateTenantEconomicEffects(asset);
     const grossRent = roundMoney(asset.units * asset.rentDaily * asset.occupancy * tenantEffects.rentMultiplier);
     const upkeep = roundMoney(asset.upkeepDaily + tenantEffects.upkeepDaily);
     const debt = roundMoney(asset.debtDaily);
@@ -205,7 +208,7 @@ export function tickPropertyDaily(property) {
     const economics = summarisePropertyEconomics(asset);
     const rentPressure = asset.rentPosture === "high" ? PROPERTY_DEFAULTS.HIGH_RENT_OCCUPANCY_DRAG
         : asset.rentPosture === "low" ? -PROPERTY_DEFAULTS.LOW_RENT_OCCUPANCY_GAIN : 0;
-    const tenantEffects = economics.tenantEffects || getPropertyTenantEconomicEffects(asset);
+    const tenantEffects = economics.tenantEffects || calculateTenantEconomicEffects(asset);
     const tenantMaintenanceDecay = tenantEffects.maintenanceLoad * 0.025;
     const conditionDecay = PROPERTY_DEFAULTS.DAILY_CONDITION_DECAY
         + tenantMaintenanceDecay
@@ -378,7 +381,7 @@ function intersectCount(left, right) {
 }
 
 function commodityLabel(commodity) {
-    return COMMODITY_NAMES[commodity] || commodity.replaceAll("_", " ");
+    return COMMODITY_NAMES[commodity] || (typeof commodity === "string" ? commodity.replaceAll("_", " ") : String(commodity));
 }
 
 function getConnectedSiteIds(siteId, sector) {
@@ -393,8 +396,8 @@ function getConnectedSiteIds(siteId, sector) {
 
 function getLocalCompanies(siteId, sector, source) {
     if (Array.isArray(source.companies)) return source.companies.filter(Boolean);
-    const companies = state.companies || {};
-    const idsBySector = state.companyIdsBySector || {};
+    const companies = state?.companies || {};
+    const idsBySector = state?.companyIdsBySector || {};
     const connectedSiteIds = getConnectedSiteIds(siteId, sector);
     const ids = connectedSiteIds.flatMap(id => idsBySector[id] || []);
     return ids.map(id => companies[id]).filter(Boolean);

@@ -12,7 +12,10 @@ on rent posture, tenant screening, maintenance, storage conversion, services,
 refinancing, managers, local politics, and delegated logistics.
 
 The first implementation is data-backed and system-backed in
-`js/systems/properties.js` and `js/config/properties.js`. It includes
-deterministic daily economics and character-mediated recommendations. Remaining
-hooks include deeper market demand, inspections, people/faction events, richer
-manager hiring, and command wiring for every property action.
+`js/systems/properties.js` and `js/config/properties.js`. It now includes
+tenant economic profiles (`inspectionRisk`, `maintenanceLoad`,
+`reputationEffect`, `contractFlow`, commodity focus, and leasing needs),
+deterministic daily economics, supply-chain-aware recommendations, nearby
+company tenant matching, and stationary contract opportunities. Remaining hooks
+include deeper people/faction event consequences, richer manager hiring, and
+command wiring for every property action.

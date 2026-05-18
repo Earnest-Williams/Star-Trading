@@ -241,6 +241,8 @@ compatibility expectations.
 - Simulation trace layer that mirrors world, dialogue, and route outcomes into
   a shared causal debug ledger.
 - Character sheet, chargen presets, trait hooks, and starting platform choices.
+- Property simulation updates: tenant economic profiles, supply-chain-aware
+  recommendations, company leasing matches, and stationary contract generation.
 - Sparse-world save migration and persistence normalization.
 - Interactive map polish: hover tooltips, zoom/pan viewport transforms, parallax
   starfield, and recentering.

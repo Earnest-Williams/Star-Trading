@@ -148,11 +148,15 @@ rolls, maintenance, tenant mix, storage conversion, services, finance, local
 influence, and delegated logistics should all resolve through system helpers.
 
 The property system supports deterministic daily rent/upkeep/debt ticks,
-character-mediated recommendations, player-owned action application, and
-renderer-independent action outcomes. Recommendations evaluate rent posture,
-maintenance urgency, tenant mix, debt pressure, storage conversion, and service
-expansion through acumen, command, fieldcraft, tradecraft, nerve, traits, and
-skill-node effects. Property screen buttons call `applyPlayerPropertyAction`,
-which delegates to `resolvePropertyAction`; no hidden simulation rules belong in
-`js/ui/renderProperty.js`. Follow-up work should connect property demand to
-markets, route overflow, inspections, people, and faction politics.
+tenant-type economic effects, character-mediated recommendations,
+player-owned action application, and renderer-independent action outcomes.
+Recommendations evaluate rent posture, maintenance urgency, tenant mix, debt
+pressure, storage conversion, service expansion, local supply-chain pressure,
+port role, and nearby company leasing demand through acumen, command,
+fieldcraft, tradecraft, nerve, traits, and skill-node effects. Property screen
+buttons call `applyPlayerPropertyAction`, which delegates to
+`resolvePropertyAction`; no hidden simulation rules belong in
+`js/ui/renderProperty.js`. The same module also generates stationary
+opportunities (company leases, storage contracts, delegated logistics) and
+inspection exposure signals from tenant risk profiles. Follow-up work should
+continue integrating people/faction events and richer manager staffing.
