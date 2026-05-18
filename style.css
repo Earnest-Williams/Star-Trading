@@ -1646,3 +1646,123 @@ select:focus-visible {
     padding: 8px;
     margin: 6px 0;
 }
+
+.map-toolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 72px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.map-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    pointer-events: auto;
+}
+
+.map-toolbar button,
+.map-shortcut-help button {
+    margin: 0;
+    padding: 4px 8px;
+    background: rgba(13, 19, 24, 0.92);
+    border-color: var(--line);
+}
+
+.map-layer-toggle.is-active {
+    color: var(--accent-green);
+    border-color: var(--accent-green);
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.2);
+}
+
+.map-layer-toggle:not(.is-active) {
+    color: var(--text-muted);
+    opacity: 0.72;
+}
+
+.map-toolbar--collapsed .map-layer-row {
+    display: none;
+}
+
+.map-overview {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 4;
+    width: 180px;
+    height: 110px;
+    border: 1px solid var(--line);
+    background: rgba(5, 11, 16, 0.92);
+    pointer-events: none;
+}
+
+.map-shortcut-help {
+    position: absolute;
+    top: 64px;
+    right: 14px;
+    z-index: 6;
+    width: min(280px, calc(100% - 28px));
+    padding: 10px;
+    border: var(--border-thin) solid var(--line-strong);
+    background: rgba(13, 19, 24, 0.96);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.map-help-title {
+    margin-right: 28px;
+    color: var(--accent-cyan);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+#btn-close-map-help {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+}
+
+.map-shortcut-help dl {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 6px 10px;
+    margin: 8px 0 0;
+}
+
+.map-shortcut-help dt {
+    color: var(--accent-green);
+    font-weight: 700;
+}
+
+.map-shortcut-help dd {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.map-tooltip-title {
+    margin-bottom: 6px;
+}
+
+.map-tooltip-group {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--line-dim);
+}
+
+.map-tooltip-group-title {
+    margin-bottom: 3px;
+    color: var(--accent-cyan);
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.map-tooltip-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
