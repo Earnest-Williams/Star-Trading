@@ -363,8 +363,7 @@ function bindLayoutControls() {
             gameShell.classList.toggle(control.className);
             syncControl(control);
 
-            const raf = globalThis.requestAnimationFrame || (fn => globalThis.setTimeout(fn, 16));
-            raf(() => Renderer.invalidate('map'));
+            Renderer.invalidate('map');
         });
     });
 }
