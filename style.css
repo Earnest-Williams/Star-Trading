@@ -985,6 +985,10 @@ select:focus-visible {
     letter-spacing: 0.06em;
 }
 
+.action-hotbar-slot-empty {
+    visibility: hidden;
+}
+
 .action-hotbar-more {
     position: relative;
     min-width: 128px;
