@@ -714,16 +714,11 @@ export function setupMapInteraction() {
             if (Math.abs(dx) + Math.abs(dy) > 1) dragMoved = true;
             if (dragMode === "orbit") {
                 const camera = getMapCamera();
-                const previousYaw = camera.yaw;
-                const previousPitch = camera.pitch;
                 camera.yaw += dx * MAP_CAMERA_YAW_SENSITIVITY;
                 camera.pitch = Math.max(
                     MAP_CAMERA_PITCH_MIN_RADIANS,
                     Math.min(MAP_CAMERA_PITCH_MAX_RADIANS, camera.pitch - dy * MAP_CAMERA_PITCH_SENSITIVITY)
                 );
-                if (camera.yaw !== previousYaw || camera.pitch !== previousPitch) {
-                    invalidateMapProjectionCache();
-                }
             } else if (dragMode === "pan") {
                 const viewport = getViewport();
                 viewport.offsetX += dx;

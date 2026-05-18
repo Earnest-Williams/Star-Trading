@@ -280,10 +280,8 @@ function renderHotbarButton(item, index = null) {
     (item.args || []).slice(0, 5).forEach((arg, index) => {
         attrs.push(`data-arg${index}="${escapeHtml(String(arg))}"`);
     });
-    const time = item.time ? `<span class="action-hotbar-time">${escapeHtml(item.time)}</span>` : "";
-    const shortcut = Number.isInteger(index)
-        ? `<span class="action-hotbar-shortcut" aria-hidden="true">${index + 1}</span>`
-        : "";
+    const time = `<span class="action-hotbar-time"${item.time ? "" : " style='visibility:hidden'"}>${item.time ? escapeHtml(item.time) : ""}</span>`;
+    const shortcut = `<span class="action-hotbar-shortcut" aria-hidden="true"${Number.isInteger(index) ? "" : " style='visibility:hidden'"}>${Number.isInteger(index) ? index + 1 : ""}</span>`;
     return `<button ${attrs.join(" ")}>`
         + shortcut
         + `<span class="action-hotbar-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`
