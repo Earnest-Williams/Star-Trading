@@ -17,7 +17,20 @@ describe('preferences', () => {
             compactUi: false,
             showBootTips: true,
             defaultWorldgenArchetype: BALANCE.WORLDGEN.DEFAULT_ARCHETYPE,
-            defaultOccupiedSites: BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES
+            defaultOccupiedSites: BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
+            leftSidebarCollapsed: false,
+            rightSidebarCollapsed: false,
+            mapLayers: {
+                systems: true,
+                asteroids: true,
+                influence: true,
+                tradeRoutes: true,
+                contestedZones: true,
+                dataFreshness: true
+            },
+            mapLayersOpen: true,
+            mapHelpOpen: false,
+            mapInspectorCompact: false
         });
     });
 
@@ -34,7 +47,13 @@ describe('preferences', () => {
             compactUi: 'yes',
             showBootTips: 0,
             defaultWorldgenArchetype: 'not-a-real-archetype',
-            defaultOccupiedSites: 999999
+            defaultOccupiedSites: 999999,
+            leftSidebarCollapsed: true,
+            rightSidebarCollapsed: 'no',
+            mapLayers: { systems: false, asteroids: 'sometimes' },
+            mapLayersOpen: false,
+            mapHelpOpen: true,
+            mapInspectorCompact: true
         });
 
         assert.equal(normalised.reducedMotion, true);
@@ -42,6 +61,14 @@ describe('preferences', () => {
         assert.equal(normalised.showBootTips, true);
         assert.equal(normalised.defaultWorldgenArchetype, BALANCE.WORLDGEN.DEFAULT_ARCHETYPE);
         assert.equal(normalised.defaultOccupiedSites, BALANCE.WORLDGEN.MAX_OCCUPIED_SITES);
+        assert.equal(normalised.leftSidebarCollapsed, true);
+        assert.equal(normalised.rightSidebarCollapsed, false);
+        assert.equal(normalised.mapLayers.systems, false);
+        assert.equal(normalised.mapLayers.asteroids, true);
+        assert.equal(normalised.mapLayers.tradeRoutes, true);
+        assert.equal(normalised.mapLayersOpen, false);
+        assert.equal(normalised.mapHelpOpen, true);
+        assert.equal(normalised.mapInspectorCompact, true);
     });
 
     it('falls back cleanly when storage is unavailable', () => {
@@ -75,7 +102,13 @@ describe('preferences', () => {
             compactUi: true,
             showBootTips: false,
             defaultWorldgenArchetype: 'dwarf_irregular',
-            defaultOccupiedSites: 215
+            defaultOccupiedSites: 215,
+            leftSidebarCollapsed: true,
+            rightSidebarCollapsed: true,
+            mapLayers: { systems: false, tradeRoutes: false },
+            mapLayersOpen: false,
+            mapHelpOpen: true,
+            mapInspectorCompact: true
         });
 
         assert.equal(saved.reducedMotion, true);
@@ -83,6 +116,14 @@ describe('preferences', () => {
         assert.equal(saved.showBootTips, false);
         assert.equal(saved.defaultWorldgenArchetype, 'dwarf_irregular');
         assert.equal(saved.defaultOccupiedSites, 215);
+        assert.equal(saved.leftSidebarCollapsed, true);
+        assert.equal(saved.rightSidebarCollapsed, true);
+        assert.equal(saved.mapLayers.systems, false);
+        assert.equal(saved.mapLayers.tradeRoutes, false);
+        assert.equal(saved.mapLayers.asteroids, true);
+        assert.equal(saved.mapLayersOpen, false);
+        assert.equal(saved.mapHelpOpen, true);
+        assert.equal(saved.mapInspectorCompact, true);
         assert.equal(writes.get(SAVE_KEY), '{"version":17}');
         assert.deepEqual(JSON.parse(writes.get(PREFERENCES_KEY)), saved);
     });

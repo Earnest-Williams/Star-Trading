@@ -2,13 +2,28 @@ import { BALANCE } from '../constants.js';
 
 export const PREFERENCES_KEY = 'starTradingPreferencesV1';
 
+const DEFAULT_MAP_LAYERS = Object.freeze({
+    systems: true,
+    asteroids: true,
+    influence: true,
+    tradeRoutes: true,
+    contestedZones: true,
+    dataFreshness: true
+});
+
 export function getDefaultPreferences() {
     return {
         reducedMotion: false,
         compactUi: false,
         showBootTips: true,
         defaultWorldgenArchetype: BALANCE.WORLDGEN.DEFAULT_ARCHETYPE,
-        defaultOccupiedSites: BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES
+        defaultOccupiedSites: BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
+        leftSidebarCollapsed: false,
+        rightSidebarCollapsed: false,
+        mapLayers: { ...DEFAULT_MAP_LAYERS },
+        mapLayersOpen: true,
+        mapHelpOpen: false,
+        mapInspectorCompact: false
     };
 }
 
@@ -32,6 +47,16 @@ function normaliseOccupiedSites(value, fallback) {
     return Math.max(1, Math.min(BALANCE.WORLDGEN.MAX_OCCUPIED_SITES, rounded));
 }
 
+function normaliseMapLayers(value, fallback) {
+    if (!isObject(value)) return { ...fallback };
+    return Object.fromEntries(
+        Object.entries(fallback).map(([key, fallbackValue]) => [
+            key,
+            pickBoolean(value[key], fallbackValue)
+        ])
+    );
+}
+
 export function normalisePreferences(raw) {
     const defaults = getDefaultPreferences();
     if (!isObject(raw)) return defaults;
@@ -41,7 +66,13 @@ export function normalisePreferences(raw) {
         compactUi: pickBoolean(raw.compactUi, defaults.compactUi),
         showBootTips: pickBoolean(raw.showBootTips, defaults.showBootTips),
         defaultWorldgenArchetype: normaliseArchetype(raw.defaultWorldgenArchetype, defaults.defaultWorldgenArchetype),
-        defaultOccupiedSites: normaliseOccupiedSites(raw.defaultOccupiedSites, defaults.defaultOccupiedSites)
+        defaultOccupiedSites: normaliseOccupiedSites(raw.defaultOccupiedSites, defaults.defaultOccupiedSites),
+        leftSidebarCollapsed: pickBoolean(raw.leftSidebarCollapsed, defaults.leftSidebarCollapsed),
+        rightSidebarCollapsed: pickBoolean(raw.rightSidebarCollapsed, defaults.rightSidebarCollapsed),
+        mapLayers: normaliseMapLayers(raw.mapLayers, defaults.mapLayers),
+        mapLayersOpen: pickBoolean(raw.mapLayersOpen, defaults.mapLayersOpen),
+        mapHelpOpen: pickBoolean(raw.mapHelpOpen, defaults.mapHelpOpen),
+        mapInspectorCompact: pickBoolean(raw.mapInspectorCompact, defaults.mapInspectorCompact)
     };
 }
 
@@ -83,4 +114,12 @@ export function savePreferences(storage = null, prefs) {
         return normalised;
     }
     return normalised;
+}
+
+export function savePreferencePatch(storage = null, patch) {
+    const current = loadPreferences(storage);
+    const mapLayers = isObject(patch?.mapLayers)
+        ? { ...current.mapLayers, ...patch.mapLayers }
+        : current.mapLayers;
+    return savePreferences(storage, { ...current, ...patch, mapLayers });
 }

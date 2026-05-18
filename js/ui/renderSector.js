@@ -8,6 +8,8 @@ import { getOutboundJumpGates, getSectorNeighbors, getWayStationReserveState } f
 import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 import { getContactDialogueActionState, MIN_DEEPEN_FAMILIARITY, normaliseDialogueRelationship } from "../systems/people.js";
+import { savePreferencePatch } from "../core/preferences.js";
+import { StateSlice, stateChanged } from "./stateSlices.js";
 
 
 function renderLocalAuthorityLine(sector) {
@@ -254,7 +256,7 @@ export function renderMenuPanel() {
             + `<div class="gate-meta"><span class="sector-chip">${escapeHtml(getSiteTypeLabel(s.siteType))}</span><span class="sector-chip">${escapeHtml(s.region)}</span>${factionLabel}</div>`
             + `<div class="gate-badges">${badges.join("") || `<span class="sector-chip muted">Deep Space</span>`}</div>`
             + `<div class="gate-id-row"><span class="sector-chip">Gate ${gateLabel}</span>${span}</div>`
-            + `<div class="gate-actions"><button data-action="selectSector" data-arg0="${target}">Inspect</button><button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button></div>`
+            + `<div class="gate-actions"><button data-action="selectSector" data-arg0="${target}">Inspect</button>${player.ship ? `<button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button>` : `<button type="button" disabled title="Assign a ship before using jump gates">No ship assigned</button>`}</div>`
             + `</article>`;
     }).filter(Boolean).join("");
     const gatesBody = gateCards || `<div class="muted small">No outbound jump gates registered.</div>`;
@@ -285,6 +287,12 @@ export function renderMenuPanel() {
     document.getElementById("commandList").innerHTML = html;
 }
 
+export function toggleMapInspectorCompact() {
+    state.mapInspectorCompact = !state.mapInspectorCompact;
+    savePreferencePatch(null, { mapInspectorCompact: state.mapInspectorCompact });
+    return stateChanged(StateSlice.MAP_VIEW);
+}
+
 export function renderMapInspector() {
     const { player, universe, ports, planets, tradeRoutes, selectedSectorId } = state;
     const el = document.getElementById("mapInspector");
@@ -293,10 +301,12 @@ export function renderMapInspector() {
     const sector = universe[id];
     if (!sector) {
         el.classList.add("map-inspector--empty");
+        el.classList.remove("map-inspector--compact");
         el.innerHTML = "";
         return;
     }
     el.classList.remove("map-inspector--empty");
+    el.classList.toggle("map-inspector--compact", Boolean(state.mapInspectorCompact));
     const dominant = FACTIONS[getSectorFactionId(id)];
     const adjacent = getSectorNeighbors(player.currentSector).includes(id);
     const statusLabel = getSectorStatusLabel(id);
@@ -328,9 +338,10 @@ export function renderMapInspector() {
         actionHtml = `<span class="muted">No direct jump corridor. Connected corridors: ${getSectorNeighbors(id).join(", ")}</span>`;
     }
 
+    const compactLabel = state.mapInspectorCompact ? "Expand" : "Compact";
     el.innerHTML = `<div class="map-inspector-title-row">`
         + `<div class="map-inspector-title"><strong>Site ${id} — ${escapeHtml(sector.name)}</strong></div>`
-        + `<span class="sector-chip map-inspector-status">${escapeHtml(statusLabel)}</span>`
+        + `<div class="map-inspector-controls"><span class="sector-chip map-inspector-status">${escapeHtml(statusLabel)}</span><button type="button" class="map-inspector-compact-button" data-action="toggleMapInspectorCompact" aria-pressed="${state.mapInspectorCompact ? "true" : "false"}">${compactLabel}</button></div>`
         + `</div>`
         + `<div class="map-inspector-facts">${factChips.join("")}</div>`
         + (captainHtml ? `<div class="map-inspector-captains">${captainHtml}</div>` : "")

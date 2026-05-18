@@ -36,6 +36,23 @@ describe('map projection cache', () => {
         assert.equal(reusedAfterCharting, afterCharting);
     });
 
+
+    it('recomputes projected nodes when camera yaw or pitch changes', () => {
+        state.universe[2].coord = { x: 10, y: 0, z: 4 };
+        state.universe[3].coord = { x: 20, y: 5, z: 9 };
+        const before = getMapNodes();
+        const beforeSecondY = before[2].y;
+
+        state.mapCamera = { yaw: 0.45, pitch: 0.25 };
+        const after = getMapNodes();
+
+        assert.notEqual(after, before);
+        assert.notEqual(after[2].y, beforeSecondY);
+
+        const reused = getMapNodes();
+        assert.equal(reused, after);
+    });
+
     it('requires explicit invalidation after coordinate mutation on an already-charted sector', () => {
         const before = getMapNodes();
         const beforeX = before[2].x;

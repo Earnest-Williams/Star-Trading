@@ -364,6 +364,14 @@ select:focus-visible {
     gap: 4px;
 }
 
+.cargo-drilldown {
+    width: 100%;
+    min-height: 0;
+    margin: 6px 0 0;
+    padding: 4px 6px;
+    font-size: 0.78em;
+}
+
 .cargo-row {
     display: grid;
     grid-template-columns: 26px minmax(44px, 1fr) 48px 28px;
@@ -665,6 +673,30 @@ select:focus-visible {
     margin-top: 0;
 }
 
+.map-inspector-controls {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.map-inspector-compact-button {
+    min-height: 0;
+    margin: 0;
+    padding: 2px 7px;
+    font-size: 0.78em;
+}
+
+.map-inspector-overlay.map-inspector--compact {
+    max-width: min(360px, calc(100% - 32px));
+}
+
+.map-inspector-overlay.map-inspector--compact .map-inspector-facts,
+.map-inspector-overlay.map-inspector--compact .map-inspector-captains {
+    display: none;
+}
+
 .map-inspector-facts {
     margin: 0 -2px;
 }
@@ -871,7 +903,7 @@ select:focus-visible {
 
 .action-hotbar-button {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     gap: 7px;
     align-items: center;
     width: 100%;
@@ -899,6 +931,17 @@ select:focus-visible {
     border-color: var(--line);
     color: var(--text-primary);
     outline: none;
+}
+
+.action-hotbar-shortcut {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--line-dim);
+    color: var(--accent-amber);
+    font-size: 0.72em;
+    line-height: 1;
 }
 
 .action-hotbar-icon {
@@ -1440,6 +1483,11 @@ select:focus-visible {
         right: 8px;
         bottom: 56px;
         max-width: none;
+        max-height: 42vh;
+        overflow: auto;
+    }
+    .map-inspector-title-row {
+        align-items: stretch;
     }
     .map-tooltip {
         max-width: calc(100vw - 30px);

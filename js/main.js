@@ -43,6 +43,7 @@ export const App = (() => {
         initialized = true;
         configurePersistence();
         loadStoredPreferences();
+        applyStoredUiPreferences();
         initUI();
         bindShellDom();
         enterMainMenu();
@@ -67,6 +68,7 @@ export const App = (() => {
 
     function afterSuccessfulLoad() {
         ensureGameplayInitialized();
+        applyStoredUiPreferences();
         setAppMode(APP_MODES.IN_GAME);
         state.isTransitioning = false;
         syncShellVisibility(state.appMode);
@@ -75,6 +77,18 @@ export const App = (() => {
 
     function loadStoredPreferences() {
         preferences = loadPreferences();
+    }
+
+    function applyStoredUiPreferences() {
+        const prefs = preferences || getDefaultPreferences();
+        state.mapLayers = { ...state.mapLayers, ...prefs.mapLayers };
+        state.mapLayersOpen = prefs.mapLayersOpen;
+        state.mapHelpOpen = prefs.mapHelpOpen;
+        state.mapInspectorCompact = prefs.mapInspectorCompact;
+        const gameShell = document.getElementById('gameShell');
+        if (!gameShell) return;
+        gameShell.classList.toggle('layout-left-collapsed', prefs.leftSidebarCollapsed);
+        gameShell.classList.toggle('layout-right-collapsed', prefs.rightSidebarCollapsed);
     }
 
     function registerRendererSubscriptions() {

@@ -57,7 +57,20 @@ describe('shell entry integration guardrails', () => {
                 compactUi: false,
                 showBootTips: true,
                 defaultWorldgenArchetype: BALANCE.WORLDGEN.DEFAULT_ARCHETYPE,
-                defaultOccupiedSites: BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES
+                defaultOccupiedSites: BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
+                leftSidebarCollapsed: false,
+                rightSidebarCollapsed: false,
+                mapLayers: {
+                    systems: true,
+                    asteroids: true,
+                    influence: true,
+                    tradeRoutes: true,
+                    contestedZones: true,
+                    dataFreshness: true
+                },
+                mapLayersOpen: true,
+                mapHelpOpen: false,
+                mapInspectorCompact: false
             });
         });
     });
