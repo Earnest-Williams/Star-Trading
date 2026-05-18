@@ -32,6 +32,14 @@ const MAP_CAMERA_PITCH_MAX_RADIANS = MAP_CAMERA_MAX_TILT_RADIANS;
 const MOUSE_BUTTON_LEFT = 0;
 const MOUSE_BUTTON_MIDDLE = 1;
 const MOUSE_BUTTON_RIGHT = 2;
+const MAP_LAYER_DEFS = [
+    { key: "systems", label: "Systems" },
+    { key: "asteroids", label: "Asteroids" },
+    { key: "influence", label: "Influence" },
+    { key: "tradeRoutes", label: "Trade Routes" },
+    { key: "contestedZones", label: "Contested Zones" },
+    { key: "dataFreshness", label: "Data Freshness" }
+];
 let mapAnimationFrameId = 0;
 let mapAnimationTime = 0;
 
@@ -109,6 +117,39 @@ function getViewport() {
 function getMapCamera() {
     if (!state.mapCamera) state.mapCamera = { yaw: 0, pitch: 0 };
     return state.mapCamera;
+}
+
+function getMapLayers() {
+    if (!state.mapLayers) state.mapLayers = {};
+    MAP_LAYER_DEFS.forEach(layer => {
+        if (typeof state.mapLayers[layer.key] !== "boolean") {
+            state.mapLayers[layer.key] = true;
+        }
+    });
+    return state.mapLayers;
+}
+
+function toggleMapLayer(layerKey) {
+    const layer = MAP_LAYER_DEFS.find(def => def.key === layerKey);
+    if (!layer) return;
+    const layers = getMapLayers();
+    layers[layerKey] = !layers[layerKey];
+    Renderer.sliceChanged(StateSlice.MAP_VIEW);
+}
+
+function setMapLayerPanelOpen(open) {
+    state.mapLayersOpen = open;
+    Renderer.sliceChanged(StateSlice.MAP_VIEW);
+}
+
+function toggleMapLayerPanel() {
+    setMapLayerPanelOpen(state.mapLayersOpen === false);
+}
+
+function toggleMapHelp() {
+    state.mapHelpOpen = !state.mapHelpOpen;
+    renderMapToolbar();
+    renderMapHelp();
 }
 
 function scheduleMapAnimationFrame() {
@@ -268,28 +309,43 @@ function formatFreshnessTooltip(summary) {
     return `Data: ${summary.label} / observed Day ${summary.lastObservedDay} / delivered Day ${summary.deliveredDay} / known from S${summary.knownFromSectorId}`;
 }
 
+function renderTooltipGroup(title, chips) {
+    if (chips.length === 0) return "";
+    return `<div class="map-tooltip-group"><div class="map-tooltip-group-title">${escapeHtml(title)}</div><div class="map-tooltip-chips">${chips.map(chip => `<span class="sector-chip">${escapeHtml(chip)}</span>`).join("")}</div></div>`;
+}
+
 function sectorTooltipHtml(id) {
     const { universe, ports, planets, tradeRoutes } = state;
     const sector = universe[id];
     if (!sector) return "";
     const dominant = FACTIONS[getSectorFactionId(id)];
     const routeCount = tradeRoutes.filter(r => r.status !== "closed" && (r.originSector === id || r.destinationSector === id)).length;
-    const chips = [];
-    if (sector.coord) chips.push(`(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})`);
-    chips.push(getSiteTypeLabel(sector.siteType));
-    chips.push(sector.region);
-    chips.push(getSectorStatusLabel(id));
-    if (dominant) chips.push(`${dominant.icon} ${dominant.short}`);
-    if (sector.localAuthority) chips.push(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId);
-    if (state.companyIdsBySector?.[id]?.length) chips.push(`Companies: ${state.companyIdsBySector[id].length}`);
-    if (ports[id]) chips.push(`Port: ${getPortType(ports[id]).name}`);
-    if (planets[id]) chips.push(`Planet: ${PLANET_TYPES[planets[id].typeKey].name}`);
-    if (sector.asteroids) chips.push("Asteroids");
-    if (sector.pirateThreat > 0) chips.push(`Pirates ${sector.pirateThreat}`);
-    if (routeCount > 0) chips.push(`Routes ${routeCount}`);
+    const identity = [];
+    if (sector.coord) identity.push(`(${sector.coord.x}, ${sector.coord.y}, ${sector.coord.z})`);
+    identity.push(getSiteTypeLabel(sector.siteType));
+    identity.push(sector.region);
+    identity.push(getSectorStatusLabel(id));
+    if (dominant) identity.push(`${dominant.icon} ${dominant.short}`);
+    if (sector.localAuthority) identity.push(state.polities?.[sector.localAuthority.polityId]?.name || sector.localAuthority.polityId);
+
+    const economy = [];
+    if (state.companyIdsBySector?.[id]?.length) economy.push(`Companies: ${state.companyIdsBySector[id].length}`);
+    if (ports[id]) economy.push(`Port: ${getPortType(ports[id]).name}`);
+    if (planets[id]) economy.push(`Planet: ${PLANET_TYPES[planets[id].typeKey].name}`);
+    if (sector.asteroids) economy.push("Asteroids");
+    if (routeCount > 0) economy.push(`Routes ${routeCount}`);
+
+    const danger = [];
+    if (sector.pirateThreat > 0) danger.push(`Pirates ${sector.pirateThreat}`);
+    if (sector.front) danger.push(`Front suspicion ${sector.front.suspicion}`);
+    if (danger.length === 0) danger.push("No flagged local threat");
+
     const freshness = getFreshnessSummaryForSector(id);
-    chips.push(formatFreshnessTooltip(freshness));
-    return `<strong>Site ${id}</strong> ${escapeHtml(sector.name || "Unknown")}<br>${chips.map(chip => `<span class="sector-chip">${escapeHtml(chip)}</span>`).join("")}`;
+    return `<div class="map-tooltip-title"><strong>Site ${id}</strong> ${escapeHtml(sector.name || "Unknown")}</div>`
+        + renderTooltipGroup("Identity", identity)
+        + renderTooltipGroup("Local Economy", economy)
+        + renderTooltipGroup("Danger", danger)
+        + renderTooltipGroup("Freshness", [formatFreshnessTooltip(freshness)]);
 }
 
 function corridorTooltipHtml(corridor) {
@@ -366,6 +422,14 @@ export function resetMapViewport() {
     Renderer.invalidate("map");
 }
 
+function fitKnownSpace() {
+    const viewport = getViewport();
+    viewport.scale = 1;
+    viewport.offsetX = 0;
+    viewport.offsetY = 0;
+    Renderer.invalidate("map");
+}
+
 function getVisibleMapCenter() {
     const canvas = document.getElementById("map");
     const rect = canvas ? getMapCanvasRect(canvas) : null;
@@ -389,10 +453,96 @@ export function centerMapOnSector(sectorId = state.player?.currentSector) {
     Renderer.invalidate("map");
 }
 
+
+function renderMapToolbar() {
+    const toolbar = document.getElementById("mapToolbar");
+    if (!toolbar) return;
+    const layers = getMapLayers();
+    const layerButtons = state.mapLayersOpen === false
+        ? ""
+        : MAP_LAYER_DEFS.map(layer => {
+            const active = layers[layer.key] !== false;
+            return `<button type="button" class="map-layer-toggle${active ? " is-active" : ""}" data-map-layer="${layer.key}" aria-pressed="${active ? "true" : "false"}">${escapeHtml(layer.label)}</button>`;
+        }).join("");
+    toolbar.classList.toggle("map-toolbar--collapsed", state.mapLayersOpen === false);
+    toolbar.innerHTML = `<div class="map-toolbar-row map-toolbar-primary">`
+        + `<button id="btn-center-map" type="button">Center</button>`
+        + `<button id="btn-fit-map" type="button">Fit Known Space</button>`
+        + `<button id="btn-toggle-map-layers" type="button" aria-expanded="${state.mapLayersOpen === false ? "false" : "true"}">Layers</button>`
+        + `<button id="btn-map-help" type="button" aria-expanded="${state.mapHelpOpen ? "true" : "false"}">?</button>`
+        + `</div>`
+        + `<div class="map-toolbar-row map-layer-row">${layerButtons}</div>`;
+}
+
+function renderMapHelp() {
+    const help = document.getElementById("mapShortcutHelp");
+    if (!help) return;
+    help.hidden = !state.mapHelpOpen;
+    if (!state.mapHelpOpen) {
+        help.innerHTML = "";
+        return;
+    }
+    help.innerHTML = `<div class="map-help-title">Map Shortcuts</div>`
+        + `<button id="btn-close-map-help" type="button" aria-label="Close map shortcuts">×</button>`
+        + `<dl>`
+        + `<dt>?</dt><dd>Toggle this help overlay</dd>`
+        + `<dt>F</dt><dd>Fit known space</dd>`
+        + `<dt>L</dt><dd>Show or hide layer toggles</dd>`
+        + `<dt>1–7</dt><dd>Trigger visible sector hotbar actions</dd>`
+        + `<dt>Esc</dt><dd>Close overlays or collapse expanded map</dd>`
+        + `</dl>`;
+}
+
+function drawMapOverview(ids, rect) {
+    const canvas = document.getElementById("mapOverview");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const overviewRect = prepareMapCanvas(canvas, ctx);
+    ctx.clearRect(0, 0, overviewRect.width, overviewRect.height);
+    ctx.fillStyle = "rgba(5, 11, 16, 0.92)";
+    ctx.fillRect(0, 0, overviewRect.width, overviewRect.height);
+    ctx.strokeStyle = "rgba(0, 204, 153, 0.45)";
+    ctx.strokeRect(0.5, 0.5, overviewRect.width - 1, overviewRect.height - 1);
+
+    if (ids.length === 0) return;
+    const rawNodes = getMapNodes();
+    const padding = 10;
+    const scaleX = (overviewRect.width - padding * 2) / MAP_LOGICAL_WIDTH;
+    const scaleY = (overviewRect.height - padding * 2) / MAP_LOGICAL_HEIGHT;
+    const toOverview = node => ({
+        x: padding + node.x * scaleX,
+        y: padding + node.y * scaleY
+    });
+
+    ids.forEach(id => {
+        const rawNode = rawNodes[id];
+        if (!rawNode) return;
+        const overviewNode = toOverview(rawNode);
+        ctx.fillStyle = "rgba(180, 220, 255, 0.72)";
+        if (id === state.player.currentSector) ctx.fillStyle = "#00ff88";
+        if (id === state.selectedSectorId) ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(overviewNode.x, overviewNode.y, id === state.player.currentSector ? 3 : 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const viewport = getViewport();
+    const viewLeft = (-viewport.offsetX / viewport.scale) * scaleX + padding;
+    const viewTop = (-viewport.offsetY / viewport.scale) * scaleY + padding;
+    const viewWidth = (rect.width / viewport.scale) * scaleX;
+    const viewHeight = (rect.height / viewport.scale) * scaleY;
+    ctx.strokeStyle = "rgba(255, 209, 102, 0.9)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(viewLeft, viewTop, viewWidth, viewHeight);
+}
+
 export function drawMap() {
+    renderMapToolbar();
+    renderMapHelp();
     const canvas = document.getElementById("map");
     if (!canvas) return;
     const { universe, planets, ports, player, selectedSectorId, starField, hoveredSectorId } = state;
+    const layers = getMapLayers();
     const ctx = canvas.getContext("2d");
     const viewport = getViewport();
     const rect = prepareMapCanvas(canvas, ctx);
@@ -421,29 +571,31 @@ export function drawMap() {
         screenNodes[id] = transformNode(node, {});
     });
     const ids = getVisibleIds();
-    ctx.strokeStyle = "rgba(0, 204, 153, 0.45)";
-    ctx.lineWidth = MAP_UI.LINKS.WIDTH;
-    ids.forEach(id => {
-        getSectorNeighbors(id).forEach(target => {
-            if (id < target && screenNodes[target]) {
-                ctx.beginPath();
-                ctx.moveTo(screenNodes[id].x, screenNodes[id].y);
-                ctx.lineTo(screenNodes[target].x, screenNodes[target].y);
-                ctx.stroke();
-            }
+    if (layers.tradeRoutes) {
+        ctx.strokeStyle = "rgba(0, 204, 153, 0.45)";
+        ctx.lineWidth = MAP_UI.LINKS.WIDTH;
+        ids.forEach(id => {
+            getSectorNeighbors(id).forEach(target => {
+                if (id < target && screenNodes[target]) {
+                    ctx.beginPath();
+                    ctx.moveTo(screenNodes[id].x, screenNodes[id].y);
+                    ctx.lineTo(screenNodes[target].x, screenNodes[target].y);
+                    ctx.stroke();
+                }
+            });
         });
-    });
+    }
     const nodeScale = viewport.scale < 1 ? MAP_ZOOMED_OUT_NODE_SCALE : 1;
     const nodeRadius = MAP_UI.NODES.RADIUS * nodeScale;
     const selectedRadius = MAP_UI.NODES.SELECTED_RADIUS * nodeScale;
     const freshnessBySector = new Map(ids.map(id => [id, getFreshnessSummaryForSector(id)]));
     ids.forEach(id => {
         const node = screenNodes[id];
-        let fill = "#8888ff";
-        if (universe[id].asteroids) fill = "#cccccc";
-        if (planets[id]) fill = "#44aaff";
-        if (ports[id]) fill = "#ffaa00";
-        if (universe[id].pirateThreat > 0 && id !== player.currentSector) fill = "#ff4444";
+        let fill = layers.systems ? "#8888ff" : "rgba(120, 140, 160, 0.35)";
+        if (layers.asteroids && universe[id].asteroids) fill = "#cccccc";
+        if (layers.systems && planets[id]) fill = "#44aaff";
+        if (layers.systems && ports[id]) fill = "#ffaa00";
+        if (layers.contestedZones && universe[id].pirateThreat > 0 && id !== player.currentSector) fill = "#ff4444";
         if (id === player.currentSector) fill = "#00ff88";
         const selected = id === selectedSectorId;
         const hovered = id === hoveredSectorId;
@@ -465,34 +617,40 @@ export function drawMap() {
             ctx.stroke();
         }
         const freshness = freshnessBySector.get(id) || { label: "unknown" };
-        ctx.strokeStyle = getMapFreshnessColor(freshness.label);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, nodeRadius + 4, 0, Math.PI * 2);
-        ctx.stroke();
+        if (layers.dataFreshness) {
+            ctx.strokeStyle = getMapFreshnessColor(freshness.label);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, nodeRadius + 4, 0, Math.PI * 2);
+            ctx.stroke();
+        }
         ctx.fillStyle = fill;
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "#001122";
-        ctx.font = MAP_UI.LABELS.ID_FONT;
-        ctx.fillText(String(id), node.x + MAP_UI.LABELS.ID_OFFSET_X, node.y + MAP_UI.LABELS.ID_OFFSET_Y);
+        if (layers.systems) {
+            ctx.fillStyle = "#001122";
+            ctx.font = MAP_UI.LABELS.ID_FONT;
+            ctx.fillText(String(id), node.x + MAP_UI.LABELS.ID_OFFSET_X, node.y + MAP_UI.LABELS.ID_OFFSET_Y);
+        }
         const faction = FACTIONS[getSectorFactionId(id)];
-        if (faction) {
+        if (layers.influence && faction) {
             ctx.fillStyle = faction.color;
             ctx.font = MAP_UI.LABELS.FACTION_FONT;
             ctx.fillText(faction.icon, node.x + MAP_UI.LABELS.FACTION_OFFSET_X, node.y + MAP_UI.LABELS.FACTION_OFFSET_Y);
         }
         const polity = universe[id].localAuthority ? state.polities?.[universe[id].localAuthority.polityId] : null;
-        if (polity) {
+        if (layers.influence && polity) {
             ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
             ctx.font = "9px monospace";
             ctx.fillText(polity.name.split(" ").map(part => part[0]).join("").slice(0, 3), node.x - nodeRadius - 6, node.y + nodeRadius + 12);
         }
-        ctx.fillStyle = getMapFreshnessColor(freshness.label);
-        ctx.font = "10px monospace";
-        const freshnessMarker = freshness.label === "current" ? "●" : (freshness.label || "unknown").charAt(0).toUpperCase();
-        ctx.fillText(freshnessMarker, node.x - nodeRadius - 7, node.y - nodeRadius - 5);
+        if (layers.dataFreshness) {
+            ctx.fillStyle = getMapFreshnessColor(freshness.label);
+            ctx.font = "10px monospace";
+            const freshnessMarker = freshness.label === "current" ? "●" : (freshness.label || "unknown").charAt(0).toUpperCase();
+            ctx.fillText(freshnessMarker, node.x - nodeRadius - 7, node.y - nodeRadius - 5);
+        }
         const localCaptains = getCaptainsInSector(id, true);
         if (localCaptains.length > 0) {
             ctx.fillStyle = "#ffffff";
@@ -500,6 +658,7 @@ export function drawMap() {
             ctx.fillText("C" + localCaptains.length, node.x + MAP_UI.LABELS.CAPTAIN_OFFSET_X, node.y + MAP_UI.LABELS.CAPTAIN_OFFSET_Y);
         }
     });
+    drawMapOverview(ids, rect);
     if (starField.length > 0) scheduleMapAnimationFrame();
 }
 
@@ -617,6 +776,29 @@ export function setupMapInteraction() {
     };
 
     canvas.dataset.bound = "1";
+    const handleToolbarClick = event => {
+        const layerButton = event.target.closest("[data-map-layer]");
+        if (layerButton) {
+            toggleMapLayer(layerButton.dataset.mapLayer);
+            return;
+        }
+        if (event.target.closest("#btn-center-map")) {
+            centerMapOnSector();
+            return;
+        }
+        if (event.target.closest("#btn-fit-map")) {
+            fitKnownSpace();
+            return;
+        }
+        if (event.target.closest("#btn-toggle-map-layers")) {
+            toggleMapLayerPanel();
+            return;
+        }
+        if (event.target.closest("#btn-map-help") || event.target.closest("#btn-close-map-help")) {
+            toggleMapHelp();
+        }
+    };
+
     canvas.addEventListener("click", handleMapClick);
     canvas.addEventListener("mousemove", handleMapMove);
     canvas.addEventListener("mouseleave", handleMapLeave);
@@ -624,15 +806,54 @@ export function setupMapInteraction() {
     canvas.addEventListener("contextmenu", handleContextMenu);
     globalThis.addEventListener("mouseup", handleMouseUp);
     const handleDoubleClick = () => centerMapOnSector();
+    const toolbar = document.getElementById("mapToolbar");
+    const shortcutHelp = document.getElementById("mapShortcutHelp");
     const expandButton = document.getElementById("btn-expand-map");
     const handleExpandClick = () => toggleMapExpanded();
     const handleResize = () => Renderer.invalidate("map");
     const handleKeyDown = event => {
-        if (event.key === "Escape") setMapExpanded(false);
+        const target = event.target;
+        const tagName = target?.tagName || "";
+        if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || target?.isContentEditable) return;
+        if (event.key === "Escape") {
+            if (state.mapHelpOpen) {
+                state.mapHelpOpen = false;
+                renderMapToolbar();
+                renderMapHelp();
+                return;
+            }
+            setMapExpanded(false);
+            return;
+        }
+        if (event.key === "?") {
+            event.preventDefault();
+            toggleMapHelp();
+            return;
+        }
+        if (event.key.toLowerCase() === "f") {
+            event.preventDefault();
+            fitKnownSpace();
+            return;
+        }
+        if (event.key.toLowerCase() === "l") {
+            event.preventDefault();
+            toggleMapLayerPanel();
+            return;
+        }
+        if (["1", "2", "3", "4", "5", "6", "7"].includes(event.key)) {
+            const buttons = Array.from(document.querySelectorAll("#actionHotbar .action-hotbar-button:not(:disabled)"));
+            const button = buttons[Number(event.key) - 1];
+            if (button) {
+                event.preventDefault();
+                button.click();
+            }
+        }
     };
 
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     canvas.addEventListener("dblclick", handleDoubleClick);
+    toolbar?.addEventListener("click", handleToolbarClick);
+    shortcutHelp?.addEventListener("click", handleToolbarClick);
     expandButton?.addEventListener("click", handleExpandClick);
     globalThis.addEventListener("resize", handleResize);
     globalThis.addEventListener("keydown", handleKeyDown);
@@ -646,6 +867,8 @@ export function setupMapInteraction() {
         globalThis.removeEventListener("mouseup", handleMouseUp);
         canvas.removeEventListener("wheel", handleWheel);
         canvas.removeEventListener("dblclick", handleDoubleClick);
+        toolbar?.removeEventListener("click", handleToolbarClick);
+        shortcutHelp?.removeEventListener("click", handleToolbarClick);
         expandButton?.removeEventListener("click", handleExpandClick);
         globalThis.removeEventListener("resize", handleResize);
         globalThis.removeEventListener("keydown", handleKeyDown);

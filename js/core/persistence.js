@@ -330,7 +330,8 @@ export function migrateSave(data) {
 // Persisted fields below are durable game data needed to resume a run.
 // Derived/transient fields intentionally excluded include sitesById, starField,
 // selectedSectorId, currentScreen, reputationTab, selectedCaptainId,
-// mapNodeCache, and worldGraphRevision. Add new save fields here first so tests
+// mapNodeCache, mapLayers, mapLayersOpen, mapHelpOpen, and worldGraphRevision.
+// Add new save fields here first so tests
 // catch accidental cache/UI leakage or serializer drift.
 export const SAVE_STATE_FIELDS = [
     "player",
