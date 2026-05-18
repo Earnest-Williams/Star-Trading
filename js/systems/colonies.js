@@ -135,19 +135,19 @@ export function buildColonyStructure(key) {
 }
 
 export function getColonyDailyNeeds(planet) {
-    if (!planet || planet.owner !== "Player") return makeStock(0, 0, 0);
-    return makeStock(
-        Math.floor((planet.buildings.factory * 3 + planet.buildings.defense * 2 + planet.colonists / 180)),
-        Math.max(1, Math.floor(planet.colonists / 95 + planet.buildings.habitat)),
-        Math.floor(planet.buildings.habitat + planet.buildings.mine + planet.buildings.farm + planet.buildings.defense * 2 + planet.colonists / 220)
-    );
+    if (!planet || planet.owner !== "Player") return makeStock();
+    return makeStock({
+        ore: Math.floor((planet.buildings.factory * 3 + planet.buildings.defense * 2 + planet.colonists / 180)),
+        org: Math.max(1, Math.floor(planet.colonists / 95 + planet.buildings.habitat)),
+        eq: Math.floor(planet.buildings.habitat + planet.buildings.mine + planet.buildings.farm + planet.buildings.defense * 2 + planet.colonists / 220)
+    });
 }
 
 export function updateColonyNeedsDaily() {
     Object.entries(state.planets).forEach(([sectorIdText, planet]) => {
         if (planet.owner !== "Player") return;
         if (typeof planet.satisfaction !== "number") planet.satisfaction = 60;
-        if (!planet.shortages) planet.shortages = makeStock(0, 0, 0);
+        if (!planet.shortages) planet.shortages = makeStock();
         const sectorId = Number(sectorIdText);
         const needs = getColonyDailyNeeds(planet);
         let shortageCount = 0;

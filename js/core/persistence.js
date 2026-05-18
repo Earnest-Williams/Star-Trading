@@ -507,14 +507,8 @@ function normaliseCurrentLoadedGame() {
         if (!port.factionId) port.factionId = portType.factionId;
         if (!port.publicFactionId) port.publicFactionId = port.factionId;
         if (typeof port.hiddenFactionId === "undefined") port.hiddenFactionId = null;
-        if (!port.stock) port.stock = makeStock(0, 0, 0);
-        if (!port.maxStock) port.maxStock = makeStock(
-            PORT_DEFAULTS.MAX_STOCK.ore,
-            PORT_DEFAULTS.MAX_STOCK.org,
-            PORT_DEFAULTS.MAX_STOCK.eq,
-            PORT_DEFAULTS.MAX_STOCK.pulse_canister,
-            PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module
-        );
+        if (!port.stock) port.stock = makeStock();
+        if (!port.maxStock) port.maxStock = makeStock({ ...PORT_DEFAULTS.MAX_STOCK });
         if (!port.basePrices) port.basePrices = { ...PORT_DEFAULTS.BASE_PRICES };
         MARKET_COMMODITIES.forEach(commodity => {
             if (typeof port.stock[commodity] !== "number") port.stock[commodity] = 0;
@@ -543,7 +537,7 @@ function normaliseCurrentLoadedGame() {
     if (!state.polities) state.polities = {};
     if (!state.polityIdsBySector) state.polityIdsBySector = {};
     Object.values(state.planets).forEach(planet => {
-        if (!planet.stock) planet.stock = makeStock(0, 0, 0);
+        if (!planet.stock) planet.stock = makeStock();
         if (!planet.shortages) planet.shortages = { ore: 0, org: 0, eq: 0 };
         if (typeof planet.satisfaction !== "number") planet.satisfaction = planet.owner ? 60 : 0;
         if (!planet.buildings) planet.buildings = { habitat: 0, mine: 0, farm: 0, factory: 0, defense: 0 };
@@ -562,8 +556,8 @@ function normaliseCurrentLoadedGame() {
     }
     normaliseEntanglements();
     normaliseTradeRoutes();
-    if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(0, 0, 0), flows: 0 };
-    if (!state.ambientTrade.moved) state.ambientTrade.moved = makeStock(0, 0, 0);
+    if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(), flows: 0 };
+    if (!state.ambientTrade.moved) state.ambientTrade.moved = makeStock();
     MARKET_COMMODITIES.forEach(commodity => {
         if (typeof state.ambientTrade.moved[commodity] !== "number") state.ambientTrade.moved[commodity] = 0;
     });

@@ -74,7 +74,7 @@ function renderColonyNeedsPanel(snapshot) {
     if (playerColonies.length === 0) return html + `<div class="muted">Found a colony to unlock supply pressure.</div></div>`;
     playerColonies.forEach(([sectorIdText, planet]) => {
         const needs = getColonyDailyNeeds(planet);
-        const shortages = planet.shortages || makeStock(0, 0, 0);
+        const shortages = planet.shortages || makeStock();
         html += `<div class="mission"><strong>Colony S${sectorIdText}</strong> Satisfaction ${planet.satisfaction || 0}<br>`;
         html += `Daily needs: ${COMMODITIES.map(c => `${formatCommodity(c)} ${needs[c]}`).join(" / ")}<br>`;
         html += `Stock: ${COMMODITIES.map(c => `${formatCommodity(c)} ${planet.stock[c] || 0}`).join(" / ")}<br>`;

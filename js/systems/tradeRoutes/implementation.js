@@ -140,7 +140,7 @@ export function getLogisticsNode(sectorId) {
             name: `Player Colony S${sectorId}`,
             factionId: planet.factionId || "colonists",
             stock: planet.stock,
-            maxStock: makeStock(PORT_DEFAULTS.MAX_STOCK.ore, PORT_DEFAULTS.MAX_STOCK.org, PORT_DEFAULTS.MAX_STOCK.eq),
+            maxStock: makeStock({ ore: PORT_DEFAULTS.MAX_STOCK.ore, org: PORT_DEFAULTS.MAX_STOCK.org, eq: PORT_DEFAULTS.MAX_STOCK.eq }),
             sells: COMMODITIES.slice(), buys: COMMODITIES.slice()
         };
     }

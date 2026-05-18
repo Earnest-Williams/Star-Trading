@@ -59,14 +59,8 @@ function getPortFillRatio(portType, commodity) {
 
 export function makePort(typeKey) {
     const portType = PORT_TYPES[typeKey];
-    const stock = makeStock(0, 0, 0);
-    const maxStock = makeStock(
-        PORT_DEFAULTS.MAX_STOCK.ore,
-        PORT_DEFAULTS.MAX_STOCK.org,
-        PORT_DEFAULTS.MAX_STOCK.eq,
-        PORT_DEFAULTS.MAX_STOCK.pulse_canister,
-        PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module
-    );
+    const stock = {};
+    const maxStock = {};
     MARKET_COMMODITIES.forEach(commodity => {
         maxStock[commodity] = PORT_DEFAULTS.MAX_STOCK[commodity] || 1;
         stock[commodity] = Math.floor(maxStock[commodity] * getPortFillRatio(portType, commodity));
@@ -85,7 +79,7 @@ export function makePort(typeKey) {
 export function makePlanet(typeKey) {
     return {
         typeKey, owner: null, factionId: null, colonists: PLANET_DEFAULTS.COLONISTS,
-        stock: makeStock(0, 0, 0), satisfaction: PLANET_DEFAULTS.SATISFACTION, shortages: makeStock(0, 0, 0),
+        stock: makeStock(), satisfaction: PLANET_DEFAULTS.SATISFACTION, shortages: makeStock(),
         buildings: { ...PLANET_DEFAULTS.BUILDINGS }
     };
 }
