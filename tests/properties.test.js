@@ -3,15 +3,22 @@ import { beforeEach, describe, it } from 'node:test';
 
 import { ARCHETYPE_PRESETS, CHAR_DEFAULTS, CHAR_STATS, PLATFORM_PACKAGES } from '../js/config/chargen.js';
 import { buildCharacterFromSpec, validateBuild } from '../js/core/characterBuild.js';
-import { createPlayerFromBuild } from '../js/core/universe.js';
+import { addJumpGateCorridor, createPlayerFromBuild } from '../js/core/universe.js';
 import { normaliseCharacter } from '../js/core/characters.js';
 import { state, resetState } from '../js/state.js';
 import {
     createStartingProperties,
     applyPlayerPropertyAction,
+    evaluateDelegatedPropertyFreight,
     getAvailablePropertyActions,
+    getPropertyDemandSignals,
+    getPropertyInspectionExposure,
     getPropertyRecommendation,
+    getPropertyTenantHooks,
+    normaliseProperty,
+    recommendPropertyTenantMix,
     resolvePropertyAction,
+    resolvePropertyInspection,
     summarisePropertyEconomics,
     tickPropertyDaily
 } from '../js/systems/properties.js';
@@ -252,5 +259,255 @@ describe('property daily tick and recommendations', () => {
         assert.equal(lowUpkeep.ok, true);
         assert.equal(highUpkeep.ok, true);
         assert.ok(highUpkeep.property.valueEstimate < lowUpkeep.property.valueEstimate);
+    });
+});
+
+function integratedPropertyCharacter(stats = {}, skillNodeIds = []) {
+    return {
+        stats: {
+            nerve: 50,
+            tradecraft: 50,
+            fieldcraft: 50,
+            command: 50,
+            acumen: 50,
+            ...stats
+        },
+        traits: [],
+        skillNodeIds
+    };
+}
+
+function integratedProperty(overrides = {}) {
+    return {
+        id: 'dock-warehouse',
+        siteId: 1,
+        kind: 'warehouse',
+        label: 'Dock Warehouse',
+        condition: 72,
+        occupancy: 0.82,
+        units: 4,
+        rentDaily: 42,
+        upkeepDaily: 35,
+        storageCapacity: 60,
+        serviceSlots: 1,
+        debtDaily: 0,
+        tags: ['warehouse', 'dockside', 'bonded_storage'],
+        tenants: [],
+        storedGoods: { ore: 40 },
+        ...overrides
+    };
+}
+
+function buildIntegratedLogisticsWorld() {
+    resetState();
+    state.universe = {
+        1: { id: 1, jumpGates: [], pirateThreat: 2, region: 'Core' },
+        2: { id: 2, jumpGates: [], pirateThreat: 0, region: 'Core' }
+    };
+    addJumpGateCorridor(1, 2);
+    state.ports = {
+        1: {
+            typeKey: 'mining',
+            factionId: 'hc',
+            stock: { ore: 5900, org: 50, eq: 50 },
+            maxStock: { ore: 6000, org: 5000, eq: 4000 },
+            basePrices: { ore: 80, org: 150, eq: 300 }
+        },
+        2: {
+            typeKey: 'industrial',
+            factionId: 'hc',
+            stock: { ore: 300, org: 100, eq: 1000 },
+            maxStock: { ore: 6000, org: 5000, eq: 4000 },
+            basePrices: { ore: 80, org: 150, eq: 300 }
+        }
+    };
+    state.planets = {};
+    state.tradeRoutes = [
+        {
+            id: 1,
+            originSector: 1,
+            destinationSector: 2,
+            commodity: 'ore',
+            amount: 180,
+            status: 'paused',
+            starvedDays: 2
+        }
+    ];
+    state.nextTradeRouteId = 2;
+    state.player = {
+        currentSector: 1,
+        time: { day: 1 },
+        character: integratedPropertyCharacter(),
+        properties: []
+    };
+    state.captains = {
+        reliable: {
+            id: 'reliable',
+            name: 'Mara Voss',
+            callsign: 'Latchkey',
+            known: true,
+            status: 'active',
+            currentSector: 1,
+            ship: { cargoCapacity: 120, combatRating: 8 },
+            relationshipToPlayer: { opinion: 20, trust: 25, rivalry: 0 }
+        },
+        risky: {
+            id: 'risky',
+            name: 'Kade Orin',
+            callsign: 'Static',
+            known: true,
+            status: 'active',
+            currentSector: 1,
+            ship: { cargoCapacity: 120, combatRating: 4 },
+            relationshipToPlayer: { opinion: -10, trust: 0, rivalry: 25 }
+        }
+    };
+}
+
+describe('property simulation integrations', () => {
+    beforeEach(buildIntegratedLogisticsWorld);
+
+    it('makes property demand responsive to local market pressure', () => {
+        const quiet = getPropertyRecommendation(
+            integratedProperty(),
+            integratedPropertyCharacter({ acumen: 94, tradecraft: 90, command: 86, fieldcraft: 82, nerve: 80 }),
+            { highTradeVolume: 0, piratePressure: 0, routes: [] }
+        );
+        const pressured = getPropertyRecommendation(
+            integratedProperty(),
+            integratedPropertyCharacter({ acumen: 94, tradecraft: 90, command: 86, fieldcraft: 82, nerve: 80 })
+        );
+        const signals = getPropertyDemandSignals(integratedProperty());
+
+        assert.ok(signals.signals.includes('cargo overflow'));
+        assert.ok(signals.signals.includes('route outages'));
+        assert.ok(signals.signals.includes('pirate pressure'));
+        assert.ok(pressured.market.demandScore > quiet.market.demandScore);
+        assert.equal(pressured.actionId, 'convertPropertyUse');
+    });
+
+    it('separates low, medium, high, and max property guidance bands', () => {
+        const asset = integratedProperty({ occupancy: 0.7, condition: 62 });
+        const low = getPropertyRecommendation(asset, integratedPropertyCharacter());
+        const medium = getPropertyRecommendation(asset, integratedPropertyCharacter({ acumen: 68, tradecraft: 62, command: 60, fieldcraft: 60, nerve: 60 }));
+        const high = getPropertyRecommendation(asset, integratedPropertyCharacter({ acumen: 88, tradecraft: 78, command: 78, fieldcraft: 76, nerve: 74 }));
+        const max = getPropertyRecommendation(asset, integratedPropertyCharacter({ acumen: 96, tradecraft: 96, command: 96, fieldcraft: 96, nerve: 96 }));
+
+        assert.equal(low.quality, 'low');
+        assert.equal(medium.quality, 'medium');
+        assert.equal(high.quality, 'high');
+        assert.equal(max.quality, 'max');
+        assert.ok(medium.confidence > low.confidence);
+        assert.ok(high.confidence > medium.confidence);
+        assert.ok(max.confidence > high.confidence);
+    });
+
+    it('scores tenants and gives max-skilled operators an obvious tenant mix', () => {
+        const asset = integratedProperty({
+            tags: ['warehouse', 'berths', 'repair'],
+            tenants: [
+                { type: 'smugglers' },
+                { type: 'company_agents' },
+                { type: 'mechanics' }
+            ]
+        });
+        const low = recommendPropertyTenantMix(asset, integratedPropertyCharacter());
+        const max = recommendPropertyTenantMix(
+            asset,
+            integratedPropertyCharacter({ acumen: 96, tradecraft: 96, command: 96, fieldcraft: 96, nerve: 96 })
+        );
+
+        assert.equal(low.quality, 'low');
+        assert.equal(max.quality, 'max');
+        assert.ok(max.text.includes('Best tenant mix'));
+        assert.notEqual(max.candidates[0].tenant.type, 'smugglers');
+    });
+
+    it('exposes company tenant hooks without renderer-owned rules', () => {
+        const hooks = getPropertyTenantHooks(integratedProperty({
+            tenants: [
+                { type: 'company_agents' },
+                { type: 'mechanics' },
+                { type: 'brokers' }
+            ]
+        }));
+
+        assert.ok(hooks.some(hook => hook.type === 'import_export_contracts'));
+        assert.ok(hooks.some(hook => hook.type === 'emergency_repairs'));
+        assert.ok(hooks.some(hook => hook.type === 'informant'));
+    });
+
+    it('resolves inspection exposure through character competency', () => {
+        const exposed = integratedProperty({
+            rentPosture: 'high',
+            occupancy: 0.65,
+            tenants: [{ type: 'smugglers' }, { type: 'brokers' }],
+            tags: ['warehouse', 'bonded_storage', 'berths']
+        });
+        const exposure = getPropertyInspectionExposure(exposed, { inspectionLevel: 0.7 });
+        const low = resolvePropertyInspection(exposed, integratedPropertyCharacter(), { inspectionLevel: 0.7 });
+        const high = resolvePropertyInspection(
+            exposed,
+            integratedPropertyCharacter({ acumen: 98, tradecraft: 98, nerve: 94, command: 90 }),
+            { inspectionLevel: 0.7 }
+        );
+
+        assert.equal(exposure.band, 'severe');
+        assert.equal(low.outcome, 'tenant_loss');
+        assert.equal(high.outcome, 'managed_paperwork');
+        assert.ok(high.score > low.score);
+    });
+
+    it('normalizes malformed tenants and numeric inputs without leaking NaN', () => {
+        const asset = normaliseProperty({
+            condition: 'bad',
+            occupancy: 'bad',
+            tenants: [null, { type: 'smugglers', reliability: 'bad', rentYield: 'bad' }],
+            storedGoods: { ore: '25', org: 'bad', eq: -5 }
+        });
+        const signals = getPropertyDemandSignals(asset, {
+            port: { stock: { ore: 'bad' }, maxStock: { ore: 'bad' } },
+            routes: [null, { originSector: asset.siteId, amount: 'bad', starvedDays: 'bad' }],
+            piratePressure: 'bad',
+            highTradeVolume: 'bad'
+        });
+        const inspection = getPropertyInspectionExposure(asset, {
+            market: signals,
+            inspectionLevel: 'bad',
+            factionHeat: 'bad'
+        });
+        const freight = evaluateDelegatedPropertyFreight(asset, integratedPropertyCharacter(), {
+            destinationSector: 1,
+            amount: 'bad'
+        });
+
+        assert.equal(asset.condition, 65);
+        assert.equal(asset.occupancy, 0.75);
+        assert.equal(asset.tenants[0].type, 'merchants');
+        assert.equal(asset.tenants[1].reliability, 42);
+        assert.deepEqual(asset.storedGoods, { ore: 25, org: 0, eq: 0 });
+        assert.equal(Number.isNaN(signals.demandScore), false);
+        assert.equal(Number.isNaN(inspection.exposure), false);
+        assert.equal(freight.amount, 25);
+    });
+
+    it('evaluates delegated freight outcomes from route, captain, and character quality', () => {
+        const asset = integratedProperty();
+        const low = evaluateDelegatedPropertyFreight(
+            asset,
+            integratedPropertyCharacter(),
+            { destinationSector: 2, commodity: 'ore', amount: 30, captainId: 'risky', riskPosture: 'aggressive' }
+        );
+        const high = evaluateDelegatedPropertyFreight(
+            asset,
+            integratedPropertyCharacter({ acumen: 92, tradecraft: 94, command: 96 }),
+            { destinationSector: 2, commodity: 'ore', amount: 30, captainId: 'reliable', riskPosture: 'cautious' }
+        );
+
+        assert.equal(low.routeViable, true);
+        assert.equal(high.routeViable, true);
+        assert.ok(high.expectedProfit > 0);
+        assert.ok(high.evaluationScore > low.evaluationScore);
+        assert.match(high.outcome, /strong_return|acceptable/);
     });
 });
