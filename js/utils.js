@@ -60,13 +60,13 @@ export function escapeHtml(s) {
 
 export function clampRange(value, min, max) { return Math.max(min, Math.min(max, Math.round(value))); }
 export function makeStock(ore, org, eq, pulseCanister = 0, heavyPulseModule = 0) {
-    return {
-        ore,
-        org,
-        eq,
-        pulse_canister: pulseCanister,
-        heavy_pulse_module: heavyPulseModule
-    };
+    const stock = Object.fromEntries(CARGO_COMMODITIES.map(commodity => [commodity, 0]));
+    stock.ore = ore;
+    stock.org = org;
+    stock.eq = eq;
+    stock.pulse_canister = pulseCanister;
+    stock.heavy_pulse_module = heavyPulseModule;
+    return stock;
 }
 export function formatCredits(value) { return Math.floor(value).toLocaleString(); }
 export function formatCommodity(commodity) { return COMMODITY_NAMES[commodity] || commodity; }

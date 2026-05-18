@@ -15,21 +15,38 @@ function numericCommodityValue(source, commodity) {
     return Number.isFinite(source[commodity]) ? source[commodity] : 0;
 }
 
+function sumCommodityValues(stock, maxStock, commodities) {
+    return commodities.reduce(
+        (total, commodity) => total
+            + numericCommodityValue(stock, commodity)
+            + numericCommodityValue(maxStock, commodity),
+        0
+    );
+}
+
 function inferPortTypeKeyFromInventory(port) {
     const stock = isObject(port?.stock) ? port.stock : null;
     const maxStock = isObject(port?.maxStock) ? port.maxStock : null;
-    const ore = numericCommodityValue(stock, 'ore') + numericCommodityValue(maxStock, 'ore');
-    const org = numericCommodityValue(stock, 'org') + numericCommodityValue(maxStock, 'org');
-    const eq = numericCommodityValue(stock, 'eq')
-        + numericCommodityValue(stock, 'pulse_canister')
-        + numericCommodityValue(stock, 'heavy_pulse_module')
-        + numericCommodityValue(maxStock, 'eq')
-        + numericCommodityValue(maxStock, 'pulse_canister')
-        + numericCommodityValue(maxStock, 'heavy_pulse_module');
+    const raw = sumCommodityValues(stock, maxStock, ['ore', 'heavy_metals', 'rare_earths', 'water_ice']);
+    const agricultural = sumCommodityValues(stock, maxStock, ['org', 'fertilizer', 'medical_supplies']);
+    const industrial = sumCommodityValues(stock, maxStock, [
+        'eq',
+        'refined_metals',
+        'polymers',
+        'coolants',
+        'machinery',
+        'repair_parts',
+        'electronics',
+        'construction_kits',
+        'pulse_canister',
+        'heavy_pulse_module',
+        'gate_coils',
+        'control_cores'
+    ]);
 
-    if (ore <= 0 && org <= 0 && eq <= 0) return DEFAULT_PORT_TYPE_KEY;
-    if (ore >= org && ore >= eq) return 'mining';
-    if (org >= ore && org >= eq) return 'agricultural';
+    if (raw <= 0 && agricultural <= 0 && industrial <= 0) return DEFAULT_PORT_TYPE_KEY;
+    if (raw >= agricultural && raw >= industrial) return 'mining';
+    if (agricultural >= raw && agricultural >= industrial) return 'agricultural';
     return 'industrial';
 }
 

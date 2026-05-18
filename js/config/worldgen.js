@@ -87,17 +87,45 @@ export const PORT_DEFAULTS = Object.freeze({
     }),
     MAX_STOCK: Object.freeze({
         ore: 6000,
+        heavy_metals: 4200,
+        rare_earths: 1800,
+        water_ice: 5200,
         org: 5000,
+        refined_metals: 4200,
+        polymers: 3600,
+        coolants: 2800,
+        fertilizer: 3400,
         eq: 4000,
+        machinery: 2600,
+        repair_parts: 3000,
+        electronics: 2000,
+        medical_supplies: 1800,
+        construction_kits: 2600,
         pulse_canister: 120,
-        heavy_pulse_module: 40
+        heavy_pulse_module: 40,
+        gate_coils: 90,
+        control_cores: 300
     }),
     BASE_PRICES: Object.freeze({
         ore: 80,
+        heavy_metals: 135,
+        rare_earths: 260,
+        water_ice: 60,
         org: 150,
+        refined_metals: 190,
+        polymers: 220,
+        coolants: 210,
+        fertilizer: 170,
         eq: 300,
+        machinery: 410,
+        repair_parts: 360,
+        electronics: 520,
+        medical_supplies: 470,
+        construction_kits: 560,
         pulse_canister: 7,
-        heavy_pulse_module: 26
+        heavy_pulse_module: 26,
+        gate_coils: 680,
+        control_cores: 740
     })
 });
 

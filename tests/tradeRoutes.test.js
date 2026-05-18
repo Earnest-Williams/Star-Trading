@@ -38,7 +38,7 @@ function buildUniverse() {
     addJumpGateCorridor(1, 2);
     addJumpGateCorridor(1, 3);
     addJumpGateCorridor(2, 4);
-    // Two compatible ports: sector 1 sells ore, sector 4 buys ore.
+    // Two compatible ports: mining now exposes raw industrial feedstocks and sector 4 buys them.
     state.ports = {
         1: { typeKey: 'mining',    factionId: 'hc', publicFactionId: 'hc', hiddenFactionId: null,
              stock: { ore: 3000, org: 500,  eq: 200  },
@@ -125,7 +125,7 @@ describe('deriveRouteMetrics', () => {
         assert.ok(metrics.totalEffectiveSpan > 0);
         assert.equal(metrics.risk, 0);
         assert.equal(metrics.setupCost, getRouteSetupCost(1, 4));
-        assert.deepEqual(metrics.viableCommodities, ['ore']);
+        assert.deepEqual(metrics.viableCommodities, ['ore', 'heavy_metals', 'rare_earths']);
         assert.equal(metrics.profitBands[0].commodity, 'ore');
         assert.equal(metrics.profitBands[0].estimatedProfit, estimateRouteProfit(1, 4, 'ore'));
     });

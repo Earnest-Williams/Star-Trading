@@ -1,5 +1,5 @@
 import { createInitialState, state } from '../state.js';
-import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS } from '../constants.js';
+import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_DEFAULTS } from '../constants.js';
 import { createPlayer } from './universe.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
@@ -508,17 +508,21 @@ function normaliseCurrentLoadedGame() {
         if (!port.publicFactionId) port.publicFactionId = port.factionId;
         if (typeof port.hiddenFactionId === "undefined") port.hiddenFactionId = null;
         if (!port.stock) port.stock = makeStock(0, 0, 0);
-        if (!port.maxStock) port.maxStock = makeStock(6000, 5000, 4000, 120, 40);
-        if (!port.basePrices) port.basePrices = { ore: 80, org: 150, eq: 300 };
+        if (!port.maxStock) port.maxStock = makeStock(
+            PORT_DEFAULTS.MAX_STOCK.ore,
+            PORT_DEFAULTS.MAX_STOCK.org,
+            PORT_DEFAULTS.MAX_STOCK.eq,
+            PORT_DEFAULTS.MAX_STOCK.pulse_canister,
+            PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module
+        );
+        if (!port.basePrices) port.basePrices = { ...PORT_DEFAULTS.BASE_PRICES };
         MARKET_COMMODITIES.forEach(commodity => {
             if (typeof port.stock[commodity] !== "number") port.stock[commodity] = 0;
             if (typeof port.maxStock[commodity] !== "number") {
-                port.maxStock[commodity] = commodity === "pulse_canister" ? 120
-                    : commodity === "heavy_pulse_module" ? 40 : 1;
+                port.maxStock[commodity] = PORT_DEFAULTS.MAX_STOCK[commodity] || 1;
             }
             if (typeof port.basePrices[commodity] !== "number") {
-                port.basePrices[commodity] = commodity === "pulse_canister" ? 7
-                    : commodity === "heavy_pulse_module" ? 26 : 80;
+                port.basePrices[commodity] = PORT_DEFAULTS.BASE_PRICES[commodity] || BALANCE.MIN_TRADE_PRICE;
             }
         });
     });
@@ -559,6 +563,10 @@ function normaliseCurrentLoadedGame() {
     normaliseEntanglements();
     normaliseTradeRoutes();
     if (!state.ambientTrade) state.ambientTrade = { day: 0, moved: makeStock(0, 0, 0), flows: 0 };
+    if (!state.ambientTrade.moved) state.ambientTrade.moved = makeStock(0, 0, 0);
+    MARKET_COMMODITIES.forEach(commodity => {
+        if (typeof state.ambientTrade.moved[commodity] !== "number") state.ambientTrade.moved[commodity] = 0;
+    });
     normaliseDataCargoState();
     if (!Array.isArray(state.worldEvents)) state.worldEvents = [];
     if (typeof state.nextWorldEventId !== "number") state.nextWorldEventId = state.worldEvents.length + 1;

@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS } from '../../constants.js';
+import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS, MARKET_COMMODITIES } from '../../constants.js';
 import { GATE_DEFAULTS, PLANET_DEFAULTS, PORT_DEFAULTS, STARFIELD, WORLDGEN_ANCHORS, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../../config/worldgen.js';
 import { STARTER_PLAYER } from '../../config/player.js';
 import { DEFAULT_BUILD_SPEC, DEFAULT_EMPLOYER_LANE_ID, EMPLOYER_LANES, PLATFORM_PACKAGES, START_PACKAGES, createStarterShipFromPlatform, getStarterCredits } from '../../config/chargen.js';
@@ -48,28 +48,36 @@ export function initRng(seed) {
     rng = seededRng(seed >>> 0);
 }
 
+function getPortFillRatio(portType, commodity) {
+    const sells = portType.sells.includes(commodity);
+    const buys = portType.buys.includes(commodity);
+    if (sells && buys) return 0.35 + rng() * 0.35;
+    if (sells) return 0.55 + rng() * 0.35;
+    if (buys) return 0.08 + rng() * 0.27;
+    return 0.12 + rng() * 0.28;
+}
+
 export function makePort(typeKey) {
+    const portType = PORT_TYPES[typeKey];
+    const stock = makeStock(0, 0, 0);
+    const maxStock = makeStock(
+        PORT_DEFAULTS.MAX_STOCK.ore,
+        PORT_DEFAULTS.MAX_STOCK.org,
+        PORT_DEFAULTS.MAX_STOCK.eq,
+        PORT_DEFAULTS.MAX_STOCK.pulse_canister,
+        PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module
+    );
+    MARKET_COMMODITIES.forEach(commodity => {
+        maxStock[commodity] = PORT_DEFAULTS.MAX_STOCK[commodity] || 1;
+        stock[commodity] = Math.floor(maxStock[commodity] * getPortFillRatio(portType, commodity));
+    });
     return {
         typeKey,
-        factionId: PORT_TYPES[typeKey].factionId,
-        publicFactionId: PORT_TYPES[typeKey].factionId,
+        factionId: portType.factionId,
+        publicFactionId: portType.factionId,
         hiddenFactionId: null,
-        stock: makeStock(
-            PORT_DEFAULTS.STOCK.ORE_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORE_SPAN),
-            PORT_DEFAULTS.STOCK.ORG_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.ORG_SPAN),
-            PORT_DEFAULTS.STOCK.EQ_BASE + Math.floor(rng() * PORT_DEFAULTS.STOCK.EQ_SPAN),
-            Math.floor(PORT_DEFAULTS.MAX_STOCK.pulse_canister * (PORT_DEFAULTS.STOCK.PULSE_CANISTER_FILL_BASE
-                + rng() * PORT_DEFAULTS.STOCK.PULSE_CANISTER_FILL_SPAN)),
-            Math.floor(PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module * (PORT_DEFAULTS.STOCK.HEAVY_PULSE_MODULE_FILL_BASE
-                + rng() * PORT_DEFAULTS.STOCK.HEAVY_PULSE_MODULE_FILL_SPAN))
-        ),
-        maxStock: makeStock(
-            PORT_DEFAULTS.MAX_STOCK.ore,
-            PORT_DEFAULTS.MAX_STOCK.org,
-            PORT_DEFAULTS.MAX_STOCK.eq,
-            PORT_DEFAULTS.MAX_STOCK.pulse_canister,
-            PORT_DEFAULTS.MAX_STOCK.heavy_pulse_module
-        ),
+        stock,
+        maxStock,
         basePrices: { ...PORT_DEFAULTS.BASE_PRICES }
     };
 }
