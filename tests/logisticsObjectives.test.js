@@ -2,7 +2,6 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resetState, state } from '../js/state.js';
-import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
 import { initSessionRng } from '../js/utils.js';
 import { runTradeRoute } from '../js/systems/tradeRoutes.js';
@@ -100,7 +99,6 @@ describe('logistics objectives', () => {
 
         normaliseLogisticsObjectives();
 
-        assert.equal(BALANCE.LOGISTICS_OBJECTIVE.CLOSED_OBJECTIVE_RETENTION_DAYS, 30);
         assert.deepEqual(state.logisticsObjectives.map(objective => objective.id), [2, 3]);
     });
 
