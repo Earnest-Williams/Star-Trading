@@ -79,6 +79,18 @@ import {
 // All data-action buttons are handled via event delegation, then
 // passed through the domain command layer.
 // =====================================================
+export function applyCommandResult(result) {
+    if (!result.ok) {
+        if (result.message) Notifications.show(result.message, 2);
+        return;
+    }
+    if (result.slices.length > 0) {
+        Renderer.sliceChanged(...result.slices);
+        return;
+    }
+    if (result.invalidateAll) updateUI();
+}
+
 export function handleActionClick(event) {
     if (event.type === 'keydown') {
         if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
@@ -93,15 +105,7 @@ export function handleActionClick(event) {
     }
     try {
         const result = executeAction({ type: action, args });
-        if (!result.ok) {
-            if (result.message) Notifications.show(result.message, 2);
-            return;
-        }
-        if (result.slices.length > 0) {
-            Renderer.sliceChanged(...result.slices);
-            return;
-        }
-        if (result.invalidateAll) updateUI();
+        applyCommandResult(result);
     } catch (e) {
         console.error(`Action ${action} failed:`, e);
     }
@@ -654,8 +658,9 @@ export function registerUIActions() {
     registerAction('promoteGuild', promoteGuild);
 
     // Persistence
-    registerAction('saveGame', saveGame);
-    registerAction('loadGame', loadGame);
+    registerAction('saveGame', () => saveGame() ? commandOk() : commandFailed('Save failed.'));
+    registerAction('loadGame', () => loadGame() ? commandOk() : commandFailed('Load failed.'));
+
 }
 
 export function markUIActionsUnregistered() {

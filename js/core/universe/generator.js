@@ -8,6 +8,7 @@ export {
     makePort,
     makePlanet,
     coordKey,
+    setSiteCoord,
     getSiteTypeLabel,
     getRichnessLabel,
     ensureEconomicActivityConnectivity,

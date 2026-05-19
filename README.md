@@ -91,8 +91,19 @@ Run the pinned Vite dev server on port 3000:
 npm run dev
 ```
 
-There is no production build step for the prototype. You can also open
-`index.html` in a browser for a direct local run.
+Build for production/CI:
+
+```bash
+npm run build
+```
+
+Preview the production build locally:
+
+```bash
+npm run preview
+```
+
+Opening `index.html` directly is allowed only for quick local inspection, not validation.
 
 ## Validation commands
 
@@ -104,11 +115,35 @@ economy, global registries, time, and map projection.
 ```bash
 npm test
 npm run lint
+npm run build
 npm run benchmark:map
 ```
 
-Use the benchmark when touching map projection, caching, rendering math, or
-world-generation density.
+Run `npm test`, `npm run lint`, and `npm run build` before merging gameplay, UI, persistence, or module changes.
+
+Run `npm run benchmark:map` when touching:
+- `js/ui/renderMap.js`;
+- `js/core/universe/projection.js`;
+- map projection constants;
+- map cache behavior;
+- worldgen density;
+- corridor generation;
+- rendering math.
+
+Local pre-merge command:
+
+```bash
+npm run validate
+```
+
+CI validation order matches `.github/workflows/ci.yml`:
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run build
+```
 
 ## Project structure
 

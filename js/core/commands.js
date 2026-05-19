@@ -32,7 +32,7 @@ export function normaliseCommandResult(result) {
             noop: Boolean(result.noop)
         };
     }
-    if (result === false) return commandNoop();
+    if (result === false) return commandFailed();
     if (Array.isArray(result)) return commandOk(...result);
     return commandOk();
 }
@@ -70,7 +70,7 @@ export function onActionExecuted(observer) {
 export function executeAction(command) {
     if (!command || !command.type) return commandNoop();
     const fn = getAction(command.type);
-    if (!fn) return commandNoop();
+    if (!fn) return commandFailed(`Unknown action: ${command.type}`);
     const args = Array.isArray(command.args) ? command.args : [];
     const rawResult = fn.apply(null, args);
     const result = normaliseCommandResult(rawResult);
