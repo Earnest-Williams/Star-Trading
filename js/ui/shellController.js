@@ -140,7 +140,7 @@ export function createShellController(deps) {
                 const result = importSavePayload(text);
                 if (result === false) state.isTransitioning = false;
             } catch (error) {
-                console.error(UI_LABELS.importFailed, error);
+                console.error(UI_LABELS.importFailed + ':', error);
                 state.isTransitioning = false;
             }
             input.value = '';
@@ -148,7 +148,7 @@ export function createShellController(deps) {
         try {
             reader.readAsText(file);
         } catch (error) {
-            console.error(UI_LABELS.importReadFailed, error);
+            console.error(UI_LABELS.importReadFailed + ':', error);
             state.isTransitioning = false;
             input.value = '';
         }
