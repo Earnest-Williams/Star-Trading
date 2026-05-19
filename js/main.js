@@ -6,7 +6,7 @@ import { createPlayerFromBuild, generateUniverse, generateStars } from './core/u
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters, hasSavedGame, importSavePayload, loadGame } from './core/persistence.js';
-import { getDefaultPreferences, loadPreferences, savePreferences } from './core/preferences.js';
+import { loadPreferences, saveSettingsPreferences } from './core/preferences.js';
 import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
 import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
@@ -34,7 +34,6 @@ export const App = (() => {
     let _topbarListeners = [];
     let _shellListeners = [];
     let _unsubscribeMapInteraction = () => {};
-    let preferences = null;
     let _shellPanel = 'main'; // 'main' | 'chargen' | 'load' | 'settings'
 
     function init() {
@@ -42,7 +41,6 @@ export const App = (() => {
         resetState();
         initialized = true;
         configurePersistence();
-        loadStoredPreferences();
         applyStoredUiPreferences();
         initUI();
         bindShellDom();
@@ -75,15 +73,14 @@ export const App = (() => {
         updateUI();
     }
 
-    function loadStoredPreferences() {
-        preferences = loadPreferences();
+    function readStoredPreferences() {
+        return loadPreferences();
     }
 
     function applyStoredUiPreferences() {
-        const prefs = preferences || getDefaultPreferences();
+        const prefs = readStoredPreferences();
         state.mapLayers = { ...state.mapLayers, ...prefs.mapLayers };
         state.mapLayersOpen = prefs.mapLayersOpen;
-        state.mapHelpOpen = prefs.mapHelpOpen;
         state.mapInspectorCompact = prefs.mapInspectorCompact;
         const gameShell = document.getElementById('gameShell');
         if (!gameShell) return;
@@ -316,6 +313,7 @@ export const App = (() => {
         disposeUI();
         initUI();
         startSimulation(worldgenSettings, buildSpec);
+        applyStoredUiPreferences();
         setAppMode(APP_MODES.IN_GAME);
         ensureGameplayInitialized();
         syncShellVisibility(state.appMode);
@@ -369,7 +367,7 @@ export const App = (() => {
     // SETTINGS FLOW
     // =====================================================
     function applyPreferencesToWorldgenControls() {
-        const prefs = preferences || getDefaultPreferences();
+        const prefs = readStoredPreferences();
         const archetype = document.getElementById('worldgen-archetype');
         const sites = document.getElementById('worldgen-sites');
         if (archetype) archetype.value = prefs.defaultWorldgenArchetype;
@@ -379,7 +377,7 @@ export const App = (() => {
     }
 
     function populateSettingsFromPreferences() {
-        const prefs = preferences || getDefaultPreferences();
+        const prefs = readStoredPreferences();
         const reducedMotion = document.getElementById('settings-reduced-motion');
         const compactUi = document.getElementById('settings-compact-ui');
         const showBootTips = document.getElementById('settings-show-boot-tips');
@@ -398,7 +396,7 @@ export const App = (() => {
         const showBootTips = document.getElementById('settings-show-boot-tips');
         const archetype = document.getElementById('settings-default-archetype');
         const sites = document.getElementById('settings-default-sites');
-        const prefs = preferences || getDefaultPreferences();
+        const prefs = readStoredPreferences();
         const raw = {
             reducedMotion: reducedMotion ? reducedMotion.checked : prefs.reducedMotion,
             compactUi: compactUi ? compactUi.checked : prefs.compactUi,
@@ -406,7 +404,7 @@ export const App = (() => {
             defaultWorldgenArchetype: archetype ? archetype.value : prefs.defaultWorldgenArchetype,
             defaultOccupiedSites: sites ? Number(sites.value) : prefs.defaultOccupiedSites
         };
-        preferences = savePreferences(null, raw);
+        saveSettingsPreferences(null, raw);
     }
 
     // =====================================================
