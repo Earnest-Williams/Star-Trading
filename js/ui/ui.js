@@ -234,12 +234,16 @@ function applyScreenPanelMode() {
     const viewport = document.querySelector('.main-viewport');
     const summary = document.getElementById('screenSummary');
     const actions = document.getElementById('actions');
+    const controls = document.getElementById('screenPanelControls');
+    const railButton = panel?.querySelector('.screen-rail-toggle');
     if (!panel || !viewport || !summary || !actions) return;
     panel.classList.remove('screen-mode-full', 'screen-mode-summary', 'screen-mode-rail');
     viewport.classList.toggle('main-screen-summary', state.screenPanelMode === 'summary');
     viewport.classList.toggle('main-screen-rail', state.screenPanelMode === 'rail');
     panel.classList.add(`screen-mode-${state.screenPanelMode}`);
     summary.hidden = state.screenPanelMode !== 'summary';
+    if (controls) controls.hidden = state.screenPanelMode === 'rail';
+    if (railButton) railButton.hidden = state.screenPanelMode !== 'rail';
     if (state.screenPanelMode === 'summary') {
         renderSectorSummary();
     }
@@ -258,7 +262,7 @@ function bindScreenPanelControls() {
     const railButton = document.createElement('button');
     railButton.className = 'screen-rail-toggle';
     railButton.type = 'button';
-    railButton.textContent = 'Panel';
+    railButton.textContent = UI_LABELS.screenRailToggle;
     railButton.hidden = true;
     railButton.addEventListener('click', () => {
         state.screenPanelMode = 'full';

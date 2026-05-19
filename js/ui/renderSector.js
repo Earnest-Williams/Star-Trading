@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS } from "../constants.js";
+import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS, UI_LABELS } from "../constants.js";
 import { getPortType } from "../core/ports.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
@@ -88,7 +88,7 @@ function renderLocalPeopleDialogueActions(sectorId) {
                     action: "requestContactService",
                     args: [person.id, button.service, button.arg2],
                     disabled: false,
-                    label: actionState.label || button.label
+                    label: button.label
                 };
             });
         const relationship = normaliseDialogueRelationship(person.relationships?.player || {});
@@ -224,15 +224,15 @@ export function renderSectorSummary() {
         return;
     }
     const port = state.ports[state.player.currentSector];
-    const asteroids = sector.asteroids ? "Asteroids" : "No asteroids";
-    const planet = state.planets[state.player.currentSector] ? "Planet" : "No planet";
+    const asteroids = sector.asteroids ? UI_LABELS.sectorSummaryAsteroids : UI_LABELS.sectorSummaryNoAsteroids;
+    const planet = state.planets[state.player.currentSector] ? UI_LABELS.sectorSummaryPlanet : UI_LABELS.sectorSummaryNoPlanet;
     const risks = `Risk ${sector.pirateThreat || 0}`;
     const gates = getOutboundJumpGates(state.player.currentSector).length;
     const routes = state.tradeRoutes.filter(r => r.status !== "closed"
         && (r.originSector === state.player.currentSector || r.destinationSector === state.player.currentSector)).length;
-    summary.innerHTML = `<div>${escapeHtml(getSiteTypeLabel(sector.siteType))} · ${escapeHtml(sector.name || "Unknown")} · ${escapeHtml(getSectorStatusLabel(state.player.currentSector))}</div>`
-        + `<div>${port ? "Port active" : "No port"} · ${asteroids} · ${planet} · ${risks}</div>`
-        + `<div>Gates ${gates} · Routes ${routes} · Priority: maintain local readiness</div>`;
+    summary.innerHTML = `<div>${escapeHtml(getSiteTypeLabel(sector.siteType))} · ${escapeHtml(sector.name || UI_LABELS.sectorSummaryUnknownName)} · ${escapeHtml(getSectorStatusLabel(state.player.currentSector))}</div>`
+        + `<div>${port ? UI_LABELS.sectorSummaryPortActive : UI_LABELS.sectorSummaryNoPort} · ${asteroids} · ${planet} · ${risks}</div>`
+        + `<div>Gates ${gates} · Routes ${routes} · ${UI_LABELS.sectorSummaryPriority}</div>`;
 }
 
 export function renderPlanetSummary(planet) {
