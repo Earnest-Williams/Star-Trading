@@ -97,28 +97,45 @@ h4 {
 .main-viewport {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: max-content max-content max-content minmax(0, 1fr);
     grid-template-areas:
         "map"
         "panel"
         "hotbar"
         "log";
     gap: 6px;
+    align-content: start;
+    align-items: start;
+    min-width: 0;
+    min-height: 0;
 }
 
 .map-wrap {
     grid-area: map;
+    align-self: start;
+    min-width: 0;
 }
 
 .screen-content-panel {
     grid-area: panel;
+    align-self: start;
+    height: auto;
+    min-height: 0;
+    margin-top: 0 !important;
+    min-width: 0;
 }
 
 #actionHotbar {
     grid-area: hotbar;
+    align-self: start;
+    margin-top: 0;
+    min-width: 0;
 }
 
 .log {
     grid-area: log;
+    min-height: 0;
+    align-self: start;
 }
 
 .left-sidebar,
@@ -640,6 +657,9 @@ select:focus-visible {
 
 .map-wrap {
     position: relative;
+    height: max-content;
+    min-height: 0;
+    overflow: visible;
 }
 
 .map-wrap.map-panel-rail .map-stage > *:not(.map-rail-toggle) {
@@ -667,6 +687,7 @@ select:focus-visible {
     position: relative;
     height: clamp(220px, 30vh, 320px);
     min-height: 220px;
+    overflow: hidden;
 }
 
 .map-wrap.map-expanded {
@@ -678,6 +699,8 @@ select:focus-visible {
     padding: 10px;
     background: var(--bg-panel);
     border: var(--border-thick) solid var(--line-strong);
+    height: auto;
+    min-height: 0;
 }
 
 .map-wrap.map-expanded .map-stage {
@@ -1826,16 +1849,28 @@ select:focus-visible {
 .screen-content-panel.screen-mode-summary {
     min-height: 0;
     height: auto;
+    padding: 8px 10px;
 }
 
 .screen-content-panel.screen-mode-summary #screenSummary {
     display: block;
+    margin: 0;
+}
+
+.screen-content-panel.screen-mode-full {
+    height: auto;
+    min-height: 0;
+}
+
+.screen-content-panel.screen-mode-full #sectorContents {
+    display: block;
 }
 
 .screen-content-panel.screen-mode-rail {
-    padding: 6px 4px;
-    min-height: 0;
-    height: auto;
+    padding: 6px 10px;
+    min-height: 44px;
+    height: 44px;
+    overflow: hidden;
 }
 
 .screen-content-panel.screen-mode-rail .screen-panel-header {
