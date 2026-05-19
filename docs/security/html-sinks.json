@@ -1,0 +1,186 @@
+{
+  "sinks": [
+    {
+      "path": "js/main.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/utils.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderSpreadsheet.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderSpreadsheet.js",
+      "pattern": "outerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderMap.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderShipyard.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/onboarding.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderHUD.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/ui.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderCaptains.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderMarket.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderReputation.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderSector.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    },
+    {
+      "path": "js/ui/renderColony.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
+    }
+  ]
+}
