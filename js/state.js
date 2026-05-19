@@ -100,6 +100,9 @@ export function createInitialState() {
         screenPanelMode: "full",
         mapViewport: { scale: 1, offsetX: 0, offsetY: 0 },
         worldGraphRevision: 0,
+        marketRevision: 0,
+        logisticsNodeRevision: 0,
+        influenceRevision: 0,
         ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
         priorityBriefing: {
             dismissed: {}

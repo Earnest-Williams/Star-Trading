@@ -255,65 +255,30 @@ export function estimateRouteProfit(originSector, destinationSector, commodity, 
 
 const routePathMetricsCache = new Map();
 const routeMarketMetricsCache = new Map();
-let routeMetricsMarketSignature = '';
-let routeMetricsMarketRevision = 0;
-let routeMetricsCachedMarketRevision = null;
-let routeMetricsMarketMicrotaskScheduled = false;
 let routePathMetricsRevision = null;
+let routeMarketMetricsRevision = null;
 let routeMetricsUniverseRef = null;
-let routeMetricsPortsRef = null;
-let routeMetricsPlanetsRef = null;
-
-function buildRouteMetricsMarketSignature() {
-    return getAllLogisticsNodes()
-        .map(node => [
-            node.sectorId,
-            node.kind,
-            node.factionId || '',
-            node.sells.join(','),
-            node.buys.join(','),
-            MARKET_COMMODITIES.map(commodity => (node.stock || {})[commodity] || 0).join(','),
-            MARKET_COMMODITIES.map(commodity => (node.maxStock || {})[commodity] || 0).join(',')
-        ].join(':'))
-        .join('|');
-}
 
 function detectRouteMetricsRootChange() {
     const universeChanged = routeMetricsUniverseRef !== state.universe;
-    const marketInputsChanged = universeChanged || routeMetricsPortsRef !== state.ports || routeMetricsPlanetsRef !== state.planets;
     routeMetricsUniverseRef = state.universe;
-    routeMetricsPortsRef = state.ports;
-    routeMetricsPlanetsRef = state.planets;
-    return { universeChanged, marketInputsChanged };
+    return { universeChanged };
 }
 
-function getRouteMetricsMarketRevision(rootChange = detectRouteMetricsRootChange()) {
-    if (rootChange.marketInputsChanged) {
+function getRouteMetricsMarketRevision() {
+    const marketRevision = Number(state.marketRevision) || 0;
+    const logisticsNodeRevision = Number(state.logisticsNodeRevision) || 0;
+    const revision = `${marketRevision}:${logisticsNodeRevision}`;
+    if (routeMarketMetricsRevision !== revision) {
         routeMarketMetricsCache.clear();
-        routeMetricsMarketSignature = '';
-        routeMetricsCachedMarketRevision = null;
+        routeMarketMetricsRevision = revision;
     }
-    if (routeMetricsCachedMarketRevision !== null) return routeMetricsCachedMarketRevision;
-    const marketSignature = buildRouteMetricsMarketSignature();
-    if (routeMetricsMarketSignature !== marketSignature) {
-        routeMarketMetricsCache.clear();
-        routeMetricsMarketSignature = marketSignature;
-        routeMetricsMarketRevision += 1;
-    }
-    routeMetricsCachedMarketRevision = routeMetricsMarketRevision;
-    if (!routeMetricsMarketMicrotaskScheduled) {
-        routeMetricsMarketMicrotaskScheduled = true;
-        Promise.resolve().then(() => {
-            routeMetricsMarketMicrotaskScheduled = false;
-            routeMetricsCachedMarketRevision = null;
-        });
-    }
-    return routeMetricsCachedMarketRevision;
+    return revision;
 }
 
 function ensureRoutePathMetricsCacheFresh(rootChange = detectRouteMetricsRootChange()) {
     const revision = getWorldGraphRevision();
-    if (routePathMetricsRevision !== revision || rootChange.universeChanged) {
+    if (rootChange.universeChanged || routePathMetricsRevision !== revision) {
         routePathMetricsCache.clear();
         routePathMetricsRevision = revision;
     }
@@ -377,7 +342,7 @@ export function deriveRouteMetrics(originSector, destinationSector) {
         routePathMetricsCache.set(pathCacheKey, pathMetrics);
     }
 
-    const marketRevision = getRouteMetricsMarketRevision(rootChange);
+    const marketRevision = getRouteMetricsMarketRevision();
     const marketCacheKey = routeMetricCacheKey(marketRevision, key);
     const origin = getLogisticsNode(originSector);
     const destination = getLogisticsNode(destinationSector);
