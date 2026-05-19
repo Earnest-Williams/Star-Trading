@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import { normaliseLoadedGame } from '../js/core/persistence.js';
 import { resetState, state } from '../js/state.js';
 import {
+    seedDialogueLoadNormalisationState,
+    seedDialogueRelationshipState
+} from './helpers/dialogueState.js';
+import {
     DIALOGUE_LEXICON_IDS,
     DIALOGUE_REGISTERS,
     DIALOGUE_TONES,
@@ -123,20 +127,13 @@ describe('dialogue voice model', () => {
     });
 
     it('repairs missing dialogue profiles and relationship affect during load normalisation', () => {
-        resetState();
-        state.player = { time: { day: 1, minuteOfDay: 600 }, cargo: {}, factions: {} };
-        state.world = { roles: {} };
-        state.universe = {};
-        state.ports = {};
-        state.planets = {};
-        state.missions = [];
-        state.people = {
+        seedDialogueLoadNormalisationState({
             'person-1': {
                 id: 'person-1',
                 role: 'customs_officer',
                 relationships: { player: { trust: 5 } }
             }
-        };
+        });
 
         normaliseLoadedGame();
 
@@ -157,14 +154,7 @@ describe('dialogue voice model', () => {
 
 
     it('repairs partial dialogue profiles without discarding valid voice settings', () => {
-        resetState();
-        state.player = { time: { day: 1, minuteOfDay: 600 }, cargo: {}, factions: {} };
-        state.world = { roles: {} };
-        state.universe = {};
-        state.ports = {};
-        state.planets = {};
-        state.missions = [];
-        state.people = {
+        seedDialogueLoadNormalisationState({
             'person-1': {
                 id: 'person-1',
                 role: 'customs_officer',
@@ -175,7 +165,7 @@ describe('dialogue voice model', () => {
                 },
                 relationships: { player: { trust: 5 } }
             }
-        };
+        });
 
         normaliseLoadedGame();
 
@@ -189,9 +179,7 @@ describe('dialogue voice model', () => {
     });
 
     it('relationship deltas safely mutate affect values within bounds', () => {
-        resetState();
-        state.player = { time: { day: 1, minuteOfDay: 600 } };
-        state.people = { 'person-1': { id: 'person-1', name: 'Nara' } };
+        seedDialogueRelationshipState({ id: 'person-1', name: 'Nara' });
 
         const relationship = applyDialogueRelationshipDelta('person-1', {
             affect: { warmth: 12, resentment: 250 },
