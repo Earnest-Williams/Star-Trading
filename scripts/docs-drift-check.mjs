@@ -22,7 +22,7 @@ function getChangedFiles(baseSha, headSha) {
     return [];
   }
 
-  const output = execSync(`git diff --name-only ${baseSha}..${headSha}`, {
+  const output = execSync(`git diff --name-only "${baseSha}".."${headSha}"`, {
     encoding: 'utf8'
   });
 
