@@ -4,6 +4,10 @@ import { calcStatGain, getBuildSpend, isPlatformEmployed, maxStatSpend, normalis
 import { getChargenBuild } from './chargenState.js';
 import { escapeHtml } from '../utils.js';
 
+const BUILD_SIGNATURE_SEGMENT_SEPARATOR = '::';
+const BUILD_SIGNATURE_FIELD_SEPARATOR = '|';
+const BUILD_SIGNATURE_LIST_SEPARATOR = ',';
+
 function option(value, label, selected) {
     return `<option value="${value}"${selected ? ' selected' : ''}>${label}</option>`;
 }
@@ -55,10 +59,16 @@ function buildMechanicalPreview(build, platform, spend) {
 
 function buildSignature(buildSpec) {
     const build = normaliseBuildSpec(buildSpec);
-    const statSpend = CHAR_STATS.map(stat => `${stat}:${Number(build.statSpend?.[stat] || 0)}`).join('|');
-    const careerTraitIds = [...build.careerTraitIds].sort().join(',');
-    const packageIds = [...build.packageIds].sort().join(',');
-    return `${statSpend}::${build.originTraitId}::${careerTraitIds}::${build.platform.type}:${build.platform.employerLaneId || ''}::${packageIds}`;
+    const statSpend = CHAR_STATS.map(stat => `${stat}:${Number(build.statSpend?.[stat] || 0)}`).join(BUILD_SIGNATURE_FIELD_SEPARATOR);
+    const careerTraitIds = [...build.careerTraitIds].sort().join(BUILD_SIGNATURE_LIST_SEPARATOR);
+    const packageIds = [...build.packageIds].sort().join(BUILD_SIGNATURE_LIST_SEPARATOR);
+    return [
+        statSpend,
+        build.originTraitId,
+        careerTraitIds,
+        `${build.platform.type}:${build.platform.employerLaneId || ''}`,
+        packageIds
+    ].join(BUILD_SIGNATURE_SEGMENT_SEPARATOR);
 }
 
 function getSelectedPresetId(build) {
@@ -66,6 +76,24 @@ function getSelectedPresetId(build) {
     const entry = Object.entries(ARCHETYPE_PRESETS)
         .find(([, preset]) => buildSignature(preset.build) === signature);
     return entry ? entry[0] : '';
+}
+
+function listTraitConflicts(selectedTraitIds) {
+    const conflicts = [];
+    for (let index = 0; index < selectedTraitIds.length; index++) {
+        for (let otherIndex = index + 1; otherIndex < selectedTraitIds.length; otherIndex++) {
+            const traitId = selectedTraitIds[index];
+            const otherTraitId = selectedTraitIds[otherIndex];
+            const trait = getTraitDefinition(traitId);
+            const otherTrait = getTraitDefinition(otherTraitId);
+            if (!trait || !otherTrait) continue;
+            const isExclusive = trait.exclusiveWith?.includes(otherTraitId) || otherTrait.exclusiveWith?.includes(traitId);
+            if (isExclusive) {
+                conflicts.push(`${trait.name} ↔ ${otherTrait.name}`);
+            }
+        }
+    }
+    return conflicts;
 }
 
 function packageSummary(packageId, checked) {
@@ -108,7 +136,7 @@ export function renderChargenControls() {
     const platform = PLATFORM_PACKAGES[build.platform.type] || PLATFORM_PACKAGES.ship_tier1_tramp;
     const selectedTraits = [build.originTraitId, ...build.careerTraitIds].map(getTraitDefinition).filter(Boolean);
     const drawbacks = selectedTraits.flatMap(trait => trait.drawbacks || []);
-    const conflicts = validation.errors.filter(error => error.includes('exclusive'));
+    const conflicts = listTraitConflicts([build.originTraitId, ...build.careerTraitIds]);
     const mechanicalPreview = buildMechanicalPreview(build, platform, spend);
     const employedPlatform = isPlatformEmployed(build.platform.type);
     const validationList = validation.errors.length ? `<ul class="chargen-errors">${validation.errors.map(error => `<li>${error}</li>`).join('')}</ul>` : '';
