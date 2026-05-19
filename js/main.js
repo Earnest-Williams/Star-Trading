@@ -1,51 +1,20 @@
-import { resetState, state, APP_MODES, setAppMode } from './state.js';
+import { resetState, state, setAppMode, APP_MODES } from './state.js';
 import { EventBus } from './events.js';
-import { Renderer, updateUI } from './ui/renderer.js';
-import { BALANCE } from './constants.js';
-import { createPlayerFromBuild, generateUniverse, generateStars } from './core/universe.js';
 import { resetTimeHooks } from './core/time.js';
-import { addWorldEvent } from './core/worldEvents.js';
-import { setPersistenceAdapters, hasSavedGame, importSavePayload, loadGame, SAVE_IMPORT_LIMITS } from './core/persistence.js';
-import { loadPreferences, saveSettingsPreferences } from './core/preferences.js';
-import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
-import { applyCommandResult, disposeUI, handleActionClick, initUI } from './ui/ui.js';
+import { setPersistenceAdapters, hasSavedGame, loadGame } from './core/persistence.js';
+import { loadPreferences } from './core/preferences.js';
+import { stopMapAnimation } from './ui/renderMap.js';
+import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
-import { generateFactionAsks } from './systems/guilds.js';
-import { initSessionRng } from './utils.js';
-import { createCaptains, normaliseCaptains } from './systems/captains.js';
-import { generateMissionPool } from './systems/missions.js';
-import { executeAction } from './core/commands.js';
-import { registerSimulationTickHooks } from './core/worldTick.js';
-import { normaliseTradeRoutes } from './systems/tradeRoutes.js';
-import { ARCHETYPE_PRESETS } from './config/chargen.js';
-import { renderChargenControls } from './ui/renderChargen.js';
-import { getChargenBuild, readChargenBuildFromDom, setChargenBuild, setRandomPresetBuild, setRandomValidBuild, validateChargenDraft } from './ui/chargenState.js';
-import { renderShell, syncShellVisibility } from './ui/renderShell.js';
+import { setRandomPresetBuild, setRandomValidBuild, readChargenBuildFromDom, validateChargenDraft } from './ui/chargenState.js';
+import { createShellController } from './ui/shellController.js';
+import { createGameSessionController } from './app/gameSessionController.js';
 
-// =====================================================
-// APP BOOTSTRAP
-// Wraps game initialisation so the sim can be reset,
-// hot-reloaded, or torn down cleanly in tests.
-// =====================================================
 export const App = (() => {
     let initialized = false;
-    let gameplayInitialized = false;
-    let _unsubs = [];
-    let _topbarListeners = [];
-    let _shellListeners = [];
-    let _unsubscribeMapInteraction = () => {};
-    let _shellPanel = 'main'; // 'main' | 'chargen' | 'load' | 'settings'
-
-    function init() {
-        if (initialized) return;
-        resetState();
-        initialized = true;
-        configurePersistence();
-        applyStoredUiPreferences();
-        initUI();
-        bindShellDom();
-        enterMainMenu();
-    }
+    let shellListeners = [];
+    const gameSession = createGameSessionController();
+    let shellController;
 
     function getBrowserStorage() {
         try {
@@ -54,23 +23,6 @@ export const App = (() => {
             console.warn('Browser storage unavailable:', err);
             return null;
         }
-    }
-
-    function configurePersistence() {
-        setPersistenceAdapters({
-            storage: getBrowserStorage(),
-            notifier: (message, priority) => Notifications.show(message, priority),
-            afterLoad: afterSuccessfulLoad
-        });
-    }
-
-    function afterSuccessfulLoad() {
-        ensureGameplayInitialized();
-        applyStoredUiPreferences();
-        setAppMode(APP_MODES.IN_GAME);
-        state.isTransitioning = false;
-        syncShellVisibility(state.appMode);
-        updateUI();
     }
 
     function readStoredPreferences() {
@@ -88,253 +40,51 @@ export const App = (() => {
         gameShell.classList.toggle('layout-right-collapsed', prefs.rightSidebarCollapsed);
     }
 
-    function registerRendererSubscriptions() {
-        _unsubs.push(EventBus.on('time_advanced', () => {
-            Renderer.invalidate('priority');
-            Renderer.invalidate('header');
-        }));
-        _unsubs.push(EventBus.on('faction_changed', () => Renderer.invalidate('factions')));
-        _unsubs.push(EventBus.on('captains_changed', () => {
-            Renderer.invalidate('map');
-            Renderer.invalidate('sector');
-        }));
-        _unsubs.push(EventBus.on('captain_changed', () => Renderer.invalidate('sector')));
-        _unsubs.push(EventBus.on('data_cargo_changed', () => {
-            Renderer.invalidate('screen');
-            Renderer.invalidate('sector');
-            Renderer.invalidate('map');
-            Renderer.invalidate('mapInspector');
-            Renderer.invalidate('priority');
-            Renderer.invalidate('factions');
-        }));
+    function resetAppForNewSession() {
+        resetState();
+        resetTimeHooks();
+        gameSession.teardownSession();
+        disposeUI();
+        initUI();
     }
 
-    // =====================================================
-    // WORLDGEN HELPERS
-    // =====================================================
-    function validNumberFromSelect(id, fallback, allowedValues = null) {
-        const el = document.getElementById(id);
-        if (!el) return fallback;
-        const val = Number(el.value);
-        if (!Number.isFinite(val)) return fallback;
-        if (allowedValues && !allowedValues.includes(val)) return fallback;
-        return val;
+    function afterSuccessfulLoad() {
+        gameSession.afterSuccessfulLoad(applyStoredUiPreferences);
     }
 
-    function readWorldgenSettingsFromDom() {
-        const archetypeEl = document.getElementById("worldgen-archetype");
-        const archetype = archetypeEl && Object.hasOwn(BALANCE.WORLDGEN.ARCHETYPES, archetypeEl.value)
-            ? archetypeEl.value
-            : BALANCE.WORLDGEN.DEFAULT_ARCHETYPE;
-        const occupiedSites = validNumberFromSelect(
-            "worldgen-sites",
-            BALANCE.WORLDGEN.DEFAULT_OCCUPIED_SITES,
-            BALANCE.WORLDGEN.SITE_COUNT_PRESETS
-        );
-        const routeDensity = validNumberFromSelect(
-            "worldgen-route-density",
-            BALANCE.WORLDGEN.DEFAULT_ROUTE_DENSITY
-        );
-        const chartedFraction = validNumberFromSelect(
-            "worldgen-known-space",
-            BALANCE.WORLDGEN.DEFAULT_CHARTED_FRACTION
-        );
-        return { galaxyArchetype: archetype, occupiedSites, routeDensity, chartedFraction };
-    }
-
-    function startSimulation(worldgenSettings = null, buildSpec = getChargenBuild()) {
-        state.worldgenSettings = worldgenSettings;
-        state.player = createPlayerFromBuild(buildSpec);
-        initSessionRng(state.player.seed);
-        generateStars();
-        generateUniverse();
-        createCaptains();
-        normaliseCaptains();
-        normaliseTradeRoutes();
-        generateMissionPool();
-        generateFactionAsks();
-        state.selectedSectorId = state.player.currentSector;
-        resetMapViewport();
-    }
-
-    // =====================================================
-    // SHELL TRANSITIONS
-    // =====================================================
-    function renderCurrentShell() {
-        const allPanels = ['mainMenu', 'newGamePanel', 'loadGamePanel', 'settingsPanel'];
-        allPanels.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.hidden = true;
+    function configurePersistence() {
+        setPersistenceAdapters({
+            storage: getBrowserStorage(),
+            notifier: (message, priority) => Notifications.show(message, priority),
+            afterLoad: afterSuccessfulLoad
         });
-        const panelMap = {
-            main: 'mainMenu',
-            chargen: 'newGamePanel',
-            load: 'loadGamePanel',
-            settings: 'settingsPanel'
-        };
-        const activeId = panelMap[_shellPanel];
-        const activeEl = activeId ? document.getElementById(activeId) : null;
-        if (activeEl) activeEl.hidden = false;
-
-        if (_shellPanel === 'chargen') renderChargen();
-        if (_shellPanel === 'settings') populateSettingsFromPreferences();
-        renderShell();
     }
 
-    function transitionTo(mode, message = null) {
-        _shellPanel = mode;
-        state.shellMessage = message;
-        renderCurrentShell();
-    }
-
-    function enterMainMenu(message = null) {
-        setAppMode(APP_MODES.MAIN_MENU);
-        transitionTo('main', message);
-    }
-
-    function enterChargen() {
-        applyPreferencesToWorldgenControls();
-        transitionTo('chargen');
-    }
-
-    function enterLoadGame() {
-        transitionTo('load');
-    }
-
-    function enterSettings() {
-        setAppMode(APP_MODES.SETTINGS);
-        transitionTo('settings');
-    }
-
-    // =====================================================
-    // GAMEPLAY INITIALIZATION (lazy)
-    // =====================================================
-    function ensureGameplayInitialized() {
-        if (gameplayInitialized) return;
-        if (!state.player) return;
-        registerSimulationTickHooks();
-        registerRendererSubscriptions();
-        bindGameplayDom();
-        gameplayInitialized = true;
-    }
-
-    function bindGameplayDom() {
-        _unsubscribeMapInteraction = setupMapInteraction();
-        bindTopbarButtons();
-    }
-
-    // =====================================================
-    // SHELL EVENT HANDLING
-    // =====================================================
-    function bindShellDom() {
-        const shellView = document.getElementById('shellView');
-        if (shellView) {
-            const clickFn = event => handleShellClick(event.target);
-            const changeFn = event => handleShellChange(event);
-            shellView.addEventListener('click', clickFn);
-            shellView.addEventListener('change', changeFn);
-            shellView.addEventListener('input', changeFn);
-            _shellListeners.push({ el: shellView, event: 'click', fn: clickFn });
-            _shellListeners.push({ el: shellView, event: 'change', fn: changeFn });
-            _shellListeners.push({ el: shellView, event: 'input', fn: changeFn });
-        }
-        document.addEventListener("contextmenu", suppressContextMenu);
-        document.body.addEventListener('click', handleActionClick);
-        document.body.addEventListener('keydown', handleActionClick);
-    }
-
-    function handleShellClick(target) {
-        if (!target) return;
-        switch (target.id) {
-            case 'btn-menu-new-game': enterChargen(); break;
-            case 'btn-menu-continue': continueGame(); break;
-            case 'btn-menu-load': enterLoadGame(); break;
-            case 'btn-menu-settings': enterSettings(); break;
-            case 'btn-chargen-back': enterMainMenu(); break;
-            case 'btn-load-back': enterMainMenu(); break;
-            case 'btn-settings-back': enterMainMenu(); break;
-            case 'btn-chargen-start': launchNewGame(); break;
-            case 'btn-random-preset': randomiseChargen(setRandomPresetBuild); break;
-            case 'btn-random-valid-build': randomiseChargen(setRandomValidBuild); break;
-            case 'btn-load-from-storage': quickLoadGame(); break;
-            case 'btn-import-save': document.getElementById('import-save-file')?.click(); break;
-            case 'btn-settings-save': saveSettingsFromDom(); enterMainMenu('Settings saved.'); break;
-        }
-    }
-
-    function handleShellChange(event) {
-        const target = event.target;
-        if (!target) return;
-        if (target.id === 'import-save-file') {
-            importSaveFile(target);
-            return;
-        }
-        if (!target.closest('#newGamePanel')) return;
-        if (target.id === 'chargen-preset' && target.value && ARCHETYPE_PRESETS[target.value]) {
-            setChargenBuild(ARCHETYPE_PRESETS[target.value].build);
-        } else {
-            readChargenBuildFromDom();
-        }
-        renderChargen();
-    }
-
-    function randomiseChargen(randomiseFn) {
-        try {
-            randomiseFn();
-        } catch (err) {
-            console.error('Chargen randomisation failed:', err);
-            Notifications.show('Random build unavailable in this browser.', 4);
-        }
-        renderChargen();
-    }
-
-    // =====================================================
-    // NEW GAME FLOW
-    // =====================================================
     function launchNewGame() {
         if (state.isTransitioning) return;
         const buildSpec = readChargenBuildFromDom();
         const validation = validateChargenDraft();
         if (!validation.valid) {
             Notifications.show(validation.reason, 4);
-            renderChargen();
+            shellController.renderChargen();
             return;
         }
-        const worldgenSettings = readWorldgenSettingsFromDom();
-        state.isTransitioning = true;
-        resetState();
-        gameplayInitialized = false;
-        resetTimeHooks();
-        _unsubs.forEach(unsub => unsub());
-        _unsubs = [];
-        unbindTopbarButtons();
-        _unsubscribeMapInteraction();
-        _unsubscribeMapInteraction = () => {};
-        disposeUI();
-        initUI();
-        startSimulation(worldgenSettings, buildSpec);
-        applyStoredUiPreferences();
-        setAppMode(APP_MODES.IN_GAME);
-        ensureGameplayInitialized();
-        syncShellVisibility(state.appMode);
-        state.isTransitioning = false;
-        postStartupNotifications();
-        updateUI();
-        centerMapOnSector();
+        gameSession.launchNewGame({
+            buildSpec,
+            worldgenSettings: shellController.readWorldgenSettingsFromDom(),
+            resetApp: resetAppForNewSession,
+            applyStoredUiPreferences
+        });
     }
 
-    // =====================================================
-    // CONTINUE / LOAD FLOWS
-    // =====================================================
     function continueGame() {
         if (!hasSavedGame()) return;
         state.isTransitioning = true;
         const result = loadGame();
         if (result === false) {
             state.isTransitioning = false;
-            enterMainMenu('Failed to load saved game.');
+            shellController.enterMainMenu('Failed to load saved game.');
         }
-        // On success, afterSuccessfulLoad handles the rest.
     }
 
     function quickLoadGame() {
@@ -342,163 +92,57 @@ export const App = (() => {
         const result = loadGame();
         if (result === false) {
             state.isTransitioning = false;
-            enterLoadGame();
-        }
-        // On success, afterSuccessfulLoad handles the rest.
-    }
-
-    function importSaveFile(input) {
-        if (!input || !input.files || !input.files[0]) return;
-        const file = input.files[0];
-        const maxBytes = SAVE_IMPORT_LIMITS.maxChars;
-        const isJsonName = typeof file.name === 'string' && file.name.toLowerCase().endsWith('.json');
-        const mime = typeof file.type === 'string' ? file.type.toLowerCase() : '';
-        const isJsonMime = mime === 'application/json' || mime === 'text/json' || mime === '';
-        if (file.size > maxBytes || !isJsonName || !isJsonMime) {
-            state.isTransitioning = false;
-            input.value = '';
-            return;
-        }
-        const reader = new FileReader();
-        reader.onerror = () => {
-            state.isTransitioning = false;
-            input.value = '';
-        };
-        reader.onload = event => {
-            state.isTransitioning = true;
-            try {
-                const text = typeof event.target?.result === 'string' ? event.target.result : '';
-                const result = importSavePayload(text);
-                if (result === false) {
-                    state.isTransitioning = false;
-                }
-            } catch (error) {
-                console.error('Import failed:', error);
-                state.isTransitioning = false;
-            }
-            input.value = '';
-        };
-        try {
-            reader.readAsText(file);
-        } catch (error) {
-            console.error('Import read failed:', error);
-            state.isTransitioning = false;
-            input.value = '';
+            shellController.enterLoadGame();
         }
     }
 
-    // =====================================================
-    // SETTINGS FLOW
-    // =====================================================
-    function applyPreferencesToWorldgenControls() {
-        const prefs = readStoredPreferences();
-        const archetype = document.getElementById('worldgen-archetype');
-        const sites = document.getElementById('worldgen-sites');
-        if (archetype) archetype.value = prefs.defaultWorldgenArchetype;
-        if (sites && BALANCE.WORLDGEN.SITE_COUNT_PRESETS.includes(prefs.defaultOccupiedSites)) {
-            sites.value = String(prefs.defaultOccupiedSites);
-        }
-    }
-
-    function populateSettingsFromPreferences() {
-        const prefs = readStoredPreferences();
-        const reducedMotion = document.getElementById('settings-reduced-motion');
-        const compactUi = document.getElementById('settings-compact-ui');
-        const showBootTips = document.getElementById('settings-show-boot-tips');
-        const archetype = document.getElementById('settings-default-archetype');
-        const sites = document.getElementById('settings-default-sites');
-        if (reducedMotion) reducedMotion.checked = prefs.reducedMotion;
-        if (compactUi) compactUi.checked = prefs.compactUi;
-        if (showBootTips) showBootTips.checked = prefs.showBootTips;
-        if (archetype) archetype.value = prefs.defaultWorldgenArchetype;
-        if (sites) sites.value = String(prefs.defaultOccupiedSites);
-    }
-
-    function saveSettingsFromDom() {
-        const reducedMotion = document.getElementById('settings-reduced-motion');
-        const compactUi = document.getElementById('settings-compact-ui');
-        const showBootTips = document.getElementById('settings-show-boot-tips');
-        const archetype = document.getElementById('settings-default-archetype');
-        const sites = document.getElementById('settings-default-sites');
-        const prefs = readStoredPreferences();
-        const raw = {
-            reducedMotion: reducedMotion ? reducedMotion.checked : prefs.reducedMotion,
-            compactUi: compactUi ? compactUi.checked : prefs.compactUi,
-            showBootTips: showBootTips ? showBootTips.checked : prefs.showBootTips,
-            defaultWorldgenArchetype: archetype ? archetype.value : prefs.defaultWorldgenArchetype,
-            defaultOccupiedSites: sites ? Number(sites.value) : prefs.defaultOccupiedSites
-        };
-        saveSettingsPreferences(null, raw);
-    }
-
-    // =====================================================
-    // TOPBAR BUTTONS (gameplay only, bound after game starts)
-    // =====================================================
     function suppressContextMenu(event) {
         event.preventDefault();
     }
 
-    function bindTopbarButtons() {
-        unbindTopbarButtons();
-        addTopbarListener('btn-rest', () => {
-            const result = executeAction({ type: 'restUntilMorning' });
-            applyCommandResult(result);
-        });
-        addTopbarListener('btn-save', () => applyCommandResult(executeAction({ type: 'saveGame' })));
-        addTopbarListener('btn-load', () => applyCommandResult(executeAction({ type: 'loadGame' })));
-
-        addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
-        addTopbarListener('btn-center-map', () => centerMapOnSector());
+    function bindShellDom() {
+        const shellView = document.getElementById('shellView');
+        if (shellView) {
+            const clickFn = event => shellController.handleShellClick(event.target);
+            const changeFn = event => shellController.handleShellChange(event);
+            shellView.addEventListener('click', clickFn);
+            shellView.addEventListener('change', changeFn);
+            shellView.addEventListener('input', changeFn);
+            shellListeners.push({ el: shellView, event: 'click', fn: clickFn });
+            shellListeners.push({ el: shellView, event: 'change', fn: changeFn });
+            shellListeners.push({ el: shellView, event: 'input', fn: changeFn });
+        }
+        document.addEventListener('contextmenu', suppressContextMenu);
+        document.body.addEventListener('click', handleActionClick);
+        document.body.addEventListener('keydown', handleActionClick);
     }
 
-    function unbindTopbarButtons() {
-        _topbarListeners.forEach(({ el, fn }) => el.removeEventListener('click', fn));
-        _topbarListeners = [];
-    }
-
-    function renderChargen() {
-        const panel = document.getElementById('chargenPanel');
-        if (panel) panel.innerHTML = renderChargenControls();
-        const startButton = document.getElementById('btn-chargen-start');
-        if (startButton) startButton.disabled = !validateChargenDraft().valid;
-    }
-
-    function addTopbarListener(id, fn) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('click', fn);
-        _topbarListeners.push({ el, fn });
-    }
-
-    function postStartupNotifications() {
-        addWorldEvent({
-            type: 'start',
-            sectorId: state.player.currentSector,
-            text: 'The frontier simulation started.',
-            importance: 2,
-            alert: false
-        });
-        Notifications.show('Welcome to the frontier', 2);
+    function init() {
+        if (initialized) return;
+        resetState();
+        initialized = true;
+        configurePersistence();
+        applyStoredUiPreferences();
+        initUI();
+        shellController = createShellController({ continueGame, quickLoadGame, launchNewGame, setRandomPresetBuild, setRandomValidBuild });
+        bindShellDom();
+        shellController.enterMainMenu();
     }
 
     function dispose() {
         stopMapAnimation();
         resetTimeHooks();
-        _unsubs.forEach(unsub => unsub());
-        _unsubs = [];
+        gameSession.teardownSession();
         EventBus.reset();
-        unbindTopbarButtons();
-        _shellListeners.forEach(({ el, event, fn }) => el.removeEventListener(event, fn));
-        _shellListeners = [];
-        _unsubscribeMapInteraction();
-        _unsubscribeMapInteraction = () => {};
-        document.removeEventListener("contextmenu", suppressContextMenu);
+        shellListeners.forEach(({ el, event, fn }) => el.removeEventListener(event, fn));
+        shellListeners = [];
+        document.removeEventListener('contextmenu', suppressContextMenu);
         document.body.removeEventListener('click', handleActionClick);
         document.body.removeEventListener('keydown', handleActionClick);
         disposeUI();
         resetState();
-        gameplayInitialized = false;
         initialized = false;
+        setAppMode(APP_MODES.MAIN_MENU);
     }
 
     return { init, dispose };

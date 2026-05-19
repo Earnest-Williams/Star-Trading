@@ -516,43 +516,41 @@ let actionsRegistered = false;
 export function registerUIActions() {
     if (actionsRegistered) return;
     actionsRegistered = true;
-    // Navigation & travel
+    const parsePositiveId = value => parseIntegerArg(value, { min: 1 });
+    const parseNonEmptyString = value => {
+        if (typeof value !== 'string' || value.trim().length === 0) return { ok: false, reason: UI_LABELS.parseErrNonEmptyString };
+        return { ok: true, value: value.trim() };
+    };
+    const parseScreen = value => parseEnum(GAMEPLAY_SCREENS)(value);
+    function parseEnum(allowed) {
+        return value => {
+            const normalized = parseNonEmptyString(value);
+            if (!normalized.ok) return normalized;
+            if (!allowed.has(normalized.value)) return { ok: false, reason: 'must be a known value' };
+            return normalized;
+        };
+    }
+
     registerAction('moveTo', destinationId => moveTo(destinationId) ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_SECTOR) : commandFailed());
     registerAction('showScreen', screen => showScreen(screen) ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
-    registerActionManifest('moveTo', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
-    registerActionManifest('showScreen', { argCount: 1 });
     registerAction('showCommunications', () => showScreen('communications') ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
-    registerAction('selectSector', id => selectSector(id), { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
+    registerAction('selectSector', id => selectSector(id), { argCount: 1, coercers: [parsePositiveId] });
     registerAction('toggleMapInspectorCompact', toggleMapInspectorCompact);
     registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
-
-    // Exploration
     registerAction('surveySector', surveySector);
-
-    // Market
     registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.PORTS, StateSlice.CURRENT_SCREEN, StateSlice.PRIORITY_BRIEFING) : commandFailed());
-
-    // Mining
     registerAction('mineAsteroids', mineAsteroids);
-
-    // Colonies
     registerAction('foundColony', foundColony);
     registerAction('alignColony', alignColony);
     registerAction('setColonyPolicy', setColonyPolicy);
     registerAction('depositToColony', depositToColony);
     registerAction('loadFromColony', loadFromColony);
     registerAction('buildColonyStructure', buildColonyStructure);
-
-    // Combat
     registerAction('fightPirates', fightPirates);
-
-    // Properties
     registerAction('propertyAction', (propertyId, actionId) => {
         const result = applyPlayerPropertyAction(propertyId, actionId);
         return result.ok ? commandOk(StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed(result.reason || null);
     });
-
-    // Trade routes
     registerAction('createTradeRoute', (...args) => createTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('closeTradeRoute', (...args) => closeTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
@@ -560,23 +558,15 @@ export function registerUIActions() {
     registerAction('unassignRouteEscort', (...args) => unassignRouteEscort(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('acceptLogisticsObjective', acceptLogisticsObjective);
     registerAction('abandonLogisticsObjective', abandonLogisticsObjective);
-
-    // Time
     registerAction('restUntilMorning', restUntilMorning);
-
-    // Shipyard
     registerAction('buyUpgrade', buyUpgrade);
     registerAction('repairShip', repairShip);
     registerAction('buyFighters', buyFighters);
-
-    // Missions
     registerAction('acceptMission', acceptMission);
     registerAction('completeMission', completeMission);
     registerAction('acceptSecureContract', acceptSecureContract);
     registerAction('completeSecurePayload', completeSecurePayload);
     registerAction('grantSecureCourierLicense', grantSecureCourierLicense);
-
-    // Captains
     registerAction('hailCaptain', hailCaptain);
     registerAction('offerHelpToCaptain', offerHelpToCaptain);
     registerAction('tradeRumorsWithCaptain', tradeRumorsWithCaptain);
@@ -585,75 +575,21 @@ export function registerUIActions() {
     registerAction('provokeCaptain', provokeCaptain);
     registerAction('startRomanceWithCaptain', startRomanceWithCaptainAction);
     registerAction('deepenRomanceWithCaptain', deepenRomanceWithCaptainAction);
-    registerAction('askNpcToFindPart', (personId, itemId) => {
-        const result = askNpcToFindPart(personId, itemId);
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
-    });
-    registerAction('checkBackWithNpc', (personId, itemId) => {
-        const result = checkBackWithNpc(personId, itemId);
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
-    });
-    registerAction('requestContactService', (personId, serviceType, value) => {
-        const payload = {};
-        if (serviceType === 'parts') payload.itemId = value || 'fujiwattit';
-        if (serviceType === 'orders') payload.commodityId = value || 'eq';
-        if (serviceType === 'permits') payload.permitType = value || 'local_access';
-        if (serviceType === 'intel') payload.topic = value || 'local_activity';
-        const result = requestContactService(personId, serviceType, payload);
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
-    });
-    registerAction('startPersonalChat', personId => {
-        const result = startPersonalChat(personId);
-        if (!result.ok) return false;
-        state.selectedDialogueConversationId = result.conversationId;
-        return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
-    });
-    registerAction('deepenRelationship', (personId, topicTag) => {
-        const result = deepenRelationship(personId, topicTag);
-        if (!result.ok) return false;
-        state.selectedDialogueConversationId = result.conversationId;
-        return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
-    });
-    registerAction('markDialogueMessageRead', messageId => {
-        const result = markDialogueMessageRead(messageId);
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
-    });
-    registerAction('acceptDialogueOffer', offerId => {
-        const result = acceptDialogueOffer(offerId);
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false;
-    });
-    registerAction('rejectDialogueOffer', offerId => {
-        const result = rejectDialogueOffer(offerId);
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
-    });
-    registerActionManifest('markDialogueMessageRead', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
-    registerActionManifest('acceptDialogueOffer', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
-    registerActionManifest('rejectDialogueOffer', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
-    registerAction('selectDialogueConversation', conversationId => {
-        state.selectedDialogueConversationId = conversationId;
-        return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
-    });
-    registerAction('archiveDialogueConversation', conversationId => {
-        const result = touchDialogueConversation(conversationId, { status: DIALOGUE_CONVERSATION_STATUSES.ARCHIVED });
-        return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
-    });
-
-    // Reputation
+    registerAction('askNpcToFindPart', (personId, itemId) => { const result = askNpcToFindPart(personId, itemId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('checkBackWithNpc', (personId, itemId) => { const result = checkBackWithNpc(personId, itemId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('requestContactService', (personId, serviceType, value) => { const payload = {}; if (serviceType === 'parts') payload.itemId = value || 'fujiwattit'; if (serviceType === 'orders') payload.commodityId = value || 'eq'; if (serviceType === 'permits') payload.permitType = value || 'local_access'; if (serviceType === 'intel') payload.topic = value || 'local_activity'; const result = requestContactService(personId, serviceType, payload); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('startPersonalChat', personId => { const result = startPersonalChat(personId); if (!result.ok) return false; state.selectedDialogueConversationId = result.conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN); });
+    registerAction('deepenRelationship', (personId, topicTag) => { const result = deepenRelationship(personId, topicTag); if (!result.ok) return false; state.selectedDialogueConversationId = result.conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN); });
+    registerAction('markDialogueMessageRead', messageId => { const result = markDialogueMessageRead(messageId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('acceptDialogueOffer', offerId => { const result = acceptDialogueOffer(offerId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('rejectDialogueOffer', offerId => { const result = rejectDialogueOffer(offerId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('selectDialogueConversation', conversationId => { state.selectedDialogueConversationId = conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN); });
+    registerAction('archiveDialogueConversation', conversationId => { const result = touchDialogueConversation(conversationId, { status: DIALOGUE_CONVERSATION_STATUSES.ARCHIVED }); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
     registerAction('setReputationTab', setReputationTab);
-
-    // Debug
     if (Boolean(import.meta?.env?.DEV)) {
-        registerAction('debugAdvanceHours', hours => {
-            advanceTime(hours * 60, `debug simulation: ${hours} hours`);
-            updateUI();
-        }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 24 * 14 })] });
-        registerAction('debugAdvanceDays', days => {
-            advanceTime(days * BALANCE.DAY_MINUTES, `debug simulation: ${days} days`);
-            updateUI();
-        }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 365 })] });
+        registerAction('debugAdvanceHours', hours => { advanceTime(hours * 60, `debug simulation: ${hours} hours`); updateUI(); }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 24 * 14 })] });
+        registerAction('debugAdvanceDays', days => { advanceTime(days * BALANCE.DAY_MINUTES, `debug simulation: ${days} days`); updateUI(); }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 365 })] });
     }
-
-    // Factions / guilds / intel
     registerAction('acceptFactionAsk', acceptFactionAsk);
     registerAction('completeFactionAsk', completeFactionAsk);
     registerAction('sellIntel', sellIntel);
@@ -662,11 +598,61 @@ export function registerUIActions() {
     registerAction('discardPrivatePayload', discardPrivatePayload);
     registerAction('joinGuild', joinGuild);
     registerAction('promoteGuild', promoteGuild);
-
-    // Persistence
     registerAction('saveGame', () => saveGame() ? commandOk() : commandFailed('Save failed.'));
     registerAction('loadGame', () => loadGame() ? commandOk() : commandFailed('Load failed.'));
 
+    registerActionManifest('moveTo', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('showScreen', { argCount: 1, coercers: [parseScreen] });
+    registerActionManifest('showCommunications', { argCount: 0 });
+    registerActionManifest('toggleMapInspectorCompact', { argCount: 0 });
+    registerActionManifest('dismissPriorityBriefing', { argCount: 0 });
+    registerActionManifest('surveySector', { argCount: 0 });
+    registerActionManifest('tradeCommodity', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('mineAsteroids', { argCount: 0 });
+    registerActionManifest('foundColony', { argCount: 0 });
+    registerActionManifest('alignColony', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('setColonyPolicy', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('depositToColony', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('loadFromColony', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('buildColonyStructure', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('fightPirates', { argCount: 0 });
+    registerActionManifest('propertyAction', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('createTradeRoute', { argCount: 2, coercers: [parsePositiveId, parseNonEmptyString] });
+    registerActionManifest('toggleTradeRoute', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('closeTradeRoute', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('assignCaptainToRoute', { argCount: 2, coercers: [parsePositiveId, parseNonEmptyString] });
+    registerActionManifest('unassignRouteEscort', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('acceptLogisticsObjective', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('abandonLogisticsObjective', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('restUntilMorning', { argCount: 0 });
+    registerActionManifest('buyUpgrade', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('repairShip', { argCount: 0 });
+    registerActionManifest('buyFighters', { argCount: 0 });
+    registerActionManifest('acceptMission', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('completeMission', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('acceptSecureContract', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('completeSecurePayload', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('grantSecureCourierLicense', { argCount: 1, coercers: [parseNonEmptyString] });
+    ['hailCaptain','offerHelpToCaptain','tradeRumorsWithCaptain','supportCaptainJob','buyOffCaptain','provokeCaptain','startRomanceWithCaptain','deepenRomanceWithCaptain','startPersonalChat','selectDialogueConversation','archiveDialogueConversation'].forEach(name => registerActionManifest(name, { argCount: 1, coercers: [parseNonEmptyString] }));
+    registerActionManifest('askNpcToFindPart', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('checkBackWithNpc', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('requestContactService', { argCount: 3, coercers: [parseNonEmptyString, parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('deepenRelationship', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('markDialogueMessageRead', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('acceptDialogueOffer', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('rejectDialogueOffer', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('setReputationTab', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('acceptFactionAsk', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('completeFactionAsk', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('sellIntel', { argCount: 2, coercers: [parsePositiveId, parseNonEmptyString] });
+    registerActionManifest('sellPrivatePayload', { argCount: 1, coercers: [parseNonEmptyString] });
+    // factionId remains optional in system API; UI currently sends payload id only from data-action.
+    registerActionManifest('releasePrivatePayload', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('discardPrivatePayload', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('joinGuild', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('promoteGuild', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('saveGame', { argCount: 0 });
+    registerActionManifest('loadGame', { argCount: 0 });
 }
 
 export function markUIActionsUnregistered() {

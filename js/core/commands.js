@@ -7,12 +7,15 @@ const Actions = {};
 const actionObservers = [];
 const actionManifest = {};
 
+const PARSE_ERR_EMPTY = 'must not be empty';
+const PARSE_ERR_NOT_INTEGER = 'must be an integer';
+
 function parseIntegerArg(value, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}) {
     if (typeof value === 'string' && value.trim().length === 0) {
-        return { ok: false, reason: 'must not be empty' };
+        return { ok: false, reason: PARSE_ERR_EMPTY };
     }
     const parsed = Number(value);
-    if (!Number.isInteger(parsed)) return { ok: false, reason: 'must be an integer' };
+    if (!Number.isInteger(parsed)) return { ok: false, reason: PARSE_ERR_NOT_INTEGER };
     if (parsed < min || parsed > max) return { ok: false, reason: `must be between ${min} and ${max}` };
     return { ok: true, value: parsed };
 }

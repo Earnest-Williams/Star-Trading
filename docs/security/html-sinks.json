@@ -181,6 +181,19 @@
         "escapeHtml",
         "htmlEscape"
       ]
+    },
+    {
+      "path": "js/ui/shellController.js",
+      "pattern": "innerHTML",
+      "owner": "ui",
+      "inputSources": [
+        "state",
+        "events"
+      ],
+      "allowedHelpers": [
+        "escapeHtml",
+        "htmlEscape"
+      ]
     }
   ]
 }
