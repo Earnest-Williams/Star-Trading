@@ -29,6 +29,7 @@ import { normalisePriorityBriefingState } from './priorityBriefing.js';
 import { getPortType } from './ports.js';
 import { normaliseProperty } from '../systems/properties.js';
 import { normaliseLogisticsObjectives } from '../systems/logisticsObjectives.js';
+import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS, SAVE_SCHEMA_LIMITS } from './saveSchema.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -41,56 +42,9 @@ let persistenceAdapters = { ...defaultPersistenceAdapters };
 
 export const SAVE_IMPORT_LIMITS = {
     maxChars: 2_000_000,
-    maxArrayEntries: 50_000
+    // Keep array entry limits in sync with schema sanitization checks.
+    maxArrayEntries: SAVE_SCHEMA_LIMITS.maxArrayEntries
 };
-
-const SAVE_REQUIRED_OBJECT_FIELDS = ['player', 'universe', 'ports', 'planets'];
-const SAVE_LIMITED_ARRAY_FIELDS = [
-    'missions',
-    'worldEvents',
-    'simulationTrace',
-    'tradeRoutes',
-    'captainEventLog',
-    'dialogueMemories',
-    'dialogueProposals',
-    'dialogueTasks',
-    'dialogueOffers',
-    'dialogueMessages',
-    'dialogueConversationParts',
-    'dialogueConversations',
-    'dialogueEventLog',
-    'entanglements',
-    'logisticsObjectives'
-];
-
-function validateSaveSchema(data) {
-    if (!isObject(data)) return { ok: false, error: 'Save payload is not an object.' };
-    if (!Object.hasOwn(data, 'version')) return { ok: false, error: 'Save version is missing.' };
-    const rawVersion = data.version;
-    if (
-        rawVersion === null
-        || typeof rawVersion === 'object'
-        || typeof rawVersion === 'boolean'
-        || (typeof rawVersion === 'string' && rawVersion.trim().length === 0)
-    ) {
-        return { ok: false, error: 'Save version is invalid.' };
-    }
-    const version = Number(rawVersion);
-    if (!Number.isInteger(version) || version < 0) return { ok: false, error: 'Save version is invalid.' };
-    if (version > SAVE_VERSION) return { ok: false, error: 'Save version is newer than this build.' };
-    for (const field of SAVE_REQUIRED_OBJECT_FIELDS) {
-        if (!isObject(data[field])) return { ok: false, error: `Missing field: ${field}` };
-    }
-    if (!validateRawSave(data)) return { ok: false, error: 'Save data validation failed.' };
-    for (const field of SAVE_LIMITED_ARRAY_FIELDS) {
-        if (!Object.hasOwn(data, field)) continue;
-        if (!Array.isArray(data[field])) return { ok: false, error: `Save field ${field} must be an array.` };
-        if (data[field].length > SAVE_IMPORT_LIMITS.maxArrayEntries) {
-            return { ok: false, error: `Save field ${field} exceeds size limit.` };
-        }
-    }
-    return { ok: true };
-}
 
 function isObject(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -231,7 +185,8 @@ export function buildLoadedState(data) {
     loadedState.priorityBriefing = normalisePriorityBriefingState(data.priorityBriefing);
     loadedState.dataCargo = data.dataCargo || loadedState.dataCargo;
     loadedState.rng = data.rng || null;
-    normaliseLoadedGame(loadedState);
+    runNormaliseLoadedGame(loadedState, normaliseLoadedGame);
+    validateLoadedInvariants(loadedState);
     loadedState.selectedSectorId = loadedState.player.currentSector;
     loadedState.currentScreen = "sector";
     return loadedState;
@@ -262,18 +217,15 @@ function loadSavePayload(savePayload, successMessage) {
 
     let data;
     try {
-        data = JSON.parse(savePayload);
+        data = migrateSchemaSave(parseJsonSave(savePayload));
+        validateTopLevelSave(data);
+        sanitizeSaveKeys(data);
+        validateSaveShape(data);
     } catch (err) {
         writeLog("Could not load save data. The saved JSON appears to be invalid.");
         console.error('Save JSON parse failed:', err);
         return false;
     }
-    const schema = validateSaveSchema(data);
-    if (!schema.ok) {
-        writeLog(schema.error);
-        return false;
-    }
-
     try {
         const migrated = migrateSave(data);
         const loadedState = buildLoadedState(migrated);
@@ -380,66 +332,7 @@ export function migrateSave(data) {
     return data;
 }
 
-// Persisted state manifest: this is the only list buildSaveData() may serialize.
-// Persisted fields below are durable game data needed to resume a run.
-// Derived/transient fields intentionally excluded include sitesById, starField,
-// selectedSectorId, currentScreen, reputationTab, selectedCaptainId,
-// mapNodeCache, mapLayers, mapLayersOpen, mapHelpOpen, mapInspectorCompact, and worldGraphRevision.
-// Add new save fields here first so tests
-// catch accidental cache/UI leakage or serializer drift.
-export const SAVE_STATE_FIELDS = [
-    "player",
-    "universe",
-    "siteIdByCoord",
-    "world",
-    "worldgenSettings",
-    "ports",
-    "planets",
-    "companies",
-    "companyIdsBySector",
-    "nextCompanyId",
-    "people",
-    "peopleBySector",
-    "peopleByCompany",
-    "nextPersonId",
-    "polities",
-    "polityIdsBySector",
-    "missions",
-    "captains",
-    "captainEventLog",
-    "nextCaptainEventId",
-    "worldEvents",
-    "nextWorldEventId",
-    "simulationTrace",
-    "nextSimulationTraceId",
-    "dialogueMemories",
-    "dialogueProposals",
-    "dialogueTasks",
-    "dialogueOffers",
-    "dialogueMessages",
-    "dialogueConversationParts",
-    "dialogueConversations",
-    "dialogueEventLog",
-    "nextDialogueMemoryId",
-    "nextDialogueProposalId",
-    "nextDialogueTaskId",
-    "nextDialogueOfferId",
-    "nextDialogueMessageId",
-    "nextDialogueConversationPartId",
-    "nextDialogueConversationId",
-    "nextDialogueEventId",
-    "entanglements",
-    "nextEntanglementId",
-    "tradeRoutes",
-    "nextTradeRouteId",
-    "logisticsObjectives",
-    "nextLogisticsObjectiveId",
-    "nextMissionId",
-    "ambientTrade",
-    "priorityBriefing",
-    "dataCargo",
-    "rng"
-];
+export { SAVE_STATE_FIELDS };
 
 export function buildSaveData() {
     const data = { version: SAVE_VERSION };

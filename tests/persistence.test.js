@@ -10,7 +10,8 @@ import {
     importSavePayload,
     setPersistenceAdapters,
     buildSaveData,
-    SAVE_STATE_FIELDS
+    SAVE_STATE_FIELDS,
+    SAVE_IMPORT_LIMITS
 } from '../js/core/persistence.js';
 import { state, resetState } from '../js/state.js';
 import { SAVE_VERSION, SAVE_KEY, DEFAULT_FACTION_RELATIONS } from '../js/constants.js';
@@ -511,6 +512,27 @@ describe('importSavePayload', () => {
 
         assert.equal(importSavePayload(malformed), false);
         assert.equal(state.player.credits, 777);
+    });
+
+    it('rejects imported saves containing forbidden nested keys', () => {
+        const imported = minimalSave(SAVE_VERSION);
+        const maliciousShip = { ...imported.player.ship };
+        Object.defineProperty(maliciousShip, '__proto__', {
+            value: { polluted: true },
+            enumerable: true,
+            configurable: true,
+            writable: true
+        });
+        imported.player.ship = maliciousShip;
+
+        assert.equal(importSavePayload(JSON.stringify(imported)), false);
+    });
+
+    it('rejects imported saves with oversized arrays', () => {
+        const imported = minimalSave(SAVE_VERSION);
+        imported.missions = new Array(SAVE_IMPORT_LIMITS.maxArrayEntries + 1).fill(null);
+
+        assert.equal(importSavePayload(JSON.stringify(imported)), false);
     });
 
     it('loads valid imported saves through normalisation path', () => {

@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { CARGO_COMMODITIES, COMMODITY_NAMES } from './constants.js';
+import { htmlEscape } from './ui/safeHtml.js';
 
 /**
  * Mulberry32 seedable PRNG.  Returns a function that produces a uniform
@@ -49,13 +50,7 @@ export function random() {
 }
 
 export function escapeHtml(s) {
-    if (s === null || s === undefined) return "";
-    return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+    return htmlEscape(s);
 }
 
 export function clampRange(value, min, max) { return Math.max(min, Math.min(max, Math.round(value))); }
