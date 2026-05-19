@@ -16,7 +16,7 @@ class MinHeap {
         if (!this.items.length) return null;
         const min = this.items[0];
         const last = this.items.pop();
-        if (this.items.length && last) { this.items[0] = last; this.sinkDown(0); }
+        if (this.items.length > 0) { this.items[0] = last; this.sinkDown(0); }
         return min;
     }
     get size() { return this.items.length; }
