@@ -5,6 +5,39 @@
 const Actions = {};
 const actionObservers = [];
 
+export function commandOk(...slices) {
+    return {
+        ok: true,
+        slices,
+        invalidateAll: slices.length === 0,
+        message: null
+    };
+}
+
+export function commandFailed(message = null) {
+    return { ok: false, slices: [], invalidateAll: false, message };
+}
+
+export function commandNoop() {
+    return { ok: false, slices: [], invalidateAll: false, message: null, noop: true };
+}
+
+export function normaliseCommandResult(result) {
+    if (result && typeof result === 'object' && typeof result.ok === 'boolean') {
+        return {
+            ok: result.ok,
+            slices: Array.isArray(result.slices) ? result.slices : [],
+            invalidateAll: Boolean(result.invalidateAll),
+            message: result.message || null,
+            noop: Boolean(result.noop)
+        };
+    }
+    if (result === false) return commandNoop();
+    if (Array.isArray(result)) return commandOk(...result);
+    if (result === undefined) return { ...commandOk(), invalidateAll: true };
+    return { ...commandOk(), invalidateAll: true };
+}
+
 export function registerAction(name, fn) {
     if (!name || typeof fn !== 'function') return false;
     Actions[name] = fn;
@@ -36,11 +69,12 @@ export function onActionExecuted(observer) {
 }
 
 export function executeAction(command) {
-    if (!command || !command.type) return false;
+    if (!command || !command.type) return commandNoop();
     const fn = getAction(command.type);
-    if (!fn) return false;
+    if (!fn) return commandNoop();
     const args = Array.isArray(command.args) ? command.args : [];
-    const result = fn.apply(null, args);
+    const rawResult = fn.apply(null, args);
+    const result = normaliseCommandResult(rawResult);
     actionObservers.forEach(observer => observer({
         type: command.type,
         args: args.slice(),

@@ -9,6 +9,8 @@ import {
     validateBuild
 } from '../js/core/characterBuild.js';
 import { createPlayerFromBuild } from '../js/core/universe.js';
+import { generateUniverse } from '../js/core/universe.js';
+import { resetState, state } from '../js/state.js';
 
 const baseBuild = {
     statSpend: { nerve: 0, tradecraft: 0, fieldcraft: 0, command: 0 },
@@ -183,5 +185,30 @@ describe('expanded chargen packages and regression coverage', () => {
             const player = createPlayerFromBuild(preset.build);
             assert.ok(player.ship?.name.length > 0 || player.properties.length > 0);
         });
+    });
+});
+
+
+describe('starting site alignment', () => {
+    it('rebases chargen property starts to generated home site without moving non-chargen assets', () => {
+        resetState();
+        const propertyPlayer = createPlayerFromBuild({
+            ...baseBuild,
+            platform: { type: 'property_dockside_tenement', employerLaneId: null }
+        });
+        propertyPlayer.seed = 12345;
+        propertyPlayer.properties.push({ id: 'legacy-asset', siteId: 77, chargenAsset: false });
+        state.player = propertyPlayer;
+        generateUniverse();
+        assert.notEqual(state.world.roles.homeSiteId, 1);
+        assert.equal(state.player.properties[0].siteId, state.world.roles.homeSiteId);
+        assert.equal(state.player.properties[1].siteId, 77);
+
+        resetState();
+        const shipPlayer = createPlayerFromBuild(baseBuild);
+        shipPlayer.seed = 12345;
+        state.player = shipPlayer;
+        generateUniverse();
+        assert.equal(state.player.currentSector, state.world.roles.homeSiteId);
     });
 });
