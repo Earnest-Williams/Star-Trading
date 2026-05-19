@@ -1,11 +1,11 @@
-import { beforeEach, describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { executeAction } from '../js/core/commands.js';
 import { PREFERENCES_KEY } from '../js/core/preferences.js';
 import { resetState, state } from '../js/state.js';
 import { StateSlice } from '../js/ui/stateSlices.js';
-import { registerUIActions } from '../js/ui/ui.js';
+import { disposeUI, registerUIActions } from '../js/ui/ui.js';
 
 function createStorage() {
     const values = new Map();
@@ -24,9 +24,15 @@ function createStorage() {
 
 describe('map inspector compact action registration', () => {
     beforeEach(() => {
+        disposeUI();
         resetState();
         globalThis.localStorage = createStorage();
         registerUIActions();
+    });
+
+    afterEach(() => {
+        delete globalThis.localStorage;
+        disposeUI();
     });
 
     it('executes toggleMapInspectorCompact through the action registry', () => {
