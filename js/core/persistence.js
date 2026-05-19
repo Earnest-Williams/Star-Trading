@@ -39,6 +39,30 @@ const defaultPersistenceAdapters = {
 
 let persistenceAdapters = { ...defaultPersistenceAdapters };
 
+const SAVE_IMPORT_LIMITS = {
+    maxChars: 2_000_000,
+    maxArrayEntries: 50_000
+};
+
+function isFiniteNumber(value) {
+    return typeof value === "number" && Number.isFinite(value);
+}
+
+function validateSaveSchema(data) {
+    if (!isObject(data)) return { ok: false, error: 'Save payload is not an object.' };
+    const version = Number(data.version || 0);
+    if (!Number.isInteger(version) || version < 0) return { ok: false, error: 'Save version is invalid.' };
+    if (version > SAVE_VERSION) return { ok: false, error: 'Save version is newer than this build.' };
+    const requiredFields = ['player', 'universe', 'ports', 'planets', 'missions', 'captains', 'tradeRoutes', 'dataCargo', 'worldEvents', 'simulationTrace'];
+    for (const field of requiredFields) {
+        if (!(field in data)) return { ok: false, error: `Missing field: ${field}` };
+    }
+    if (!validateRawSave(data)) return { ok: false, error: 'Save data is missing required fields.' };
+    if (Array.isArray(data.missions) && data.missions.length > SAVE_IMPORT_LIMITS.maxArrayEntries) return { ok: false, error: 'missions exceeds limit.' };
+    if (Array.isArray(data.worldEvents) && data.worldEvents.length > SAVE_IMPORT_LIMITS.maxArrayEntries) return { ok: false, error: 'worldEvents exceeds limit.' };
+    return { ok: true };
+}
+
 function isObject(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -215,8 +239,9 @@ function loadSavePayload(savePayload, successMessage) {
         console.error('Save JSON parse failed:', err);
         return false;
     }
-    if (!validateRawSave(data)) {
-        writeLog("Save data is missing required fields.");
+    const schema = validateSaveSchema(data);
+    if (!schema.ok) {
+        writeLog(schema.error);
         return false;
     }
 
@@ -429,7 +454,7 @@ export function exportSaveData() {
 }
 
 export function importSavePayload(text) {
-    if (typeof text !== "string") {
+    if (typeof text !== "string" || text.length > SAVE_IMPORT_LIMITS.maxChars) {
         writeLog("Could not import save data. The saved JSON appears to be invalid.");
         return false;
     }

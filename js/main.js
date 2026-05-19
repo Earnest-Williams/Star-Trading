@@ -350,17 +350,41 @@ export const App = (() => {
     function importSaveFile(input) {
         if (!input || !input.files || !input.files[0]) return;
         const file = input.files[0];
+        const maxBytes = 2_000_000;
+        const isJsonName = typeof file.name === 'string' && file.name.toLowerCase().endsWith('.json');
+        const mime = typeof file.type === 'string' ? file.type.toLowerCase() : '';
+        const isJsonMime = mime === 'application/json' || mime === 'text/json' || mime === '';
+        if (file.size > maxBytes || !isJsonName || !isJsonMime) {
+            state.isTransitioning = false;
+            input.value = '';
+            return;
+        }
         const reader = new FileReader();
-        reader.onload = event => {
-            state.isTransitioning = true;
-            const result = importSavePayload(event.target.result);
-            if (result === false) {
-                state.isTransitioning = false;
-            }
-            // On success, afterSuccessfulLoad handles the rest.
+        reader.onerror = () => {
+            state.isTransitioning = false;
             input.value = '';
         };
-        reader.readAsText(file);
+        reader.onload = event => {
+            state.isTransitioning = true;
+            try {
+                const text = typeof event.target?.result === 'string' ? event.target.result : '';
+                const result = importSavePayload(text);
+                if (result === false) {
+                    state.isTransitioning = false;
+                }
+            } catch (error) {
+                console.error('Import failed:', error);
+                state.isTransitioning = false;
+            }
+            input.value = '';
+        };
+        try {
+            reader.readAsText(file);
+        } catch (error) {
+            console.error('Import read failed:', error);
+            state.isTransitioning = false;
+            input.value = '';
+        }
     }
 
     // =====================================================
