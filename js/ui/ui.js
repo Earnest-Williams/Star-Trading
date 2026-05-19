@@ -3,7 +3,7 @@ import { Renderer, updateUI } from './renderer.js';
 import { StateSlice, stateChanged } from './stateSlices.js';
 import { BALANCE, UI_LABELS } from '../constants.js';
 import { advanceTime } from '../core/time.js';
-import { commandFailed, commandOk, executeAction, registerAction, resetActions } from '../core/commands.js';
+import { commandFailed, commandOk, executeAction, registerAction, registerActionManifest, resetActions, parseIntegerArg } from '../core/commands.js';
 import { savePreferencePatch } from '../core/preferences.js';
 
 // Render subsystems
@@ -519,8 +519,10 @@ export function registerUIActions() {
     // Navigation & travel
     registerAction('moveTo', destinationId => moveTo(destinationId) ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_SECTOR) : commandFailed());
     registerAction('showScreen', screen => showScreen(screen) ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
+    registerActionManifest('moveTo', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
+    registerActionManifest('showScreen', { argCount: 1 });
     registerAction('showCommunications', () => showScreen('communications') ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
-    registerAction('selectSector', id => selectSector(parseInt(id, 10)));
+    registerAction('selectSector', id => selectSector(id), { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
     registerAction('toggleMapInspectorCompact', toggleMapInspectorCompact);
     registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
 
@@ -613,17 +615,20 @@ export function registerUIActions() {
         return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
     });
     registerAction('markDialogueMessageRead', messageId => {
-        const result = markDialogueMessageRead(parseInt(messageId, 10));
+        const result = markDialogueMessageRead(messageId);
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
     });
     registerAction('acceptDialogueOffer', offerId => {
-        const result = acceptDialogueOffer(parseInt(offerId, 10));
+        const result = acceptDialogueOffer(offerId);
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false;
     });
     registerAction('rejectDialogueOffer', offerId => {
-        const result = rejectDialogueOffer(parseInt(offerId, 10));
+        const result = rejectDialogueOffer(offerId);
         return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false;
     });
+    registerActionManifest('markDialogueMessageRead', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
+    registerActionManifest('acceptDialogueOffer', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
+    registerActionManifest('rejectDialogueOffer', { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1 })] });
     registerAction('selectDialogueConversation', conversationId => {
         state.selectedDialogueConversationId = conversationId;
         return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN);
@@ -637,14 +642,16 @@ export function registerUIActions() {
     registerAction('setReputationTab', setReputationTab);
 
     // Debug
-    registerAction('debugAdvanceHours', hours => {
-        advanceTime(parseInt(hours, 10) * 60, `debug simulation: ${hours} hours`);
-        updateUI();
-    });
-    registerAction('debugAdvanceDays', days => {
-        advanceTime(parseInt(days, 10) * BALANCE.DAY_MINUTES, `debug simulation: ${days} days`);
-        updateUI();
-    });
+    if (Boolean(import.meta?.env?.DEV)) {
+        registerAction('debugAdvanceHours', hours => {
+            advanceTime(hours * 60, `debug simulation: ${hours} hours`);
+            updateUI();
+        }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 24 * 14 })] });
+        registerAction('debugAdvanceDays', days => {
+            advanceTime(days * BALANCE.DAY_MINUTES, `debug simulation: ${days} days`);
+            updateUI();
+        }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 365 })] });
+    }
 
     // Factions / guilds / intel
     registerAction('acceptFactionAsk', acceptFactionAsk);
