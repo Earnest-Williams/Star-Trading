@@ -9,6 +9,10 @@ const mergeInto = (target, patch) => {
     Object.assign(target, safePatch);
     return true;
 };
+const incrementRevision = key => {
+    const value = Number(state[key]);
+    state[key] = Number.isFinite(value) ? value + 1 : 1;
+};
 
 export const patchPlayer = patch => mergeInto(state.player, patch) ? stateChanged(StateSlice.PLAYER) : [];
 export const patchPlayerCargo = patch => mergeInto(state.player?.cargo, patch) ? stateChanged(StateSlice.PLAYER) : [];
@@ -18,8 +22,18 @@ export const setPlayerCredits = value => {
     return stateChanged(StateSlice.PLAYER);
 };
 export const patchSite = (siteId, patch) => mergeInto(state.universe?.[siteId], patch) ? stateChanged(StateSlice.UNIVERSE) : [];
-export const patchPort = (sectorId, patch) => mergeInto(state.ports?.[sectorId], patch) ? stateChanged(StateSlice.ECONOMY) : [];
-export const patchPlanet = (sectorId, patch) => mergeInto(state.planets?.[sectorId], patch) ? stateChanged(StateSlice.ECONOMY) : [];
+export const patchPort = (sectorId, patch) => {
+    if (!mergeInto(state.ports?.[sectorId], patch)) return [];
+    incrementRevision('marketRevision');
+    incrementRevision('logisticsNodeRevision');
+    return stateChanged(StateSlice.ECONOMY);
+};
+export const patchPlanet = (sectorId, patch) => {
+    if (!mergeInto(state.planets?.[sectorId], patch)) return [];
+    incrementRevision('marketRevision');
+    incrementRevision('logisticsNodeRevision');
+    return stateChanged(StateSlice.ECONOMY);
+};
 export const patchRoute = (routeId, patch) => {
     const route = Array.isArray(state.tradeRoutes) ? state.tradeRoutes.find(item => item?.id === routeId) : null;
     return mergeInto(route, patch) ? stateChanged(StateSlice.ROUTES) : [];

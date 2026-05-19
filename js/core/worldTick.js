@@ -3,6 +3,7 @@ import { BALANCE } from '../constants.js';
 import { addWorldEvent } from './worldEvents.js';
 import { addSimulationTraceEvent } from './simulationTrace.js';
 import { registerDailyHook, registerHourlyHook } from './time.js';
+import { StateSlice, mapStateSlicesForInvalidation } from './state/domains.js';
 import { produceColonies, updateColonyNeedsDaily } from '../systems/colonies.js';
 import { runTradeRoutesDaily } from '../systems/tradeRoutes.js';
 import { runAmbientTradeDaily } from '../systems/ambientTrade.js';
@@ -19,6 +20,26 @@ import { runLogisticsObjectivesDaily } from '../systems/logisticsObjectives.js';
 
 const phaseFeatureFlags = BALANCE?.WORLD_TICK?.FEATURE_FLAGS || {};
 let schedulerInProgress = false;
+const PHASE_WRITE_TO_SLICES = Object.freeze({
+    colonies: [StateSlice.ECONOMY],
+    ports: [StateSlice.ECONOMY],
+    planets: [StateSlice.ECONOMY],
+    economy: [StateSlice.ECONOMY],
+    tradeRoutes: [StateSlice.ROUTES],
+    routes: [StateSlice.ROUTES],
+    player: [StateSlice.PLAYER],
+    universe: [StateSlice.UNIVERSE],
+    factions: [StateSlice.FACTIONS],
+    missions: [StateSlice.MISSIONS],
+    captains: [StateSlice.CAPTAINS],
+    entanglements: [StateSlice.ENTANGLEMENTS],
+    logisticsObjectives: [StateSlice.LOGISTICS_OBJECTIVES],
+    dialogue: [StateSlice.DIALOGUE],
+    worldEvents: [StateSlice.EVENTS],
+    intel: [StateSlice.UNIVERSE],
+    dataCargo: [StateSlice.DATA_CARGO],
+    time: [StateSlice.TIME]
+});
 
 function phaseResult(summary) {
     if (!summary || typeof summary !== 'object') return { changedSlices: [], eventCount: 0, warnings: [] };
@@ -31,6 +52,15 @@ function phaseResult(summary) {
 
 function canRunPhase(phase) {
     return Boolean(phase && typeof phase.run === 'function');
+}
+function getChangedSlicesFromWrites(writes) {
+    if (!Array.isArray(writes)) return [];
+    const slices = [];
+    writes.forEach(domain => {
+        const mapped = PHASE_WRITE_TO_SLICES[domain];
+        if (Array.isArray(mapped)) slices.push(...mapped);
+    });
+    return mapStateSlicesForInvalidation(...slices);
 }
 
 function isFeatureEnabled(flag) {
@@ -91,10 +121,15 @@ export function runSimulationScheduler(phases, reason, cadence) {
             const phaseStart = Date.now();
             try {
                 const result = phaseResult(phase.run(reason));
-                result.changedSlices.forEach(slice => changedSlices.add(slice));
+                const phaseChangedSlices = [
+                    ...result.changedSlices,
+                    ...getChangedSlicesFromWrites(phase.writes)
+                ];
+                const normalizedChangedSlices = [...new Set(phaseChangedSlices)];
+                normalizedChangedSlices.forEach(slice => changedSlices.add(slice));
                 eventCount += result.eventCount;
                 warnings.push(...result.warnings);
-                phaseSummaries.push({ id: phase.id, elapsedMs: Date.now() - phaseStart, ...result });
+                phaseSummaries.push({ id: phase.id, elapsedMs: Date.now() - phaseStart, warnings: result.warnings, eventCount: result.eventCount, changedSlices: normalizedChangedSlices });
             } catch (error) {
                 const warningMessage = `${phase.id}:${error?.message || 'phase_error'}`;
                 warnings.push(warningMessage);

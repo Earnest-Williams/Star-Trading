@@ -29,6 +29,8 @@ export function addSectorInfluence(sectorId, factionId, amount, reason) {
         const pressure = Math.max(0, Math.trunc(Math.abs(amount) / 3));
         if (amount > 0 && pressure > 0) sector.influence[otherId] = clampRange((sector.influence[otherId] || 0) - pressure, 0, 100);
     });
+    const influenceRevision = Number(state.influenceRevision);
+    state.influenceRevision = Number.isFinite(influenceRevision) ? influenceRevision + 1 : 1;
     if (reason && Math.abs(amount) >= 3) {
         const text = `${FACTIONS[factionId].short} influence ${amount > 0 ? "+" : ""}${amount} in sector ${sectorId}: ${reason}.`;
         addWorldEvent({ type: "influence", factionId, sectorId, text, importance: 2, alert: false });

@@ -3,9 +3,7 @@ import { BALANCE } from '../constants.js';
 import { getDominantInfluence } from './influence.js';
 
 const routeCache = new Map();
-let lastGraphSignature = '';
 let cachedRevision = null;
-let microtaskScheduled = false;
 let cachedUniverseRef = null;
 
 
@@ -42,64 +40,20 @@ function compareGatesByDestination(a, b) {
     return String(a.id || '').localeCompare(String(b.id || ''));
 }
 
-function gateSortKey(gate) {
-    return [
-        gate.destinationSectorId,
-        gate.id || '',
-        gate.corridorId || '',
-        gate.status || 'active',
-        numeric(gate.effectiveSpanCost),
-        numeric(gate.toll),
-        numeric(gate.stability, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY)
-    ].join(':');
-}
-
-function sectorGraphSignature(sectorId) {
-    const sector = state.universe[sectorId];
-    if (!sector) return `${sectorId}:missing`;
-    const gates = Array.isArray(sector.jumpGates)
-        ? sector.jumpGates.slice().sort((a, b) => gateSortKey(a).localeCompare(gateSortKey(b)))
-        : [];
-    const station = sector.station || {};
-    return [
-        sectorId,
-        sector.region || '',
-        sector.siteType || '',
-        numeric(sector.pirateThreat),
-        JSON.stringify(sector.influence || {}),
-        numeric(station.pulseReserveCredits),
-        numeric(station.pulseReserveMaxCredits),
-        gates.map(gateSortKey).join('|')
-    ].join(';');
-}
-
-function buildGraphSignature() {
-    return Object.keys(state.universe)
-        .map(Number)
-        .sort((a, b) => a - b)
-        .map(sectorGraphSignature)
-        .join('\n');
-}
-
 export function getWorldGraphRevision() {
-    if (cachedRevision !== null && cachedUniverseRef === state.universe) return cachedRevision;
-    const signature = buildGraphSignature();
-    if (signature !== lastGraphSignature) {
-        lastGraphSignature = signature;
-        state.worldGraphRevision = numeric(state.worldGraphRevision) + 1;
+    const worldRevision = numeric(state.worldGraphRevision);
+    const influenceRevision = numeric(state.influenceRevision);
+    const universeChanged = cachedUniverseRef !== state.universe;
+    const combinedRevision = `${worldRevision}:${influenceRevision}`;
+    if (cachedRevision !== combinedRevision || universeChanged) {
         routeCache.clear();
+        cachedRevision = combinedRevision;
+        cachedUniverseRef = state.universe;
     }
-    cachedRevision = state.worldGraphRevision;
-    cachedUniverseRef = state.universe;
-    if (!microtaskScheduled) {
-        microtaskScheduled = true;
-        Promise.resolve().then(() => { microtaskScheduled = false; cachedRevision = null; });
-    }
-    return cachedRevision;
+    return combinedRevision;
 }
 
 export function invalidateRoutePlannerCache() {
-    lastGraphSignature = '';
     routeCache.clear();
     state.worldGraphRevision = numeric(state.worldGraphRevision) + 1;
     cachedRevision = null;
@@ -111,8 +65,8 @@ export function invalidateRoutePlannerCache() {
  *  (rather than unconditionally bumping the revision as invalidateRoutePlannerCache() does). */
 export function markGraphDirty() {
     cachedRevision = null;
-    lastGraphSignature = '';
     cachedUniverseRef = state.universe;
+    routeCache.clear();
 }
 
 function getOpenGates(sectorId) {
