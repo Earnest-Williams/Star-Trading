@@ -9,7 +9,7 @@ import { getSiteTypeLabel, getRichnessLabel } from "../core/universe.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 import { getContactDialogueActionState, MIN_DEEPEN_FAMILIARITY, normaliseDialogueRelationship } from "../systems/people.js";
 import { savePreferencePatch } from "../core/preferences.js";
-import { StateSlice, stateChanged } from "./stateSlices.js";
+import { StateSlice, stateChanged } from "../core/state/index.js";
 
 
 function renderLocalAuthorityLine(sector) {

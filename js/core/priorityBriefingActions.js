@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { StateSlice, stateChanged } from "../ui/stateSlices.js";
+import { StateSlice, stateChanged } from "../core/state/index.js";
 import { normalisePriorityBriefingState } from "./priorityBriefing.js";
 
 export function dismissPriorityBriefing(id) {

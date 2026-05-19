@@ -1,6 +1,6 @@
 import { state, APP_MODES } from '../state.js';
 import { getSavedGameSummary } from '../core/persistence.js';
-import { StateSlice } from './stateSlices.js';
+import { StateSlice } from '../core/state/index.js';
 
 export function syncShellVisibility(appMode) {
     const shellView = document.getElementById('shellView');

@@ -37,6 +37,13 @@ export const getActiveRoutes = () => getTradeRoutes().filter(route => route?.sta
 export const getPlayerRoutes = () => getTradeRoutes().filter(route => (route?.ownerType || 'player') === 'player');
 export const getRoutesForEndpoint = sectorId => getTradeRoutes().filter(route => route?.originSector === sectorId || route?.destinationSector === sectorId);
 
+export const getTradeRouteState = () => ({
+    routes: getTradeRoutes(),
+    nextTradeRouteId: Number.isInteger(state?.nextTradeRouteId) ? state.nextTradeRouteId : 1
+});
+export const getNextTradeRouteId = () => (Number.isInteger(state?.nextTradeRouteId) ? state.nextTradeRouteId : 1);
+export const getCaptainTable = () => (state?.captains && typeof state.captains === 'object' ? state.captains : EMPTY_OBJECT);
+
 export const getCaptainById = id => state?.captains?.[id] || null;
 export const getKnownCaptainById = id => {
     const captain = getCaptainById(id);

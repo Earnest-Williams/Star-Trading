@@ -4,7 +4,7 @@ import { getPortType } from "../core/ports.js";
 import { getSectorFactionId, getSectorStatusLabel } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";
 import { Renderer } from "./renderer.js";
-import { StateSlice, stateChanged } from "./stateSlices.js";
+import { StateSlice, stateChanged } from "../core/state/index.js";
 import { getDirectCorridor, getSectorNeighbors } from "../core/navigation.js";
 import { MAP_UI } from "../config/ui.js";
 import { getSiteTypeLabel } from "../core/universe.js";

@@ -30,7 +30,54 @@ export const addTradeRoute = route => {
     return stateChanged(StateSlice.ROUTES);
 };
 export const removeOrCloseTradeRoute = routeId => patchRoute(routeId, { status: 'closed' });
+
+export const setTradeRoutes = routes => {
+    if (!Array.isArray(routes)) return [];
+    state.tradeRoutes = routes;
+    return stateChanged(StateSlice.ROUTES);
+};
+export const clearEscortAssignmentsForCaptain = captainId => {
+    if (!Array.isArray(state.tradeRoutes)) return [];
+    let changed = false;
+    state.tradeRoutes.forEach(route => {
+        if (route?.escortCaptainId === captainId) {
+            route.escortCaptainId = null;
+            changed = true;
+        }
+    });
+    return changed ? stateChanged(StateSlice.ROUTES) : [];
+};
+export const patchRouteEconomyAtEndpoints = (route, amount) => {
+    if (!route || !Number.isFinite(amount)) return [];
+    const originStock = state.ports?.[route.originSector]?.stock || state.planets?.[route.originSector]?.stock;
+    const destinationStock = state.ports?.[route.destinationSector]?.stock || state.planets?.[route.destinationSector]?.stock;
+    const destinationMaxStock = state.ports?.[route.destinationSector]?.maxStock || state.planets?.[route.destinationSector]?.maxStock;
+    if (!originStock || !destinationStock || !destinationMaxStock) return [];
+    originStock[route.commodity] = Math.max(0, (originStock[route.commodity] || 0) - amount);
+    destinationStock[route.commodity] = Math.min(
+        destinationMaxStock[route.commodity] || 0,
+        (destinationStock[route.commodity] || 0) + amount
+    );
+    return stateChanged(StateSlice.ECONOMY);
+};
+export const addPlayerCredits = value => {
+    if (!state.player || !Number.isFinite(value)) return [];
+    state.player.credits = (state.player.credits || 0) + Number(value);
+    return stateChanged(StateSlice.PLAYER);
+};
+export const addCaptainCredits = (captainId, value) => {
+    if (!state.captains?.[captainId] || !Number.isFinite(value)) return [];
+    state.captains[captainId].credits = (state.captains[captainId].credits || 0) + Number(value);
+    return stateChanged(StateSlice.CAPTAINS);
+};
 export const patchCaptain = (captainId, patch) => mergeInto(state.captains?.[captainId], patch) ? stateChanged(StateSlice.CAPTAINS) : [];
+
+export const consumeNextTradeRouteId = () => {
+    if (!Number.isInteger(state.nextTradeRouteId)) state.nextTradeRouteId = 1;
+    const routeId = state.nextTradeRouteId;
+    state.nextTradeRouteId += 1;
+    return routeId;
+};
 export const setCurrentScreen = screen => {
     if (typeof screen !== 'string') return [];
     state.currentScreen = screen;

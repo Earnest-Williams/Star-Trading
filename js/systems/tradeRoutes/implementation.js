@@ -1,5 +1,19 @@
 // @ts-check
 import { state } from '../../state.js';
+import {
+    addCaptainCredits,
+    addPlayerCredits,
+    addTradeRoute,
+    clearEscortAssignmentsForCaptain,
+    consumeNextTradeRouteId,
+    patchCaptain,
+    patchPlayer,
+    patchPort,
+    patchPlanet,
+    patchRoute,
+    setTradeRoutes
+} from '../../core/state/mutations.js';
+import { getCaptainById, getRouteById, getTradeRoutes } from '../../core/state/selectors.js';
 import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../constants.js';
 import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
@@ -40,9 +54,7 @@ function positiveIntegerOrNull(value) {
 }
 
 function nextTradeRouteId() {
-    const routeId = state.nextTradeRouteId;
-    state.nextTradeRouteId += 1;
-    return routeId;
+    return consumeNextTradeRouteId();
 }
 
 export function hydrateTradeRoute(partial, context = {}) {
@@ -78,6 +90,7 @@ export function hydrateTradeRoute(partial, context = {}) {
         reliability: clampRange(finiteNumber(partial.reliability, BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY), 0, 100)
     };
     if (route.status !== "closed" && (!state.universe[route.originSector] || !state.universe[route.destinationSector] || !findShortestSectorPath(route.originSector, route.destinationSector))) {
+        patchRoute(route.id, { status: "paused" });
         route.status = "paused";
     }
     return route;
@@ -117,9 +130,9 @@ export function createRouteRecord({
 }
 
 export function normaliseTradeRoutes() {
-    if (!Array.isArray(state.tradeRoutes)) state.tradeRoutes = [];
-    state.tradeRoutes = state.tradeRoutes.map(route => hydrateTradeRoute(route));
-    state.nextTradeRouteId = Math.max(state.nextTradeRouteId, state.tradeRoutes.reduce((best, r) => Math.max(best, finiteInteger(r.id, 0) + 1), 1));
+    const routes = getTradeRoutes().map(route => hydrateTradeRoute(route));
+    setTradeRoutes(routes);
+    state.nextTradeRouteId = Math.max(state.nextTradeRouteId, routes.reduce((best, r) => Math.max(best, finiteInteger(r.id, 0) + 1), 1));
 }
 
 export function getLogisticsNode(sectorId) {
@@ -153,7 +166,7 @@ export function getAllLogisticsNodes() {
 }
 
 export function routeExists(originSector, destinationSector, commodity, ownerType = "player", ownerId = null) {
-    return state.tradeRoutes.some(r => {
+    return getTradeRoutes().some(r => {
         const routeOwnerId = typeof r.ownerId === "undefined" ? null : r.ownerId;
         return r.status !== "closed"
             && r.originSector === originSector
@@ -480,7 +493,7 @@ export function createTradeRoute(destinationSector, commodity) {
     if (cost === null) { log(`No connected jump-gate corridor path exists from sector ${originSector} to sector ${destinationSector}. Route creation cancelled.`); return; }
     if (state.player.credits < cost) { log(`Opening that route requires ${formatCredits(cost)} credits.`); return; }
     if (!spendTime(BALANCE.TRADE_ROUTE.OPEN_TIME_MINUTES)) return;
-    state.player.credits -= cost;
+    patchPlayer({ credits: state.player.credits - cost });
     const route = createRouteRecord({
         originSector,
         destinationSector,
@@ -488,7 +501,7 @@ export function createTradeRoute(destinationSector, commodity) {
         factionId: destination.factionId || origin.factionId || "traders",
         reliability: BALANCE.TRADE_ROUTE.PLAYER_START_RELIABILITY
     });
-    state.tradeRoutes.push(route);
+    addTradeRoute(route);
     addFactionRep("traders", BALANCE.TRADE_ROUTE.OPEN_REPUTATION_GAIN, "opened a persistent route");
     addFactionTrust("traders", BALANCE.TRADE_ROUTE.OPEN_TRUST_GAIN, "route brokerage");
     addSectorInfluence(originSector, getFactionPoliticalPole(origin.factionId || "traders"), BALANCE.TRADE_ROUTE.OPEN_INFLUENCE_GAIN, "new logistics route");
@@ -536,16 +549,18 @@ export function createCaptainTradeRoute(captain, originSector, destinationSector
         createdBy: captain.id,
         reliability: BALANCE.TRADE_ROUTE.CAPTAIN_START_RELIABILITY
     });
-    state.tradeRoutes.push(route);
+    addTradeRoute(route);
     return route;
 }
 
 export function toggleTradeRoute(routeId) {
     routeId = positiveIntegerOrNull(routeId);
     if (routeId === null) return;
-    const route = state.tradeRoutes.find(r => r.id === routeId);
+    const route = getRouteById(routeId);
     if (!route || route.status === "closed") return;
-    route.status = route.status === "active" ? "paused" : "active";
+    const nextStatus = route.status === "active" ? "paused" : "active";
+    patchRoute(route.id, { status: nextStatus });
+    route.status = nextStatus;
     addWorldEvent({
         type: "route_status", sourceSystem: "trade_routes", routeId: route.id,
         text: `${route.name} is now ${route.status}.`,
@@ -556,8 +571,9 @@ export function toggleTradeRoute(routeId) {
 export function closeTradeRoute(routeId) {
     routeId = positiveIntegerOrNull(routeId);
     if (routeId === null) return;
-    const route = state.tradeRoutes.find(r => r.id === routeId);
+    const route = getRouteById(routeId);
     if (!route || route.status === "closed") return;
+    patchRoute(route.id, { status: "closed", escortCaptainId: null });
     route.status = "closed";
     route.escortCaptainId = null;
     addWorldEvent({
@@ -570,8 +586,8 @@ export function closeTradeRoute(routeId) {
 export function assignCaptainToRoute(routeId, captainId) {
     routeId = positiveIntegerOrNull(routeId);
     if (routeId === null) return;
-    const route = state.tradeRoutes.find(r => r.id === routeId);
-    const captain = state.captains[captainId];
+    const route = getRouteById(routeId);
+    const captain = getCaptainById(captainId);
     if (!route || !captain || route.status === "closed") return;
     const relation = captain.relationshipToPlayer || { opinion: 0, trust: 0, rivalry: 0 };
     const cost = Math.max(
@@ -587,9 +603,11 @@ export function assignCaptainToRoute(routeId, captainId) {
     );
     if (state.player.credits < cost) { log(`Hiring ${captain.name} for convoy escort requires ${formatCredits(cost)} credits.`); return; }
     if (!spendTime(BALANCE.TRADE_ROUTE.ESCORT_HIRE_TIME_MINUTES)) return;
-    state.tradeRoutes.forEach(r => { if (r.escortCaptainId === captainId) r.escortCaptainId = null; });
-    state.player.credits -= cost;
+    clearEscortAssignmentsForCaptain(captainId);
+    patchPlayer({ credits: state.player.credits - cost });
+    patchRoute(route.id, { escortCaptainId: captainId });
     route.escortCaptainId = captainId;
+    patchCaptain(captainId, { known: true });
     captain.known = true;
     nudgeCaptainRelation(captainId, {
         opinion: BALANCE.TRADE_ROUTE.ESCORT_HIRE_OPINION_GAIN,
@@ -606,18 +624,21 @@ export function assignCaptainToRoute(routeId, captainId) {
 export function unassignRouteEscort(routeId) {
     routeId = positiveIntegerOrNull(routeId);
     if (routeId === null) return;
-    const route = state.tradeRoutes.find(r => r.id === routeId);
+    const route = getRouteById(routeId);
     if (!route) return;
+    patchRoute(route.id, { escortCaptainId: null });
     route.escortCaptainId = null;
 }
 
 export function runTradeRoutesDaily() {
     normaliseTradeRoutes();
-    state.tradeRoutes.forEach(route => {
+    getTradeRoutes().forEach(route => {
         if (route.status !== "active") return;
         if (route.nextRunDay > state.player.time.day) return;
         runTradeRoute(route);
-        route.nextRunDay = state.player.time.day + route.intervalDays;
+        const nextRunDay = state.player.time.day + route.intervalDays;
+        patchRoute(route.id, { nextRunDay });
+        route.nextRunDay = nextRunDay;
     });
 }
 
@@ -625,6 +646,7 @@ export function runTradeRoute(route) {
     const origin = getLogisticsNode(route.originSector);
     const destination = getLogisticsNode(route.destinationSector);
     if (!origin || !destination) {
+        patchRoute(route.id, { status: "paused" });
         route.status = "paused";
         addWorldEvent({
             type: "route_paused", sourceSystem: "trade_routes", routeId: route.id,
@@ -646,6 +668,12 @@ export function runTradeRoute(route) {
         route.starvedDays = (route.starvedDays || 0) + 1;
         if (route.starvedDays >= BALANCE.TRADE_ROUTE.STARVED_PAUSE_DAYS) route.status = "paused";
         route.reliability = clampRange(route.reliability - BALANCE.TRADE_ROUTE.STARVED_RELIABILITY_LOSS, 0, 100);
+        patchRoute(route.id, {
+            failures: route.failures,
+            starvedDays: route.starvedDays,
+            status: route.status,
+            reliability: route.reliability
+        });
         addWorldEvent({
             type: "route_shortage", sourceSystem: "trade_routes", routeId: route.id,
             sectorId: route.originSector, factionId: route.factionId,
@@ -662,6 +690,7 @@ export function runTradeRoute(route) {
     }
     const risk = getRouteRisk(route);
     if (risk === null) {
+        patchRoute(route.id, { status: "paused" });
         route.status = "paused";
         addWorldEvent({
             type: "route_disconnected", sourceSystem: "trade_routes", routeId: route.id,
@@ -700,11 +729,13 @@ export function runTradeRoute(route) {
         const path = getRoutePath(route);
         const hotSector = path ? path.sort((a, b) => (state.universe[b].pirateThreat || 0) - (state.universe[a].pirateThreat || 0))[0] || route.destinationSector : route.destinationSector;
         if (state.universe[hotSector]) {
+            // Transitional direct write: pirate threat mutator boundary is not yet defined.
             state.universe[hotSector].pirateThreat = Math.min(
                 BALANCE.TRADE_ROUTE.FAILURE_PIRATE_THREAT_CAP,
                 (state.universe[hotSector].pirateThreat || 0) + 1
             );
         }
+        patchRoute(route.id, { failures: route.failures, heat: route.heat, reliability: route.reliability });
         if (escortCaptain) nudgeCaptainRelation(escortCaptain.id, { opinion: 1, trust: 1, rivalry: 1 }, `fought through a failed convoy run on ${route.name}`);
         addWorldEvent({
             type: "route_raid", sourceSystem: "trade_routes", routeId: route.id,
@@ -722,16 +753,22 @@ export function runTradeRoute(route) {
         });
         return;
     }
-    origin.stock[route.commodity] -= amount;
-    destination.stock[route.commodity] = Math.min(
+    const originCommodityStock = Math.max(0, (origin.stock[route.commodity] || 0) - amount);
+    const destinationCommodityStock = Math.min(
         destination.maxStock[route.commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP,
         (destination.stock[route.commodity] || 0) + amount
     );
+    if (origin.kind === "port") patchPort(route.originSector, { stock: { ...origin.stock, [route.commodity]: originCommodityStock } });
+    else patchPlanet(route.originSector, { stock: { ...origin.stock, [route.commodity]: originCommodityStock } });
+    if (destination.kind === "port") patchPort(route.destinationSector, { stock: { ...destination.stock, [route.commodity]: destinationCommodityStock } });
+    else patchPlanet(route.destinationSector, { stock: { ...destination.stock, [route.commodity]: destinationCommodityStock } });
+    origin.stock[route.commodity] = originCommodityStock;
+    destination.stock[route.commodity] = destinationCommodityStock;
     const profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
     if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {
-        state.captains[route.ownerId].credits = (state.captains[route.ownerId].credits || 0) + profit;
+        addCaptainCredits(route.ownerId, profit);
     } else {
-        state.player.credits += profit;
+        addPlayerCredits(profit);
     }
     route.profit += profit;
     route.runs += 1;
@@ -747,6 +784,13 @@ export function runTradeRoute(route) {
         0,
         100
     );
+    patchRoute(route.id, {
+        profit: route.profit,
+        runs: route.runs,
+        starvedDays: route.starvedDays,
+        heat: route.heat,
+        reliability: route.reliability
+    });
     addFactionRep("traders", 1, "route income");
     addSectorInfluence(route.originSector, getFactionPoliticalPole(origin.factionId || "traders"), 1, "regular logistics traffic");
     addSectorInfluence(route.destinationSector, getFactionPoliticalPole(destination.factionId || route.factionId || "traders"), 1, "regular logistics traffic");
@@ -783,6 +827,7 @@ export function maybeRoutePoliticalSideEffect(route, amount, escortCaptain) {
         && escortCaptain.preferredFaction === "smugglers"
         && random() < BALANCE.TRADE_ROUTE.SMUGGLER_SIDE_BUSINESS_CHANCE) {
         route.heat = Math.min(100, route.heat + BALANCE.TRADE_ROUTE.SMUGGLER_SIDE_BUSINESS_HEAT);
+        patchRoute(route.id, { heat: route.heat });
         addFactionRep("vc", 1, "quiet convoy side business", "private");
     }
 }
