@@ -11,7 +11,7 @@ import {
     renderHeader, renderFactionPanel, renderAcceptedMissions,
     renderPriorityFeed, renderSectorActionMenu, renderActionHotbar, injectLogisticsModule
 } from './renderHUD.js';
-import { renderSectorContents, renderMenuPanel, renderMapInspector, toggleMapInspectorCompact } from './renderSector.js';
+import { renderSectorContents, renderSectorSummary, renderMenuPanel, renderMapInspector, toggleMapInspectorCompact } from './renderSector.js';
 import { drawMap, selectSector, renderMapOverlay } from './renderMap.js';
 import { renderMarketPanel } from './renderMarket.js';
 import { renderColonyPanel } from './renderColony.js';
@@ -170,7 +170,9 @@ function renderCurrentScreen() {
     if (!state.player) return;
     const { currentScreen, player, ports, planets } = state;
     const title = document.getElementById('screenTitle');
+    const actions = document.getElementById('actions');
     if (!title) return;
+    if (!actions) return;
     if (currentScreen === 'market' && ports[player.currentSector]) {
         title.innerHTML = `Market - Sector <span id="curSector">${player.currentSector}</span>`;
         renderMarketPanel();
@@ -188,7 +190,7 @@ function renderCurrentScreen() {
     }
     if (currentScreen === 'missions') {
         title.innerHTML = 'Mission Board';
-        document.getElementById('actions').innerHTML = renderAllMissionScreen();
+        actions.innerHTML = renderAllMissionScreen();
         return;
     }
     if (currentScreen === 'reputation') {
@@ -198,33 +200,71 @@ function renderCurrentScreen() {
     }
     if (currentScreen === 'communications') {
         title.innerHTML = 'Communications Console';
-        document.getElementById('actions').innerHTML = renderCommunicationsScreen();
+        actions.innerHTML = renderCommunicationsScreen();
         return;
     }
     if (currentScreen === 'spreadsheet') {
         title.innerHTML = 'Trade Ledger';
-        document.getElementById('actions').innerHTML = renderSpreadsheetScreen();
+        actions.innerHTML = renderSpreadsheetScreen();
         bindSpreadsheetScreen();
         return;
     }
     if (currentScreen === 'logistics') {
         title.innerHTML = 'Trade Routes &amp; Supply Chains';
-        document.getElementById('actions').innerHTML = renderLogisticsScreen();
+        actions.innerHTML = renderLogisticsScreen();
         return;
     }
     if (currentScreen === 'property') {
         title.innerHTML = 'Property';
-        document.getElementById('actions').innerHTML = renderPropertyScreen();
+        actions.innerHTML = renderPropertyScreen();
         return;
     }
     if (currentScreen === 'character') {
         title.innerHTML = 'Character Sheet';
-        document.getElementById('actions').innerHTML = renderCharacterSheet();
+        actions.innerHTML = renderCharacterSheet();
         return;
     }
     state.currentScreen = 'sector';
     title.innerHTML = `Current Sector <span id="curSector">${player.currentSector}</span>`;
-    document.getElementById('actions').innerHTML = renderSectorActionMenu();
+    actions.innerHTML = renderSectorActionMenu();
+}
+
+function applyScreenPanelMode() {
+    const panel = document.querySelector('.screen-content-panel');
+    const viewport = document.querySelector('.main-viewport');
+    const summary = document.getElementById('screenSummary');
+    const actions = document.getElementById('actions');
+    if (!panel || !viewport || !summary || !actions) return;
+    panel.classList.remove('screen-mode-full', 'screen-mode-summary', 'screen-mode-rail');
+    viewport.classList.toggle('main-screen-summary', state.screenPanelMode === 'summary');
+    viewport.classList.toggle('main-screen-rail', state.screenPanelMode === 'rail');
+    panel.classList.add(`screen-mode-${state.screenPanelMode}`);
+    summary.hidden = state.screenPanelMode !== 'summary';
+    if (state.screenPanelMode === 'summary') {
+        renderSectorSummary();
+    }
+}
+
+function bindScreenPanelControls() {
+    const controls = document.getElementById('screenPanelControls');
+    const screenPanel = document.querySelector('.screen-content-panel');
+    if (!controls || !screenPanel) return;
+    controls.addEventListener('click', event => {
+        const button = event.target.closest('[data-screen-panel-mode]');
+        if (!button) return;
+        state.screenPanelMode = button.dataset.screenPanelMode;
+        applyScreenPanelMode();
+    });
+    const railButton = document.createElement('button');
+    railButton.className = 'screen-rail-toggle';
+    railButton.type = 'button';
+    railButton.textContent = 'Panel';
+    railButton.hidden = true;
+    railButton.addEventListener('click', () => {
+        state.screenPanelMode = 'full';
+        applyScreenPanelMode();
+    });
+    screenPanel.appendChild(railButton);
 }
 
 // =====================================================
@@ -608,6 +648,8 @@ export function initUI() {
     if (uiInitialized) return;
     injectUIDependencies();
     registerUIRenderers();
+    bindScreenPanelControls();
+    applyScreenPanelMode();
     registerUIActions();
     bindLayoutControls();
     bindCommandConsoleControls();

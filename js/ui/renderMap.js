@@ -484,10 +484,23 @@ function renderMapToolbar() {
     toolbar.innerHTML = `<div class="map-toolbar-row map-toolbar-primary">`
         + `<button id="btn-center-map" type="button">Center</button>`
         + `<button id="btn-fit-map" type="button">Reset View</button>`
+        + `<button id="btn-expand-map" type="button" aria-expanded="false">Expand Map</button>`
+        + `<button id="btn-collapse-map" type="button">Map Rail</button>`
         + `<button id="btn-toggle-map-layers" type="button" aria-expanded="${state.mapLayersOpen === false ? "false" : "true"}">Layers</button>`
         + `<button id="btn-map-help" type="button" aria-expanded="${state.mapHelpOpen ? "true" : "false"}">?</button>`
         + `</div>`
         + `<div class="map-toolbar-row map-layer-row">${layerButtons}</div>`;
+}
+
+function applyMapPanelMode() {
+    const mapWrap = document.querySelector(".map-wrap");
+    const viewport = document.querySelector(".main-viewport");
+    if (!mapWrap || !viewport) return;
+    mapWrap.classList.toggle("map-panel-rail", state.mapPanelMode === "rail");
+    viewport.classList.toggle("main-map-rail", state.mapPanelMode === "rail");
+    if (state.mapPanelMode === "rail") {
+        setMapExpanded(false);
+    }
 }
 
 function renderMapHelp() {
@@ -812,6 +825,16 @@ export function setupMapInteraction() {
             resetMapView();
             return;
         }
+        if (event.target.closest("#btn-expand-map")) {
+            toggleMapExpanded();
+            return;
+        }
+        if (event.target.closest("#btn-collapse-map")) {
+            state.mapPanelMode = state.mapPanelMode === "rail" ? "full" : "rail";
+            applyMapPanelMode();
+            Renderer.invalidate("map");
+            return;
+        }
         if (event.target.closest("#btn-toggle-map-layers")) {
             toggleMapLayerPanel();
             return;
@@ -830,8 +853,12 @@ export function setupMapInteraction() {
     const handleDoubleClick = () => centerMapOnSector();
     const toolbar = document.getElementById("mapToolbar");
     const shortcutHelp = document.getElementById("mapShortcutHelp");
-    const expandButton = document.getElementById("btn-expand-map");
-    const handleExpandClick = () => toggleMapExpanded();
+    const railToggle = document.getElementById("mapRailToggle");
+    const handleRailClick = () => {
+        state.mapPanelMode = "full";
+        applyMapPanelMode();
+        Renderer.invalidate("map");
+    };
     const handleResize = () => Renderer.invalidate("map");
     const handleKeyDown = event => {
         const target = event.target;
@@ -874,7 +901,7 @@ export function setupMapInteraction() {
     canvas.addEventListener("dblclick", handleDoubleClick);
     toolbar?.addEventListener("click", handleToolbarClick);
     shortcutHelp?.addEventListener("click", handleToolbarClick);
-    expandButton?.addEventListener("click", handleExpandClick);
+    railToggle?.addEventListener("click", handleRailClick);
     globalThis.addEventListener("resize", handleResize);
     globalThis.addEventListener("keydown", handleKeyDown);
 
@@ -889,7 +916,7 @@ export function setupMapInteraction() {
         canvas.removeEventListener("dblclick", handleDoubleClick);
         toolbar?.removeEventListener("click", handleToolbarClick);
         shortcutHelp?.removeEventListener("click", handleToolbarClick);
-        expandButton?.removeEventListener("click", handleExpandClick);
+        railToggle?.removeEventListener("click", handleRailClick);
         globalThis.removeEventListener("resize", handleResize);
         globalThis.removeEventListener("keydown", handleKeyDown);
         setMapExpanded(false);
@@ -897,6 +924,7 @@ export function setupMapInteraction() {
         mapInteractionUnsubscribers.delete(canvas);
         hideMapTooltip();
     };
+    applyMapPanelMode();
     mapInteractionUnsubscribers.set(canvas, unsubscribe);
     return unsubscribe;
 }

@@ -94,6 +94,40 @@ h4 {
     min-width: 0;
 }
 
+.main-viewport {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+        "map panel"
+        "hotbar hotbar"
+        "log log";
+    gap: 10px;
+}
+
+.map-wrap {
+    grid-area: map;
+}
+
+.screen-content-panel {
+    grid-area: panel;
+}
+
+#actionHotbar {
+    grid-area: hotbar;
+}
+
+.log {
+    grid-area: log;
+}
+
+.main-viewport.main-map-rail {
+    grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.main-viewport.main-screen-rail {
+    grid-template-columns: minmax(0, 1fr) 56px;
+}
+
 .left-sidebar,
 .right-sidebar {
     align-self: start;
@@ -613,6 +647,22 @@ select:focus-visible {
 
 .map-wrap {
     position: relative;
+}
+
+.map-wrap.map-panel-rail .map-stage > *:not(.map-rail-toggle) {
+    display: none;
+}
+
+.map-rail-toggle {
+    display: none;
+}
+
+.map-wrap.map-panel-rail .map-rail-toggle {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    writing-mode: vertical-rl;
 }
 
 .map-stage {
@@ -1159,10 +1209,7 @@ select:focus-visible {
 }
 
 .map-expand-button {
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
-    z-index: 2;
+    display: none;
 }
 
 .map-wrap.map-expanded .map-expand-button {
@@ -1751,6 +1798,47 @@ select:focus-visible {
     flex-wrap: wrap;
     gap: 4px;
     pointer-events: auto;
+}
+
+.screen-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.screen-panel-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.screen-summary {
+    margin-top: 8px;
+}
+
+.screen-content-panel.screen-mode-summary #sectorContents,
+.screen-content-panel.screen-mode-summary #actions,
+.screen-content-panel.screen-mode-rail #sectorContents,
+.screen-content-panel.screen-mode-rail #actions {
+    display: none;
+}
+
+.screen-content-panel.screen-mode-rail {
+    padding: 6px 4px;
+}
+
+.screen-content-panel.screen-mode-rail .screen-panel-header {
+    height: 100%;
+}
+
+.screen-content-panel.screen-mode-rail h3 {
+    writing-mode: vertical-rl;
+    margin: 0;
+}
+
+.main-viewport.main-map-rail .screen-content-panel,
+.main-viewport.main-screen-rail .map-wrap {
+    width: 100%;
 }
 
 .map-toolbar button,
