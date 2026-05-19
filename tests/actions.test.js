@@ -98,12 +98,14 @@ describe('domain command layer', () => {
         const result = executeAction({ type: 'test:add', args: ['2', '3'] });
 
         unsubscribe();
-        assert.equal(result, 5);
-        assert.deepEqual(observed, [{ type: 'test:add', args: ['2', '3'], result: 5 }]);
+        assert.equal(result.ok, true);
+        assert.equal(result.invalidateAll, true);
+        assert.deepEqual(observed, [{ type: 'test:add', args: ['2', '3'], result }]);
     });
 
     it('rejects unknown actions without mutating state', async () => {
         const { executeAction } = await import('../js/core/commands.js');
-        assert.equal(executeAction({ type: 'test:missing', args: [] }), false);
+        const result = executeAction({ type: 'test:missing', args: [] });
+        assert.equal(result.ok, false);
     });
 });

@@ -3,7 +3,7 @@ import { Renderer, updateUI } from './renderer.js';
 import { StateSlice, stateChanged } from './stateSlices.js';
 import { BALANCE, UI_LABELS } from '../constants.js';
 import { advanceTime } from '../core/time.js';
-import { executeAction, registerAction, resetActions } from '../core/commands.js';
+import { commandFailed, commandOk, executeAction, registerAction, resetActions } from '../core/commands.js';
 import { savePreferencePatch } from '../core/preferences.js';
 
 // Render subsystems
@@ -79,11 +79,6 @@ import {
 // All data-action buttons are handled via event delegation, then
 // passed through the domain command layer.
 // =====================================================
-function isStateSliceArray(value) {
-    return Array.isArray(value)
-        && value.every(item => typeof item === 'string');
-}
-
 export function handleActionClick(event) {
     if (event.type === 'keydown') {
         if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
@@ -98,15 +93,15 @@ export function handleActionClick(event) {
     }
     try {
         const result = executeAction({ type: action, args });
-
-        if (result === false) return;
-
-        if (isStateSliceArray(result)) {
-            Renderer.sliceChanged(...result);
+        if (!result.ok) {
+            if (result.message) Notifications.show(result.message, 2);
             return;
         }
-
-        updateUI();
+        if (result.slices.length > 0) {
+            Renderer.sliceChanged(...result.slices);
+            return;
+        }
+        if (result.invalidateAll) updateUI();
     } catch (e) {
         console.error(`Action ${action} failed:`, e);
     }
@@ -164,6 +159,7 @@ function renderTopTabs() {
         else el.classList.remove('active-tab');
     });
 }
+
 
 function renderCurrentScreen() {
     if (state.appMode !== APP_MODES.IN_GAME) return;
@@ -252,23 +248,30 @@ function applyScreenPanelMode() {
 function bindScreenPanelControls() {
     const controls = document.getElementById('screenPanelControls');
     const screenPanel = document.querySelector('.screen-content-panel');
-    if (!controls || !screenPanel) return;
-    controls.addEventListener('click', event => {
+    if (!controls || !screenPanel) return () => {};
+    const clickHandler = event => {
         const button = event.target.closest('[data-screen-panel-mode]');
         if (!button) return;
         state.screenPanelMode = button.dataset.screenPanelMode;
         applyScreenPanelMode();
-    });
+    };
+    controls.addEventListener('click', clickHandler);
     const railButton = document.createElement('button');
     railButton.className = 'screen-rail-toggle';
     railButton.type = 'button';
     railButton.textContent = UI_LABELS.screenRailToggle;
     railButton.hidden = true;
-    railButton.addEventListener('click', () => {
+    const railClickHandler = () => {
         state.screenPanelMode = 'full';
         applyScreenPanelMode();
-    });
+    };
+    railButton.addEventListener('click', railClickHandler);
     screenPanel.appendChild(railButton);
+    return () => {
+        controls.removeEventListener('click', clickHandler);
+        railButton.removeEventListener('click', railClickHandler);
+        railButton.remove();
+    };
 }
 
 // =====================================================
@@ -393,6 +396,7 @@ const rendererRegistrations = [
     ]]
 ];
 let rendererUnsubscribers = [];
+let uiDomUnsubscribers = [];
 let uiInitialized = false;
 
 function registerUIRenderers() {
@@ -404,7 +408,7 @@ function registerUIRenderers() {
 
 function bindLayoutControls() {
     const gameShell = document.getElementById('gameShell');
-    if (!gameShell) return;
+    if (!gameShell) return () => {};
 
     const controls = [
         {
@@ -429,15 +433,14 @@ function bindLayoutControls() {
         button.setAttribute('aria-expanded', String(!collapsed));
     };
 
+    const unsubscribers = [];
     controls.forEach(control => {
         const button = document.getElementById(control.id);
         if (!button) return;
 
         syncControl(control);
 
-        if (button.dataset.layoutControlBound === '1') return;
-        button.dataset.layoutControlBound = '1';
-        button.addEventListener('click', event => {
+        const clickHandler = event => {
             event.stopPropagation();
             gameShell.classList.toggle(control.className);
             syncControl(control);
@@ -448,15 +451,21 @@ function bindLayoutControls() {
             savePreferencePatch(null, patch);
 
             Renderer.invalidate('map');
-        });
+        };
+        button.addEventListener('click', clickHandler);
+        unsubscribers.push(() => button.removeEventListener('click', clickHandler));
     });
+    return () => {
+        unsubscribers.forEach(unsubscribe => unsubscribe());
+        controls.forEach(control => {
+            const button = document.getElementById(control.id);
+            if (button) delete button.dataset.layoutControlBound;
+        });
+    };
 }
 
 function bindCommandConsoleControls() {
-    if (document.body.dataset.commandConsoleBound === '1') return;
-    document.body.dataset.commandConsoleBound = '1';
-
-    document.addEventListener('click', event => {
+    const clickHandler = event => {
         const accordionToggle = event.target.closest('[data-accordion-toggle]');
         if (accordionToggle) {
             event.preventDefault();
@@ -480,7 +489,12 @@ function bindCommandConsoleControls() {
         secondary.hidden = !open;
         contactToggle.setAttribute('aria-expanded', String(open));
         contactToggle.textContent = open ? UI_LABELS.contactLessToggle : UI_LABELS.contactMoreToggle;
-    });
+    };
+    document.addEventListener('click', clickHandler);
+    return () => {
+        document.removeEventListener('click', clickHandler);
+        delete document.body.dataset.commandConsoleBound;
+    };
 }
 
 // =====================================================
@@ -500,9 +514,9 @@ export function registerUIActions() {
     if (actionsRegistered) return;
     actionsRegistered = true;
     // Navigation & travel
-    registerAction('moveTo', moveTo);
-    registerAction('showScreen', showScreen);
-    registerAction('showCommunications', () => showScreen('communications'));
+    registerAction('moveTo', destinationId => moveTo(destinationId) ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_SECTOR) : commandFailed());
+    registerAction('showScreen', screen => showScreen(screen) ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
+    registerAction('showCommunications', () => showScreen('communications') ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
     registerAction('selectSector', id => selectSector(parseInt(id, 10)));
     registerAction('toggleMapInspectorCompact', toggleMapInspectorCompact);
     registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
@@ -511,7 +525,7 @@ export function registerUIActions() {
     registerAction('surveySector', surveySector);
 
     // Market
-    registerAction('tradeCommodity', tradeCommodity);
+    registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.PORTS, StateSlice.CURRENT_SCREEN, StateSlice.PRIORITY_BRIEFING) : commandFailed());
 
     // Mining
     registerAction('mineAsteroids', mineAsteroids);
@@ -530,15 +544,15 @@ export function registerUIActions() {
     // Properties
     registerAction('propertyAction', (propertyId, actionId) => {
         const result = applyPlayerPropertyAction(propertyId, actionId);
-        return result.ok ? stateChanged(StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false;
+        return result.ok ? commandOk(StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed(result.reason || null);
     });
 
     // Trade routes
-    registerAction('createTradeRoute', createTradeRoute);
-    registerAction('toggleTradeRoute', toggleTradeRoute);
-    registerAction('closeTradeRoute', closeTradeRoute);
-    registerAction('assignCaptainToRoute', assignCaptainToRoute);
-    registerAction('unassignRouteEscort', unassignRouteEscort);
+    registerAction('createTradeRoute', (...args) => createTradeRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
+    registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
+    registerAction('closeTradeRoute', (...args) => closeTradeRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
+    registerAction('assignCaptainToRoute', (...args) => assignCaptainToRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
+    registerAction('unassignRouteEscort', (...args) => unassignRouteEscort(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
     registerAction('acceptLogisticsObjective', acceptLogisticsObjective);
     registerAction('abandonLogisticsObjective', abandonLogisticsObjective);
 
@@ -652,17 +666,19 @@ export function initUI() {
     if (uiInitialized) return;
     injectUIDependencies();
     registerUIRenderers();
-    bindScreenPanelControls();
+    uiDomUnsubscribers.push(bindScreenPanelControls());
     applyScreenPanelMode();
     registerUIActions();
-    bindLayoutControls();
-    bindCommandConsoleControls();
+    uiDomUnsubscribers.push(bindLayoutControls());
+    uiDomUnsubscribers.push(bindCommandConsoleControls());
     uiInitialized = true;
 }
 
 export function disposeUI() {
     rendererUnsubscribers.forEach(unregister => unregister());
     rendererUnsubscribers = [];
+    uiDomUnsubscribers.forEach(unsubscribe => unsubscribe());
+    uiDomUnsubscribers = [];
     resetActions();
     actionsRegistered = false;
     uiInitialized = false;

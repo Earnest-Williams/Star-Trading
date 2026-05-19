@@ -551,6 +551,15 @@ function assignAnchorsAndVisibility(config) {
     state.selectedSectorId = homeSiteId;
 }
 
+
+function rebaseStartingAssetsToHomeSite(player, homeSiteId) {
+    if (!player || !Array.isArray(player.properties) || !Number.isFinite(homeSiteId)) return;
+    player.properties.forEach(property => {
+        if (!property || property.chargenAsset !== true) return;
+        property.siteId = homeSiteId;
+    });
+}
+
 function seedPortsPlanetsAndResources() {
     const ids = Object.keys(state.universe).map(Number);
     const roles = state.world.roles;
@@ -652,6 +661,7 @@ export function generateUniverse() {
         roles: {}
     };
     assignAnchorsAndVisibility(config);
+    rebaseStartingAssetsToHomeSite(state.player, state.world.roles.homeSiteId);
     buildCorridors(config);
     seedPortsPlanetsAndResources();
     ensureEconomicActivityConnectivity();
@@ -792,7 +802,10 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
     const builtCharacter = createCharacter(character);
     const startBenefits = collectStartBenefits(builtCharacter);
     const ship = createStarterShipFromPlatform(platformPackage);
-    const properties = createStartingProperties(platformType, { roles: state.world?.roles, siteId: STARTER_PLAYER.CURRENT_SECTOR });
+    const properties = createStartingProperties(platformType, { roles: state.world?.roles, siteId: STARTER_PLAYER.CURRENT_SECTOR }).map(property => ({
+        ...property,
+        chargenAsset: true
+    }));
     const credits = getStarterCredits(leftoverPoints, platformPackage, startBenefits);
     const player = makePlayerBase(ship, credits, builtCharacter, platformPackage, employerLane, properties);
     if (player.employment) {

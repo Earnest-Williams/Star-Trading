@@ -38,9 +38,10 @@ describe('map inspector compact action registration', () => {
     it('executes toggleMapInspectorCompact through the action registry', () => {
         assert.equal(state.mapInspectorCompact, false);
 
-        const changedSlices = executeAction({ type: 'toggleMapInspectorCompact', args: [] });
+        const result = executeAction({ type: 'toggleMapInspectorCompact', args: [] });
 
-        assert.deepEqual(changedSlices, [StateSlice.MAP_VIEW]);
+        assert.equal(result.ok, true);
+        assert.deepEqual(result.slices, [StateSlice.MAP_VIEW]);
         assert.equal(state.mapInspectorCompact, true);
 
         const persisted = globalThis.localStorage.getItem(PREFERENCES_KEY);
