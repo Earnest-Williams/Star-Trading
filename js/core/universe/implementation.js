@@ -101,7 +101,7 @@ export function setSiteCoord(siteId, coord) {
     const nextCoord = { x: Number(next.x), y: Number(next.y), z: Number(next.z) };
     const nextKey = coordKey(nextCoord);
     const occupiedSiteId = state.siteIdByCoord?.[nextKey];
-    if (occupiedSiteId !== undefined && String(occupiedSiteId) !== String(siteId)) {
+    if (occupiedSiteId !== undefined && occupiedSiteId !== siteId) {
         return { ok: false, message: `Coordinate ${nextKey} is already occupied by site ${occupiedSiteId}.` };
     }
     const oldKey = site.coordKey || coordKey(site.coord || { x: siteId, y: 0, z: 0 });
