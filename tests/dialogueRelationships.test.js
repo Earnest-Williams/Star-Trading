@@ -1,13 +1,11 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resetState, state } from '../js/state.js';
+import { seedDialogueRelationshipState } from './helpers/dialogueState.js';
 import { applyDialogueRelationshipDelta, getDialogueRelationship } from '../js/systems/people.js';
 
 function seed() {
-    resetState();
-    state.player = { time: { day: 1, minuteOfDay: 600 } };
-    state.people = { 'person-1': { id: 'person-1', name: 'Nara' } };
+    seedDialogueRelationshipState({ id: 'person-1', name: 'Nara' });
 }
 
 describe('dialogue relationships', () => {
