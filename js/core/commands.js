@@ -7,6 +7,9 @@ const actionObservers = [];
 const actionManifest = {};
 
 function parseIntegerArg(value, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}) {
+    if (typeof value === 'string' && value.trim().length === 0) {
+        return { ok: false, reason: 'must not be empty' };
+    }
     const parsed = Number(value);
     if (!Number.isInteger(parsed)) return { ok: false, reason: 'must be an integer' };
     if (parsed < min || parsed > max) return { ok: false, reason: `must be between ${min} and ${max}` };

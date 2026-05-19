@@ -39,27 +39,50 @@ const defaultPersistenceAdapters = {
 
 let persistenceAdapters = { ...defaultPersistenceAdapters };
 
-const SAVE_IMPORT_LIMITS = {
+export const SAVE_IMPORT_LIMITS = {
     maxChars: 2_000_000,
     maxArrayEntries: 50_000
 };
 
-function isFiniteNumber(value) {
-    return typeof value === "number" && Number.isFinite(value);
-}
+const SAVE_REQUIRED_OBJECT_FIELDS = ['player', 'universe', 'ports', 'planets'];
+const SAVE_LIMITED_ARRAY_FIELDS = [
+    'missions',
+    'worldEvents',
+    'simulationTrace',
+    'tradeRoutes',
+    'captainEventLog',
+    'dialogueMemories',
+    'dialogueProposals',
+    'dialogueTasks',
+    'dialogueOffers',
+    'dialogueMessages',
+    'dialogueConversationParts',
+    'dialogueConversations',
+    'dialogueEventLog',
+    'entanglements',
+    'logisticsObjectives'
+];
 
 function validateSaveSchema(data) {
     if (!isObject(data)) return { ok: false, error: 'Save payload is not an object.' };
-    const version = Number(data.version || 0);
+    const rawVersion = Object.hasOwn(data, 'version') ? data.version : 0;
+    if (typeof rawVersion === 'object' || (typeof rawVersion === 'string' && rawVersion.trim().length === 0)) {
+        return { ok: false, error: 'Save version is invalid.' };
+    }
+    const version = Number(rawVersion);
     if (!Number.isInteger(version) || version < 0) return { ok: false, error: 'Save version is invalid.' };
     if (version > SAVE_VERSION) return { ok: false, error: 'Save version is newer than this build.' };
-    const requiredFields = ['player', 'universe', 'ports', 'planets', 'missions', 'captains', 'tradeRoutes', 'dataCargo', 'worldEvents', 'simulationTrace'];
-    for (const field of requiredFields) {
-        if (!(field in data)) return { ok: false, error: `Missing field: ${field}` };
+    for (const field of SAVE_REQUIRED_OBJECT_FIELDS) {
+        if (!isObject(data[field])) return { ok: false, error: `Missing field: ${field}` };
     }
-    if (!validateRawSave(data)) return { ok: false, error: 'Save data is missing required fields.' };
-    if (Array.isArray(data.missions) && data.missions.length > SAVE_IMPORT_LIMITS.maxArrayEntries) return { ok: false, error: 'missions exceeds limit.' };
-    if (Array.isArray(data.worldEvents) && data.worldEvents.length > SAVE_IMPORT_LIMITS.maxArrayEntries) return { ok: false, error: 'worldEvents exceeds limit.' };
+    if (!validateRawSave(data)) return { ok: false, error: 'Save data has invalid structure.' };
+    for (const field of SAVE_LIMITED_ARRAY_FIELDS) {
+        if (!Object.hasOwn(data, field)) continue;
+        if (!Array.isArray(data[field])) return { ok: false, error: `Save field ${field} must be an array.` };
+        if (data[field].length > SAVE_IMPORT_LIMITS.maxArrayEntries) {
+            return { ok: false, error: `Save field ${field} exceeds size limit.` };
+        }
+    }
     return { ok: true };
 }
 

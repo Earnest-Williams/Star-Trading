@@ -5,7 +5,7 @@ import { BALANCE } from './constants.js';
 import { createPlayerFromBuild, generateUniverse, generateStars } from './core/universe.js';
 import { resetTimeHooks } from './core/time.js';
 import { addWorldEvent } from './core/worldEvents.js';
-import { setPersistenceAdapters, hasSavedGame, importSavePayload, loadGame } from './core/persistence.js';
+import { setPersistenceAdapters, hasSavedGame, importSavePayload, loadGame, SAVE_IMPORT_LIMITS } from './core/persistence.js';
 import { loadPreferences, saveSettingsPreferences } from './core/preferences.js';
 import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
 import { applyCommandResult, disposeUI, handleActionClick, initUI } from './ui/ui.js';
@@ -350,7 +350,7 @@ export const App = (() => {
     function importSaveFile(input) {
         if (!input || !input.files || !input.files[0]) return;
         const file = input.files[0];
-        const maxBytes = 2_000_000;
+        const maxBytes = SAVE_IMPORT_LIMITS.maxChars;
         const isJsonName = typeof file.name === 'string' && file.name.toLowerCase().endsWith('.json');
         const mime = typeof file.type === 'string' ? file.type.toLowerCase() : '';
         const isJsonMime = mime === 'application/json' || mime === 'text/json' || mime === '';

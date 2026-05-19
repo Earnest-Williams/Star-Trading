@@ -108,4 +108,15 @@ describe('domain command layer', () => {
         const result = executeAction({ type: 'test:missing', args: [] });
         assert.equal(result.ok, false);
     });
+
+    it('rejects empty integer arguments during command coercion', async () => {
+        const { executeAction, registerAction, parseIntegerArg } = await import('../js/core/commands.js');
+        registerAction('test:coerced', value => value, {
+            argCount: 1,
+            coercers: [value => parseIntegerArg(value, { min: 0, max: 10 })]
+        });
+        const result = executeAction({ type: 'test:coerced', args: ['   '] });
+        assert.equal(result.ok, false);
+        assert.match(result.message, /must not be empty/);
+    });
 });
