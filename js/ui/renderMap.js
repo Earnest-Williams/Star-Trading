@@ -473,7 +473,7 @@ function renderMapToolbar() {
     const toolbar = document.getElementById("mapToolbar");
     if (!toolbar) return;
     const mapWrap = document.querySelector(".map-wrap");
-    const mapExpanded = mapWrap?.classList.contains("map-expanded") === true;
+    const mapExpanded = mapWrap?.classList.contains("map-expanded") ?? false;
     const layers = getMapLayers();
     const layerButtons = state.mapLayersOpen === false
         ? ""
