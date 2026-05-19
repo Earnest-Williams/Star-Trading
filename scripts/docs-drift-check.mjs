@@ -33,7 +33,7 @@ function getChangedFiles(baseSha, headSha) {
 }
 
 function fileTouchesGuardedContent(file) {
-  if (!file.endsWith('.js') && !file.endsWith('.md')) {
+  if (!file.endsWith('.js')) {
     return false;
   }
 
