@@ -17,7 +17,7 @@ describe('renderChargenControls', () => {
     it('renders detailed mechanical preview output', () => {
         setChargenBuild(DEFAULT_BUILD_SPEC);
         const html = renderChargenControls();
-        assert.match(html, /Mechanical preview: .*Cash delta/i);
+        assert.match(html, /Mechanical preview:.*?Cash delta/i);
         assert.match(html, /holds \d+/i);
     });
 });

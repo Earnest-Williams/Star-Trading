@@ -18,7 +18,7 @@ function describeTrait(trait) {
     return `<span class="small">${trait.description}${shifts ? ` Stats: ${shifts}.` : ''}</span>${drawbacks ? `<ul class="small red">${drawbacks}</ul>` : ''}`;
 }
 
-function summarizeBenefitMap(label, values) {
+function formatBenefitMap(label, values) {
     if (!values) return null;
     const entries = Object.entries(values);
     if (entries.length === 0) return null;
@@ -30,11 +30,11 @@ function packageBenefitSummary(packageId) {
     if (!startPackage) return null;
     const benefits = startPackage.benefits || {};
     const parts = [
-        summarizeBenefitMap('rep', benefits.publicRep),
-        summarizeBenefitMap('private', benefits.privateRep),
-        summarizeBenefitMap('guild', benefits.memberships),
-        summarizeBenefitMap('cargo', benefits.cargo),
-        summarizeBenefitMap('heat', benefits.heat)
+        formatBenefitMap('rep', benefits.publicRep),
+        formatBenefitMap('private', benefits.privateRep),
+        formatBenefitMap('guild', benefits.memberships),
+        formatBenefitMap('cargo', benefits.cargo),
+        formatBenefitMap('heat', benefits.heat)
     ].filter(Boolean);
     if (benefits.contacts) parts.push(`contacts ${benefits.contacts.length}`);
     if (benefits.equipment) parts.push(`equipment ${benefits.equipment.length}`);
@@ -57,6 +57,11 @@ function buildMechanicalPreview(build, platform, spend) {
     return `Cash delta ${cash >= 0 ? '+' : ''}${cash}; ${platform.label} gives ${assetText}. ${packageText}`;
 }
 
+/**
+ * Build signatures are normalized string keys used to compare a mutable draft
+ * build with preset builds. Segments use `::`, stat fields use `|`, and list
+ * values use `,` so equivalent builds map to the same deterministic signature.
+ */
 function buildSignature(buildSpec) {
     const build = normaliseBuildSpec(buildSpec);
     const statSpend = CHAR_STATS.map(stat => `${stat}:${Number(build.statSpend?.[stat] || 0)}`).join(BUILD_SIGNATURE_FIELD_SEPARATOR);
