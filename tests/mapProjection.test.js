@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { state, resetState } from '../js/state.js';
 import { drawMap, getMapNodes, invalidateMapProjectionCache, stopMapAnimation } from '../js/ui/renderMap.js';
+import { setSiteCoord } from '../js/core/universe.js';
 import { Renderer } from '../js/ui/renderer.js';
 
 function seedMapState() {
@@ -116,6 +117,39 @@ describe('map projection cache', () => {
 
         assert.notEqual(after, before);
         assert.ok(after[4]);
+    });
+
+
+    it('setSiteCoord updates projection cache and coord index', () => {
+        const before = getMapNodes();
+        const result = setSiteCoord(2, { x: 33, y: 1, z: 0 });
+        assert.equal(result.ok, true);
+        const after = getMapNodes();
+        assert.notEqual(after, before);
+        assert.equal(state.siteIdByCoord['33,1,0'], 2);
+    });
+
+    it('setSiteCoord rejects invalid coords and missing site ids without mutation', () => {
+        const snapshot = JSON.stringify(state.universe[2].coord);
+        const bad = setSiteCoord(2, { x: NaN, y: 0, z: 0 });
+        assert.equal(bad.ok, false);
+        const missing = setSiteCoord(999, { x: 1, y: 2, z: 3 });
+        assert.equal(missing.ok, false);
+        assert.equal(JSON.stringify(state.universe[2].coord), snapshot);
+    });
+
+    it('setSiteCoord rejects occupied coordinates and keeps prior index values', () => {
+        state.siteIdByCoord = {
+            '10,0,0': 2,
+            '20,0,0': 3
+        };
+        const snapshot = JSON.stringify(state.universe[2].coord);
+        const result = setSiteCoord(2, { x: 20, y: 0, z: 0 });
+        assert.equal(result.ok, false);
+        assert.match(result.message || '', /already occupied/i);
+        assert.equal(JSON.stringify(state.universe[2].coord), snapshot);
+        assert.equal(state.siteIdByCoord['10,0,0'], 2);
+        assert.equal(state.siteIdByCoord['20,0,0'], 3);
     });
 
     it('supports explicit map projection invalidation for geometry mutation sites', () => {

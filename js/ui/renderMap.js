@@ -89,6 +89,8 @@ function getMapProjectionSignature(ids) {
     ].join('|');
 }
 
+// NOTE: projection cache keys do not include site coordinate values.
+// Coordinate mutation must use setSiteCoord() so cache invalidation runs.
 export function getMapNodes() {
     const universe = state.universe;
     const ids = getVisibleMapSectorIds(universe);

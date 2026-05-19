@@ -11,6 +11,9 @@ import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from '../ch
 import { getEmploymentTerms } from '../characterChecks.js';
 import { createStartingProperties } from '../../systems/properties.js';
 import { markGraphDirty } from '../routePlanner.js';
+
+import { invalidateMapProjectionCache } from '../../ui/renderMap.js';
+import { stateChanged, StateSlice } from '../../ui/stateSlices.js';
 import { getTraitDefinition } from '../../config/traits.js';
 import { assignSectorPolities } from '../../systems/polities.js';
 import { seedCompaniesAndPeople } from '../../systems/companies.js';
@@ -86,6 +89,30 @@ export function makePlanet(typeKey) {
 
 export function coordKey(coord) {
     return `${coord.x},${coord.y},${coord.z}`;
+}
+
+export function setSiteCoord(siteId, coord) {
+    const site = state.universe?.[siteId];
+    if (!site) return { ok: false, message: `Unknown site id: ${siteId}` };
+    const next = coord || {};
+    if (![next.x, next.y, next.z].every(value => Number.isFinite(value))) {
+        return { ok: false, message: 'Invalid coordinates.' };
+    }
+    const nextCoord = { x: Number(next.x), y: Number(next.y), z: Number(next.z) };
+    const nextKey = coordKey(nextCoord);
+    const occupiedSiteId = state.siteIdByCoord?.[nextKey];
+    if (occupiedSiteId !== undefined && occupiedSiteId !== siteId) {
+        return { ok: false, message: `Coordinate ${nextKey} is already occupied by site ${occupiedSiteId}.` };
+    }
+    const oldKey = site.coordKey || coordKey(site.coord || { x: siteId, y: 0, z: 0 });
+    if (state.siteIdByCoord && oldKey) delete state.siteIdByCoord[oldKey];
+    site.coord = nextCoord;
+    site.coordKey = nextKey;
+    if (!state.siteIdByCoord) state.siteIdByCoord = {};
+    state.siteIdByCoord[site.coordKey] = siteId;
+    invalidateMapProjectionCache();
+    markGraphDirty();
+    return { ok: true, slices: stateChanged(StateSlice.UNIVERSE, StateSlice.MAP_VIEW) };
 }
 
 export function getSiteTypeLabel(siteType) {

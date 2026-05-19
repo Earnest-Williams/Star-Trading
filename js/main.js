@@ -8,7 +8,7 @@ import { addWorldEvent } from './core/worldEvents.js';
 import { setPersistenceAdapters, hasSavedGame, importSavePayload, loadGame } from './core/persistence.js';
 import { loadPreferences, saveSettingsPreferences } from './core/preferences.js';
 import { centerMapOnSector, resetMapViewport, setupMapInteraction, stopMapAnimation } from './ui/renderMap.js';
-import { disposeUI, handleActionClick, initUI } from './ui/ui.js';
+import { applyCommandResult, disposeUI, handleActionClick, initUI } from './ui/ui.js';
 import { Notifications } from './ui/notifications.js';
 import { generateFactionAsks } from './systems/guilds.js';
 import { initSessionRng } from './utils.js';
@@ -418,10 +418,11 @@ export const App = (() => {
         unbindTopbarButtons();
         addTopbarListener('btn-rest', () => {
             const result = executeAction({ type: 'restUntilMorning' });
-            if (result !== false) updateUI();
+            applyCommandResult(result);
         });
-        addTopbarListener('btn-save', () => executeAction({ type: 'saveGame' }));
-        addTopbarListener('btn-load', () => executeAction({ type: 'loadGame' }));
+        addTopbarListener('btn-save', () => applyCommandResult(executeAction({ type: 'saveGame' })));
+        addTopbarListener('btn-load', () => applyCommandResult(executeAction({ type: 'loadGame' })));
+
         addTopbarListener('btn-intel', () => executeAction({ type: 'showScreen', args: ['reputation'] }));
         addTopbarListener('btn-center-map', () => centerMapOnSector());
     }

@@ -40,7 +40,8 @@ const MODULE_EXPORTS = Object.freeze({
         'initRng',
         'makePlanet',
         'makePort',
-        'makeStock'
+        'makeStock',
+        'setSiteCoord'
     ],
     '../js/systems/tradeRoutes.js': [
         'assignCaptainToRoute',
