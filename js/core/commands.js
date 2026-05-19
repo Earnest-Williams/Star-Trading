@@ -34,8 +34,7 @@ export function normaliseCommandResult(result) {
     }
     if (result === false) return commandNoop();
     if (Array.isArray(result)) return commandOk(...result);
-    if (result === undefined) return { ...commandOk(), invalidateAll: true };
-    return { ...commandOk(), invalidateAll: true };
+    return commandOk();
 }
 
 export function registerAction(name, fn) {
