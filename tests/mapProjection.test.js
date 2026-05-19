@@ -138,6 +138,20 @@ describe('map projection cache', () => {
         assert.equal(JSON.stringify(state.universe[2].coord), snapshot);
     });
 
+    it('setSiteCoord rejects occupied coordinates and keeps prior index values', () => {
+        state.siteIdByCoord = {
+            '10,0,0': 2,
+            '20,0,0': 3
+        };
+        const snapshot = JSON.stringify(state.universe[2].coord);
+        const result = setSiteCoord(2, { x: 20, y: 0, z: 0 });
+        assert.equal(result.ok, false);
+        assert.match(result.message || '', /already occupied/i);
+        assert.equal(JSON.stringify(state.universe[2].coord), snapshot);
+        assert.equal(state.siteIdByCoord['10,0,0'], 2);
+        assert.equal(state.siteIdByCoord['20,0,0'], 3);
+    });
+
     it('supports explicit map projection invalidation for geometry mutation sites', () => {
         const before = getMapNodes();
 

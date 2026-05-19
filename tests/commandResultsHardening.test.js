@@ -49,4 +49,24 @@ describe('command result hardening', () => {
         assert.equal(result.ok, true);
         assert.equal(result.invalidateAll, true);
     });
+
+    it('applyCommandResult handles slices and invalidateAll in the same result', () => {
+        const seenSlices = [];
+        let invalidateAllCount = 0;
+        const originalSliceChanged = Renderer.sliceChanged;
+        const originalInvalidateAll = Renderer.invalidateAll;
+        Renderer.sliceChanged = (...slices) => seenSlices.push(...slices);
+        Renderer.invalidateAll = () => { invalidateAllCount += 1; };
+
+        applyCommandResult({
+            ok: true,
+            slices: ['map'],
+            invalidateAll: true
+        });
+
+        Renderer.sliceChanged = originalSliceChanged;
+        Renderer.invalidateAll = originalInvalidateAll;
+        assert.deepEqual(seenSlices, ['map']);
+        assert.equal(invalidateAllCount, 1);
+    });
 });

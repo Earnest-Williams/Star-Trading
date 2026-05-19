@@ -98,10 +98,16 @@ export function setSiteCoord(siteId, coord) {
     if (![next.x, next.y, next.z].every(value => Number.isFinite(value))) {
         return { ok: false, message: 'Invalid coordinates.' };
     }
+    const nextCoord = { x: Number(next.x), y: Number(next.y), z: Number(next.z) };
+    const nextKey = coordKey(nextCoord);
+    const occupiedSiteId = state.siteIdByCoord?.[nextKey];
+    if (occupiedSiteId !== undefined && String(occupiedSiteId) !== String(siteId)) {
+        return { ok: false, message: `Coordinate ${nextKey} is already occupied by site ${occupiedSiteId}.` };
+    }
     const oldKey = site.coordKey || coordKey(site.coord || { x: siteId, y: 0, z: 0 });
     if (state.siteIdByCoord && oldKey) delete state.siteIdByCoord[oldKey];
-    site.coord = { x: Number(next.x), y: Number(next.y), z: Number(next.z) };
-    site.coordKey = coordKey(site.coord);
+    site.coord = nextCoord;
+    site.coordKey = nextKey;
     if (!state.siteIdByCoord) state.siteIdByCoord = {};
     state.siteIdByCoord[site.coordKey] = siteId;
     invalidateMapProjectionCache();

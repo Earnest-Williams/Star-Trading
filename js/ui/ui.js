@@ -86,7 +86,6 @@ export function applyCommandResult(result) {
     }
     if (result.slices.length > 0) {
         Renderer.sliceChanged(...result.slices);
-        return;
     }
     if (result.invalidateAll) updateUI();
 }
