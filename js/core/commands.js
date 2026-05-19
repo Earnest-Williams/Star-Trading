@@ -1,3 +1,4 @@
+// @ts-check
 // =====================================================
 // DOMAIN COMMAND LAYER
 // Keeps UI events from calling simulation systems directly.

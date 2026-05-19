@@ -1,3 +1,4 @@
+// @ts-check
 import { createInitialState, state } from '../state.js';
 import { createPlayer } from './universe.js';
 import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, DEFAULT_FACTION_RELATIONS, MARKET_COMMODITIES, PORT_DEFAULTS } from '../constants.js';

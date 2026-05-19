@@ -1,17 +1,20 @@
-import { state } from '../state.js';
+// @ts-check
 import { BALANCE } from '../constants.js';
 import { log } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
 import { addSimulationTraceEvent, normaliseSimulationTraceCauses } from './simulationTrace.js';
+import { appendWorldEvent } from './state/index.js';
+import { getPlayerTime } from './state/index.js';
+import { state } from '../state.js';
 
 export function addWorldEvent(event) {
     if (!event || !event.text) return;
-    const time = state.player && state.player.time ? state.player.time : { day: 1, minuteOfDay: 0 };
+    const time = getPlayerTime() || { day: 1, minuteOfDay: 0 };
     const causedBy = normaliseSimulationTraceCauses(event.causedBy);
     const worldEvent = {
         id: state.nextWorldEventId++,
         day: time.day, minute: time.minuteOfDay,
-        type: event.type || "news",
+        type: event.type || 'news',
         sectorId: event.sectorId || null,
         factionId: event.factionId || null,
         captainId: event.captainId || null,
@@ -22,7 +25,7 @@ export function addWorldEvent(event) {
         causedBy,
         payload: event.payload || {}
     };
-    state.worldEvents.unshift(worldEvent);
+    appendWorldEvent(worldEvent);
     addSimulationTraceEvent({
         eventType: worldEvent.type,
         sourceSystem: event.sourceSystem || 'world',

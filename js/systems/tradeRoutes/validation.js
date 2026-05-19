@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module tradeRoutes/validation
  * @see {@link ../../../docs/ARCHITECTURE.md#module-traderoutes}

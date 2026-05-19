@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module captains/ai
  * @see {@link ../../../docs/ARCHITECTURE.md#module-captains}
