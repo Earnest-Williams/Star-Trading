@@ -1143,11 +1143,6 @@ select:focus-visible {
     margin-bottom: 10px;
 }
 
-#newGamePanel label,
-#newGamePanel .advanced-settings {
-    display: inline-block;
-    margin: 6px 10px 6px 0;
-}
 
 .map-toolbar {
     position: absolute;
@@ -1193,6 +1188,38 @@ select:focus-visible {
     opacity: 1;
     transform: translateY(0);
 }
+
+.new-game-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) minmax(300px, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+.new-game-panel {
+    border: var(--border-thin) solid var(--line);
+    background: var(--bg-panel-raised);
+    padding: 10px;
+}
+.new-game-panel h3 {
+    margin-top: 0;
+}
+.galaxy-setup-panel {
+    grid-column: 1 / -1;
+}
+.launch-summary-panel {
+    position: sticky;
+    top: 10px;
+    align-self: start;
+}
+.chargen-compact-row {
+    display: block;
+    margin: 4px 0;
+}
+.chargen-trait-row,
+.chargen-package-group {
+    margin-bottom: 6px;
+}
+
 .chargen-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1433,10 +1460,14 @@ select:focus-visible {
     .action-hotbar-more {
         flex: 0 0 178px;
     }
-    #newGamePanel label,
-    #newGamePanel .advanced-settings {
-        display: block;
-        margin: 8px 0;
+    .new-game-layout {
+        grid-template-columns: 1fr 1fr;
+    }
+    .galaxy-setup-panel {
+        grid-column: 1 / -1;
+    }
+    .launch-summary-panel {
+        position: static;
     }
     .relationship-row {
         grid-template-columns: 1fr;
@@ -1463,7 +1494,39 @@ select:focus-visible {
     }
     .menu-grid,
     .screen-tabs,
-    .chargen-grid {
+    
+.new-game-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) minmax(300px, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+.new-game-panel {
+    border: var(--border-thin) solid var(--line);
+    background: var(--bg-panel-raised);
+    padding: 10px;
+}
+.new-game-panel h3 {
+    margin-top: 0;
+}
+.galaxy-setup-panel {
+    grid-column: 1 / -1;
+}
+.launch-summary-panel {
+    position: sticky;
+    top: 10px;
+    align-self: start;
+}
+.chargen-compact-row {
+    display: block;
+    margin: 4px 0;
+}
+.chargen-trait-row,
+.chargen-package-group {
+    margin-bottom: 6px;
+}
+
+.chargen-grid {
         grid-template-columns: 1fr;
     }
     .gate-actions,

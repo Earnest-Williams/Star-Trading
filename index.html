@@ -56,7 +56,6 @@
                 </select>
             </label>
             <div id="chargenPanel" class="subpanel"></div>
-            <button id="btn-chargen-start">Start New Galaxy</button>
         </div>
         <div id="loadGamePanel" class="panel" hidden>
             <button id="btn-load-back" class="shell-back">&#8592; Menu</button>
@@ -96,17 +95,17 @@
 
     <div id="gameShell" hidden>
         <div class="topbar panel">
-            <button id="top-sector" data-screen="sector">Sector</button>
-            <button id="top-market" data-screen="market">Market</button>
-            <button id="top-colony" data-screen="colony">Colonies</button>
-            <button id="top-missions" data-screen="missions">Missions</button>
-            <button id="top-logistics" data-screen="logistics">Logistics</button>
-            <button id="top-reputation" data-screen="reputation">Network</button>
-            <button id="top-communications" data-screen="communications">Comms</button>
-            <button id="top-spreadsheet" data-screen="spreadsheet">Ledger</button>
-            <button id="top-property" data-screen="property">Property</button>
-            <button id="top-character" data-screen="character">Character</button>
-            <button id="top-shipyard" data-screen="shipyard">Shipyard</button>
+            <button id="top-sector" data-action="showScreen" data-arg0="sector">Sector</button>
+            <button id="top-market" data-action="showScreen" data-arg0="market">Market</button>
+            <button id="top-colony" data-action="showScreen" data-arg0="colony">Colonies</button>
+            <button id="top-missions" data-action="showScreen" data-arg0="missions">Missions</button>
+            <button id="top-logistics" data-action="showScreen" data-arg0="logistics">Logistics</button>
+            <button id="top-reputation" data-action="showScreen" data-arg0="reputation">Network</button>
+            <button id="top-communications" data-action="showScreen" data-arg0="communications">Comms</button>
+            <button id="top-spreadsheet" data-action="showScreen" data-arg0="spreadsheet">Ledger</button>
+            <button id="top-property" data-action="showScreen" data-arg0="property">Property</button>
+            <button id="top-character" data-action="showScreen" data-arg0="character">Character</button>
+            <button id="top-shipyard" data-action="showScreen" data-arg0="shipyard">Shipyard</button>
         </div>
         <div id="game">
             <div class="left-sidebar panel">

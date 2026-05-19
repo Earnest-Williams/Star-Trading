@@ -416,11 +416,6 @@ export const App = (() => {
 
     function bindTopbarButtons() {
         unbindTopbarButtons();
-        document.querySelectorAll('.topbar button').forEach(btn => {
-            const fn = () => executeAction({ type: 'showScreen', args: [btn.dataset.screen] });
-            btn.addEventListener('click', fn);
-            _topbarListeners.push({ el: btn, fn });
-        });
         addTopbarListener('btn-rest', () => {
             const result = executeAction({ type: 'restUntilMorning' });
             if (result !== false) updateUI();
