@@ -1,0 +1,44 @@
+import { beforeEach, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { executeAction } from '../js/core/commands.js';
+import { PREFERENCES_KEY } from '../js/core/preferences.js';
+import { resetState, state } from '../js/state.js';
+import { StateSlice } from '../js/ui/stateSlices.js';
+import { registerUIActions } from '../js/ui/ui.js';
+
+function createStorage() {
+    const values = new Map();
+    return {
+        getItem(key) {
+            return values.get(key) ?? null;
+        },
+        setItem(key, value) {
+            values.set(key, value);
+        },
+        removeItem(key) {
+            values.delete(key);
+        }
+    };
+}
+
+describe('map inspector compact action registration', () => {
+    beforeEach(() => {
+        resetState();
+        globalThis.localStorage = createStorage();
+        registerUIActions();
+    });
+
+    it('executes toggleMapInspectorCompact through the action registry', () => {
+        assert.equal(state.mapInspectorCompact, false);
+
+        const changedSlices = executeAction({ type: 'toggleMapInspectorCompact', args: [] });
+
+        assert.deepEqual(changedSlices, [StateSlice.MAP_VIEW]);
+        assert.equal(state.mapInspectorCompact, true);
+
+        const persisted = globalThis.localStorage.getItem(PREFERENCES_KEY);
+        assert.notEqual(persisted, null);
+        assert.equal(JSON.parse(persisted).mapInspectorCompact, true);
+    });
+});
