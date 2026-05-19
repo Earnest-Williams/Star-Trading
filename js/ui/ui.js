@@ -26,6 +26,7 @@ import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsh
 import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
 import { renderNextStepsPanel } from './onboarding.js';
 import { dismissPriorityBriefing } from '../core/priorityBriefingActions.js';
+import { Notifications } from './notifications.js';
 import { acceptLogisticsObjective, abandonLogisticsObjective } from '../systems/logisticsObjectives.js';
 
 // Captain UI (needs dependency injection)
@@ -122,10 +123,21 @@ const GAMEPLAY_SCREENS = new Set([
 export function showScreen(screen) {
     if (!GAMEPLAY_SCREENS.has(screen)) return false;
     if (state.appMode !== APP_MODES.IN_GAME || !state.player) return false;
+
+    if (screen === 'market' && !state.ports[state.player.currentSector]) {
+        Notifications.show('No market is available in this sector.', 2);
+        return false;
+    }
+    if (screen === 'colony' && !state.planets[state.player.currentSector]) {
+        Notifications.show('No colony is available in this sector.', 2);
+        return false;
+    }
+    if (screen === 'shipyard' && state.player.currentSector !== state.world?.roles?.shipyardSiteId) {
+        Notifications.show('Shipyard access is only available at Stardock.', 2);
+        return false;
+    }
+
     state.currentScreen = screen;
-    if (screen === 'colony' && !state.planets[state.player.currentSector]) state.currentScreen = 'sector';
-    if (screen === 'market' && !state.ports[state.player.currentSector]) state.currentScreen = 'sector';
-    if (screen === 'shipyard' && state.player.currentSector !== state.world?.roles?.shipyardSiteId) state.currentScreen = 'sector';
     if (state.currentScreen !== 'reputation') state.selectedCaptainId = null;
     return stateChanged(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN);
 }
