@@ -65,8 +65,14 @@ const SAVE_LIMITED_ARRAY_FIELDS = [
 
 function validateSaveSchema(data) {
     if (!isObject(data)) return { ok: false, error: 'Save payload is not an object.' };
-    const rawVersion = Object.hasOwn(data, 'version') ? data.version : 0;
-    if (typeof rawVersion === 'object' || (typeof rawVersion === 'string' && rawVersion.trim().length === 0)) {
+    if (!Object.hasOwn(data, 'version')) return { ok: false, error: 'Save version is missing.' };
+    const rawVersion = data.version;
+    if (
+        rawVersion === null
+        || typeof rawVersion === 'object'
+        || typeof rawVersion === 'boolean'
+        || (typeof rawVersion === 'string' && rawVersion.trim().length === 0)
+    ) {
         return { ok: false, error: 'Save version is invalid.' };
     }
     const version = Number(rawVersion);
@@ -75,7 +81,7 @@ function validateSaveSchema(data) {
     for (const field of SAVE_REQUIRED_OBJECT_FIELDS) {
         if (!isObject(data[field])) return { ok: false, error: `Missing field: ${field}` };
     }
-    if (!validateRawSave(data)) return { ok: false, error: 'Save data has invalid structure.' };
+    if (!validateRawSave(data)) return { ok: false, error: 'Save data validation failed.' };
     for (const field of SAVE_LIMITED_ARRAY_FIELDS) {
         if (!Object.hasOwn(data, field)) continue;
         if (!Array.isArray(data[field])) return { ok: false, error: `Save field ${field} must be an array.` };
