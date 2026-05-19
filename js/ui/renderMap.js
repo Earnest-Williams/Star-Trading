@@ -477,12 +477,11 @@ function isShortcutIgnoredTarget(target) {
     return tagName === "INPUT"
         || tagName === "TEXTAREA"
         || tagName === "SELECT"
-        || Boolean(target?.isContentEditable);
+        || target?.isContentEditable;
 }
 
-function canHandleMapGlobalShortcut(event, canvas) {
+function canHandleMapGlobalShortcut(event, canvas, gameShell) {
     if (state.appMode !== APP_MODES.IN_GAME) return false;
-    const gameShell = document.getElementById("gameShell");
     if (!gameShell || gameShell.hidden) return false;
     if (!canvas || !canvas.isConnected || canvas.offsetParent === null) return false;
     if (isShortcutIgnoredTarget(event.target)) return false;
@@ -724,6 +723,8 @@ export function setupMapInteraction() {
     const existingUnsubscribe = mapInteractionUnsubscribers.get(canvas);
     if (existingUnsubscribe) return existingUnsubscribe;
 
+    const gameShell = document.getElementById("gameShell");
+
     let dragging = false;
     let dragMoved = false;
     let dragMode = null;
@@ -881,7 +882,7 @@ export function setupMapInteraction() {
     };
     const handleResize = () => Renderer.invalidate("map");
     const handleKeyDown = event => {
-        if (!canHandleMapGlobalShortcut(event, canvas)) return;
+        if (!canHandleMapGlobalShortcut(event, canvas, gameShell)) return;
         if (event.key === "Escape") {
             if (state.mapHelpOpen) {
                 setMapHelpOpen(false);
