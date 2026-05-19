@@ -51,7 +51,7 @@ function buildMechanicalPreview(build, platform, spend) {
         ship.maxShields ? `shields ${ship.maxShields}` : null,
         ship.maxHull ? `hull ${ship.maxHull}` : null
     ].filter(Boolean).join(' / ');
-    const cash = platform.creditModifier + spend.leftoverPoints * CHAR_DEFAULTS.CASH_PER_LEFTOVER_POINT;
+    const cash = (platform.creditModifier ?? 0) + spend.leftoverPoints * CHAR_DEFAULTS.CASH_PER_LEFTOVER_POINT;
     const packageText = selectedPackages.length ? selectedPackages.join(' | ') : 'No package modifiers selected.';
     const assetText = platform.property ? `property ${platform.property.kind}, units ${platform.property.units}, rent ${platform.property.rentDaily}/day` : `ship ${shipStats || 'baseline hull'}`;
     return `Cash delta ${cash >= 0 ? '+' : ''}${cash}; ${platform.label} gives ${assetText}. ${packageText}`;
@@ -65,8 +65,8 @@ function buildMechanicalPreview(build, platform, spend) {
 function buildSignature(buildSpec) {
     const build = normaliseBuildSpec(buildSpec);
     const statSpend = CHAR_STATS.map(stat => `${stat}:${Number(build.statSpend?.[stat] || 0)}`).join(BUILD_SIGNATURE_FIELD_SEPARATOR);
-    const careerTraitIds = [...build.careerTraitIds].sort().join(BUILD_SIGNATURE_LIST_SEPARATOR);
-    const packageIds = [...build.packageIds].sort().join(BUILD_SIGNATURE_LIST_SEPARATOR);
+    const careerTraitIds = [...(build.careerTraitIds || [])].sort().join(BUILD_SIGNATURE_LIST_SEPARATOR);
+    const packageIds = [...(build.packageIds || [])].sort().join(BUILD_SIGNATURE_LIST_SEPARATOR);
     return [
         statSpend,
         build.originTraitId,
