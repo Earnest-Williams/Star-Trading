@@ -32,7 +32,7 @@ export function runMigrations(data) {
     if (version < 7) applyV07(data);
     if (version < 8) applyV08(data);
     if (version < 10) applyV10(data);
-    if (version < 14) applyV14(data);
+    if (version < 15) applyV14(data);
     if (version < 19) applyV19(data);
 
     migrateLegacyWarpAdjacencyToJumpGates(data.universe);
