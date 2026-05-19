@@ -96,9 +96,6 @@ export const App = (() => {
         }
     }
 
-    function suppressContextMenu(event) {
-        event.preventDefault();
-    }
 
     function bindShellDom() {
         const shellView = document.getElementById('shellView');
@@ -112,7 +109,6 @@ export const App = (() => {
             shellListeners.push({ el: shellView, event: 'change', fn: changeFn });
             shellListeners.push({ el: shellView, event: 'input', fn: changeFn });
         }
-        document.addEventListener('contextmenu', suppressContextMenu);
         document.body.addEventListener('click', handleActionClick);
         document.body.addEventListener('keydown', handleActionClick);
     }
@@ -136,7 +132,6 @@ export const App = (() => {
         EventBus.reset();
         shellListeners.forEach(({ el, event, fn }) => el.removeEventListener(event, fn));
         shellListeners = [];
-        document.removeEventListener('contextmenu', suppressContextMenu);
         document.body.removeEventListener('click', handleActionClick);
         document.body.removeEventListener('keydown', handleActionClick);
         disposeUI();
