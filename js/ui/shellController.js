@@ -1,5 +1,5 @@
 import { APP_MODES, setAppMode, state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE, UI_LABELS } from '../constants.js';
 import { ARCHETYPE_PRESETS } from '../config/chargen.js';
 import { renderChargenControls } from './renderChargen.js';
 import { renderShell } from './renderShell.js';
@@ -111,7 +111,7 @@ export function createShellController(deps) {
             randomiseFn();
         } catch (err) {
             console.error('Chargen randomisation failed:', err);
-            Notifications.show('Random build unavailable in this browser.', 4);
+            Notifications.show(UI_LABELS.randomBuildUnavailable, 4);
         }
         renderChargen();
     }
@@ -140,7 +140,7 @@ export function createShellController(deps) {
                 const result = importSavePayload(text);
                 if (result === false) state.isTransitioning = false;
             } catch (error) {
-                console.error('Import failed:', error);
+                console.error(UI_LABELS.importFailed, error);
                 state.isTransitioning = false;
             }
             input.value = '';
@@ -148,7 +148,7 @@ export function createShellController(deps) {
         try {
             reader.readAsText(file);
         } catch (error) {
-            console.error('Import read failed:', error);
+            console.error(UI_LABELS.importReadFailed, error);
             state.isTransitioning = false;
             input.value = '';
         }
@@ -169,7 +169,7 @@ export function createShellController(deps) {
             case 'btn-random-valid-build': randomiseChargen(deps.setRandomValidBuild); break;
             case 'btn-load-from-storage': deps.quickLoadGame(); break;
             case 'btn-import-save': document.getElementById('import-save-file')?.click(); break;
-            case 'btn-settings-save': saveSettingsFromDom(); enterMainMenu('Settings saved.'); break;
+            case 'btn-settings-save': saveSettingsFromDom(); enterMainMenu(UI_LABELS.settingsSaved); break;
         }
     }
 

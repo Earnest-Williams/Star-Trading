@@ -571,7 +571,14 @@ export const UI_LABELS = Object.freeze({
     sectorSummaryNoAsteroids: "No asteroids",
     sectorSummaryPlanet: "Planet",
     sectorSummaryNoPlanet: "No planet",
-    sectorSummaryPriority: "Priority: maintain local readiness"
+    sectorSummaryPriority: "Priority: maintain local readiness",
+    simulationStarted: "The frontier simulation started.",
+    sessionWelcome: "Welcome to the frontier",
+    randomBuildUnavailable: "Random build unavailable in this browser.",
+    settingsSaved: "Settings saved.",
+    importFailed: "Import failed:",
+    importReadFailed: "Import read failed:",
+    parseErrNonEmptyString: "must be a non-empty string",
 });
 
 export const FACTIONS = {

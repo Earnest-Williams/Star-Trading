@@ -14,6 +14,7 @@ import { registerSimulationTickHooks } from '../core/worldTick.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { Notifications } from '../ui/notifications.js';
 import { syncShellVisibility } from '../ui/renderShell.js';
+import { UI_LABELS } from '../constants.js';
 
 export function createGameSessionController() {
     let gameplayInitialized = false;
@@ -100,8 +101,8 @@ export function createGameSessionController() {
         ensureGameplayInitialized();
         syncShellVisibility(state.appMode);
         state.isTransitioning = false;
-        addWorldEvent({ type: 'start', sectorId: state.player.currentSector, text: 'The frontier simulation started.', importance: 2, alert: false });
-        Notifications.show('Welcome to the frontier', 2);
+        addWorldEvent({ type: 'start', sectorId: state.player.currentSector, text: UI_LABELS.simulationStarted, importance: 2, alert: false });
+        Notifications.show(UI_LABELS.sessionWelcome, 2);
         updateUI();
         centerMapOnSector();
     }

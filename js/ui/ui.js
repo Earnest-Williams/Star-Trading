@@ -518,7 +518,7 @@ export function registerUIActions() {
     actionsRegistered = true;
     const parsePositiveId = value => parseIntegerArg(value, { min: 1 });
     const parseNonEmptyString = value => {
-        if (typeof value !== 'string' || value.trim().length === 0) return { ok: false, reason: 'must be a non-empty string' };
+        if (typeof value !== 'string' || value.trim().length === 0) return { ok: false, reason: UI_LABELS.parseErrNonEmptyString };
         return { ok: true, value: value.trim() };
     };
     const parseScreen = value => parseEnum(GAMEPLAY_SCREENS)(value);
