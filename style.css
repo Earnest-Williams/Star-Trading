@@ -1982,3 +1982,138 @@ select:focus-visible {
     flex-wrap: wrap;
     gap: 2px;
 }
+
+/* =====================================================
+   Screen content panel modes
+   The center viewport is vertical:
+   map -> screen-content-panel -> hotbar -> log.
+   Therefore panel rail mode must collapse HEIGHT, not WIDTH.
+   ===================================================== */
+
+.main-viewport {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: max-content max-content max-content minmax(0, 1fr);
+    grid-template-areas:
+        "map"
+        "panel"
+        "hotbar"
+        "log";
+    gap: 6px;
+    align-content: start;
+    align-items: start;
+    min-width: 0;
+    min-height: 0;
+}
+
+.screen-content-panel {
+    grid-area: panel;
+    justify-self: stretch;
+    align-self: start;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    margin-top: 0 !important;
+    writing-mode: horizontal-tb;
+}
+
+/* Full mode: normal detailed panel. */
+.screen-content-panel.screen-panel-full {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    writing-mode: horizontal-tb;
+}
+
+.screen-content-panel.screen-panel-full #screenSummary {
+    display: none;
+}
+
+.screen-content-panel.screen-panel-full #sectorContents,
+.screen-content-panel.screen-panel-full #actions {
+    display: block;
+}
+
+/* Summary mode: compact but still full-width. */
+.screen-content-panel.screen-panel-summary {
+    justify-self: stretch;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 8px 10px;
+    overflow: hidden;
+    writing-mode: horizontal-tb;
+}
+
+.screen-content-panel.screen-panel-summary #screenSummary {
+    display: block;
+    margin: 0;
+}
+
+.screen-content-panel.screen-panel-summary #sectorContents,
+.screen-content-panel.screen-panel-summary #actions {
+    display: none;
+}
+
+/* Rail mode: full-width collapsed horizontal strip.
+   Do NOT make this 44px wide. Make it 44px tall. */
+.screen-content-panel.screen-panel-rail {
+    grid-area: panel;
+    justify-self: stretch;
+    align-self: start;
+    width: 100%;
+    max-width: none;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding: 4px 8px;
+    overflow: hidden;
+    writing-mode: horizontal-tb;
+}
+
+/* Rail header remains readable left-to-right. */
+.screen-content-panel.screen-panel-rail .screen-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Prevent the "CUR" vertical text seen in the screenshot. */
+.screen-content-panel.screen-panel-rail #screenTitle {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    writing-mode: horizontal-tb;
+    line-height: 1;
+}
+
+/* Keep the mode buttons usable inside the collapsed strip. */
+.screen-content-panel.screen-panel-rail .screen-panel-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    writing-mode: horizontal-tb;
+}
+
+.screen-content-panel.screen-panel-rail .screen-panel-controls button {
+    margin: 0;
+    min-height: 28px;
+    padding: 3px 8px;
+    font-size: 14px;
+}
+
+/* Hide actual body content in rail mode. */
+.screen-content-panel.screen-panel-rail #screenSummary,
+.screen-content-panel.screen-panel-rail #sectorContents,
+.screen-content-panel.screen-panel-rail #actions {
+    display: none;
+}
