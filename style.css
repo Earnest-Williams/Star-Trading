@@ -118,11 +118,15 @@ h4 {
 
 .screen-content-panel {
     grid-area: panel;
+    justify-self: stretch;
     align-self: start;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     height: auto;
     min-height: 0;
     margin-top: 0 !important;
-    min-width: 0;
+    writing-mode: horizontal-tb;
 }
 
 #actionHotbar {
@@ -1841,6 +1845,7 @@ select:focus-visible {
 
 .screen-content-panel.screen-mode-summary #sectorContents,
 .screen-content-panel.screen-mode-summary #actions,
+.screen-content-panel.screen-mode-rail #screenSummary,
 .screen-content-panel.screen-mode-rail #sectorContents,
 .screen-content-panel.screen-mode-rail #actions {
     display: none;
@@ -1850,6 +1855,7 @@ select:focus-visible {
     min-height: 0;
     height: auto;
     padding: 8px 10px;
+    overflow: hidden;
 }
 
 .screen-content-panel.screen-mode-summary #screenSummary {
@@ -1860,26 +1866,57 @@ select:focus-visible {
 .screen-content-panel.screen-mode-full {
     height: auto;
     min-height: 0;
+    overflow: visible;
 }
 
-.screen-content-panel.screen-mode-full #sectorContents {
+.screen-content-panel.screen-mode-full #screenSummary {
+    display: none;
+}
+
+.screen-content-panel.screen-mode-full #sectorContents,
+.screen-content-panel.screen-mode-full #actions {
     display: block;
 }
 
 .screen-content-panel.screen-mode-rail {
-    padding: 6px 10px;
-    min-height: 44px;
     height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding: 4px 8px;
     overflow: hidden;
 }
 
 .screen-content-panel.screen-mode-rail .screen-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 100%;
     min-height: 0;
 }
 
-.screen-content-panel.screen-mode-rail h3 {
-    writing-mode: vertical-rl;
+.screen-content-panel.screen-mode-rail #screenTitle {
     margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1;
+}
+
+.screen-content-panel.screen-mode-rail .screen-panel-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.screen-content-panel.screen-mode-rail .screen-panel-controls button {
+    margin: 0;
+    min-height: 28px;
+    padding: 3px 8px;
+    font-size: 14px;
 }
 
 .map-toolbar button,
