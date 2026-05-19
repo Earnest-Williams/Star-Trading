@@ -679,9 +679,6 @@ export function disposeUI() {
     rendererUnsubscribers = [];
     uiDomUnsubscribers.forEach(unsubscribe => unsubscribe());
     uiDomUnsubscribers = [];
-    if (typeof document !== 'undefined') {
-        document.querySelectorAll('.screen-rail-toggle').forEach(button => button.remove());
-    }
     resetActions();
     actionsRegistered = false;
     uiInitialized = false;
