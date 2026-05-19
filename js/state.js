@@ -91,6 +91,8 @@ export function createInitialState() {
         mapLayersOpen: true,
         mapHelpOpen: false,
         mapInspectorCompact: false,
+        mapPanelMode: "full",
+        screenPanelMode: "full",
         mapViewport: { scale: 1, offsetX: 0, offsetY: 0 },
         worldGraphRevision: 0,
         ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },

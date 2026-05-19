@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS } from "../constants.js";
+import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS, UI_LABELS } from "../constants.js";
 import { getPortType } from "../core/ports.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";
@@ -88,7 +88,7 @@ function renderLocalPeopleDialogueActions(sectorId) {
                     action: "requestContactService",
                     args: [person.id, button.service, button.arg2],
                     disabled: false,
-                    label: actionState.label || button.label
+                    label: button.label
                 };
             });
         const relationship = normaliseDialogueRelationship(person.relationships?.player || {});
@@ -200,15 +200,39 @@ export function renderSectorContents() {
         if (a.surveyed) html += `<div class="amber"><strong>Asteroids:</strong> ${Math.floor(a.ore)} ore, richness ${a.richness.toFixed(2)}, hazard ${(a.hazard * 100).toFixed(0)}%</div>`;
         else html += `<div class="amber"><strong>Asteroids:</strong> detected, details unknown</div>`;
     }
-    if (planet) {
+    const planetInfo = document.getElementById("planetInfo");
+    if (planet && planetInfo) {
         const type = PLANET_TYPES[planet.typeKey];
         html += `<div class="blue"><strong>Planet:</strong> ${escapeHtml(type.name)} (${planet.owner ? "Colony founded" : "Unclaimed"})</div>`;
-        document.getElementById("planetInfo").style.display = "block";
-        document.getElementById("planetInfo").innerHTML = renderPlanetSummary(planet);
-    } else {
-        document.getElementById("planetInfo").style.display = "none";
+        planetInfo.style.display = "block";
+        planetInfo.innerHTML = renderPlanetSummary(planet);
+    } else if (planetInfo) {
+        planetInfo.style.display = "none";
     }
-    document.getElementById("sectorContents").innerHTML = html;
+    const sectorContents = document.getElementById("sectorContents");
+    if (sectorContents) {
+        sectorContents.innerHTML = html;
+    }
+}
+
+export function renderSectorSummary() {
+    const summary = document.getElementById("screenSummary");
+    if (!summary || !state.player) return;
+    const sector = state.universe[state.player.currentSector];
+    if (!sector) {
+        summary.innerHTML = "";
+        return;
+    }
+    const port = state.ports[state.player.currentSector];
+    const asteroids = sector.asteroids ? UI_LABELS.sectorSummaryAsteroids : UI_LABELS.sectorSummaryNoAsteroids;
+    const planet = state.planets[state.player.currentSector] ? UI_LABELS.sectorSummaryPlanet : UI_LABELS.sectorSummaryNoPlanet;
+    const risks = `Risk ${sector.pirateThreat || 0}`;
+    const gates = getOutboundJumpGates(state.player.currentSector).length;
+    const routes = state.tradeRoutes.filter(r => r.status !== "closed"
+        && (r.originSector === state.player.currentSector || r.destinationSector === state.player.currentSector)).length;
+    summary.innerHTML = `<div>${escapeHtml(getSiteTypeLabel(sector.siteType))} · ${escapeHtml(sector.name || UI_LABELS.sectorSummaryUnknownName)} · ${escapeHtml(getSectorStatusLabel(state.player.currentSector))}</div>`
+        + `<div>${port ? UI_LABELS.sectorSummaryPortActive : UI_LABELS.sectorSummaryNoPort} · ${asteroids} · ${planet} · ${risks}</div>`
+        + `<div>Gates ${gates} · Routes ${routes} · ${UI_LABELS.sectorSummaryPriority}</div>`;
 }
 
 export function renderPlanetSummary(planet) {

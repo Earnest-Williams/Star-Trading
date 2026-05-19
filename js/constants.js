@@ -562,7 +562,16 @@ export const CONTACT_SERVICE_LABELS = Object.freeze({
 
 export const UI_LABELS = Object.freeze({
     contactMoreToggle: "More",
-    contactLessToggle: "Less"
+    contactLessToggle: "Less",
+    screenRailToggle: "Panel",
+    sectorSummaryUnknownName: "Unknown",
+    sectorSummaryPortActive: "Port active",
+    sectorSummaryNoPort: "No port",
+    sectorSummaryAsteroids: "Asteroids",
+    sectorSummaryNoAsteroids: "No asteroids",
+    sectorSummaryPlanet: "Planet",
+    sectorSummaryNoPlanet: "No planet",
+    sectorSummaryPriority: "Priority: maintain local readiness"
 });
 
 export const FACTIONS = {

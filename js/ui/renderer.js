@@ -1,3 +1,5 @@
+import { state } from "../state.js";
+
 export const Renderer = (function() {
     let dirty = new Set();
     let scheduled = false;
@@ -18,7 +20,16 @@ export const Renderer = (function() {
             try {
                 fn();
             } catch (e) {
-                console.error(`Render ${key} failed:`, e);
+                console.groupCollapsed(`Render failure: ${key}`);
+                console.error("Error:", e);
+                console.error("Diagnostics:", {
+                    key,
+                    currentScreen: state.currentScreen,
+                    selectedSectorId: state.selectedSectorId,
+                    appMode: state.appMode,
+                    stack: e?.stack || null
+                });
+                console.groupEnd();
             }
         });
     }
