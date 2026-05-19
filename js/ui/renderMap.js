@@ -403,7 +403,6 @@ function setMapExpanded(expanded) {
     document.body.classList.toggle("map-modal-open", expanded);
     if (expandButton) {
         expandButton.textContent = expanded ? "Collapse Map" : "Expand Map";
-        expandButton.setAttribute("aria-label", expanded ? "Collapse map" : "Expand map");
         expandButton.setAttribute("aria-expanded", expanded ? "true" : "false");
     }
 
@@ -486,7 +485,7 @@ function renderMapToolbar() {
     toolbar.innerHTML = `<div class="map-toolbar-row map-toolbar-primary">`
         + `<button id="btn-center-map" type="button">Center</button>`
         + `<button id="btn-fit-map" type="button">Reset View</button>`
-        + `<button id="btn-expand-map" type="button" aria-label="${mapExpanded ? "Collapse map" : "Expand map"}" aria-expanded="${mapExpanded ? "true" : "false"}">${mapExpanded ? "Collapse Map" : "Expand Map"}</button>`
+        + `<button id="btn-expand-map" type="button" aria-expanded="${mapExpanded ? "true" : "false"}">${mapExpanded ? "Collapse Map" : "Expand Map"}</button>`
         + `<button id="btn-collapse-map" type="button">Map Rail</button>`
         + `<button id="btn-toggle-map-layers" type="button" aria-expanded="${state.mapLayersOpen === false ? "false" : "true"}">Layers</button>`
         + `<button id="btn-map-help" type="button" aria-expanded="${state.mapHelpOpen ? "true" : "false"}">?</button>`
