@@ -133,6 +133,7 @@ function renderCargoMiniList(player, ship) {
         const emptyText = loaded.length === 0 ? "empty" : `${emptyCount} empty`;
         html += `<div class="cargo-row muted"><span class="cargo-icon">--</span><span class="cargo-name">${emptyText}</span><span class="cargo-bar"><span></span></span><span class="cargo-qty">0</span></div>`;
     }
+    html += `<button class="cargo-drilldown" data-action="showScreen" data-arg0="spreadsheet">Cargo details</button>`;
     return html;
 }
 
@@ -272,15 +273,19 @@ export function renderPriorityFeed() {
     });
 }
 
-function renderHotbarButton(item) {
+function renderHotbarButton(item, index = null) {
     const attrs = [`class="action-hotbar-button${item.emphasis ? " is-primary" : ""}"`];
     if (item.action) attrs.push(`data-action="${escapeHtml(item.action)}"`);
     if (item.disabled) attrs.push("disabled");
     (item.args || []).slice(0, 5).forEach((arg, index) => {
         attrs.push(`data-arg${index}="${escapeHtml(String(arg))}"`);
     });
-    const time = item.time ? `<span class="action-hotbar-time">${escapeHtml(item.time)}</span>` : "";
+    const timeClass = `action-hotbar-time${item.time ? "" : " action-hotbar-slot-empty"}`;
+    const shortcutClass = `action-hotbar-shortcut${Number.isInteger(index) ? "" : " action-hotbar-slot-empty"}`;
+    const time = `<span class="${timeClass}">${item.time ? escapeHtml(item.time) : ""}</span>`;
+    const shortcut = `<span class="${shortcutClass}" aria-hidden="true">${Number.isInteger(index) ? index + 1 : ""}</span>`;
     return `<button ${attrs.join(" ")}>`
+        + shortcut
         + `<span class="action-hotbar-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`
         + `<span class="action-hotbar-copy"><span class="action-hotbar-label">${escapeHtml(item.label)}</span>`
         + `<span class="action-hotbar-subtitle">${escapeHtml(item.subtitle)}</span></span>`
@@ -310,9 +315,11 @@ function getSectorHotbarItems() {
         : {
             icon: "◎",
             label: "Navigation",
-            subtitle: neighbors.length > 0 ? "Pick a gate in the right console" : "No outbound gates",
+            subtitle: !player.ship
+                ? "No assigned ship"
+                : (neighbors.length > 0 ? "Pick a gate in the right console" : "No outbound gates"),
             action: null,
-            disabled: neighbors.length === 0,
+            disabled: neighbors.length === 0 || !player.ship,
             emphasis: true
         };
 
@@ -406,12 +413,12 @@ export function renderActionHotbar() {
     const primaryItems = items.slice(0, 7);
     const overflowItems = items.slice(7);
     const overflow = overflowItems.length > 0
-        ? `<details class="action-hotbar-more"><summary>More</summary><div class="action-hotbar-more-list">${overflowItems.map(renderHotbarButton).join("")}</div></details>`
+        ? `<details class="action-hotbar-more"><summary>More</summary><div class="action-hotbar-more-list">${overflowItems.map(item => renderHotbarButton(item)).join("")}</div></details>`
         : "";
 
     el.hidden = false;
     el.innerHTML = `<div class="action-hotbar-header"><span>Action Hotbar</span><span class="muted">Sector ${escapeHtml(String(state.player.currentSector))}</span></div>`
-        + `<div class="action-hotbar-list">${primaryItems.map(renderHotbarButton).join("")}${overflow}</div>`;
+        + `<div class="action-hotbar-list">${primaryItems.map((item, index) => renderHotbarButton(item, index)).join("")}${overflow}</div>`;
 }
 
 export function renderSectorActionMenu() {

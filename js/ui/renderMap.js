@@ -10,6 +10,7 @@ import { MAP_UI } from "../config/ui.js";
 import { getSiteTypeLabel } from "../core/universe.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 import { escapeHtml } from "../utils.js";
+import { savePreferencePatch } from "../core/preferences.js";
 
 const mapInteractionUnsubscribers = new WeakMap();
 let mapProjectionSignature = '';
@@ -29,6 +30,7 @@ const MAP_CAMERA_PITCH_SENSITIVITY = 0.006;
 const MAP_CAMERA_MAX_TILT_RADIANS = Math.PI * 0.35;
 const MAP_CAMERA_PITCH_MIN_RADIANS = -MAP_CAMERA_MAX_TILT_RADIANS;
 const MAP_CAMERA_PITCH_MAX_RADIANS = MAP_CAMERA_MAX_TILT_RADIANS;
+const MAP_CAMERA_SIGNATURE_PRECISION = 1000;
 const MOUSE_BUTTON_LEFT = 0;
 const MOUSE_BUTTON_MIDDLE = 1;
 const MOUSE_BUTTON_RIGHT = 2;
@@ -73,10 +75,24 @@ function getVisibleMapSectorIds(universe) {
         .filter(id => universe[id].charted || id === state.player.currentSector);
 }
 
+function roundedCameraAngle(value) {
+    return Math.round((Number(value) || 0) * MAP_CAMERA_SIGNATURE_PRECISION)
+        / MAP_CAMERA_SIGNATURE_PRECISION;
+}
+
+function getMapProjectionSignature(ids) {
+    const camera = getMapCamera();
+    return [
+        ids.join(','),
+        roundedCameraAngle(camera.yaw),
+        roundedCameraAngle(camera.pitch)
+    ].join('|');
+}
+
 export function getMapNodes() {
     const universe = state.universe;
     const ids = getVisibleMapSectorIds(universe);
-    const sig = ids.join(',');
+    const sig = getMapProjectionSignature(ids);
     if (mapProjectionUniverseRef === universe && sig === mapProjectionSignature) {
         state.mapNodeCache = mapProjectionCache;
         return mapProjectionCache;
@@ -129,11 +145,13 @@ function toggleMapLayer(layerKey) {
     if (!layer) return;
     const layers = getMapLayers();
     layers[layerKey] = !layers[layerKey];
+    savePreferencePatch(null, { mapLayers: layers });
     Renderer.sliceChanged(StateSlice.MAP_VIEW);
 }
 
 function setMapLayerPanelOpen(open) {
     state.mapLayersOpen = open;
+    savePreferencePatch(null, { mapLayersOpen: open });
     Renderer.sliceChanged(StateSlice.MAP_VIEW);
 }
 
@@ -141,9 +159,14 @@ function toggleMapLayerPanel() {
     setMapLayerPanelOpen(state.mapLayersOpen === false);
 }
 
-function toggleMapHelp() {
-    state.mapHelpOpen = !state.mapHelpOpen;
+function setMapHelpOpen(open) {
+    state.mapHelpOpen = open;
+    savePreferencePatch(null, { mapHelpOpen: open });
     Renderer.sliceChanged(StateSlice.MAP_VIEW);
+}
+
+function toggleMapHelp() {
+    setMapHelpOpen(!state.mapHelpOpen);
 }
 
 function scheduleMapAnimationFrame() {
@@ -491,7 +514,8 @@ function drawMapOverview(ids, rect) {
     const canvas = document.getElementById("mapOverview");
     if (!canvas) return;
     const viewport = getViewport();
-    const sig = [viewport.scale, viewport.offsetX, viewport.offsetY, rect.width, rect.height, state.player.currentSector, state.selectedSectorId, ids.length].join(',');
+    const rawNodes = getMapNodes();
+    const sig = [viewport.scale, viewport.offsetX, viewport.offsetY, rect.width, rect.height, state.player.currentSector, state.selectedSectorId, ids.length, mapProjectionSignature].join(',');
     if (sig === mapOverviewLastSig) return;
     mapOverviewLastSig = sig;
     const ctx = canvas.getContext("2d");
@@ -503,7 +527,6 @@ function drawMapOverview(ids, rect) {
     ctx.strokeRect(0.5, 0.5, overviewRect.width - 1, overviewRect.height - 1);
 
     if (ids.length === 0) return;
-    const rawNodes = getMapNodes();
     const padding = 10;
     const scaleX = (overviewRect.width - padding * 2) / MAP_LOGICAL_WIDTH;
     const scaleY = (overviewRect.height - padding * 2) / MAP_LOGICAL_HEIGHT;
@@ -817,8 +840,7 @@ export function setupMapInteraction() {
         if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || target?.isContentEditable) return;
         if (event.key === "Escape") {
             if (state.mapHelpOpen) {
-                state.mapHelpOpen = false;
-                Renderer.sliceChanged(StateSlice.MAP_VIEW);
+                setMapHelpOpen(false);
                 return;
             }
             setMapExpanded(false);

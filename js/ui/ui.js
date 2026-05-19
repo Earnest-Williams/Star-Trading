@@ -4,13 +4,14 @@ import { StateSlice, stateChanged } from './stateSlices.js';
 import { BALANCE, UI_LABELS } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 import { executeAction, registerAction, resetActions } from '../core/commands.js';
+import { savePreferencePatch } from '../core/preferences.js';
 
 // Render subsystems
 import {
     renderHeader, renderFactionPanel, renderAcceptedMissions,
     renderPriorityFeed, renderSectorActionMenu, renderActionHotbar, injectLogisticsModule
 } from './renderHUD.js';
-import { renderSectorContents, renderMenuPanel, renderMapInspector } from './renderSector.js';
+import { renderSectorContents, renderMenuPanel, renderMapInspector, toggleMapInspectorCompact } from './renderSector.js';
 import { drawMap, selectSector, renderMapOverlay } from './renderMap.js';
 import { renderMarketPanel } from './renderMarket.js';
 import { renderColonyPanel } from './renderColony.js';
@@ -259,7 +260,8 @@ const rendererRegistrations = [
         StateSlice.PORTS,
         StateSlice.PLANETS,
         StateSlice.TRADE_ROUTES,
-        StateSlice.SELECTED_SECTOR
+        StateSlice.SELECTED_SECTOR,
+        StateSlice.MAP_VIEW
     ]],
 
     ['menu', renderMenuPanel, [
@@ -302,7 +304,8 @@ const rendererRegistrations = [
         StateSlice.PORTS,
         StateSlice.PLANETS,
         StateSlice.TRADE_ROUTES,
-        StateSlice.SELECTED_SECTOR
+        StateSlice.SELECTED_SECTOR,
+        StateSlice.MAP_VIEW
     ]],
 
     ['topTabs', renderTopTabs, [
@@ -382,6 +385,11 @@ function bindLayoutControls() {
             event.stopPropagation();
             gameShell.classList.toggle(control.className);
             syncControl(control);
+            const collapsed = gameShell.classList.contains(control.className);
+            const patch = control.id === 'btn-toggle-left-sidebar'
+                ? { leftSidebarCollapsed: collapsed }
+                : { rightSidebarCollapsed: collapsed };
+            savePreferencePatch(null, patch);
 
             Renderer.invalidate('map');
         });
@@ -440,6 +448,7 @@ export function registerUIActions() {
     registerAction('showScreen', showScreen);
     registerAction('showCommunications', () => showScreen('communications'));
     registerAction('selectSector', id => selectSector(parseInt(id, 10)));
+    registerAction('toggleMapInspectorCompact', toggleMapInspectorCompact);
     registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
 
     // Exploration

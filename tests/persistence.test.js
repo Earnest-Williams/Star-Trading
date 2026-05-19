@@ -234,6 +234,10 @@ describe('save serialization', () => {
         state.reputationTab = 'captains';
         state.selectedCaptainId = 'captain-1';
         state.mapNodeCache = { 1: { x: 10, y: 20 } };
+        state.mapLayers = { systems: false };
+        state.mapLayersOpen = false;
+        state.mapHelpOpen = true;
+        state.mapInspectorCompact = true;
         state.worldGraphRevision = 12;
         state.appMode = 'settings';
         state.shellMessage = 'Save shell alert';
@@ -251,6 +255,10 @@ describe('save serialization', () => {
         assert.equal(Object.hasOwn(data, 'reputationTab'), false);
         assert.equal(Object.hasOwn(data, 'selectedCaptainId'), false);
         assert.equal(Object.hasOwn(data, 'mapNodeCache'), false);
+        assert.equal(Object.hasOwn(data, 'mapLayers'), false);
+        assert.equal(Object.hasOwn(data, 'mapLayersOpen'), false);
+        assert.equal(Object.hasOwn(data, 'mapHelpOpen'), false);
+        assert.equal(Object.hasOwn(data, 'mapInspectorCompact'), false);
         assert.equal(Object.hasOwn(data, 'worldGraphRevision'), false);
         assert.equal(Object.hasOwn(data, 'appMode'), false);
         assert.equal(Object.hasOwn(data, 'shellMessage'), false);
