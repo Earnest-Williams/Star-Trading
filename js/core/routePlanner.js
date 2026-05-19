@@ -8,6 +8,31 @@ let cachedRevision = null;
 let microtaskScheduled = false;
 let cachedUniverseRef = null;
 
+
+class MinHeap {
+    constructor(compare) { this.compare = compare; this.items = []; }
+    push(item) { this.items.push(item); this.bubbleUp(this.items.length - 1); }
+    pop() {
+        if (!this.items.length) return null;
+        const min = this.items[0];
+        const last = this.items.pop();
+        if (this.items.length > 0) { this.items[0] = last; this.sinkDown(0); }
+        return min;
+    }
+    get size() { return this.items.length; }
+    bubbleUp(index) { while (index > 0) { const parent = Math.floor((index - 1) / 2); if (this.compare(this.items[index], this.items[parent]) >= 0) break; [this.items[index], this.items[parent]] = [this.items[parent], this.items[index]]; index = parent; } }
+    sinkDown(index) { const len = this.items.length; while (true) {
+            let left = index * 2 + 1;
+            let right = left + 1;
+            let smallest = index;
+            if (left < len && this.compare(this.items[left], this.items[smallest]) < 0) smallest = left;
+            if (right < len && this.compare(this.items[right], this.items[smallest]) < 0) smallest = right;
+            if (smallest === index) break;
+            [this.items[index], this.items[smallest]] = [this.items[smallest], this.items[index]];
+            index = smallest;
+        } }
+}
+
 function numeric(value, fallback = 0) {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -176,17 +201,13 @@ function planWeightedCorridorPath(startSectorId, goalSectorId) {
 
     const distances = new Map([[startSectorId, 0]]);
     const previous = new Map();
-    const frontier = [{ sectorId: startSectorId, cost: 0 }];
-    const settled = new Set();
+        const settled = new Set();
 
-    while (frontier.length > 0) {
-        // O(N) min-extraction: find lowest-cost frontier entry (ties broken by sectorId for determinism).
-        let minIdx = 0;
-        for (let i = 1; i < frontier.length; i++) {
-            const a = frontier[i], b = frontier[minIdx];
-            if (a.cost < b.cost || (a.cost === b.cost && a.sectorId < b.sectorId)) minIdx = i;
-        }
-        const [current] = frontier.splice(minIdx, 1);
+    const frontier = new MinHeap((a, b) => (a.cost - b.cost) || (a.sectorId - b.sectorId));
+    frontier.push({ sectorId: startSectorId, cost: 0 });
+
+    while (frontier.size > 0) {
+        const current = frontier.pop();
         if (settled.has(current.sectorId)) continue;
         if (current.sectorId === goalSectorId) {
             return reconstructPath(previous, startSectorId, goalSectorId);
