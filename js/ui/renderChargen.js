@@ -1,6 +1,6 @@
 import { ARCHETYPE_PRESETS, CHAR_DEFAULTS, CHAR_STATS, EMPLOYER_LANES, PLATFORM_PACKAGES, START_PACKAGES } from '../config/chargen.js';
 import { CAREER_TRAITS, ORIGIN_TRAITS, getTraitDefinition } from '../config/traits.js';
-import { calcStatGain, getBuildSpend, isPlatformEmployed, maxStatSpend, validateBuild } from '../core/characterBuild.js';
+import { calcStatGain, getBuildSpend, isPlatformEmployed, maxStatSpend, normaliseBuildSpec, validateBuild } from '../core/characterBuild.js';
 import { getChargenBuild } from './chargenState.js';
 import { escapeHtml } from '../utils.js';
 
@@ -12,6 +12,60 @@ function describeTrait(trait) {
     const shifts = Object.entries(trait.statShifts || {}).map(([stat, value]) => `${stat} ${value > 0 ? '+' : ''}${value}`).join(', ');
     const drawbacks = (trait.drawbacks || []).map(text => `<li>${text}</li>`).join('');
     return `<span class="small">${trait.description}${shifts ? ` Stats: ${shifts}.` : ''}</span>${drawbacks ? `<ul class="small red">${drawbacks}</ul>` : ''}`;
+}
+
+function summarizeBenefitMap(label, values) {
+    if (!values) return null;
+    const entries = Object.entries(values);
+    if (entries.length === 0) return null;
+    return `${label}: ${entries.map(([key, value]) => `${key} ${value > 0 ? '+' : ''}${value}`).join(', ')}`;
+}
+
+function packageBenefitSummary(packageId) {
+    const startPackage = START_PACKAGES[packageId];
+    if (!startPackage) return null;
+    const benefits = startPackage.benefits || {};
+    const parts = [
+        summarizeBenefitMap('rep', benefits.publicRep),
+        summarizeBenefitMap('private', benefits.privateRep),
+        summarizeBenefitMap('guild', benefits.memberships),
+        summarizeBenefitMap('cargo', benefits.cargo),
+        summarizeBenefitMap('heat', benefits.heat)
+    ].filter(Boolean);
+    if (benefits.contacts) parts.push(`contacts ${benefits.contacts.length}`);
+    if (benefits.equipment) parts.push(`equipment ${benefits.equipment.length}`);
+    if (benefits.credits) parts.push(`credits +${benefits.credits}`);
+    return parts.length ? `${startPackage.label}: ${parts.join('; ')}` : `${startPackage.label}: no direct start-state modifier`;
+}
+
+function buildMechanicalPreview(build, platform, spend) {
+    const selectedPackages = build.packageIds.map(packageBenefitSummary).filter(Boolean);
+    const ship = platform.ship || {};
+    const shipStats = [
+        ship.maxHolds ? `holds ${ship.maxHolds}` : null,
+        ship.maxFighters ? `fighters ${ship.maxFighters}` : null,
+        ship.maxShields ? `shields ${ship.maxShields}` : null,
+        ship.maxHull ? `hull ${ship.maxHull}` : null
+    ].filter(Boolean).join(' / ');
+    const cash = platform.creditModifier + spend.leftoverPoints * CHAR_DEFAULTS.CASH_PER_LEFTOVER_POINT;
+    const packageText = selectedPackages.length ? selectedPackages.join(' | ') : 'No package modifiers selected.';
+    const assetText = platform.property ? `property ${platform.property.kind}, units ${platform.property.units}, rent ${platform.property.rentDaily}/day` : `ship ${shipStats || 'baseline hull'}`;
+    return `Cash delta ${cash >= 0 ? '+' : ''}${cash}; ${platform.label} gives ${assetText}. ${packageText}`;
+}
+
+function buildSignature(buildSpec) {
+    const build = normaliseBuildSpec(buildSpec);
+    const statSpend = CHAR_STATS.map(stat => `${stat}:${Number(build.statSpend?.[stat] || 0)}`).join('|');
+    const careerTraitIds = [...build.careerTraitIds].sort().join(',');
+    const packageIds = [...build.packageIds].sort().join(',');
+    return `${statSpend}::${build.originTraitId}::${careerTraitIds}::${build.platform.type}:${build.platform.employerLaneId || ''}::${packageIds}`;
+}
+
+function getSelectedPresetId(build) {
+    const signature = buildSignature(build);
+    const entry = Object.entries(ARCHETYPE_PRESETS)
+        .find(([, preset]) => buildSignature(preset.build) === signature);
+    return entry ? entry[0] : '';
 }
 
 function packageSummary(packageId, checked) {
@@ -50,8 +104,12 @@ export function renderChargenControls() {
         `<details class="chargen-package-group" open><summary>${escapeHtml(category)}</summary>${rows.join('')}</details>`
     )).join('');
 
+    const selectedPresetId = getSelectedPresetId(build);
     const platform = PLATFORM_PACKAGES[build.platform.type] || PLATFORM_PACKAGES.ship_tier1_tramp;
     const selectedTraits = [build.originTraitId, ...build.careerTraitIds].map(getTraitDefinition).filter(Boolean);
+    const drawbacks = selectedTraits.flatMap(trait => trait.drawbacks || []);
+    const conflicts = validation.errors.filter(error => error.includes('exclusive'));
+    const mechanicalPreview = buildMechanicalPreview(build, platform, spend);
     const employedPlatform = isPlatformEmployed(build.platform.type);
     const validationList = validation.errors.length ? `<ul class="chargen-errors">${validation.errors.map(error => `<li>${error}</li>`).join('')}</ul>` : '';
 
@@ -59,7 +117,7 @@ export function renderChargenControls() {
     <div class="new-game-layout">
         <section class="new-game-panel galaxy-setup-panel">
             <h3>Galaxy Setup</h3>
-            <label>Archetype Preset <select id="chargen-preset"><option value="">Custom</option>${Object.entries(ARCHETYPE_PRESETS).map(([id, preset]) => option(id, preset.label, false)).join('')}</select></label>
+            <label>Archetype Preset <select id="chargen-preset"><option value=""${selectedPresetId ? '' : ' selected'}>Custom</option>${Object.entries(ARCHETYPE_PRESETS).map(([id, preset]) => option(id, preset.label, selectedPresetId === id)).join('')}</select></label>
             <div class="chargen-random-actions"><button type="button" id="btn-random-preset">Random Preset</button><button type="button" id="btn-random-valid-build">Random Valid Build</button></div>
         </section>
         <section class="new-game-panel captain-build-panel">
@@ -78,7 +136,10 @@ export function renderChargenControls() {
             <label class="chargen-field${employedPlatform ? '' : ' muted'}${fieldError('employer') ? ' field-invalid' : ''}">Employer Lane <select id="chargen-employer"${employedPlatform ? '' : ' disabled'}><option value="">None</option>${employerOptions}</select></label>
             <div class="small">Point breakdown: stats ${spend.statPoints}, careers ${spend.careerPoints}, ship/employer ${spend.platformPoints}, packages ${spend.packagePoints}; spent ${spend.total}/${CHAR_DEFAULTS.CHARGEN_POINTS}; leftover ${spend.leftoverPoints}.</div>
             <div class="small">Start preview: ${platform.label}; asset ${platform.ship?.name || platform.property?.kind || 'none'}; cash modifier ${platform.creditModifier}; rank ${build.platform.employerLaneId || 'independent'}; runtime ${platform.runtimeType}.</div>
-            <div class="small">Mechanical preview is auto-applied at game start.</div>
+            <div class="small blue">Mechanical preview: ${escapeHtml(mechanicalPreview)}</div>
+            <div class="small">Summary: ${selectedTraits.map(trait => trait.name).join(', ') || 'No traits'}; packages ${build.packageIds.join(', ') || 'none'}.</div>
+            ${drawbacks.length ? `<div class="small red">Drawbacks: ${drawbacks.join(' ')}</div>` : ''}
+            ${conflicts.length ? `<div class="small red">Trait conflicts: ${conflicts.join(' ')}</div>` : ''}
             ${validationList}
             <div class="small ${validation.valid ? 'green' : 'red'}">${validation.valid ? 'Build valid.' : 'Build invalid — fix fields before launch.'}</div>
             <button id="btn-chargen-start" type="button">Start New Galaxy</button>

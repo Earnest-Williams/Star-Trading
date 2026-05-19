@@ -1494,40 +1494,12 @@ select:focus-visible {
     }
     .menu-grid,
     .screen-tabs,
-    
-.new-game-layout {
-    display: grid;
-    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) minmax(300px, 1fr);
-    gap: 12px;
-    align-items: start;
-}
-.new-game-panel {
-    border: var(--border-thin) solid var(--line);
-    background: var(--bg-panel-raised);
-    padding: 10px;
-}
-.new-game-panel h3 {
-    margin-top: 0;
-}
-.galaxy-setup-panel {
-    grid-column: 1 / -1;
-}
-.launch-summary-panel {
-    position: sticky;
-    top: 10px;
-    align-self: start;
-}
-.chargen-compact-row {
-    display: block;
-    margin: 4px 0;
-}
-.chargen-trait-row,
-.chargen-package-group {
-    margin-bottom: 6px;
-}
-
-.chargen-grid {
+    .new-game-layout,
+    .chargen-grid {
         grid-template-columns: 1fr;
+    }
+    .launch-summary-panel {
+        position: static;
     }
     .gate-actions,
     .contact-actions,
