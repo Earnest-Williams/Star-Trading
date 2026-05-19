@@ -1,6 +1,6 @@
 import { state, APP_MODES } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
-import { StateSlice, stateChanged } from './stateSlices.js';
+import { StateSlice, mapStateSlicesForInvalidation, stateChanged } from '../core/state/index.js';
 import { BALANCE, UI_LABELS } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 import { commandFailed, commandOk, executeAction, registerAction, registerActionManifest, resetActions, parseIntegerArg } from '../core/commands.js';
@@ -85,7 +85,7 @@ export function applyCommandResult(result) {
         return;
     }
     if (result.slices.length > 0) {
-        Renderer.sliceChanged(...result.slices);
+        Renderer.sliceChanged(...mapStateSlicesForInvalidation(...result.slices));
     }
     if (result.invalidateAll) updateUI();
 }
@@ -553,11 +553,11 @@ export function registerUIActions() {
     });
 
     // Trade routes
-    registerAction('createTradeRoute', (...args) => createTradeRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
-    registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
-    registerAction('closeTradeRoute', (...args) => closeTradeRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
-    registerAction('assignCaptainToRoute', (...args) => assignCaptainToRoute(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
-    registerAction('unassignRouteEscort', (...args) => unassignRouteEscort(...args) ? commandOk(StateSlice.TRADE_ROUTES, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed());
+    registerAction('createTradeRoute', (...args) => createTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('closeTradeRoute', (...args) => closeTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('assignCaptainToRoute', (...args) => assignCaptainToRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('unassignRouteEscort', (...args) => unassignRouteEscort(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('acceptLogisticsObjective', acceptLogisticsObjective);
     registerAction('abandonLogisticsObjective', abandonLogisticsObjective);
 

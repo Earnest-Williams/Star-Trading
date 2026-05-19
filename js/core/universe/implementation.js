@@ -13,7 +13,7 @@ import { createStartingProperties } from '../../systems/properties.js';
 import { markGraphDirty } from '../routePlanner.js';
 
 import { invalidateMapProjectionCache } from '../../ui/renderMap.js';
-import { stateChanged, StateSlice } from '../../ui/stateSlices.js';
+import { stateChanged, StateSlice } from '../../core/state/index.js';
 import { getTraitDefinition } from '../../config/traits.js';
 import { assignSectorPolities } from '../../systems/polities.js';
 import { seedCompaniesAndPeople } from '../../systems/companies.js';

@@ -1,6 +1,6 @@
 // @ts-check
 
-export const StateSlice = Object.freeze({
+const CORE_STATE_SLICE = Object.freeze({
     PLAYER: 'player',
     UNIVERSE: 'universe',
     ECONOMY: 'economy',
@@ -12,6 +12,30 @@ export const StateSlice = Object.freeze({
     EVENTS: 'events',
     DATA_CARGO: 'dataCargo',
     LOGISTICS_OBJECTIVES: 'logisticsObjectives'
+});
+
+export const StateSlice = Object.freeze({
+    ...CORE_STATE_SLICE,
+
+    // Compatibility-only aliases for legacy UI invalidation wiring.
+    TIME: 'time',
+    PORTS: 'ports',
+    PLANETS: 'planets',
+    FACTIONS: 'factions',
+    MISSIONS: 'missions',
+    TRADE_ROUTES: 'tradeRoutes',
+    ENTANGLEMENTS: 'entanglements',
+    WORLD_EVENTS: 'worldEvents',
+    PRIORITY_BRIEFING: 'priorityBriefing',
+
+    CURRENT_SCREEN: 'currentScreen',
+    REPUTATION_TAB: 'reputationTab',
+    APP_MODE: 'appMode',
+    SHELL_MESSAGE: 'shellMessage',
+    PREFERENCES: 'preferences',
+    SELECTED_SECTOR: 'selectedSector',
+    SELECTED_CAPTAIN: 'selectedCaptain',
+    MAP_VIEW: 'mapView'
 });
 
 export const DOMAIN_SLICE_MAP = Object.freeze({
@@ -28,6 +52,23 @@ export const DOMAIN_SLICE_MAP = Object.freeze({
     logisticsObjectives: { keys: ['logisticsObjectives', 'nextLogisticsObjectiveId'], slices: [StateSlice.LOGISTICS_OBJECTIVES] }
 });
 
+const CORE_TO_RENDERER_SLICES = Object.freeze({
+    [CORE_STATE_SLICE.ECONOMY]: [StateSlice.PORTS, StateSlice.PLANETS, StateSlice.FACTIONS],
+    [CORE_STATE_SLICE.ROUTES]: [StateSlice.TRADE_ROUTES],
+    [CORE_STATE_SLICE.UI_RUNTIME]: [StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_SECTOR, StateSlice.MAP_VIEW, StateSlice.APP_MODE],
+    [CORE_STATE_SLICE.EVENTS]: [StateSlice.WORLD_EVENTS]
+});
+
 export function stateChanged(...slices) {
     return slices.filter(Boolean);
+}
+
+export function mapStateSlicesForInvalidation(...slices) {
+    const mapped = [];
+    for (const slice of slices.filter(Boolean)) {
+        mapped.push(slice);
+        const compatSlices = CORE_TO_RENDERER_SLICES[slice];
+        if (compatSlices) mapped.push(...compatSlices);
+    }
+    return [...new Set(mapped)];
 }
