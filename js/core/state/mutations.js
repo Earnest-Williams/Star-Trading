@@ -49,16 +49,29 @@ export const clearEscortAssignmentsForCaptain = captainId => {
 };
 export const patchRouteEconomyAtEndpoints = (route, amount) => {
     if (!route || !Number.isFinite(amount)) return [];
-    const originStock = state.ports?.[route.originSector]?.stock || state.planets?.[route.originSector]?.stock;
-    const destinationStock = state.ports?.[route.destinationSector]?.stock || state.planets?.[route.destinationSector]?.stock;
-    const destinationMaxStock = state.ports?.[route.destinationSector]?.maxStock || state.planets?.[route.destinationSector]?.maxStock;
-    if (!originStock || !destinationStock || !destinationMaxStock) return [];
-    originStock[route.commodity] = Math.max(0, (originStock[route.commodity] || 0) - amount);
-    destinationStock[route.commodity] = Math.min(
-        destinationMaxStock[route.commodity] || 0,
-        (destinationStock[route.commodity] || 0) + amount
+    const originPort = state.ports?.[route.originSector];
+    const originPlanet = state.planets?.[route.originSector];
+    const destPort = state.ports?.[route.destinationSector];
+    const destPlanet = state.planets?.[route.destinationSector];
+    const originNode = originPort || originPlanet;
+    const destNode = destPort || destPlanet;
+    if (!originNode?.stock || !destNode?.stock || !destNode?.maxStock) return [];
+    const originCommodityStock = Math.max(0, (originNode.stock[route.commodity] || 0) - amount);
+    const destCommodityStock = Math.min(
+        destNode.maxStock[route.commodity] || 0,
+        (destNode.stock[route.commodity] || 0) + amount
     );
-    return stateChanged(StateSlice.ECONOMY);
+    const patchNodeStock = (sectorId, isPort, node, value) => {
+        const updatedStock = { ...node.stock, [route.commodity]: value };
+        return isPort
+            ? patchPort(sectorId, { stock: updatedStock })
+            : patchPlanet(sectorId, { stock: updatedStock });
+    };
+    const results = [
+        ...patchNodeStock(route.originSector, Boolean(originPort), originNode, originCommodityStock),
+        ...patchNodeStock(route.destinationSector, Boolean(destPort), destNode, destCommodityStock)
+    ];
+    return [...new Set(results)];
 };
 export const addPlayerCredits = value => {
     if (!state.player || !Number.isFinite(value)) return [];
@@ -77,6 +90,11 @@ export const consumeNextTradeRouteId = () => {
     const routeId = state.nextTradeRouteId;
     state.nextTradeRouteId += 1;
     return routeId;
+};
+export const ensureMinNextTradeRouteId = minimum => {
+    if (!Number.isInteger(minimum)) return;
+    const current = Number.isInteger(state.nextTradeRouteId) ? state.nextTradeRouteId : 1;
+    state.nextTradeRouteId = Math.max(current, minimum);
 };
 export const setCurrentScreen = screen => {
     if (typeof screen !== 'string') return [];

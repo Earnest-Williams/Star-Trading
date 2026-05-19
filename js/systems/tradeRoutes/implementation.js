@@ -6,6 +6,7 @@ import {
     addTradeRoute,
     clearEscortAssignmentsForCaptain,
     consumeNextTradeRouteId,
+    ensureMinNextTradeRouteId,
     patchCaptain,
     patchPlayer,
     patchPort,
@@ -132,7 +133,7 @@ export function createRouteRecord({
 export function normaliseTradeRoutes() {
     const routes = getTradeRoutes().map(route => hydrateTradeRoute(route));
     setTradeRoutes(routes);
-    state.nextTradeRouteId = Math.max(state.nextTradeRouteId, routes.reduce((best, r) => Math.max(best, finiteInteger(r.id, 0) + 1), 1));
+    ensureMinNextTradeRouteId(routes.reduce((best, r) => Math.max(best, finiteInteger(r.id, 0) + 1), 1));
 }
 
 export function getLogisticsNode(sectorId) {
