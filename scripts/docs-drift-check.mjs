@@ -37,7 +37,7 @@ function fileTouchesGuardedContent(file) {
     return false;
   }
 
-  const diff = execSync(`git diff -U0 ${process.env.BASE_SHA}..${process.env.HEAD_SHA} -- ${file}`, {
+  const diff = execSync(`git diff -U0 "${process.env.BASE_SHA}".."${process.env.HEAD_SHA}" -- "${file}"`, {
     encoding: 'utf8'
   });
 
