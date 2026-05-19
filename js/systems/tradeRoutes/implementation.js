@@ -266,8 +266,8 @@ function detectRouteMetricsRootChange() {
 }
 
 function getRouteMetricsMarketRevision() {
-    const marketRevision = Number.isFinite(Number(state.marketRevision)) ? Number(state.marketRevision) : 0;
-    const logisticsNodeRevision = Number.isFinite(Number(state.logisticsNodeRevision)) ? Number(state.logisticsNodeRevision) : 0;
+    const marketRevision = Number(state.marketRevision) || 0;
+    const logisticsNodeRevision = Number(state.logisticsNodeRevision) || 0;
     const revision = `${marketRevision}:${logisticsNodeRevision}`;
     if (routeMarketMetricsRevision !== revision) {
         routeMarketMetricsCache.clear();
@@ -278,7 +278,7 @@ function getRouteMetricsMarketRevision() {
 
 function ensureRoutePathMetricsCacheFresh(rootChange = detectRouteMetricsRootChange()) {
     const revision = getWorldGraphRevision();
-    if (routeMetricsUniverseRef !== state.universe || rootChange.universeChanged || routePathMetricsRevision !== revision) {
+    if (rootChange.universeChanged || routePathMetricsRevision !== revision) {
         routePathMetricsCache.clear();
         routePathMetricsRevision = revision;
     }

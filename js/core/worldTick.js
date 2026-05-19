@@ -55,11 +55,7 @@ function canRunPhase(phase) {
 }
 function getChangedSlicesFromWrites(writes) {
     if (!Array.isArray(writes)) return [];
-    const slices = [];
-    writes.forEach(domain => {
-        const mapped = PHASE_WRITE_TO_SLICES[domain];
-        if (Array.isArray(mapped)) slices.push(...mapped);
-    });
+    const slices = writes.flatMap(domain => PHASE_WRITE_TO_SLICES[domain] || []);
     return mapStateSlicesForInvalidation(...slices);
 }
 

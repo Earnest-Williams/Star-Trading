@@ -66,7 +66,6 @@ export function invalidateRoutePlannerCache() {
 export function markGraphDirty() {
     cachedRevision = null;
     cachedUniverseRef = state.universe;
-    routeCache.clear();
 }
 
 function getOpenGates(sectorId) {
