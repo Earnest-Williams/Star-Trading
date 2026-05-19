@@ -29,7 +29,7 @@ import { normalisePriorityBriefingState } from './priorityBriefing.js';
 import { getPortType } from './ports.js';
 import { normaliseProperty } from '../systems/properties.js';
 import { normaliseLogisticsObjectives } from '../systems/logisticsObjectives.js';
-import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants } from './saveSchema.js';
+import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS } from './saveSchema.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -331,66 +331,7 @@ export function migrateSave(data) {
     return data;
 }
 
-// Persisted state manifest: this is the only list buildSaveData() may serialize.
-// Persisted fields below are durable game data needed to resume a run.
-// Derived/transient fields intentionally excluded include sitesById, starField,
-// selectedSectorId, currentScreen, reputationTab, selectedCaptainId,
-// mapNodeCache, mapLayers, mapLayersOpen, mapHelpOpen, mapInspectorCompact, and worldGraphRevision.
-// Add new save fields here first so tests
-// catch accidental cache/UI leakage or serializer drift.
-export const SAVE_STATE_FIELDS = [
-    "player",
-    "universe",
-    "siteIdByCoord",
-    "world",
-    "worldgenSettings",
-    "ports",
-    "planets",
-    "companies",
-    "companyIdsBySector",
-    "nextCompanyId",
-    "people",
-    "peopleBySector",
-    "peopleByCompany",
-    "nextPersonId",
-    "polities",
-    "polityIdsBySector",
-    "missions",
-    "captains",
-    "captainEventLog",
-    "nextCaptainEventId",
-    "worldEvents",
-    "nextWorldEventId",
-    "simulationTrace",
-    "nextSimulationTraceId",
-    "dialogueMemories",
-    "dialogueProposals",
-    "dialogueTasks",
-    "dialogueOffers",
-    "dialogueMessages",
-    "dialogueConversationParts",
-    "dialogueConversations",
-    "dialogueEventLog",
-    "nextDialogueMemoryId",
-    "nextDialogueProposalId",
-    "nextDialogueTaskId",
-    "nextDialogueOfferId",
-    "nextDialogueMessageId",
-    "nextDialogueConversationPartId",
-    "nextDialogueConversationId",
-    "nextDialogueEventId",
-    "entanglements",
-    "nextEntanglementId",
-    "tradeRoutes",
-    "nextTradeRouteId",
-    "logisticsObjectives",
-    "nextLogisticsObjectiveId",
-    "nextMissionId",
-    "ambientTrade",
-    "priorityBriefing",
-    "dataCargo",
-    "rng"
-];
+export { SAVE_STATE_FIELDS };
 
 export function buildSaveData() {
     const data = { version: SAVE_VERSION };
