@@ -96,11 +96,12 @@ h4 {
 
 .main-viewport {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-        "map panel"
-        "hotbar hotbar"
-        "log log";
+        "map"
+        "panel"
+        "hotbar"
+        "log";
     gap: 10px;
 }
 
@@ -118,14 +119,6 @@ h4 {
 
 .log {
     grid-area: log;
-}
-
-.main-viewport.main-map-rail {
-    grid-template-columns: 56px minmax(0, 1fr);
-}
-
-.main-viewport.main-screen-rail {
-    grid-template-columns: minmax(0, 1fr) 56px;
 }
 
 .left-sidebar,
@@ -1823,22 +1816,28 @@ select:focus-visible {
     display: none;
 }
 
+.screen-content-panel.screen-mode-summary {
+    min-height: 0;
+    height: auto;
+}
+
+.screen-content-panel.screen-mode-summary #screenSummary {
+    display: block;
+}
+
 .screen-content-panel.screen-mode-rail {
     padding: 6px 4px;
+    min-height: 0;
+    height: auto;
 }
 
 .screen-content-panel.screen-mode-rail .screen-panel-header {
-    height: 100%;
+    min-height: 0;
 }
 
 .screen-content-panel.screen-mode-rail h3 {
     writing-mode: vertical-rl;
     margin: 0;
-}
-
-.main-viewport.main-map-rail .screen-content-panel,
-.main-viewport.main-screen-rail .map-wrap {
-    width: 100%;
 }
 
 .map-toolbar button,
