@@ -47,6 +47,11 @@ function fileTouchesGuardedContent(file) {
 const baseSha = process.env.BASE_SHA;
 const headSha = process.env.HEAD_SHA;
 
+if (!baseSha || !headSha) {
+  console.error('Docs drift check failed: BASE_SHA and HEAD_SHA environment variables are required.');
+  process.exit(1);
+}
+
 const changedFiles = getChangedFiles(baseSha, headSha);
 const docsChanged = changedFiles.some((file) => GUARDED_PATHS.has(file));
 
