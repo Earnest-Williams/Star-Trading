@@ -18,6 +18,11 @@ export function setAppMode(mode) {
     return state.appMode;
 }
 
+/**
+ * Bootstrap source of truth for runtime state shape.
+ * Legacy direct state imports remain supported; prefer js/core/state selectors + mutators in new code.
+ * @returns {import("./core/state/types.js").AppState & Record<string, any>}
+ */
 export function createInitialState() {
     return {
         player: null,
@@ -119,6 +124,10 @@ export function createInitialState() {
     };
 }
 
+/**
+ * Live mutable app state.
+ * Legacy compatibility export; new modules should use js/core/state/index.js boundaries.
+ */
 export const state = createInitialState();
 
 export function resetState() {

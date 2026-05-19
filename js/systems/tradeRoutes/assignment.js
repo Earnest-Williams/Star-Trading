@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module tradeRoutes/assignment
  * @see {@link ../../../docs/ARCHITECTURE.md#module-traderoutes}

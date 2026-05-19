@@ -1,3 +1,4 @@
+// @ts-check
 import { state } from '../../state.js';
 import { FACTIONS, BALANCE, CAPTAIN_DEFS, MAJOR_FACTIONS } from '../../constants.js';
 import { getPortType } from '../../core/ports.js';

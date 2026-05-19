@@ -1,3 +1,4 @@
+// @ts-check
 import { state } from '../../state.js';
 import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../constants.js';
 import { getPortType } from '../../core/ports.js';
