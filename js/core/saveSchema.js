@@ -2,10 +2,11 @@ import { SAVE_VERSION } from '../constants.js';
 
 // Persisted state manifest: this is the only list buildSaveData() may serialize.
 // Persisted fields below are durable game data needed to resume a run.
-// Derived/transient fields intentionally excluded include sitesById, starField,
+// Derived/transient fields intentionally excluded include starField,
 // selectedSectorId, currentScreen, reputationTab, selectedCaptainId,
 // mapNodeCache, mapLayers, mapLayersOpen, mapHelpOpen, mapInspectorCompact, and worldGraphRevision.
 // Add new save fields here first so tests catch accidental cache/UI leakage or serializer drift.
+// Note: legacy imports may still include additional fields like sitesById.
 export const SAVE_STATE_FIELDS = Object.freeze([
     'player',
     'universe',
@@ -71,12 +72,19 @@ export const MAX_OBJECT_KEYS = Object.freeze({
     sectorKnowledge: 5000
 });
 
+// Legacy top-level fields accepted for backward-compatibility:
+// - sitesById: pre-manifest save snapshots persisted this derived alias.
+// - factionRelations: pre-v10 saves stored this at top-level before migrating into player.
+// - sectorKnowledge/properties: prior experiments persisted these as top-level caches.
 const LEGACY_SAVE_FIELDS = Object.freeze(['sitesById', 'factionRelations', 'sectorKnowledge', 'properties']);
 const SAVE_TOP_LEVEL_FIELDS = new Set(['version', ...SAVE_STATE_FIELDS, ...LEGACY_SAVE_FIELDS]);
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
-const MAX_ARRAY_ENTRIES = 50_000;
-const MAX_NESTED_OBJECT_KEYS = 1000;
-const MAX_NESTING_DEPTH = 10;
+// Schema-level structural limits; persistence import limits layer in payload-size checks.
+export const SAVE_SCHEMA_LIMITS = Object.freeze({
+    maxArrayEntries: 50_000,
+    maxNestedObjectKeys: 1000,
+    maxNestingDepth: 10
+});
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
@@ -100,16 +108,16 @@ export function sanitizeSaveKeys(data) {
 }
 
 function validateObjectTree(field, value, depth) {
-    if (depth > MAX_NESTING_DEPTH) throw new Error(`Save field ${field} exceeds max nesting depth.`);
+    if (depth > SAVE_SCHEMA_LIMITS.maxNestingDepth) throw new Error(`Save field ${field} exceeds max nesting depth.`);
     if (Array.isArray(value)) {
-        if (value.length > MAX_ARRAY_ENTRIES) throw new Error(`Save field ${field} exceeds size limit.`);
+        if (value.length > SAVE_SCHEMA_LIMITS.maxArrayEntries) throw new Error(`Save field ${field} exceeds size limit.`);
         value.forEach((entry) => validateObjectTree(field, entry, depth + 1));
         return;
     }
     if (!isObject(value)) return;
 
     const keys = Object.keys(value);
-    const maxKeys = depth === 0 ? MAX_OBJECT_KEYS[field] : MAX_NESTED_OBJECT_KEYS;
+    const maxKeys = depth === 0 ? MAX_OBJECT_KEYS[field] : SAVE_SCHEMA_LIMITS.maxNestedObjectKeys;
     if (typeof maxKeys === 'number' && keys.length > maxKeys) throw new Error(`${field} exceeds max key count.`);
     for (const key of keys) {
         if (FORBIDDEN_KEYS.has(key) || key.includes('\u0000')) throw new Error(`Forbidden key in ${field}: ${key}`);

@@ -530,10 +530,7 @@ describe('importSavePayload', () => {
 
     it('rejects imported saves with oversized arrays', () => {
         const imported = minimalSave(SAVE_VERSION);
-        imported.missions = Array.from(
-            { length: SAVE_IMPORT_LIMITS.maxArrayEntries + 1 },
-            (_, index) => ({ id: index + 1 })
-        );
+        imported.missions = new Array(SAVE_IMPORT_LIMITS.maxArrayEntries + 1).fill(null);
 
         assert.equal(importSavePayload(JSON.stringify(imported)), false);
     });

@@ -29,7 +29,7 @@ import { normalisePriorityBriefingState } from './priorityBriefing.js';
 import { getPortType } from './ports.js';
 import { normaliseProperty } from '../systems/properties.js';
 import { normaliseLogisticsObjectives } from '../systems/logisticsObjectives.js';
-import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS } from './saveSchema.js';
+import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS, SAVE_SCHEMA_LIMITS } from './saveSchema.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -42,7 +42,8 @@ let persistenceAdapters = { ...defaultPersistenceAdapters };
 
 export const SAVE_IMPORT_LIMITS = {
     maxChars: 2_000_000,
-    maxArrayEntries: 50_000
+    // Keep array entry limits in sync with schema sanitization checks.
+    maxArrayEntries: SAVE_SCHEMA_LIMITS.maxArrayEntries
 };
 
 function isObject(value) {
