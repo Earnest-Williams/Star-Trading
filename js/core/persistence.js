@@ -1,6 +1,6 @@
 import { createInitialState, state } from '../state.js';
-import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, MARKET_COMMODITIES, DEFAULT_FACTION_RELATIONS, PORT_DEFAULTS } from '../constants.js';
 import { createPlayer } from './universe.js';
+import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, DEFAULT_FACTION_RELATIONS, MARKET_COMMODITIES, PORT_DEFAULTS } from '../constants.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';
@@ -30,6 +30,8 @@ import { getPortType } from './ports.js';
 import { normaliseProperty } from '../systems/properties.js';
 import { normaliseLogisticsObjectives } from '../systems/logisticsObjectives.js';
 import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS, SAVE_SCHEMA_LIMITS } from './saveSchema.js';
+import { runMigrations } from './saveMigrations/index.js';
+import { migrateShipTransitFields } from './saveMigrations/helpers.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -51,59 +53,8 @@ function isObject(value) {
 }
 
 
-function migrateLegacyWarpAdjacencyToJumpGates(universe) {
-    if (!isObject(universe)) return;
-    Object.values(universe).forEach(sector => {
-        if (!Array.isArray(sector.jumpGates)) sector.jumpGates = [];
-    });
-    Object.values(universe).forEach(sector => {
-        if (!Array.isArray(sector.warps)) return;
-        sector.warps.forEach(targetId => {
-            const target = universe[targetId];
-            if (!target || sector.id === targetId) return;
-            if (sector.jumpGates.some(gate => gate.destinationSectorId === targetId)) return;
-            if (!Array.isArray(target.jumpGates)) target.jumpGates = [];
-            const corridorId = `legacy-corridor-${Math.min(sector.id, targetId)}-${Math.max(sector.id, targetId)}`;
-            const gateAId = `legacy-gate-${sector.id}-${targetId}`;
-            const gateBId = `legacy-gate-${targetId}-${sector.id}`;
-            sector.jumpGates.push({ id: gateAId, corridorId, destinationSectorId: targetId, destinationGateId: gateBId, status: "active", owningFactionId: null, toll: 0, stability: 100 });
-            if (!target.jumpGates.some(gate => gate.destinationSectorId === sector.id)) {
-                target.jumpGates.push({ id: gateBId, corridorId, destinationSectorId: sector.id, destinationGateId: gateAId, status: "active", owningFactionId: null, toll: 0, stability: 100 });
-            }
-        });
-    });
-    Object.values(universe).forEach(sector => { delete sector.warps; });
-}
 
-function normaliseRouteOwnership(data) {
-    if (!Array.isArray(data.tradeRoutes)) data.tradeRoutes = [];
-    data.tradeRoutes.forEach(route => {
-        if (!route.ownerType) route.ownerType = "player";
-        if (typeof route.ownerId === "undefined") route.ownerId = route.ownerType === "player" ? null : route.ownerId;
-        if (!route.operatorType) route.operatorType = route.ownerType;
-        if (!route.createdBy) route.createdBy = route.ownerType;
-    });
-}
 
-function migrateShipTransitFields(player) {
-    if (!player || !player.ship) return;
-    // Legacy save migration: old ship saves stored this as travelMinutesPerWarp.
-    const legacyTransitMinutes = player.ship.travelMinutesPerWarp;
-    if (typeof player.ship.travelMinutesPerCorridor !== "number") {
-        player.ship.travelMinutesPerCorridor = typeof legacyTransitMinutes === "number" ? legacyTransitMinutes : 45;
-    }
-    delete player.ship.travelMinutesPerWarp;
-}
-
-function deterministicSeedFromPayload(data) {
-    const payload = JSON.stringify(data);
-    let hash = 2166136261;
-    for (let i = 0; i < payload.length; i++) {
-        hash ^= payload.charCodeAt(i);
-        hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0) || 1;
-}
 
 function replaceStateContents(target) {
     Object.keys(state).forEach(key => delete state[key]);
@@ -268,68 +219,7 @@ export function setPersistenceAdapters(adapters = {}) {
 }
 
 export function migrateSave(data) {
-    const v = data.version || 0;
-    // v1-v5: faction state was absent or had a different shape; force a full rebuild
-    if (v < 6) {
-        if (data.player) delete data.player.factions;
-    }
-    // v6: captainEventLog and worldEvents were not yet persisted
-    if (v < 7) {
-        data.captainEventLog = data.captainEventLog || [];
-        data.worldEvents = data.worldEvents || [];
-    }
-    // v7: tradeRoutes and nextTradeRouteId added
-    if (v < 8) {
-        data.tradeRoutes = data.tradeRoutes || [];
-        data.nextTradeRouteId = data.nextTradeRouteId || 1;
-    }
-    if (v < 19) {
-        data.logisticsObjectives = data.logisticsObjectives || [];
-        data.nextLogisticsObjectiveId = data.nextLogisticsObjectiveId || 1;
-    }
-    // v8: sector.politicalMemory added — normaliseLoadedGame rebuilds missing entries
-    // v9→v10: seed added; factionRelations moved from top-level into player object
-    // v10: session RNG state added — normaliseLoadedGame restores missing entries
-    if (v < 10) {
-        if (data.player) {
-            if (!data.player.seed) data.player.seed = deterministicSeedFromPayload(data);
-            if (!data.player.factionRelations) {
-                // Prefer the top-level field from old saves; fall back to defaults
-                data.player.factionRelations = data.factionRelations
-                    ? JSON.parse(JSON.stringify(data.factionRelations))
-                    : JSON.parse(JSON.stringify(DEFAULT_FACTION_RELATIONS));
-            }
-        }
-    }
-    migrateLegacyWarpAdjacencyToJumpGates(data.universe);
-    normaliseRouteOwnership(data);
-    migrateShipTransitFields(data.player);
-    if (!data.ambientTrade) data.ambientTrade = { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 };
-    if (!data.dataCargo) {
-        data.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] }, secureContracts: [], ambientTransfers: [], nextPayloadId: 1, license: { secureCourier: false, issuedByFactionId: null, issuedDay: null } };
-    }
-    // v14: character block added to player and captains
-    if (v < 14) {
-        if (data.player) {
-            data.player.character = normaliseCharacter(data.player.character || createCharacter());
-        }
-        if (data.captains && typeof data.captains === "object") {
-            Object.values(data.captains).forEach(captain => {
-                captain.character = normaliseCharacter(captain.character || createCharacter());
-            });
-        }
-    }
-    // v15: chargen platforms became explicit ship/employer packages; normalisers map legacy ids.
-    if (v < 15) {
-        if (data.player) data.player.character = normaliseCharacter(data.player.character || createCharacter());
-        if (data.captains && typeof data.captains === "object") {
-            Object.values(data.captains).forEach(captain => {
-                captain.character = normaliseCharacter(captain.character || createCharacter());
-            });
-        }
-    }
-    data.version = SAVE_VERSION;
-    return data;
+    return runMigrations(data);
 }
 
 export { SAVE_STATE_FIELDS };
