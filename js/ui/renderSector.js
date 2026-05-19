@@ -77,9 +77,13 @@ function renderLocalPeopleDialogueActions(sectorId) {
             .map(button => {
                 if (button.service === "parts") {
                     const actionState = getContactDialogueActionState(person.id, button.arg2);
+                    const actionName = actionState.action || "requestContactService";
+                    const itemId = actionState.itemId || button.arg2;
                     return {
-                        action: actionState.action || "requestContactService",
-                        args: [person.id, actionState.itemId || button.arg2],
+                        action: actionName,
+                        args: actionName === "requestContactService"
+                            ? [person.id, "parts", itemId]
+                            : [person.id, itemId],
                         disabled: actionState.disabled,
                         label: button.label
                     };
