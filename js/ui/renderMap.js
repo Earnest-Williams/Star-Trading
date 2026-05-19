@@ -161,7 +161,6 @@ function toggleMapLayerPanel() {
 
 function setMapHelpOpen(open) {
     state.mapHelpOpen = open;
-    savePreferencePatch(null, { mapHelpOpen: open });
     Renderer.sliceChanged(StateSlice.MAP_VIEW);
 }
 

@@ -69,7 +69,6 @@ describe('shell entry integration guardrails', () => {
                     dataFreshness: true
                 },
                 mapLayersOpen: true,
-                mapHelpOpen: false,
                 mapInspectorCompact: false
             });
         });

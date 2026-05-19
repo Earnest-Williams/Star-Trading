@@ -22,7 +22,6 @@ export function getDefaultPreferences() {
         rightSidebarCollapsed: false,
         mapLayers: { ...DEFAULT_MAP_LAYERS },
         mapLayersOpen: true,
-        mapHelpOpen: false,
         mapInspectorCompact: false
     };
 }
@@ -71,7 +70,6 @@ export function normalisePreferences(raw) {
         rightSidebarCollapsed: pickBoolean(raw.rightSidebarCollapsed, defaults.rightSidebarCollapsed),
         mapLayers: normaliseMapLayers(raw.mapLayers, defaults.mapLayers),
         mapLayersOpen: pickBoolean(raw.mapLayersOpen, defaults.mapLayersOpen),
-        mapHelpOpen: pickBoolean(raw.mapHelpOpen, defaults.mapHelpOpen),
         mapInspectorCompact: pickBoolean(raw.mapInspectorCompact, defaults.mapInspectorCompact)
     };
 }
@@ -122,4 +120,8 @@ export function savePreferencePatch(storage = null, patch) {
         ? { ...current.mapLayers, ...patch.mapLayers }
         : current.mapLayers;
     return savePreferences(storage, { ...current, ...patch, mapLayers });
+}
+
+export function saveSettingsPreferences(storage = null, settingsPatch) {
+    return savePreferencePatch(storage, settingsPatch);
 }
