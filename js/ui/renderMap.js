@@ -1,4 +1,4 @@
-import { state } from "../state.js";
+import { state, APP_MODES } from "../state.js";
 import { FACTIONS, PLANET_TYPES } from "../constants.js";
 import { getPortType } from "../core/ports.js";
 import { getSectorFactionId, getSectorStatusLabel } from "../core/influence.js";
@@ -471,6 +471,23 @@ export function centerMapOnSector(sectorId = state.player?.currentSector) {
 }
 
 
+
+function isShortcutIgnoredTarget(target) {
+    const tagName = target?.tagName || "";
+    return tagName === "INPUT"
+        || tagName === "TEXTAREA"
+        || tagName === "SELECT"
+        || Boolean(target?.isContentEditable);
+}
+
+function canHandleMapGlobalShortcut(event, canvas) {
+    if (state.appMode !== APP_MODES.IN_GAME) return false;
+    const gameShell = document.getElementById("gameShell");
+    if (!gameShell || gameShell.hidden) return false;
+    if (!canvas || !canvas.isConnected || canvas.offsetParent === null) return false;
+    if (isShortcutIgnoredTarget(event.target)) return false;
+    return true;
+}
 function renderMapToolbar() {
     const toolbar = document.getElementById("mapToolbar");
     if (!toolbar) return;
@@ -864,9 +881,7 @@ export function setupMapInteraction() {
     };
     const handleResize = () => Renderer.invalidate("map");
     const handleKeyDown = event => {
-        const target = event.target;
-        const tagName = target?.tagName || "";
-        if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || target?.isContentEditable) return;
+        if (!canHandleMapGlobalShortcut(event, canvas)) return;
         if (event.key === "Escape") {
             if (state.mapHelpOpen) {
                 setMapHelpOpen(false);
