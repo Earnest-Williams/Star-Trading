@@ -79,7 +79,7 @@ function renderLocalPeopleDialogueActions(sectorId) {
                     const actionState = getContactDialogueActionState(person.id, button.arg2);
                     return {
                         action: actionState.action || "requestContactService",
-                        args: [person.id, button.arg2],
+                        args: [person.id, actionState.itemId || button.arg2],
                         disabled: actionState.disabled,
                         label: button.label
                     };
@@ -88,7 +88,7 @@ function renderLocalPeopleDialogueActions(sectorId) {
                     action: "requestContactService",
                     args: [person.id, button.service, button.arg2],
                     disabled: false,
-                    label: button.label
+                    label: actionState.label || button.label
                 };
             });
         const relationship = normaliseDialogueRelationship(person.relationships?.player || {});

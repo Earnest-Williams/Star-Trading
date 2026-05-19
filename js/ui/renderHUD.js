@@ -133,7 +133,7 @@ function renderCargoMiniList(player, ship) {
         const emptyText = loaded.length === 0 ? "empty" : `${emptyCount} empty`;
         html += `<div class="cargo-row muted"><span class="cargo-icon">--</span><span class="cargo-name">${emptyText}</span><span class="cargo-bar"><span></span></span><span class="cargo-qty">0</span></div>`;
     }
-    html += `<button class="cargo-drilldown" data-action="showScreen" data-arg0="spreadsheet">Cargo details</button>`;
+    html += `<button class="cargo-drilldown" data-action="showScreen" data-arg0="spreadsheet">Open Ledger</button>`;
     return html;
 }
 
@@ -273,7 +273,7 @@ export function renderPriorityFeed() {
     });
 }
 
-function renderHotbarButton(item, index = null) {
+function renderHotbarButton(item, shortcutNumber = null) {
     const attrs = [`class="action-hotbar-button${item.emphasis ? " is-primary" : ""}"`];
     if (item.action) attrs.push(`data-action="${escapeHtml(item.action)}"`);
     if (item.disabled) attrs.push("disabled");
@@ -281,9 +281,9 @@ function renderHotbarButton(item, index = null) {
         attrs.push(`data-arg${index}="${escapeHtml(String(arg))}"`);
     });
     const timeClass = `action-hotbar-time${item.time ? "" : " action-hotbar-slot-empty"}`;
-    const shortcutClass = `action-hotbar-shortcut${Number.isInteger(index) ? "" : " action-hotbar-slot-empty"}`;
+    const shortcutClass = `action-hotbar-shortcut${Number.isInteger(shortcutNumber) ? "" : " action-hotbar-slot-empty"}`;
     const time = `<span class="${timeClass}">${item.time ? escapeHtml(item.time) : ""}</span>`;
-    const shortcut = `<span class="${shortcutClass}" aria-hidden="true">${Number.isInteger(index) ? index + 1 : ""}</span>`;
+    const shortcut = `<span class="${shortcutClass}" aria-hidden="true">${Number.isInteger(shortcutNumber) ? shortcutNumber : ""}</span>`;
     return `<button ${attrs.join(" ")}>`
         + shortcut
         + `<span class="action-hotbar-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`
@@ -418,7 +418,11 @@ export function renderActionHotbar() {
 
     el.hidden = false;
     el.innerHTML = `<div class="action-hotbar-header"><span>Action Hotbar</span><span class="muted">Sector ${escapeHtml(String(state.player.currentSector))}</span></div>`
-        + `<div class="action-hotbar-list">${primaryItems.map((item, index) => renderHotbarButton(item, index)).join("")}${overflow}</div>`;
+        + `<div class="action-hotbar-list">${primaryItems.map((item, index) => {
+            const enabledBefore = primaryItems.slice(0, index).filter(candidate => !candidate.disabled).length;
+            const shortcutNumber = item.disabled ? null : enabledBefore + 1;
+            return renderHotbarButton(item, shortcutNumber);
+        }).join("")}${overflow}</div>`;
 }
 
 export function renderSectorActionMenu() {

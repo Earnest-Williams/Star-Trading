@@ -438,7 +438,7 @@ export function resetMapViewport() {
     Renderer.invalidate("map");
 }
 
-function fitKnownSpace() {
+function resetMapView() {
     const viewport = getViewport();
     viewport.scale = 1;
     viewport.offsetX = 0;
@@ -483,7 +483,7 @@ function renderMapToolbar() {
     toolbar.classList.toggle("map-toolbar--collapsed", state.mapLayersOpen === false);
     toolbar.innerHTML = `<div class="map-toolbar-row map-toolbar-primary">`
         + `<button id="btn-center-map" type="button">Center</button>`
-        + `<button id="btn-fit-map" type="button">Fit Known Space</button>`
+        + `<button id="btn-fit-map" type="button">Reset View</button>`
         + `<button id="btn-toggle-map-layers" type="button" aria-expanded="${state.mapLayersOpen === false ? "false" : "true"}">Layers</button>`
         + `<button id="btn-map-help" type="button" aria-expanded="${state.mapHelpOpen ? "true" : "false"}">?</button>`
         + `</div>`
@@ -502,7 +502,7 @@ function renderMapHelp() {
         + `<button id="btn-close-map-help" type="button" aria-label="Close map shortcuts">×</button>`
         + `<dl>`
         + `<dt>?</dt><dd>Toggle this help overlay</dd>`
-        + `<dt>F</dt><dd>Fit known space</dd>`
+        + `<dt>F</dt><dd>Reset map view</dd>`
         + `<dt>L</dt><dd>Show or hide layer toggles</dd>`
         + `<dt>1–7</dt><dd>Trigger visible sector hotbar actions</dd>`
         + `<dt>Esc</dt><dd>Close overlays or collapse expanded map</dd>`
@@ -809,7 +809,7 @@ export function setupMapInteraction() {
             return;
         }
         if (event.target.closest("#btn-fit-map")) {
-            fitKnownSpace();
+            resetMapView();
             return;
         }
         if (event.target.closest("#btn-toggle-map-layers")) {
@@ -852,7 +852,7 @@ export function setupMapInteraction() {
         }
         if (event.key.toLowerCase() === "f") {
             event.preventDefault();
-            fitKnownSpace();
+            resetMapView();
             return;
         }
         if (event.key.toLowerCase() === "l") {

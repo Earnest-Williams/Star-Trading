@@ -72,6 +72,36 @@ describe('preferences', () => {
         assert.equal(normalised.mapInspectorCompact, true);
     });
 
+
+
+    it('normalises partial and malformed map layer objects while preserving valid values', () => {
+        const normalised = normalisePreferences({
+            reducedMotion: false,
+            mapLayers: { systems: false, tradeRoutes: 1, unknownLayer: false },
+            mapLayersOpen: 'yes'
+        });
+
+        assert.equal(normalised.mapLayers.systems, false);
+        assert.equal(normalised.mapLayers.tradeRoutes, true);
+        assert.equal(normalised.mapLayers.asteroids, true);
+        assert.equal(Object.hasOwn(normalised.mapLayers, 'unknownLayer'), false);
+        assert.equal(normalised.mapLayersOpen, true);
+    });
+
+    it('ignores unknown top-level keys while preserving valid known preferences', () => {
+        const normalised = normalisePreferences({
+            compactUi: true,
+            rightSidebarCollapsed: true,
+            futureFlag: true,
+            nested: { surprise: true }
+        });
+
+        assert.equal(normalised.compactUi, true);
+        assert.equal(normalised.rightSidebarCollapsed, true);
+        assert.equal(Object.hasOwn(normalised, 'futureFlag'), false);
+        assert.equal(Object.hasOwn(normalised, 'nested'), false);
+    });
+
     it('falls back cleanly when storage is unavailable', () => {
         assert.deepEqual(loadPreferences(null), getDefaultPreferences());
     });
@@ -160,6 +190,35 @@ describe('preferences', () => {
         assert.equal(saved.mapLayersOpen, false);
         assert.equal(saved.mapInspectorCompact, true);
         assert.deepEqual(JSON.parse(writes.get(PREFERENCES_KEY)), saved);
+    });
+
+
+
+    it('merges map layer patches instead of replacing the entire layer object', () => {
+        const writes = new Map();
+        const storage = {
+            getItem(key) {
+                return writes.get(key) || null;
+            },
+            setItem(key, value) {
+                writes.set(key, value);
+            }
+        };
+
+        savePreferences(storage, {
+            mapLayers: { systems: false, asteroids: false, influence: false }
+        });
+
+        const saved = savePreferencePatch(storage, {
+            mapLayers: { dataFreshness: false }
+        });
+
+        assert.equal(saved.mapLayers.systems, false);
+        assert.equal(saved.mapLayers.asteroids, false);
+        assert.equal(saved.mapLayers.influence, false);
+        assert.equal(saved.mapLayers.dataFreshness, false);
+        assert.equal(saved.mapLayers.tradeRoutes, true);
+        assert.equal(saved.mapLayers.contestedZones, true);
     });
 
     it('merges Settings saves into current preferences instead of replacing layout choices', () => {
