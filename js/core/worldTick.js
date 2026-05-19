@@ -108,7 +108,7 @@ export function runSimulationScheduler(phases, reason, cadence) {
         schedulerInProgress = false;
     }
     const summary = { failed, phaseSummaries, changedSlices: Array.from(changedSlices), eventCount, warnings, elapsedMs: Date.now() - start };
-    addSimulationTraceEvent({ source: 'world_tick_scheduler', category: 'tick', detail: reason || cadence, severity: failed ? 'warning' : 'info', causes: [`cadence:${cadence}`], metadata: { cadence, phaseCount: phaseSummaries.length, elapsedMs: summary.elapsedMs } });
+    addSimulationTraceEvent({ eventType: 'world_tick', sourceSystem: 'world_tick_scheduler', causedBy: [{ label: `cadence:${cadence}` }], summary: { detail: reason || cadence, failed, phaseCount: phaseSummaries.length }, payload: { cadence, elapsedMs: summary.elapsedMs } });
     return summary;
 }
 
