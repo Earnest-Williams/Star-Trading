@@ -22,6 +22,7 @@ import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { getSpotPriceForSector, getExpectedRouteValue } from '../economy/pricing.js';
 import { recomputeEconomyPressure } from '../economy/pressure.js';
+import { applyContractDeliveryHooks } from '../economy/contracts.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../../utils.js';
 import { addSectorInfluence } from '../../core/influence.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
@@ -705,6 +706,11 @@ export function runTradeRoute(route) {
     else patchPlanet(route.originSector, { stock: { ...origin.stock, [route.commodity]: originCommodityStock } }).forEach(slice => changedSlices.add(slice));
     if (destination.kind === "port") patchPort(route.destinationSector, { stock: { ...destination.stock, [route.commodity]: destinationCommodityStock } }).forEach(slice => changedSlices.add(slice));
     else patchPlanet(route.destinationSector, { stock: { ...destination.stock, [route.commodity]: destinationCommodityStock } }).forEach(slice => changedSlices.add(slice));
+    const contractProgress = applyContractDeliveryHooks(route.destinationSector, route.commodity, amount);
+    if ((contractProgress.completed || 0) > 0 || (contractProgress.delivered || 0) > 0) {
+        changedSlices.add(StateSlice.ECONOMY);
+        if ((contractProgress.completed || 0) > 0) changedSlices.add(StateSlice.PLAYER);
+    }
     const profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
     if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {
         addCaptainCredits(route.ownerId, profit).forEach(slice => changedSlices.add(slice));

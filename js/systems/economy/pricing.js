@@ -76,7 +76,8 @@ export function getSpotPrice(port, sectorId, commodity, mode) {
 }
 
 export function getSpotPriceForSector(sectorId, commodity, mode) {
-    return getSpotPrice(state.ports?.[sectorId], sectorId, commodity, mode);
+    const node = state.ports?.[sectorId] || state.planets?.[sectorId] || null;
+    return getSpotPrice(node, sectorId, commodity, mode);
 }
 
 export function getExpectedRouteValue(originSector, destinationSector, commodity, amount) {

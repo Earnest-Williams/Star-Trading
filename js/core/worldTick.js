@@ -77,6 +77,7 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'explicit_trade_route_runs', cadence: 'daily', reads: ['tradeRoutes'], writes: ['tradeRoutes'], emits: ['route'], expensive: true, run: () => runTradeRoutesDaily() },
     { id: 'player_property_economics', cadence: 'daily', reads: ['properties'], writes: ['player'], emits: [], expensive: false, run: () => runPlayerPropertiesDaily() },
     { id: 'ambient_trade_response', cadence: 'daily', reads: ['ports'], writes: ['ports'], emits: ['world'], expensive: true, featureFlag: 'ambientTrade', run: () => runAmbientTradeDaily() },
+    { id: 'economy_pressure_post_ambient', cadence: 'daily', reads: ['ports'], writes: ['economy'], emits: [], expensive: false, featureFlag: 'ambientTrade', run: () => recomputeEconomyPressure() },
     { id: 'ambient_data_propagation', cadence: 'daily', reads: ['dataCargo'], writes: ['dataCargo'], emits: ['world'], expensive: true, featureFlag: 'dataPropagation', run: () => runAmbientDataPropagationDaily() },
     { id: 'data_cargo_culling', cadence: 'daily', reads: ['dataCargo'], writes: ['dataCargo'], emits: [], expensive: false, run: () => cullOldPublicSnapshots() },
     { id: 'colony_needs', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => updateColonyNeedsDaily() },
