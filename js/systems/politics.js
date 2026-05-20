@@ -11,9 +11,12 @@ import { generateFactionAsks } from '../systems/guilds.js';
 import { getSectorNeighbors } from '../core/navigation.js';
 import { POLITICS } from '../config/politics.js';
 import {
-    bumpInfluenceRevision,
+    adjustSectorPirateThreat,
     bumpLogisticsNodeRevision,
-    bumpMarketRevision
+    bumpMarketRevision,
+    patchPort,
+    patchPlanet,
+    patchSite
 } from '../core/state/mutations.js';
 import { StateSlice } from '../core/state/index.js';
 
@@ -87,11 +90,11 @@ export function processContestedSector(sector) {
     if (topPair.includes("vc") && sector.pirateThreat < POLITICS.CONTESTED.PIRATE_SURGE_CAP
         && random() < POLITICS.CONTESTED.PIRATE_SURGE_BASE_CHANCE
             + contestedDays * POLITICS.CONTESTED.PIRATE_SURGE_DAILY_CHANCE) {
-        sector.pirateThreat = Math.min(POLITICS.CONTESTED.PIRATE_SURGE_CAP, sector.pirateThreat + 1);
+        adjustSectorPirateThreat(sector.id, 1, POLITICS.CONTESTED.PIRATE_SURGE_CAP);
         addWorldEvent({ type: "pirate_surge", factionId: "vc", sectorId: sector.id, text: `Contested control in sector ${sector.id} gave raiders room to surge. Pirate threat is now ${sector.pirateThreat}.`, importance: 3, alert: sector.id === state.player.currentSector });
     }
     if (topPair.includes("sda") && sector.pirateThreat > 0 && random() < POLITICS.CONTESTED.SDA_REDUCTION_BASE_CHANCE + Math.max(0, getFactionRep("sda")) / POLITICS.CONTESTED.SDA_REDUCTION_REP_DIVISOR) {
-        sector.pirateThreat = Math.max(0, sector.pirateThreat - 1);
+        adjustSectorPirateThreat(sector.id, -1);
         addSectorInfluence(sector.id, "sda", 1, "patrol response in contested space");
     }
     const politicalOpen = state.missions.filter(m => m.status === "available" && m.kind === "political_contest").length;
@@ -115,36 +118,44 @@ export function applyFactionSectorEffects(sector) {
     const vc = sector.influence.vc || 0;
     if (sda >= POLITICS.SECTOR_EFFECTS.SDA_THRESHOLD && sector.pirateThreat > 0 && random() < Math.min(POLITICS.SECTOR_EFFECTS.SDA_MAX_REDUCTION_CHANCE,
         (sda - POLITICS.SECTOR_EFFECTS.SDA_CHANCE_OFFSET) / POLITICS.SECTOR_EFFECTS.SDA_CHANCE_DIVISOR)) {
-        sector.pirateThreat = Math.max(0, sector.pirateThreat - 1);
+        adjustSectorPirateThreat(sector.id, -1);
     }
     if (hc >= POLITICS.SECTOR_EFFECTS.HC_THRESHOLD && sector.asteroids) {
-        if (typeof sector.asteroids.maxOre !== "number") sector.asteroids.maxOre = Math.max(sector.asteroids.ore, POLITICS.SECTOR_EFFECTS.HC_MIN_MAX_ORE);
+        const nextMaxOre = typeof sector.asteroids.maxOre === "number"
+            ? sector.asteroids.maxOre
+            : Math.max(sector.asteroids.ore, POLITICS.SECTOR_EFFECTS.HC_MIN_MAX_ORE);
         const regen = Math.floor((POLITICS.SECTOR_EFFECTS.HC_REGEN_BASE + hc * POLITICS.SECTOR_EFFECTS.HC_REGEN_PER_INFLUENCE) * (sector.asteroids.richness || 1));
-        sector.asteroids.ore = Math.min(sector.asteroids.maxOre, sector.asteroids.ore + regen);
+        const nextOre = Math.min(nextMaxOre, sector.asteroids.ore + regen);
+        if (nextMaxOre !== sector.asteroids.maxOre || nextOre !== sector.asteroids.ore) {
+            patchSite(sector.id, { asteroids: { ...sector.asteroids, maxOre: nextMaxOre, ore: nextOre } });
+        }
     }
     const planet = state.planets[sector.id];
     if (fu >= POLITICS.SECTOR_EFFECTS.FU_THRESHOLD && planet && planet.owner && planet.colonists > 0 && random() < POLITICS.SECTOR_EFFECTS.FU_GROWTH_CHANCE) {
         const growth = 1 + Math.floor(fu * POLITICS.SECTOR_EFFECTS.FU_COLONIST_GROWTH_RATE);
-        planet.colonists += growth;
-        if (typeof planet.satisfaction === "number") planet.satisfaction = Math.min(100, planet.satisfaction + 1);
+        const nextColonists = planet.colonists + growth;
+        const nextSatisfaction = typeof planet.satisfaction === "number"
+            ? Math.min(100, planet.satisfaction + 1)
+            : planet.satisfaction;
+        patchPlanet(sector.id, { colonists: nextColonists, satisfaction: nextSatisfaction });
     }
     if (vc >= POLITICS.SECTOR_EFFECTS.VC_PIRATE_THRESHOLD && random() < Math.min(POLITICS.SECTOR_EFFECTS.VC_PIRATE_MAX_CHANCE,
         (vc - POLITICS.SECTOR_EFFECTS.VC_PIRATE_CHANCE_OFFSET) / POLITICS.SECTOR_EFFECTS.VC_PIRATE_CHANCE_DIVISOR) && sector.pirateThreat < POLITICS.SECTOR_EFFECTS.VC_PIRATE_CAP) {
-        sector.pirateThreat = Math.min(POLITICS.SECTOR_EFFECTS.VC_PIRATE_CAP, sector.pirateThreat + 1);
+        adjustSectorPirateThreat(sector.id, 1, POLITICS.SECTOR_EFFECTS.VC_PIRATE_CAP);
     }
     const port = state.ports[sector.id];
     if (vc >= POLITICS.SECTOR_EFFECTS.VC_FRONT_THRESHOLD && port && !port.hiddenFactionId && random() < POLITICS.SECTOR_EFFECTS.VC_FRONT_CHANCE) {
-        port.hiddenFactionId = "vc";
-        sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: "vc", suspicion: POLITICS.SECTOR_EFFECTS.VC_FRONT_SUSPICION_BASE + Math.floor(random() * POLITICS.SECTOR_EFFECTS.VC_FRONT_SUSPICION_SPAN) };
+        patchPort(sector.id, { hiddenFactionId: "vc" });
+        patchSite(sector.id, { front: { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: "vc", suspicion: POLITICS.SECTOR_EFFECTS.VC_FRONT_SUSPICION_BASE + Math.floor(random() * POLITICS.SECTOR_EFFECTS.VC_FRONT_SUSPICION_SPAN) } });
     }
 }
 
 export function updateFrontDaily(sector) {
     const port = state.ports[sector.id];
-    if (!sector.front && port && port.hiddenFactionId) sector.front = { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: port.hiddenFactionId, suspicion: POLITICS.FRONTS.INITIAL_SUSPICION_BASE + Math.floor(random() * POLITICS.FRONTS.INITIAL_SUSPICION_SPAN) };
+    if (!sector.front && port && port.hiddenFactionId) patchSite(sector.id, { front: { publicFactionId: port.publicFactionId || port.factionId, hiddenFactionId: port.hiddenFactionId, suspicion: POLITICS.FRONTS.INITIAL_SUSPICION_BASE + Math.floor(random() * POLITICS.FRONTS.INITIAL_SUSPICION_SPAN) } });
     if (!sector.front) return;
     const front = sector.front;
-    if (!FACTIONS[front.hiddenFactionId]) { sector.front = null; return; }
+    if (!FACTIONS[front.hiddenFactionId]) { patchSite(sector.id, { front: null }); return; }
     const hiddenInfluence = sector.influence[front.hiddenFactionId] || 0;
     const publicInfluence = sector.influence[front.publicFactionId] || 0;
     let suspicionGain = POLITICS.FRONTS.SUSPICION_BASE_GAIN
@@ -155,8 +166,9 @@ export function updateFrontDaily(sector) {
         && random() < POLITICS.FRONTS.PUBLIC_ADVANTAGE_CHANCE) {
         suspicionGain -= POLITICS.FRONTS.PUBLIC_ADVANTAGE_REDUCTION;
     }
-    front.suspicion = clampRange((front.suspicion || 0) + suspicionGain, 0, 100);
-    if (front.suspicion >= BALANCE.FRONT_EXPOSURE_THRESHOLD && random() < (sector.surveyed
+    const nextSuspicion = clampRange((front.suspicion || 0) + suspicionGain, 0, 100);
+    if (nextSuspicion !== front.suspicion) patchSite(sector.id, { front: { ...front, suspicion: nextSuspicion } });
+    if (nextSuspicion >= BALANCE.FRONT_EXPOSURE_THRESHOLD && random() < (sector.surveyed
         ? POLITICS.FRONTS.SURVEYED_EXPOSURE_CHANCE : POLITICS.FRONTS.UNSURVEYED_EXPOSURE_CHANCE)) exposeFrontOperation(sector);
 }
 
@@ -166,10 +178,11 @@ export function exposeFrontOperation(sector) {
     const hiddenId = front.hiddenFactionId;
     const publicId = front.publicFactionId;
     const port = state.ports[sector.id];
-    if (port && port.hiddenFactionId === hiddenId) port.hiddenFactionId = null;
-    sector.front = null;
+    if (port && port.hiddenFactionId === hiddenId) patchPort(sector.id, { hiddenFactionId: null });
+    patchSite(sector.id, { front: null });
     normaliseSectorInfluence(sector);
-    sector.influence[hiddenId] = clampRange((sector.influence[hiddenId] || 0) + POLITICS.FRONTS.HIDDEN_INFLUENCE_ON_EXPOSED, 0, 100);
+    const nextInfluence = { ...sector.influence, [hiddenId]: clampRange((sector.influence[hiddenId] || 0) + POLITICS.FRONTS.HIDDEN_INFLUENCE_ON_EXPOSED, 0, 100) };
+    patchSite(sector.id, { influence: nextInfluence });
     if (MAJOR_FACTIONS.includes(publicId)) addSectorInfluence(sector.id, publicId, POLITICS.FRONTS.PUBLIC_INFLUENCE_ON_EXPOSED, "front operation exposed");
     if (hiddenId === "vc") addSectorInfluence(sector.id, "sda", POLITICS.FRONTS.SDA_INFLUENCE_ON_VC_EXPOSED, "anti-front enforcement action");
     adjustFactionRelation(publicId, hiddenId, POLITICS.FRONTS.RELATION_ON_EXPOSED, `front exposed in sector ${sector.id}`);
@@ -280,7 +293,7 @@ export function updateFactionsDaily() {
         if (delta < 0 && pair.includes("vc")) {
             Object.values(state.universe).forEach(sector => {
                 if (sector.region !== "Core" || random() > POLITICS.FACTION_DRIFT.CORE_PIRATE_PROBE_CHANCE) return;
-                sector.pirateThreat = Math.min(POLITICS.FACTION_DRIFT.CORE_PIRATE_PROBE_CAP, sector.pirateThreat + 1);
+                adjustSectorPirateThreat(sector.id, 1, POLITICS.FACTION_DRIFT.CORE_PIRATE_PROBE_CAP);
                 addSectorInfluence(sector.id, "vc", 1, "");
             });
             log("Faction news: SDA–VC tensions flare. Core pirate probes increased slightly.");
@@ -336,15 +349,10 @@ export function updateThreatsDaily() {
         }
         chance *= getPirateIncidentMultiplier();
         if (random() < Math.max(POLITICS.THREATS.MIN_CHANCE, chance)) {
-            const beforeThreat = sector.pirateThreat;
-            sector.pirateThreat = Math.min(POLITICS.THREATS.PIRATE_THREAT_CAP, sector.pirateThreat + 1);
-            if (sector.pirateThreat !== beforeThreat) threatChanged = true;
+            if (adjustSectorPirateThreat(sector.id, 1, POLITICS.THREATS.PIRATE_THREAT_CAP).length > 0) threatChanged = true;
             if (top === "vc") addSectorInfluence(sector.id, "vc", 1, "");
         }
     });
-    if (threatChanged) {
-        bumpInfluenceRevision();
-        return { changedSlices: [StateSlice.UNIVERSE] };
-    }
+    if (threatChanged) return { changedSlices: [StateSlice.UNIVERSE] };
     return null;
 }

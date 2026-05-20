@@ -17,6 +17,22 @@ export const bumpMarketRevision = () => incrementRevision('marketRevision');
 export const bumpLogisticsNodeRevision = () => incrementRevision('logisticsNodeRevision');
 export const bumpInfluenceRevision = () => incrementRevision('influenceRevision');
 export const bumpWorldGraphRevision = () => incrementRevision('worldGraphRevision');
+export const setSectorPirateThreat = (sectorId, value) => {
+    const sector = state.universe?.[sectorId];
+    if (!sector || !Number.isFinite(value)) return [];
+    const nextValue = Math.max(0, Number(value));
+    if ((sector.pirateThreat || 0) === nextValue) return [];
+    sector.pirateThreat = nextValue;
+    incrementRevision('influenceRevision');
+    return stateChanged(StateSlice.UNIVERSE);
+};
+export const adjustSectorPirateThreat = (sectorId, delta, cap = Number.POSITIVE_INFINITY) => {
+    const sector = state.universe?.[sectorId];
+    if (!sector || !Number.isFinite(delta)) return [];
+    const base = Number(sector.pirateThreat) || 0;
+    const nextValue = Math.max(0, Math.min(Number(cap), base + Number(delta)));
+    return setSectorPirateThreat(sectorId, nextValue);
+};
 
 export const patchPlayer = patch => mergeInto(state.player, patch) ? stateChanged(StateSlice.PLAYER) : [];
 export const patchPlayerCargo = patch => mergeInto(state.player?.cargo, patch) ? stateChanged(StateSlice.PLAYER) : [];
@@ -25,17 +41,31 @@ export const setPlayerCredits = value => {
     state.player.credits = Number(value);
     return stateChanged(StateSlice.PLAYER);
 };
-export const patchSite = (siteId, patch) => mergeInto(state.universe?.[siteId], patch) ? stateChanged(StateSlice.UNIVERSE) : [];
+export const patchSite = (siteId, patch) => {
+    const site = state.universe?.[siteId];
+    if (!mergeInto(site, patch)) return [];
+    const keys = Object.keys(cleanPatch(patch));
+    if (keys.some(key => key === 'jumpGates' || key === 'coord')) bumpWorldGraphRevision();
+    if (keys.some(key => key === 'pirateThreat' || key === 'influence' || key === 'front' || key === 'station' || key === 'asteroids')) bumpInfluenceRevision();
+    if (keys.some(key => key === 'asteroids')) bumpLogisticsNodeRevision();
+    return stateChanged(StateSlice.UNIVERSE);
+};
 export const patchPort = (sectorId, patch) => {
-    if (!mergeInto(state.ports?.[sectorId], patch)) return [];
-    incrementRevision('marketRevision');
-    incrementRevision('logisticsNodeRevision');
+    const safePatch = cleanPatch(patch);
+    if (!mergeInto(state.ports?.[sectorId], safePatch)) return [];
+    const keys = Object.keys(safePatch);
+    if (keys.some(key => key === 'stock' || key === 'basePrices' || key === 'maxStock' || key === 'priceBias')) incrementRevision('marketRevision');
+    if (keys.some(key => key === 'stock' || key === 'maxStock' || key === 'hiddenFactionId' || key === 'factionId' || key === 'publicFactionId')) incrementRevision('logisticsNodeRevision');
+    if (keys.includes('hiddenFactionId') || keys.includes('factionId') || keys.includes('publicFactionId')) incrementRevision('influenceRevision');
     return stateChanged(StateSlice.ECONOMY);
 };
 export const patchPlanet = (sectorId, patch) => {
-    if (!mergeInto(state.planets?.[sectorId], patch)) return [];
-    incrementRevision('marketRevision');
-    incrementRevision('logisticsNodeRevision');
+    const safePatch = cleanPatch(patch);
+    if (!mergeInto(state.planets?.[sectorId], safePatch)) return [];
+    const keys = Object.keys(safePatch);
+    if (keys.some(key => key === 'stock' || key === 'basePrices' || key === 'maxStock')) incrementRevision('marketRevision');
+    if (keys.some(key => key === 'stock' || key === 'maxStock' || key === 'colonists' || key === 'satisfaction' || key === 'owner' || key === 'factionId')) incrementRevision('logisticsNodeRevision');
+    if (keys.includes('colonists') || keys.includes('satisfaction') || keys.includes('owner') || keys.includes('factionId')) incrementRevision('influenceRevision');
     return stateChanged(StateSlice.ECONOMY);
 };
 export const patchRoute = (routeId, patch) => {

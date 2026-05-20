@@ -23,7 +23,11 @@ export function createGameSessionController() {
     let unsubscribeMapInteraction = () => {};
 
     function registerRendererSubscriptions() {
-        unsubs.push(EventBus.on('time_advanced', () => {
+        unsubs.push(EventBus.on('time_advanced', payload => {
+            const changedSlices = payload?.tickSummary?.changedSlices;
+            if (Array.isArray(changedSlices) && changedSlices.length > 0) {
+                Renderer.sliceChanged(...changedSlices);
+            }
             Renderer.invalidate('priority');
             Renderer.invalidate('header');
         }));
