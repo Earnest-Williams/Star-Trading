@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -21,7 +21,9 @@ describe('port type lookup guard', () => {
 
         files.forEach(file => {
             if (ALLOWED_FILES.has(file)) return;
-            const contents = readFileSync(`${REPO_ROOT}${file}`, 'utf8');
+            const filePath = `${REPO_ROOT}${file}`;
+            if (!existsSync(filePath)) return;
+            const contents = readFileSync(filePath, 'utf8');
             const matches = contents.match(DIRECT_PORT_TYPE_LOOKUP) || [];
             matches.forEach(match => offenders.push(`${file}: ${match}`));
         });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { EventBus } from '../js/events.js';
 import { Renderer } from '../js/ui/renderer.js';
-import { StateSlice } from '../js/ui/stateSlices.js';
+import { StateSlice } from '../js/core/state/index.js';
 import {
     clearDailyHooks,
     clearHourlyHooks,

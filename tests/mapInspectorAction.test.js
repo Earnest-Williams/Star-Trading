@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { executeAction } from '../js/core/commands.js';
 import { PREFERENCES_KEY } from '../js/core/preferences.js';
 import { resetState, state } from '../js/state.js';
-import { StateSlice } from '../js/ui/stateSlices.js';
+import { StateSlice } from '../js/core/state/index.js';
 import { disposeUI, registerUIActions } from '../js/ui/ui.js';
 
 function createStorage() {
