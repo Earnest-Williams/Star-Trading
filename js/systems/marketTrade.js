@@ -51,7 +51,7 @@ export function validateTradeAndAmount(context) {
             amount,
             port.stock?.[commodity] || 0,
             getFreeHolds(),
-            Math.floor((player.credits || 0) / price)
+            Math.floor((player.credits ?? 0) / price)
         );
         if (amount <= 0) {
             log("You cannot buy that right now. Check credits, port stock, and free holds.");
@@ -123,10 +123,6 @@ export function executeTradeDetailed(commodity, mode, getPortPrice, spendTime) {
     if (!context) return { amount: 0, code: "invalid_context" };
     const amount = validateTradeAndAmount(context);
     if (amount <= 0) return { amount: 0, code: "invalid_amount" };
-    if (!context.player || !context.port) return { amount: 0, code: "invalid_context" };
-    context.player.cargo ??= {};
-    context.port.stock ??= {};
-    context.port.maxStock ??= {};
     if (!spendTime(BALANCE.TRADE_TIME_MINUTES)) return { amount: 0, code: "time_blocked" };
     applyTradeStateMutation(context, amount);
     applyTradePoliticalEffects(context, amount);
