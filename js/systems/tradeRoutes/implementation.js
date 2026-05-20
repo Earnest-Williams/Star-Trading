@@ -486,7 +486,7 @@ export function createTradeRoute(destinationSector, commodity) {
         importance: 2, alert: true,
         payload: { originSector, destinationSector, commodity }
     });
-    return stateChanged(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.ECONOMY, StateSlice.EVENTS);
+    return stateChanged(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.EVENTS);
 }
 
 export function createCaptainTradeRoute(captain, originSector, destinationSector, commodity, options = {}) {

@@ -144,10 +144,7 @@ export function setReputationTab(tab) {
     state.reputationTab = tab;
     state.currentScreen = 'reputation';
     state.selectedCaptainId = null;
-    return stateChanged(
-        StateSlice.UI_RUNTIME,
-        StateSlice.UI_RUNTIME
-    );
+    return stateChanged(StateSlice.UI_RUNTIME);
 }
 
 // =====================================================
@@ -306,8 +303,7 @@ const rendererRegistrations = [
         StateSlice.CAPTAINS,
         StateSlice.ROUTES,
         StateSlice.DATA_CARGO,
-        StateSlice.DIALOGUE,
-        StateSlice.UI_RUNTIME
+        StateSlice.DIALOGUE
     ]],
 
     ['actionHotbar', renderActionHotbar, [
@@ -315,8 +311,7 @@ const rendererRegistrations = [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
         StateSlice.ECONOMY,
-        StateSlice.ROUTES,
-        StateSlice.UI_RUNTIME
+        StateSlice.ROUTES
     ]],
 
     ['menu', renderMenuPanel, [
@@ -368,8 +363,7 @@ const rendererRegistrations = [
         StateSlice.MISSIONS,
         StateSlice.ECONOMY,
         StateSlice.ROUTES,
-        StateSlice.UNIVERSE,
-        StateSlice.ECONOMY
+        StateSlice.UNIVERSE
     ]],
 
     ['nextSteps', renderNextStepsPanel, [
@@ -381,7 +375,6 @@ const rendererRegistrations = [
         StateSlice.UI_RUNTIME,
         StateSlice.DATA_CARGO,
         StateSlice.DIALOGUE,
-        StateSlice.ECONOMY,
         StateSlice.EVENTS
     ]]
 ];
