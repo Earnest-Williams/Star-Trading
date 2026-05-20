@@ -20,6 +20,7 @@ import { StateSlice, stateChanged } from '../../core/state/index.js';
 import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../constants.js';
 import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
+import { getSpotPriceForSector, getExpectedRouteValue } from '../economy/pricing.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../../utils.js';
 import { addSectorInfluence } from '../../core/influence.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
@@ -228,36 +229,6 @@ export function getRouteEscortPower(route) {
     return (captain.ship.combatRating || 0) / BALANCE.TRADE_ROUTE.ESCORT_COMBAT_DIVISOR
         + Math.max(0, relation.trust || 0) / BALANCE.TRADE_ROUTE.ESCORT_TRUST_DIVISOR
         + Math.max(0, relation.opinion || 0) / BALANCE.TRADE_ROUTE.ESCORT_OPINION_DIVISOR;
-}
-
-export function getRouteMarketValue(sectorId, commodity, mode) {
-    const node = getLogisticsNode(sectorId);
-    if (!node) return 0;
-    const stock = Math.max(0, (node.stock || {})[commodity] || 0);
-    const maxStock = Math.max(1, (node.maxStock || {})[commodity] || 1);
-    const ratio = Math.max(0, Math.min(1, stock / maxStock));
-    const base = node.kind === "port"
-        ? (state.ports[sectorId].basePrices || {})[commodity]
-        : PORT_DEFAULTS.BASE_PRICES[commodity];
-    if (typeof base !== "number") return 0;
-    if (mode === "buy") {
-        const multiplier = BALANCE.TRADE_ROUTE.BUY_PRICE_BASE_MULTIPLIER
-            + (1 - ratio) * BALANCE.TRADE_ROUTE.BUY_PRICE_SCARCITY_MULTIPLIER;
-        return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * multiplier));
-    }
-    const multiplier = BALANCE.TRADE_ROUTE.SELL_PRICE_BASE_MULTIPLIER
-        + (1 - ratio) * BALANCE.TRADE_ROUTE.SELL_PRICE_SCARCITY_MULTIPLIER;
-    return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * multiplier));
-}
-
-export function estimateRouteProfit(originSector, destinationSector, commodity, amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT) {
-    const buyValue = getRouteMarketValue(originSector, commodity, "buy");
-    const sellValue = getRouteMarketValue(destinationSector, commodity, "sell");
-    const spread = Math.max(BALANCE.TRADE_ROUTE.PROFIT_SPREAD_FLOOR, sellValue - buyValue);
-    return Math.max(
-        BALANCE.TRADE_ROUTE.PROFIT_FLOOR,
-        Math.floor(spread * amount * BALANCE.TRADE_ROUTE.PROFIT_MULTIPLIER)
-    );
 }
 
 const routePathMetricsCache = new Map();
@@ -817,3 +788,13 @@ export function getRouteEscortCandidates() {
         .filter(c => c.archetype === "mercenary" || c.archetype === "trader" || c.archetype === "smuggler" || c.ship.combatRating >= 20)
         .sort((a, b) => (b.ship.combatRating || 0) - (a.ship.combatRating || 0));
 }
+
+export function getRouteMarketValue(sectorId, commodity, mode) {
+    return getSpotPriceForSector(sectorId, commodity, mode);
+}
+
+export function estimateRouteProfit(originSector, destinationSector, commodity, amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT) {
+    const quote = getExpectedRouteValue(originSector, destinationSector, commodity, amount);
+    return quote.expectedProfit;
+}
+
