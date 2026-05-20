@@ -4,6 +4,7 @@
  * @typedef {Object} TradeContext
  * @property {string} commodity
  * @property {TradeMode} mode
+ * @property {Object} player
  * @property {Object} port
  * @property {Object} type
  * @property {number} price
@@ -21,11 +22,13 @@ export function resolveTradeContext(commodity, mode, getPortPrice) {
         log("Invalid trade mode. Use buy or sell.");
         return null;
     }
-    const port = state.ports[state.player?.currentSector];
-    if (!port) return null;
+    const player = state.player;
+    const port = state.ports[player?.currentSector];
+    if (!player || !port) return null;
     return {
         commodity,
         mode,
+        player,
         port,
         type: getPortType(port),
         price: getPortPrice(port, commodity, mode)
@@ -33,7 +36,7 @@ export function resolveTradeContext(commodity, mode, getPortPrice) {
 }
 
 export function validateTradeAndAmount(context) {
-    const { commodity, mode, port, type, price } = context;
+    const { commodity, mode, player, port, type, price } = context;
     if (!commodity) {
         log("Invalid commodity.");
         return 0;
@@ -48,7 +51,7 @@ export function validateTradeAndAmount(context) {
             amount,
             port.stock?.[commodity] || 0,
             getFreeHolds(),
-            Math.floor((state.player?.credits || 0) / price)
+            Math.floor((player.credits || 0) / price)
         );
         if (amount <= 0) {
             log("You cannot buy that right now. Check credits, port stock, and free holds.");
@@ -59,7 +62,7 @@ export function validateTradeAndAmount(context) {
         log("This port does not buy that commodity.");
         return 0;
     }
-    amount = Math.min(amount, state.player?.cargo?.[commodity] || 0);
+    amount = Math.min(amount, player.cargo?.[commodity] || 0);
     if (amount <= 0) {
         log("You do not have that cargo to sell.");
     }
@@ -67,8 +70,7 @@ export function validateTradeAndAmount(context) {
 }
 
 export function applyTradeStateMutation(context, amount) {
-    const { commodity, mode, port, price } = context;
-    const player = state.player;
+    const { commodity, mode, player, port, price } = context;
     const cargo = player.cargo ?? (player.cargo = {});
     const stock = port.stock ?? (port.stock = {});
     const maxStock = port.maxStock ?? (port.maxStock = {});
@@ -86,7 +88,7 @@ export function applyTradeStateMutation(context, amount) {
     log(`Sold ${amount} ${formatCommodity(commodity)} for ${formatCredits(total)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
     recordLogisticsDelivery({
         source: "market_trade",
-        sectorId: state.player.currentSector,
+        sectorId: player.currentSector,
         commodity,
         amount,
         profit: total
@@ -94,17 +96,17 @@ export function applyTradeStateMutation(context, amount) {
 }
 
 export function applyTradePoliticalEffects(context, amount) {
-    const { commodity, mode, port } = context;
+    const { commodity, mode, player, port } = context;
     if (amount < BALANCE.TRADE_BATCH) return;
     const influence = mode === "buy"
         ? BALANCE.MARKET.ROUTINE_BUY_INFLUENCE_GAIN
         : BALANCE.MARKET.ROUTINE_SELL_INFLUENCE_GAIN;
     const reason = mode === "buy" ? "routine public trade" : "supply-chain support";
-    applyPoliticalEffect({ factionId: port.factionId, publicRep: BALANCE.MARKET.ROUTINE_PUBLIC_REP_GAIN, trust: BALANCE.MARKET.ROUTINE_TRUST_GAIN, sectorId: state.player.currentSector, influence, reason, memoryKey: "reliableJobs" });
+    applyPoliticalEffect({ factionId: port.factionId, publicRep: BALANCE.MARKET.ROUTINE_PUBLIC_REP_GAIN, trust: BALANCE.MARKET.ROUTINE_TRUST_GAIN, sectorId: player.currentSector, influence, reason, memoryKey: "reliableJobs" });
 
     if (mode === "buy" && port.hiddenFactionId && random() < BALANCE.MARKET.HIDDEN_FACTION_RELATION_CHANCE) {
         addFactionRep(port.hiddenFactionId, BALANCE.MARKET.HIDDEN_FACTION_REP_GAIN, "quiet port relationship", "private");
-        const sector = state.universe[state.player.currentSector];
+        const sector = state.universe[player.currentSector];
         if (sector && sector.front) {
             sector.front.suspicion = Math.min(BALANCE.MARKET.FRONT_SUSPICION_MAX, sector.front.suspicion + BALANCE.MARKET.FRONT_SUSPICION_TRADE_GAIN);
         }
@@ -121,8 +123,8 @@ export function executeTradeDetailed(commodity, mode, getPortPrice, spendTime) {
     if (!context) return { amount: 0, code: "invalid_context" };
     const amount = validateTradeAndAmount(context);
     if (amount <= 0) return { amount: 0, code: "invalid_amount" };
-    if (!state.player || !context.port) return { amount: 0, code: "invalid_context" };
-    state.player.cargo ??= {};
+    if (!context.player || !context.port) return { amount: 0, code: "invalid_context" };
+    context.player.cargo ??= {};
     context.port.stock ??= {};
     context.port.maxStock ??= {};
     if (!spendTime(BALANCE.TRADE_TIME_MINUTES)) return { amount: 0, code: "time_blocked" };
