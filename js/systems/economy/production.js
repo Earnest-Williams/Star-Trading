@@ -12,7 +12,7 @@ const PRODUCTION_RECIPES = Object.freeze({
 function roleMultiplier(profile, recipe) {
     const tags = profile.roleTags || [];
     if (tags.includes('port:stardock') && recipe.role === 'stardock') return 1;
-    if (tags.includes('way_station') && recipe.role === 'refinery') return 0.5;
+    if (tags.includes('port:way_station') && recipe.role === 'refinery') return 0.5;
     if (tags.includes('extractive') && recipe.role === 'industrial') return 0.4;
     return 0.25;
 }
@@ -23,6 +23,7 @@ export function applyDailyProduction() {
         const port = state.ports?.[sectorId];
         const site = state.universe?.[sectorId];
         if (!port || !site) return;
+        if (!port.stock) port.stock = {};
         const extraction = getAsteroidExtractionPotential(site);
         Object.entries(extraction).forEach(([commodity, amount]) => {
             const max = Math.max(0, port.maxStock?.[commodity] || 0);
@@ -51,6 +52,6 @@ export function applyDailyProduction() {
             summary.produced[commodity] = (summary.produced[commodity] || 0) + produced;
         });
     });
-    state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player.time.day, production: summary };
+    state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, production: summary };
     return summary;
 }

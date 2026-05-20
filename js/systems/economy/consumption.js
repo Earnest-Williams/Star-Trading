@@ -28,6 +28,7 @@ export function applyDailyConsumption() {
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
         const port = state.ports?.[sectorId];
         if (!port) return;
+        if (!port.stock) port.stock = {};
         let hadShortage = false;
         const needs = { ...BASELINE_CONSUMPTION };
         (profile.roleTags || []).forEach((tag) => {
@@ -49,6 +50,6 @@ export function applyDailyConsumption() {
         });
         if (hadShortage) summary.sectorsWithShortage += 1;
     });
-    state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player.time.day, consumption: summary };
+    state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, consumption: summary };
     return summary;
 }
