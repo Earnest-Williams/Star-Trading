@@ -458,36 +458,16 @@ export const SAVE_KEY = "starTradingSaveV14";
 export const SAVE_KEY_LEGACY = "starTradingSaveV13";
 export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";
 export const COMMODITIES = ["ore", "org", "eq"];
-export const RAW_COMMODITIES = ["ore", "heavy_metals", "rare_earths", "water_ice", "org"];
-export const PROCESSED_COMMODITIES = ["refined_metals", "polymers", "coolants", "fertilizer"];
-export const MANUFACTURED_COMMODITIES = ["eq", "machinery", "repair_parts", "electronics", "medical_supplies", "construction_kits"];
-export const PULSE_COMMODITIES = ["pulse_canister", "heavy_pulse_module", "gate_coils", "control_cores"];
-export const MARKET_COMMODITIES = RAW_COMMODITIES
-    .concat(PROCESSED_COMMODITIES)
-    .concat(MANUFACTURED_COMMODITIES)
-    .concat(PULSE_COMMODITIES);
-export const CARGO_COMMODITIES = MARKET_COMMODITIES;
-export const COMMODITY_NAMES = {
-    ore: "Common Ore",
-    heavy_metals: "Heavy Metals",
-    rare_earths: "Rare Earths",
-    water_ice: "Water Ice",
-    org: "Biomass",
-    refined_metals: "Refined Metals",
-    polymers: "Polymers",
-    coolants: "Coolants",
-    fertilizer: "Fertilizer",
-    eq: "Equipment",
-    machinery: "Machinery",
-    repair_parts: "Repair Parts",
-    electronics: "Electronics",
-    medical_supplies: "Medical Supplies",
-    construction_kits: "Construction Kits",
-    pulse_canister: "Pulse Canisters",
-    heavy_pulse_module: "Heavy Pulse Modules",
-    gate_coils: "Gate Coils",
-    control_cores: "Control Cores"
-};
+export {
+    COMMODITY_REGISTRY,
+    RAW_COMMODITIES,
+    PROCESSED_COMMODITIES,
+    MANUFACTURED_COMMODITIES,
+    PULSE_COMMODITIES,
+    MARKET_COMMODITIES,
+    CARGO_COMMODITIES,
+    COMMODITY_NAMES
+} from "./config/economy/commodities.js";
 export const NPC_FINDABLE_PART_DEFS = Object.freeze({
     fuel_injector: Object.freeze({
         id: "fuel_injector",
