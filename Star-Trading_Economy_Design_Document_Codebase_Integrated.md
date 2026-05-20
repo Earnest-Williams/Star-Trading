@@ -1,6 +1,6 @@
 # Star-Trading Economy Design Document
 
-**Status:** updated codebase-aligned design spec  
+**Status:** updated codebase-aligned design spec; Phase 1 complete, Phase 2 implementation in progress  
 **Date:** 2026-05-20  
 **Target repository:** `Earnest-Williams/Star-Trading`  
 **Primary goal:** evolve the current commodity, market, company, route, ambient-trade, and mission systems into a legible frontier supply-chain economy without turning the game into a heavyweight macroeconomic simulator.

@@ -82,6 +82,57 @@ describe('migrateSave — version stamping', () => {
     });
 });
 
+describe('migrateSave — economy profile normalisation', () => {
+    it('drops invalid profile records and normalises valid entries, defaulting zero weights', () => {
+        const save = minimalSave(SAVE_VERSION);
+        save.economy.profilesBySector = {
+            1: {
+                sectorId: '1',
+                generatedDay: '3',
+                roleTags: ['port:mining', 7],
+                supplyWeight: 1.2,
+                demandWeight: 1.1,
+                extractionCapacity: '40',
+                populationDemand: null,
+                likelyExports: ['ore', false],
+                likelyImports: ['eq', 4]
+            },
+            2: {
+                sectorId: 2,
+                supplyWeight: 0,
+                demandWeight: 1
+            }
+        };
+
+        const result = migrateSave(save);
+
+        assert.deepEqual(result.economy.profilesBySector, {
+            1: {
+                sectorId: 1,
+                generatedDay: 3,
+                roleTags: ['port:mining'],
+                supplyWeight: 1.2,
+                demandWeight: 1.1,
+                extractionCapacity: 40,
+                populationDemand: 0,
+                likelyExports: ['ore'],
+                likelyImports: ['eq']
+            },
+            2: {
+                sectorId: 2,
+                generatedDay: 1,
+                roleTags: [],
+                supplyWeight: 1,
+                demandWeight: 1,
+                extractionCapacity: 0,
+                populationDemand: 0,
+                likelyExports: [],
+                likelyImports: []
+            }
+        });
+    });
+});
+
 describe('migrateSave — economy scaffolding', () => {
     it('adds economy state defaults when missing', () => {
         const save = minimalSave(SAVE_VERSION);
