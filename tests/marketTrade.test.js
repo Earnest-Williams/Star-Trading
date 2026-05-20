@@ -68,7 +68,7 @@ test('executeTradeDetailed returns time_blocked when spendTime denies', () => {
     assert.equal(result.code, 'time_blocked');
 });
 
-test('executeTradeDetailed returns invalid_context when player state is missing', () => {
+test('executeTradeDetailed returns result with invalid_context code when player state is missing', () => {
     seedGame();
     const originalPlayer = state.player;
     state.player = null;

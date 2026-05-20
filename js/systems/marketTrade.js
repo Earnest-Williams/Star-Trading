@@ -68,7 +68,6 @@ export function validateTradeAndAmount(context) {
 
 export function applyTradeStateMutation(context, amount) {
     const { commodity, mode, port, price } = context;
-    if (!state.player || !port) return;
     const player = state.player;
     const cargo = player.cargo ?? (player.cargo = {});
     const stock = port.stock ?? (port.stock = {});
@@ -122,6 +121,10 @@ export function executeTradeDetailed(commodity, mode, getPortPrice, spendTime) {
     if (!context) return { amount: 0, code: "invalid_context" };
     const amount = validateTradeAndAmount(context);
     if (amount <= 0) return { amount: 0, code: "invalid_amount" };
+    if (!state.player || !context.port) return { amount: 0, code: "invalid_context" };
+    state.player.cargo ??= {};
+    context.port.stock ??= {};
+    context.port.maxStock ??= {};
     if (!spendTime(BALANCE.TRADE_TIME_MINUTES)) return { amount: 0, code: "time_blocked" };
     applyTradeStateMutation(context, amount);
     applyTradePoliticalEffects(context, amount);
