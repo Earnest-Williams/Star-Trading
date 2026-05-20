@@ -1,0 +1,5 @@
+export const TRADE_BALANCE = {
+    TRADE_BATCH: 10,
+    MIN_TRADE_PRICE: 5,
+    TRADE_TIME_MINUTES: 30
+};
