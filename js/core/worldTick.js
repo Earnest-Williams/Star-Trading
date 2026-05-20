@@ -29,7 +29,7 @@ const PHASE_WRITE_TO_SLICES = Object.freeze({
     routes: [StateSlice.ROUTES],
     player: [StateSlice.PLAYER],
     universe: [StateSlice.UNIVERSE],
-    factions: [StateSlice.FACTIONS],
+    factions: [StateSlice.ECONOMY],
     missions: [StateSlice.MISSIONS],
     captains: [StateSlice.CAPTAINS],
     entanglements: [StateSlice.ENTANGLEMENTS],
@@ -38,7 +38,7 @@ const PHASE_WRITE_TO_SLICES = Object.freeze({
     worldEvents: [StateSlice.EVENTS],
     intel: [StateSlice.UNIVERSE],
     dataCargo: [StateSlice.DATA_CARGO],
-    time: [StateSlice.TIME]
+    time: [StateSlice.PERSISTENCE]
 });
 
 function phaseResult(summary) {

@@ -318,7 +318,7 @@ export function renderMenuPanel() {
 export function toggleMapInspectorCompact() {
     state.mapInspectorCompact = !state.mapInspectorCompact;
     savePreferencePatch(null, { mapInspectorCompact: state.mapInspectorCompact });
-    return stateChanged(StateSlice.MAP_VIEW);
+    return stateChanged(StateSlice.UI_RUNTIME);
 }
 
 export function renderMapInspector() {
