@@ -90,11 +90,11 @@ export function issueBounty(def) {
             throw new Error('Duplicate active bounty for issuer-target-type');
         }
     }
-    let id = null;
-    do {
-        id = `bounty_${state.bounties.nextId}`;
-        state.bounties.nextId += 1;
-    } while (state.bounties.byId[id]);
+    const id = `bounty_${state.bounties.nextId}`;
+    if (state.bounties.byId[id]) {
+        throw new Error(`Bounty id collision for ${id}`);
+    }
+    state.bounties.nextId += 1;
     const createdDay = getCurrentDay();
     const expiresDay = def.expiresDay || (createdDay + BALANCE.BOUNTIES.EXPIRY_DEFAULT_DAYS);
     const knownSiteId = def.knownSiteId || state.player?.currentSector || null;

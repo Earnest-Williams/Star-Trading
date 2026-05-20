@@ -97,7 +97,7 @@ describe('bounty system', () => {
         assert.equal(state.bounties.byId[bounty.id].status, 'expired');
     });
 
-    it('keeps accepted contracts while traveling through unrecognized space', () => {
+    it('keeps accepted contracts while traveling through unrecognized space during daily normalization', () => {
         const bounty = issueBounty({
             targetId: 'capt_transit',
             targetKind: 'captain',
@@ -107,7 +107,8 @@ describe('bounty system', () => {
         });
         state.bounties.byId[bounty.id].acceptedByGuildId = 'sda_marshal';
         state.bounties.byId[bounty.id].acceptedByPlayer = true;
-        state.player.currentSector = 2;
+        state.player.currentSector = 999;
+        assert.deepEqual(getRecognizedBountyGuilds(999), []);
 
         normalizeBountiesDaily();
 
