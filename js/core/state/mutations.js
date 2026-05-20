@@ -43,8 +43,10 @@ export const setPlayerCredits = value => {
 };
 export const patchSite = (siteId, patch) => {
     const site = state.universe?.[siteId];
-    if (!mergeInto(site, patch)) return [];
-    const keys = Object.keys(cleanPatch(patch));
+    const safePatch = cleanPatch(patch);
+    if (!site || Object.keys(safePatch).length === 0) return [];
+    Object.assign(site, safePatch);
+    const keys = Object.keys(safePatch);
     if (keys.some(key => key === 'jumpGates' || key === 'coord')) bumpWorldGraphRevision();
     if (keys.some(key => key === 'pirateThreat' || key === 'influence' || key === 'front' || key === 'station' || key === 'asteroids')) bumpInfluenceRevision();
     if (keys.some(key => key === 'asteroids')) bumpLogisticsNodeRevision();
@@ -56,7 +58,7 @@ export const patchPort = (sectorId, patch) => {
     const keys = Object.keys(safePatch);
     if (keys.some(key => key === 'stock' || key === 'basePrices' || key === 'maxStock' || key === 'priceBias')) incrementRevision('marketRevision');
     if (keys.some(key => key === 'stock' || key === 'maxStock' || key === 'hiddenFactionId' || key === 'factionId' || key === 'publicFactionId')) incrementRevision('logisticsNodeRevision');
-    if (keys.includes('hiddenFactionId') || keys.includes('factionId') || keys.includes('publicFactionId')) incrementRevision('influenceRevision');
+    if (keys.some(key => ['hiddenFactionId', 'factionId', 'publicFactionId'].includes(key))) incrementRevision('influenceRevision');
     return stateChanged(StateSlice.ECONOMY);
 };
 export const patchPlanet = (sectorId, patch) => {
@@ -65,7 +67,7 @@ export const patchPlanet = (sectorId, patch) => {
     const keys = Object.keys(safePatch);
     if (keys.some(key => key === 'stock' || key === 'basePrices' || key === 'maxStock')) incrementRevision('marketRevision');
     if (keys.some(key => key === 'stock' || key === 'maxStock' || key === 'colonists' || key === 'satisfaction' || key === 'owner' || key === 'factionId')) incrementRevision('logisticsNodeRevision');
-    if (keys.includes('colonists') || keys.includes('satisfaction') || keys.includes('owner') || keys.includes('factionId')) incrementRevision('influenceRevision');
+    if (keys.some(key => ['colonists', 'satisfaction', 'owner', 'factionId'].includes(key))) incrementRevision('influenceRevision');
     return stateChanged(StateSlice.ECONOMY);
 };
 export const patchRoute = (routeId, patch) => {

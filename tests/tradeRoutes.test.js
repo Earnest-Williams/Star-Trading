@@ -272,13 +272,14 @@ describe('explicit trade route execution', () => {
 
     it('explicit route execution changes stock as expected', () => {
         const route = { id: 1, name: 'Ore line', originSector: 1, destinationSector: 4, commodity: 'ore', amount: 12, ownerType: 'player', ownerId: null, status: 'active', heat: 0, reliability: 50, runs: 0, failures: 0 };
+        state.tradeRoutes = [route];
         state.player.credits = 0;
         const originBefore = state.ports[1].stock.ore;
         const destinationBefore = state.ports[4].stock.ore;
         runTradeRoute(route);
         assert.equal(state.ports[1].stock.ore, originBefore - 12);
         assert.equal(state.ports[4].stock.ore, destinationBefore + 12);
-        assert.equal(route.runs, 1);
+        assert.equal(state.tradeRoutes[0].runs, 1);
     });
 
     it('closing a route does not mutate corridor infrastructure', () => {
