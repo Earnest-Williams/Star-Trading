@@ -9,7 +9,7 @@ import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 
 function renderPressurePanel(sectorId) {
-    const pressure = state.economy?.pressureBySector?.[sectorId];
+    const pressure = state.economy?.pressureBySector?.[String(sectorId)];
     let html = `<h4>Market Pressure</h4>`;
     if (!pressure || typeof pressure !== "object") {
         return `${html}<div class="muted">No pressure telemetry recorded for this site yet.</div>`;
@@ -20,7 +20,7 @@ function renderPressurePanel(sectorId) {
         const shortage = Math.round(Math.max(0, Number(signal.shortageSeverity || 0)) * 100);
         const surplus = Math.round(Math.max(0, Number(signal.surplusSeverity || 0)) * 100);
         const stockRatio = Math.round(Math.max(0, Number(signal.stockRatio || 0)) * 100);
-        html += `<div class="small"><strong>${formatCommodity(commodity)}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%</div>`;
+        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%</div>`;
     });
     return html;
 }
