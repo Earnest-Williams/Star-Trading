@@ -6,6 +6,7 @@ import { apply as applyV10 } from './v10.js';
 import { apply as applyV14 } from './v14.js';
 import { apply as applyV19 } from './v19.js';
 import { isObject, migrateLegacyWarpAdjacencyToJumpGates, migrateShipTransitFields } from './helpers.js';
+import { normaliseEconomyState } from '../../systems/economy/migration.js';
 
 function normaliseRouteOwnership(data) {
     if (!Array.isArray(data.tradeRoutes)) data.tradeRoutes = [];
@@ -23,6 +24,7 @@ function ensureDefaults(data) {
     if (!data.dataCargo || typeof data.dataCargo !== 'object') {
         data.dataCargo = { sectorKnowledge: {}, playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] }, secureContracts: [], ambientTransfers: [], nextPayloadId: 1, license: { secureCourier: false, issuedByFactionId: null, issuedDay: null } };
     }
+    data.economy = normaliseEconomyState(data.economy);
 }
 
 export function runMigrations(data) {

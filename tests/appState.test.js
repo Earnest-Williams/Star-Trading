@@ -22,6 +22,18 @@ describe('app shell state', () => {
         assert.equal(initial.shellMessage, null);
         assert.equal(initial.settingsOpenTab, 'general');
         assert.equal(initial.isTransitioning, false);
+        assert.deepEqual(initial.economy, {
+            version: 1,
+            profilesBySector: {},
+            pressureBySector: {},
+            recentVolumeBySector: {},
+            contracts: [],
+            nextContractId: 1,
+            dailySummary: null,
+            lastProfileBuildDay: null,
+            lastPressureDay: null,
+            generatedByVersion: 1
+        });
     });
 
     it('resetState restores shell defaults', () => {

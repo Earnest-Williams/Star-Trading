@@ -48,6 +48,18 @@ function minimalSave(version) {
         tradeRoutes: [],
         nextTradeRouteId: 1,
         nextMissionId: 1,
+        economy: {
+            version: 1,
+            profilesBySector: {},
+            pressureBySector: {},
+            recentVolumeBySector: {},
+            contracts: [],
+            nextContractId: 1,
+            dailySummary: null,
+            lastProfileBuildDay: null,
+            lastPressureDay: null,
+            generatedByVersion: 1
+        },
         ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
         dataCargo: { sectorKnowledge: {}, playerHold: { publicSnapshots: {} }, ambientTransfers: [] }
     };
@@ -67,6 +79,26 @@ describe('migrateSave — version stamping', () => {
         assert.equal(result.version, SAVE_VERSION);
         const after = JSON.stringify(result);
         assert.equal(before, after);
+    });
+});
+
+describe('migrateSave — economy scaffolding', () => {
+    it('adds economy state defaults when missing', () => {
+        const save = minimalSave(SAVE_VERSION);
+        delete save.economy;
+        const result = migrateSave(save);
+        assert.deepEqual(result.economy, {
+            version: 1,
+            profilesBySector: {},
+            pressureBySector: {},
+            recentVolumeBySector: {},
+            contracts: [],
+            nextContractId: 1,
+            dailySummary: null,
+            lastProfileBuildDay: null,
+            lastPressureDay: null,
+            generatedByVersion: 1
+        });
     });
 });
 
@@ -334,6 +366,18 @@ describe('save serialization', () => {
         state.tradeRoutes = [];
         state.nextTradeRouteId = 1;
         state.nextMissionId = 8;
+        state.economy = {
+            version: 1,
+            profilesBySector: { 1: { profile: 'industrial' } },
+            pressureBySector: { 1: { ore: 0.25 } },
+            recentVolumeBySector: { 1: { ore: 12 } },
+            contracts: [{ id: 1, commodity: 'ore', status: 'open' }],
+            nextContractId: 2,
+            dailySummary: { day: 3, shortages: 1 },
+            lastProfileBuildDay: 2,
+            lastPressureDay: 3,
+            generatedByVersion: 1
+        };
         state.ambientTrade = { day: 2, moved: { ore: 3, org: 4, eq: 5 }, flows: 6 };
         state.rng = { seed: 12345, session: 2 };
         state.starField = [{ x: 99, y: 99, size: 2 }];
@@ -359,6 +403,9 @@ describe('save serialization', () => {
         assert.equal(state.simulationTrace[0].summary.text, 'Trace event');
         assert.equal(state.simulationTrace[0].causedBy[0].eventId, 7);
         assert.equal(state.nextSimulationTraceId, 2);
+        assert.equal(state.economy.contracts[0].commodity, 'ore');
+        assert.equal(state.economy.nextContractId, 2);
+        assert.equal(state.economy.pressureBySector[1].ore, 0.25);
         assert.equal(state.selectedSectorId, state.player.currentSector);
         assert.equal(state.currentScreen, 'sector');
         assert.deepEqual(state.starField, []);

@@ -54,6 +54,7 @@ export const SAVE_STATE_FIELDS = Object.freeze([
     'logisticsObjectives',
     'nextLogisticsObjectiveId',
     'nextMissionId',
+    'economy',
     'ambientTrade',
     'priorityBriefing',
     'dataCargo',

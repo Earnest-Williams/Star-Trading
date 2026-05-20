@@ -48,6 +48,18 @@ function minimalSave(version) {
         tradeRoutes: [],
         nextTradeRouteId: 1,
         nextMissionId: 1,
+        economy: {
+            version: 1,
+            profilesBySector: {},
+            pressureBySector: {},
+            recentVolumeBySector: {},
+            contracts: [],
+            nextContractId: 1,
+            dailySummary: null,
+            lastProfileBuildDay: null,
+            lastPressureDay: null,
+            generatedByVersion: 1
+        },
         ambientTrade: { day: 0, moved: { ore: 0, org: 0, eq: 0 }, flows: 0 },
         dataCargo: { sectorKnowledge: {}, playerHold: { publicSnapshots: {} }, ambientTransfers: [] }
     };

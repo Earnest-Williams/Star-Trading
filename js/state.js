@@ -1,3 +1,5 @@
+import { createInitialEconomyState } from './systems/economy/migration.js';
+
 export const APP_MODES = Object.freeze({
     MAIN_MENU: "mainMenu",
     IN_GAME: "inGame",
@@ -101,6 +103,7 @@ export function createInitialState() {
         screenPanelMode: "full",
         mapViewport: { scale: 1, offsetX: 0, offsetY: 0 },
         worldGraphRevision: 0,
+        economy: createInitialEconomyState(),
         marketRevision: 0,
         logisticsNodeRevision: 0,
         influenceRevision: 0,
