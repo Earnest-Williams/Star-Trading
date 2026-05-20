@@ -2822,3 +2822,33 @@ The overhaul is successful when the player can answer these questions from the U
 - What will change if I supply this place for several days?
 
 The economy should become a legible machine that the player can learn, exploit, stabilize, disrupt, or specialize in.
+
+---
+
+## 35. Implementation Walkthrough Log (Two Passes)
+
+### Pass 1 (2026-05-20): plan-to-codebase reconciliation
+
+- Verified the economy module tree exists and is integrated through generation, tick, pricing, contracts, ambient flow, and save normalization layers.
+- Verified the top-level economy state default exists in `createInitialState()` and is sourced from economy migration helpers.
+- Verified economy profile generation and pressure recomputation are wired into world generation and daily simulation hooks.
+- Verified the market and route systems already consume unified economy pricing functions.
+- Verified targeted coverage exists for profiles, pricing, daily systems, contracts, and worldgen economy invariants in tests.
+
+Outcome: most deliverables through Phase 8 are materially present in the repository; Phase 9 appears partially present and primarily UI-depth work.
+
+### Pass 2 (2026-05-20): deterministic validation and regression confirmation
+
+- Ran the full automated test suite again after Pass 1 reconciliation.
+- Confirmed no regressions across economy and non-economy systems.
+- Confirmed full suite pass status (`495/495`) with zero failures.
+
+Outcome: current implementation state remains stable; next work should focus on Phase 9 explanation depth and market-intelligence presentation polish.
+
+### Phase 9 follow-up implementation notes (2026-05-20)
+
+- Added a dedicated **Market Intelligence** panel in the market UI that shows sector data freshness and per-commodity recommendation confidence signals.
+- Extended logistics route-opportunity rendering with **signal-quality** messaging so route estimates explicitly call out whether telemetry is live, stale, or unknown.
+- Added a logistics advisory note that explains estimate quality dependence on destination telemetry freshness.
+
+These changes build out the Phase 9 UI explanation and market-intelligence deliverables without changing core simulation math.

@@ -4,6 +4,8 @@ import { getColonyDailyNeeds } from "../systems/colonies.js";
 import { buildLogisticsSnapshot, getRouteEscortCandidates } from "../systems/tradeRoutes.js";
 import { buildLogisticsObjectivesSnapshot, describeObjectiveCommodityProgress } from "../systems/logisticsObjectives.js";
 import { captainDisplayName } from "../systems/captains.js";
+import { state } from "../state.js";
+import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
 
 export function renderLogisticsScreen() {
     const snapshot = buildLogisticsSnapshot();
@@ -37,8 +39,15 @@ function renderRouteCreationPanel(snapshot) {
         html += `<div class="mission"><strong>${escapeHtml(candidate.destination.name)}</strong> <span class="muted">${candidate.hopCount} corridors, span ${span}, risk ${candidate.risk}${surcharge}</span><br>`;
         commodities.forEach(option => {
             const marginBand = `${formatCredits(option.low)}c - ${formatCredits(option.high)}c`;
+            const freshness = getFreshnessSummaryForSector(candidate.destination.sectorId);
+            const freshnessHint = freshness.label === "current"
+                ? "live local telemetry"
+                : freshness.known
+                    ? `${freshness.label} telemetry (${freshness.age}d old)`
+                    : "unknown telemetry";
             html += `<button data-action="createTradeRoute" data-arg0="${candidate.destination.sectorId}" data-arg1="${option.commodity}">Open ${formatCommodity(option.commodity)} Route (${formatCredits(candidate.setupCost)}c, est ${formatCredits(option.estimatedProfit)}c/day)</button>`;
             html += `<div class="small muted">Opportunity: ${formatCommodity(option.commodity)} route projects ${marginBand} per day with ${riskLabel}. Corridor span ${span} across ${candidate.hopCount} hops.</div>`;
+            html += `<div class="small muted">Signal quality: ${freshnessHint}. Refresh data via comms courier work for tighter estimates.</div>`;
         });
         html += `</div>`;
     });
@@ -113,7 +122,10 @@ function renderActiveRoutesPanel(snapshot) {
         html += `</div></div>`;
     });
     html += `</div>`;
+    const currentSector = Number(state.player?.currentSector || 0);
+    const freshness = getFreshnessSummaryForSector(currentSector);
     html += `<div class="small muted">Last ambient trade: ${snapshot.ambientTradeFlows} aggregate flows. These background haulers are capped by shortage, surplus, distance, and risk.</div>`;
+    html += `<div class="small muted">Current-sector market telemetry is ${escapeHtml(freshness.label)}. If destination telemetry is stale/cold, route estimates are advisory until refreshed.</div>`;
     return html;
 }
 
