@@ -30,7 +30,7 @@ export const DOMAIN_SLICE_MAP = Object.freeze({
     dialogue: { keys: ['dialogueConversations', 'selectedDialogueConversationId', 'dialogueConversationParts'], slices: [StateSlice.DIALOGUE] },
     persistence: { keys: ['rng'], slices: [StateSlice.PERSISTENCE] },
     missions: { keys: ['missions', 'nextMissionId'], slices: [StateSlice.MISSIONS] },
-    uiRuntime: { keys: ['currentScreen', 'selectedSectorId', 'mapViewport', 'mapLayers', 'appMode', 'reputationTab', 'mapInspectorCompact', 'mapLayersOpen', 'mapHelpOpen', 'selectedCaptainId', 'screenPanelMode', 'mapPanelMode', 'priorityBriefing'], slices: [StateSlice.UI_RUNTIME] },
+    uiRuntime: { keys: ['currentScreen', 'selectedSectorId', 'mapViewport', 'mapLayers', 'appMode', 'reputationTab', 'mapInspectorCompact', 'mapLayersOpen', 'mapHelpOpen', 'selectedCaptainId', 'screenPanelMode', 'mapPanelMode'], slices: [StateSlice.UI_RUNTIME] },
     events: { keys: ['worldEvents', 'priorityBriefing', 'simulationTrace', 'nextWorldEventId', 'nextSimulationTraceId'], slices: [StateSlice.EVENTS] },
     dataCargo: { keys: ['dataCargo'], slices: [StateSlice.DATA_CARGO] },
     logisticsObjectives: { keys: ['logisticsObjectives', 'nextLogisticsObjectiveId'], slices: [StateSlice.LOGISTICS_OBJECTIVES] },
