@@ -100,7 +100,7 @@ describe('bounty system', () => {
         assert.equal(state.bounties.byId[bounty.id].status, 'expired');
     });
 
-    it('keeps accepted contracts while traveling through unrecognized space during daily normalization', () => {
+    it('clears accepted contracts when recognition changes during daily normalization', () => {
         const bounty = issueBounty({
             targetId: 'capt_transit',
             targetKind: 'captain',
@@ -110,13 +110,15 @@ describe('bounty system', () => {
         });
         state.bounties.byId[bounty.id].acceptedByGuildId = 'sda_marshal';
         state.bounties.byId[bounty.id].acceptedByPlayer = true;
-        state.player.currentSector = 999;
-        assert.deepEqual(getRecognizedBountyGuilds(999), []);
+        state.universe[1].influence = {};
+        state.ports[1].factionId = 'vc';
+        state.ports[1].publicFactionId = 'vc';
+        assert.deepEqual(getRecognizedBountyGuilds(1), []);
 
         normalizeBountiesDaily();
 
-        assert.equal(state.bounties.byId[bounty.id].acceptedByGuildId, 'sda_marshal');
-        assert.equal(state.bounties.byId[bounty.id].acceptedByPlayer, true);
+        assert.equal(state.bounties.byId[bounty.id].acceptedByGuildId, null);
+        assert.equal(state.bounties.byId[bounty.id].acceptedByPlayer, false);
     });
 
     it('enforces claim validations and rewards valid claims', () => {

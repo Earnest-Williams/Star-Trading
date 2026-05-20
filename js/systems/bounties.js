@@ -11,45 +11,37 @@ function ensureBountyState() {
     if (!state.bounties || typeof state.bounties !== 'object') {
         state.bounties = { byId: {}, allIds: [], nextId: 1 };
     }
-    if (!state.bounties.byId || typeof state.bounties.byId !== 'object') {
-        state.bounties.byId = {};
-    }
-    if (!Array.isArray(state.bounties.allIds)) {
-        state.bounties.allIds = [];
-    }
+    if (!state.bounties.byId || typeof state.bounties.byId !== 'object') state.bounties.byId = {};
+    if (!Array.isArray(state.bounties.allIds)) state.bounties.allIds = [];
     if (!Number.isInteger(state.bounties.nextId) || state.bounties.nextId < 1) {
         const maxExistingId = state.bounties.allIds.reduce((maxId, id) => {
-            const match = /^bounty_(\d+)$/.exec(id);
-            if (!match) return maxId;
-            return Math.max(maxId, Number.parseInt(match[1], 10));
+            const prefix = 'bounty_';
+            if (!id.startsWith(prefix)) return maxId;
+            const suffix = id.slice(prefix.length);
+            if (!/^\d+$/.test(suffix)) return maxId;
+            return Math.max(maxId, Number.parseInt(suffix, 10));
         }, 0);
         state.bounties.nextId = maxExistingId + 1;
     }
     if (!state.player) return;
-    if (!state.player.bountyGuilds || typeof state.player.bountyGuilds !== 'object') {
-        state.player.bountyGuilds = {};
-    }
+    if (!state.player.bountyGuilds || typeof state.player.bountyGuilds !== 'object') state.player.bountyGuilds = {};
     const guildState = state.player.bountyGuilds;
-    if (!guildState.memberships || typeof guildState.memberships !== 'object') {
-        guildState.memberships = {};
-    }
-    if (!guildState.standings || typeof guildState.standings !== 'object') {
-        guildState.standings = {};
-    }
-    if (!guildState.activeGuildId) {
-        guildState.activeGuildId = null;
-    }
+    if (!guildState.memberships || typeof guildState.memberships !== 'object') guildState.memberships = {};
+    if (!guildState.standings || typeof guildState.standings !== 'object') guildState.standings = {};
+    if (!Object.hasOwn(guildState, 'activeGuildId')) guildState.activeGuildId = null;
 }
 
 export function getRecognizedBountyGuilds(siteId) {
     const site = state.ports?.[siteId];
     const sector = state.universe?.[siteId];
-    const stationFactionId = site?.factionId || site?.publicFactionId || null;
+    if (!site || !sector) return [];
+    const jurisdictionFactionId = site?.factionId || site?.publicFactionId || null;
     const influence = sector?.influence || {};
-    const profile = BALANCE.BOUNTY_GUILDS;
-    return profile.filter(guild => {
-        if (guild.defaultRecognitionProfile.includes(stationFactionId)) return true;
-        return guild.sponsorFactionIds.some(id => (influence[id] || 0) >= 30);
+    return BALANCE.BOUNTY_GUILDS.filter(guild => {
+        const explicit = Array.isArray(site.bountyGuildOverrides) ? site.bountyGuildOverrides : [];
+        if (explicit.includes(guild.id)) return true;
+        if (guild.defaultRecognitionProfile.includes(jurisdictionFactionId)) return true;
+        return guild.sponsorFactionIds.some(id => (influence[id] || 0) >= BALANCE.BOUNTIES.HUNTER_PRESSURE_HEAT_THRESHOLD);
     }).map(guild => guild.id);
 }
 
@@ -58,21 +50,19 @@ export function canLegallyAcceptBounty(bountyId, guildId, siteId) {
     const bounty = state.bounties.byId[bountyId];
     if (!bounty) return { ok: false, reasons: ['unknown_bounty'] };
     if (bounty.status === 'claimed') return { ok: false, reasons: ['already_claimed'] };
-    if (bounty.status === 'expired' || bounty.expiresDay < getCurrentDay()) {
-        return { ok: false, reasons: ['expired'] };
-    }
+    if (bounty.status === 'expired' || bounty.expiresDay < getCurrentDay()) return { ok: false, reasons: ['expired'] };
     if (bounty.status !== 'active') return { ok: false, reasons: ['unavailable'] };
+    if (!guildId) return { ok: false, reasons: ['no_membership'] };
     const membership = state.player?.bountyGuilds?.memberships?.[guildId];
-    if (!membership || membership.licenseState !== 'active') {
+    if (!membership || membership.licenseState !== 'active' || membership.duesStatus !== 'paid') {
         return { ok: false, reasons: ['no_membership'] };
     }
     const recognized = getRecognizedBountyGuilds(siteId);
+    if (!recognized.length) return { ok: false, reasons: ['unavailable_jurisdiction'] };
     if (!recognized.includes(guildId) || !bounty.recognizedGuildIds.includes(guildId)) {
         return { ok: false, reasons: ['guild_not_recognized'] };
     }
-    if ((membership.rank || 0) < (bounty.requiredGuildTier || 1)) {
-        return { ok: false, reasons: ['insufficient_tier'] };
-    }
+    if ((membership.rank || 0) < (bounty.requiredGuildTier || 1)) return { ok: false, reasons: ['insufficient_tier'] };
     return { ok: true, reasons: [] };
 }
 
@@ -85,18 +75,16 @@ export function issueBounty(def) {
     for (const id of state.bounties.allIds) {
         const existing = state.bounties.byId[id];
         if (!existing) continue;
-        if (existing.status === 'active' && existing.targetId === def.targetId && existing.type === def.type
-            && existing.issuedBy === def.issuedBy) {
+        if (existing.status === 'active' && existing.targetId === def.targetId && existing.type === def.type && existing.issuedBy === def.issuedBy) {
             throw new Error('Duplicate active bounty for issuer-target-type');
         }
     }
     const id = `bounty_${state.bounties.nextId}`;
-    if (state.bounties.byId[id]) {
-        throw new Error(`Bounty id collision for ${id}`);
-    }
+    if (state.bounties.byId[id]) throw new Error(`Bounty id collision for ${id}`);
     state.bounties.nextId += 1;
     const createdDay = getCurrentDay();
-    const expiresDay = def.expiresDay || (createdDay + BALANCE.BOUNTIES.EXPIRY_DEFAULT_DAYS);
+    const expirySpan = Math.max(BALANCE.BOUNTIES.EXPIRY_MIN_DAYS, Math.min(BALANCE.BOUNTIES.EXPIRY_DEFAULT_DAYS, BALANCE.BOUNTIES.EXPIRY_MAX_DAYS));
+    const expiresDay = def.expiresDay || (createdDay + expirySpan);
     const knownSiteId = def.knownSiteId || state.player?.currentSector || null;
     const recognizedGuildIds = def.recognizedGuildIds || getRecognizedBountyGuilds(knownSiteId);
     const bounty = {
@@ -137,23 +125,18 @@ export function getActiveBounties(context = {}) {
     const guildId = context.guildId || state.player?.bountyGuilds?.activeGuildId || null;
     return state.bounties.allIds
         .map(id => state.bounties.byId[id])
-        .filter(bounty => bounty && bounty.status === 'active' && bounty.expiresDay >= getCurrentDay())
-        .map(bounty => {
-            const eligibility = canLegallyAcceptBounty(bounty.id, guildId, siteId);
-            return { ...bounty, eligibility };
-        });
+        .filter(bounty => bounty && bounty.status === 'active')
+        .filter(bounty => bounty.expiresDay >= getCurrentDay())
+        .map(bounty => ({ ...bounty, eligibility: canLegallyAcceptBounty(bounty.id, guildId, siteId) }));
 }
 
 export function claimBounty(id, resolution = 'defeat') {
     ensureBountyState();
     const bounty = state.bounties.byId[id];
-    if (!bounty) return false;
-    if (bounty.status !== 'active') return false;
+    if (!bounty || bounty.status !== 'active') return false;
     const guildId = bounty.acceptedByGuildId || state.player?.bountyGuilds?.activeGuildId;
     const legal = canLegallyAcceptBounty(id, guildId, state.player?.currentSector);
-    if (!legal.ok) return false;
-    if (!bounty.acceptedByPlayer) return false;
-    if (!bounty.allowedResolutions.includes(resolution)) return false;
+    if (!legal.ok || !bounty.acceptedByPlayer || !bounty.allowedResolutions.includes(resolution)) return false;
     bounty.status = 'claimed';
     bounty.resolution = resolution;
     state.player.credits = (state.player.credits || 0) + bounty.reward;
@@ -183,6 +166,13 @@ export function normalizeBountiesDaily() {
         if (!bounty || bounty.status !== 'active') continue;
         if (bounty.expiresDay < getCurrentDay()) {
             bounty.status = 'expired';
+            continue;
+        }
+        if (!bounty.acceptedByGuildId) continue;
+        const recognized = getRecognizedBountyGuilds(bounty.knownSiteId);
+        if (!recognized.includes(bounty.acceptedByGuildId)) {
+            bounty.acceptedByGuildId = null;
+            bounty.acceptedByPlayer = false;
         }
     }
 }
