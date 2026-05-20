@@ -67,3 +67,15 @@ test('executeTradeDetailed returns time_blocked when spendTime denies', () => {
     assert.equal(result.amount, 0);
     assert.equal(result.code, 'time_blocked');
 });
+
+test('executeTradeDetailed returns invalid_context when player state is missing', () => {
+    seedGame();
+    const originalPlayer = state.player;
+    state.player = null;
+    try {
+        const result = executeTradeDetailed('ore', 'buy', getPortPrice, () => true);
+        assert.deepEqual(result, { amount: 0, code: 'invalid_context' });
+    } finally {
+        state.player = originalPlayer;
+    }
+});

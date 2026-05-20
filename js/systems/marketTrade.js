@@ -21,7 +21,7 @@ export function resolveTradeContext(commodity, mode, getPortPrice) {
         log("Invalid trade mode. Use buy or sell.");
         return null;
     }
-    const port = state.ports[state.player.currentSector];
+    const port = state.ports[state.player?.currentSector];
     if (!port) return null;
     return {
         commodity,
@@ -46,9 +46,9 @@ export function validateTradeAndAmount(context) {
         }
         amount = Math.min(
             amount,
-            port.stock[commodity] || 0,
+            port.stock?.[commodity] || 0,
             getFreeHolds(),
-            Math.floor(state.player.credits / price)
+            Math.floor((state.player?.credits || 0) / price)
         );
         if (amount <= 0) {
             log("You cannot buy that right now. Check credits, port stock, and free holds.");
@@ -59,7 +59,7 @@ export function validateTradeAndAmount(context) {
         log("This port does not buy that commodity.");
         return 0;
     }
-    amount = Math.min(amount, state.player.cargo[commodity] || 0);
+    amount = Math.min(amount, state.player.cargo?.[commodity] || 0);
     if (amount <= 0) {
         log("You do not have that cargo to sell.");
     }
@@ -69,16 +69,19 @@ export function validateTradeAndAmount(context) {
 export function applyTradeStateMutation(context, amount) {
     const { commodity, mode, port, price } = context;
     const total = amount * price;
+    state.player.cargo ||= {};
+    port.stock ||= {};
+    port.maxStock ||= {};
     if (mode === "buy") {
         state.player.credits -= total;
-        state.player.cargo[commodity] = (state.player.cargo[commodity] || 0) + amount;
-        port.stock[commodity] = Math.max(0, (port.stock[commodity] || 0) - amount);
+        state.player.cargo[commodity] = (state.player.cargo?.[commodity] || 0) + amount;
+        port.stock[commodity] = Math.max(0, (port.stock?.[commodity] || 0) - amount);
         log(`Bought ${amount} ${formatCommodity(commodity)} for ${formatCredits(total)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         return;
     }
     state.player.credits += total;
-    state.player.cargo[commodity] = Math.max(0, (state.player.cargo[commodity] || 0) - amount);
-    port.stock[commodity] = Math.min(port.maxStock[commodity] || 1, (port.stock[commodity] || 0) + amount);
+    state.player.cargo[commodity] = Math.max(0, (state.player.cargo?.[commodity] || 0) - amount);
+    port.stock[commodity] = Math.min(port.maxStock?.[commodity] || 1, (port.stock?.[commodity] || 0) + amount);
     log(`Sold ${amount} ${formatCommodity(commodity)} for ${formatCredits(total)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
     recordLogisticsDelivery({
         source: "market_trade",
