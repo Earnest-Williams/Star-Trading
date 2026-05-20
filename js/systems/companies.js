@@ -162,11 +162,11 @@ function computeExtractionCompanyCount(sectorId) {
     return 0;
 }
 
-function scoreProcessingPresence(sectorId) {
+function scoreProcessingPresence(sectorId, connectivityScore = getRouteConnectivityScore(sectorId)) {
     const profile = getEconomicProfile(sectorId);
     const extraction = Number(profile?.extractionCapacity) || 0;
     const localExtraction = Math.min(2, extraction / 4000);
-    const connectivity = Math.min(2, getRouteConnectivityScore(sectorId));
+    const connectivity = Math.min(2, connectivityScore);
     const roleTags = Array.isArray(profile?.roleTags) ? profile.roleTags : [];
     const industrialBias = roleTags.some(tag => tag === 'port:industrial' || tag === 'port:refinery')
         ? 1
@@ -174,12 +174,11 @@ function scoreProcessingPresence(sectorId) {
     return localExtraction + connectivity + industrialBias;
 }
 
-function computeTradeScaling(sectorId) {
+function computeTradeScaling(sectorId, connectivityScore = getRouteConnectivityScore(sectorId)) {
     const profile = getEconomicProfile(sectorId);
     const importPressure = Array.isArray(profile?.likelyImports) ? profile.likelyImports.length : 0;
     const exportPressure = Array.isArray(profile?.likelyExports) ? profile.likelyExports.length : 0;
-    const connectivity = getRouteConnectivityScore(sectorId);
-    const throughput = importPressure + exportPressure + connectivity;
+    const throughput = importPressure + exportPressure + connectivityScore;
     return {
         haulageCount: throughput >= 7 ? 2 : throughput >= 3 ? 1 : 0,
         importExportCount: throughput >= 8 ? 2 : throughput >= 4 ? 1 : 0
@@ -235,23 +234,19 @@ export function seedCompaniesAndPeople(rng) {
         const type = chooseCompanyType(sectorId);
         createCompany(sectorId, type, rng);
         const extractionCount = computeExtractionCompanyCount(sectorId);
-        if (type !== 'mining_contractor') {
-            for (let index = 0; index < extractionCount; index++) {
-                createCompany(sectorId, 'mining_contractor', rng);
-            }
-        } else {
-            for (let index = 1; index < extractionCount; index++) {
-                createCompany(sectorId, 'mining_contractor', rng);
-            }
+        const startMiningIndex = type === 'mining_contractor' ? 1 : 0;
+        for (let index = startMiningIndex; index < extractionCount; index++) {
+            createCompany(sectorId, 'mining_contractor', rng);
         }
-        if (scoreProcessingPresence(sectorId) >= 2.75 && type !== 'refinery_operator') {
+        const connectivityScore = getRouteConnectivityScore(sectorId);
+        if (scoreProcessingPresence(sectorId, connectivityScore) >= 2.75 && type !== 'refinery_operator') {
             createCompany(sectorId, 'refinery_operator', rng);
         }
         const port = state.ports[sectorId];
         const portType = port ? getPortType(port) : null;
         const isHub = port && (portType.sells.length > 0 || port.typeKey === 'stardock');
         if (isHub) createCompany(sectorId, type === 'import_export' ? 'haulage' : 'import_export', rng);
-        const scaling = computeTradeScaling(sectorId);
+        const scaling = computeTradeScaling(sectorId, connectivityScore);
         for (let index = 0; index < scaling.haulageCount; index++) {
             createCompany(sectorId, 'haulage', rng);
         }
