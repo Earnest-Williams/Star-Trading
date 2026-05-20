@@ -365,7 +365,7 @@ describe('save serialization', () => {
         assert.deepEqual(state.mapNodeCache, {});
     });
 
-    it('loads legacy sitesById saves by aliasing sitesById to universe', () => {
+    it('rejects save payloads that include removed top-level legacy fields', () => {
         const save = minimalSave(SAVE_VERSION);
         save.universe = { 1: { id: 1, jumpGates: [], region: 'Core', pirateThreat: 0 } };
         save.sitesById = { 99: { id: 99, jumpGates: [] } };
@@ -374,9 +374,9 @@ describe('save serialization', () => {
         };
         setPersistenceAdapters({ storage });
 
-        assert.equal(loadGame(), true);
-        assert.equal(state.sitesById, state.universe);
-        assert.equal(state.sitesById[99], undefined);
+        assert.equal(loadGame(), false);
+        assert.deepEqual(state.sitesById, {});
+        assert.equal(state.universe[99], undefined);
     });
 });
 
