@@ -198,7 +198,8 @@ describe('bounty system', () => {
         state.bounties.byId[claimed.id].acceptedByGuildId = 'sda_marshal';
         state.bounties.byId[claimed.id].acceptedByPlayer = true;
         assert.equal(claimBounty(claimed.id, 'defeat'), true);
-        state.player.time.day = expired.expiresDay + 1;
+        const dayAfterExpiredBounty = expired.expiresDay + 1;
+        state.player.time.day = dayAfterExpiredBounty;
 
         assert.deepEqual(canLegallyAcceptBounty(expired.id, 'sda_marshal', 1), { ok: false, reasons: ['expired'] });
         assert.deepEqual(canLegallyAcceptBounty(claimed.id, 'sda_marshal', 1), { ok: false, reasons: ['already_claimed'] });
