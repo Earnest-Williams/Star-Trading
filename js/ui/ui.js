@@ -137,18 +137,14 @@ export function showScreen(screen) {
 
     state.currentScreen = screen;
     if (state.currentScreen !== 'reputation') state.selectedCaptainId = null;
-    return stateChanged(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN);
+    return stateChanged(StateSlice.UI_RUNTIME);
 }
 
 export function setReputationTab(tab) {
     state.reputationTab = tab;
     state.currentScreen = 'reputation';
     state.selectedCaptainId = null;
-    return stateChanged(
-        StateSlice.REPUTATION_TAB,
-        StateSlice.CURRENT_SCREEN,
-        StateSlice.SELECTED_CAPTAIN
-    );
+    return stateChanged(StateSlice.UI_RUNTIME);
 }
 
 // =====================================================
@@ -285,52 +281,43 @@ const rendererRegistrations = [
 
     ['header', renderHeader, [
         StateSlice.PLAYER,
-        StateSlice.TIME,
+        StateSlice.PERSISTENCE,
         StateSlice.UNIVERSE
     ]],
 
     ['sector', renderSectorContents, [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
-        StateSlice.PORTS,
-        StateSlice.PLANETS,
-        StateSlice.TRADE_ROUTES,
+        StateSlice.ECONOMY,
+        StateSlice.ROUTES,
         StateSlice.CAPTAINS,
         StateSlice.DATA_CARGO,
         StateSlice.DIALOGUE
     ]],
 
     ['screen', renderCurrentScreen, [
-        StateSlice.CURRENT_SCREEN,
+        StateSlice.UI_RUNTIME,
         StateSlice.PLAYER,
-        StateSlice.PORTS,
-        StateSlice.PLANETS,
+        StateSlice.ECONOMY,
         StateSlice.MISSIONS,
-        StateSlice.FACTIONS,
         StateSlice.CAPTAINS,
-        StateSlice.TRADE_ROUTES,
+        StateSlice.ROUTES,
         StateSlice.DATA_CARGO,
-        StateSlice.DIALOGUE,
-        StateSlice.REPUTATION_TAB
+        StateSlice.DIALOGUE
     ]],
 
     ['actionHotbar', renderActionHotbar, [
-        StateSlice.APP_MODE,
-        StateSlice.CURRENT_SCREEN,
+        StateSlice.UI_RUNTIME,
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
-        StateSlice.PORTS,
-        StateSlice.PLANETS,
-        StateSlice.TRADE_ROUTES,
-        StateSlice.SELECTED_SECTOR,
-        StateSlice.MAP_VIEW
+        StateSlice.ECONOMY,
+        StateSlice.ROUTES
     ]],
 
     ['menu', renderMenuPanel, [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
-        StateSlice.PORTS,
-        StateSlice.PLANETS,
+        StateSlice.ECONOMY,
         StateSlice.DIALOGUE
     ]],
 
@@ -340,62 +327,55 @@ const rendererRegistrations = [
 
     ['factions', renderFactionPanel, [
         StateSlice.PLAYER,
-        StateSlice.FACTIONS,
+        StateSlice.ECONOMY,
         StateSlice.DATA_CARGO
     ]],
 
     ['map', drawMap, [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
-        StateSlice.PORTS,
-        StateSlice.PLANETS,
-        StateSlice.TRADE_ROUTES,
+        StateSlice.ECONOMY,
+        StateSlice.ROUTES,
         StateSlice.CAPTAINS,
-        StateSlice.SELECTED_SECTOR,
-        StateSlice.MAP_VIEW,
+        StateSlice.UI_RUNTIME,
         StateSlice.DATA_CARGO
     ]],
 
     ['mapOverlay', renderMapOverlay, [
-        StateSlice.MAP_VIEW
+        StateSlice.UI_RUNTIME
     ]],
 
     ['mapInspector', renderMapInspector, [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
-        StateSlice.PORTS,
-        StateSlice.PLANETS,
-        StateSlice.TRADE_ROUTES,
-        StateSlice.SELECTED_SECTOR,
-        StateSlice.MAP_VIEW
+        StateSlice.ECONOMY,
+        StateSlice.ROUTES,
+        StateSlice.UI_RUNTIME
     ]],
 
     ['topTabs', renderTopTabs, [
-        StateSlice.CURRENT_SCREEN
+        StateSlice.UI_RUNTIME
     ]],
 
     ['priority', renderPriorityFeed, [
         StateSlice.PLAYER,
-        StateSlice.TIME,
+        StateSlice.PERSISTENCE,
         StateSlice.MISSIONS,
-        StateSlice.PLANETS,
-        StateSlice.TRADE_ROUTES,
-        StateSlice.UNIVERSE,
-        StateSlice.FACTIONS
+        StateSlice.ECONOMY,
+        StateSlice.ROUTES,
+        StateSlice.UNIVERSE
     ]],
 
     ['nextSteps', renderNextStepsPanel, [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
-        StateSlice.PORTS,
+        StateSlice.ECONOMY,
         StateSlice.MISSIONS,
-        StateSlice.TRADE_ROUTES,
-        StateSlice.CURRENT_SCREEN,
-        StateSlice.SELECTED_SECTOR,
+        StateSlice.ROUTES,
+        StateSlice.UI_RUNTIME,
         StateSlice.DATA_CARGO,
         StateSlice.DIALOGUE,
-        StateSlice.FACTIONS,
-        StateSlice.PRIORITY_BRIEFING
+        StateSlice.EVENTS
     ]]
 ];
 let rendererUnsubscribers = [];
@@ -531,14 +511,14 @@ export function registerUIActions() {
         };
     }
 
-    registerAction('moveTo', destinationId => moveTo(destinationId) ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_SECTOR) : commandFailed());
-    registerAction('showScreen', screen => showScreen(screen) ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
-    registerAction('showCommunications', () => showScreen('communications') ? commandOk(StateSlice.CURRENT_SCREEN, StateSlice.SELECTED_CAPTAIN) : commandFailed());
+    registerAction('moveTo', destinationId => moveTo(destinationId) ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('showScreen', screen => showScreen(screen) ? commandOk(StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('showCommunications', () => showScreen('communications') ? commandOk(StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('selectSector', id => selectSector(id), { argCount: 1, coercers: [parsePositiveId] });
     registerAction('toggleMapInspectorCompact', toggleMapInspectorCompact);
     registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
     registerAction('surveySector', surveySector);
-    registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.PORTS, StateSlice.CURRENT_SCREEN, StateSlice.PRIORITY_BRIEFING) : commandFailed());
+    registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.UI_RUNTIME, StateSlice.EVENTS) : commandFailed());
     registerAction('mineAsteroids', mineAsteroids);
     registerAction('foundColony', foundColony);
     registerAction('alignColony', alignColony);
@@ -549,7 +529,7 @@ export function registerUIActions() {
     registerAction('fightPirates', fightPirates);
     registerAction('propertyAction', (propertyId, actionId) => {
         const result = applyPlayerPropertyAction(propertyId, actionId);
-        return result.ok ? commandOk(StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed(result.reason || null);
+        return result.ok ? commandOk(StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed(result.reason || null);
     });
     registerAction('createTradeRoute', (...args) => createTradeRoute(...args));
     registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args));
@@ -575,16 +555,16 @@ export function registerUIActions() {
     registerAction('provokeCaptain', provokeCaptain);
     registerAction('startRomanceWithCaptain', startRomanceWithCaptainAction);
     registerAction('deepenRomanceWithCaptain', deepenRomanceWithCaptainAction);
-    registerAction('askNpcToFindPart', (personId, itemId) => { const result = askNpcToFindPart(personId, itemId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
-    registerAction('checkBackWithNpc', (personId, itemId) => { const result = checkBackWithNpc(personId, itemId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
-    registerAction('requestContactService', (personId, serviceType, value) => { const payload = {}; if (serviceType === 'parts') payload.itemId = value || 'fujiwattit'; if (serviceType === 'orders') payload.commodityId = value || 'eq'; if (serviceType === 'permits') payload.permitType = value || 'local_access'; if (serviceType === 'intel') payload.topic = value || 'local_activity'; const result = requestContactService(personId, serviceType, payload); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
-    registerAction('startPersonalChat', personId => { const result = startPersonalChat(personId); if (!result.ok) return false; state.selectedDialogueConversationId = result.conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN); });
-    registerAction('deepenRelationship', (personId, topicTag) => { const result = deepenRelationship(personId, topicTag); if (!result.ok) return false; state.selectedDialogueConversationId = result.conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN); });
-    registerAction('markDialogueMessageRead', messageId => { const result = markDialogueMessageRead(messageId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
-    registerAction('acceptDialogueOffer', offerId => { const result = acceptDialogueOffer(offerId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : false; });
-    registerAction('rejectDialogueOffer', offerId => { const result = rejectDialogueOffer(offerId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
-    registerAction('selectDialogueConversation', conversationId => { state.selectedDialogueConversationId = conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN); });
-    registerAction('archiveDialogueConversation', conversationId => { const result = touchDialogueConversation(conversationId, { status: DIALOGUE_CONVERSATION_STATUSES.ARCHIVED }); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.CURRENT_SCREEN) : false; });
+    registerAction('askNpcToFindPart', (personId, itemId) => { const result = askNpcToFindPart(personId, itemId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME) : false; });
+    registerAction('checkBackWithNpc', (personId, itemId) => { const result = checkBackWithNpc(personId, itemId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME) : false; });
+    registerAction('requestContactService', (personId, serviceType, value) => { const payload = {}; if (serviceType === 'parts') payload.itemId = value || 'fujiwattit'; if (serviceType === 'orders') payload.commodityId = value || 'eq'; if (serviceType === 'permits') payload.permitType = value || 'local_access'; if (serviceType === 'intel') payload.topic = value || 'local_activity'; const result = requestContactService(personId, serviceType, payload); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME) : false; });
+    registerAction('startPersonalChat', personId => { const result = startPersonalChat(personId); if (!result.ok) return false; state.selectedDialogueConversationId = result.conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME); });
+    registerAction('deepenRelationship', (personId, topicTag) => { const result = deepenRelationship(personId, topicTag); if (!result.ok) return false; state.selectedDialogueConversationId = result.conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME); });
+    registerAction('markDialogueMessageRead', messageId => { const result = markDialogueMessageRead(messageId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME) : false; });
+    registerAction('acceptDialogueOffer', offerId => { const result = acceptDialogueOffer(offerId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : false; });
+    registerAction('rejectDialogueOffer', offerId => { const result = rejectDialogueOffer(offerId); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME) : false; });
+    registerAction('selectDialogueConversation', conversationId => { state.selectedDialogueConversationId = conversationId; return stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME); });
+    registerAction('archiveDialogueConversation', conversationId => { const result = touchDialogueConversation(conversationId, { status: DIALOGUE_CONVERSATION_STATUSES.ARCHIVED }); return result ? stateChanged(StateSlice.DIALOGUE, StateSlice.UI_RUNTIME) : false; });
     registerAction('setReputationTab', setReputationTab);
     if (Boolean(import.meta?.env?.DEV)) {
         registerAction('debugAdvanceHours', hours => { advanceTime(hours * 60, `debug simulation: ${hours} hours`); updateUI(); }, { argCount: 1, coercers: [value => parseIntegerArg(value, { min: 1, max: 24 * 14 })] });

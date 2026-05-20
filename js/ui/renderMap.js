@@ -148,13 +148,13 @@ function toggleMapLayer(layerKey) {
     const layers = getMapLayers();
     layers[layerKey] = !layers[layerKey];
     savePreferencePatch(null, { mapLayers: layers });
-    Renderer.sliceChanged(StateSlice.MAP_VIEW);
+    Renderer.sliceChanged(StateSlice.UI_RUNTIME);
 }
 
 function setMapLayerPanelOpen(open) {
     state.mapLayersOpen = open;
     savePreferencePatch(null, { mapLayersOpen: open });
-    Renderer.sliceChanged(StateSlice.MAP_VIEW);
+    Renderer.sliceChanged(StateSlice.UI_RUNTIME);
 }
 
 function toggleMapLayerPanel() {
@@ -163,7 +163,7 @@ function toggleMapLayerPanel() {
 
 function setMapHelpOpen(open) {
     state.mapHelpOpen = open;
-    Renderer.sliceChanged(StateSlice.MAP_VIEW);
+    Renderer.sliceChanged(StateSlice.UI_RUNTIME);
 }
 
 function toggleMapHelp() {
@@ -951,5 +951,5 @@ export function setupMapInteraction() {
 export function selectSector(sectorId) {
     if (!state.universe[sectorId]) return false;
     state.selectedSectorId = sectorId;
-    return stateChanged(StateSlice.SELECTED_SECTOR);
+    return stateChanged(StateSlice.UI_RUNTIME);
 }

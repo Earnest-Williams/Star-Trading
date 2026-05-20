@@ -41,7 +41,7 @@ describe('map inspector compact action registration', () => {
         const result = executeAction({ type: 'toggleMapInspectorCompact', args: [] });
 
         assert.equal(result.ok, true);
-        assert.deepEqual(result.slices, [StateSlice.MAP_VIEW]);
+        assert.deepEqual(result.slices, [StateSlice.UI_RUNTIME]);
         assert.equal(state.mapInspectorCompact, true);
 
         const persisted = globalThis.localStorage.getItem(PREFERENCES_KEY);

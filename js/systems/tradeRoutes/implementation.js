@@ -486,7 +486,7 @@ export function createTradeRoute(destinationSector, commodity) {
         importance: 2, alert: true,
         payload: { originSector, destinationSector, commodity }
     });
-    return stateChanged(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.FACTIONS, StateSlice.EVENTS);
+    return stateChanged(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.EVENTS);
 }
 
 export function createCaptainTradeRoute(captain, originSector, destinationSector, commodity, options = {}) {
@@ -776,7 +776,7 @@ export function runTradeRoute(route) {
         payload: { amount, commodity: route.commodity, profit }
     });
     changedSlices.add(StateSlice.EVENTS);
-    changedSlices.add(StateSlice.FACTIONS);
+    changedSlices.add(StateSlice.ECONOMY);
     if (escortCaptain && nextRuns % BALANCE.TRADE_ROUTE.ESCORT_RELATION_RUN_INTERVAL === 0) changedSlices.add(StateSlice.CAPTAINS);
     return [...changedSlices];
 }
@@ -807,7 +807,7 @@ export function maybeRoutePoliticalSideEffect(route, amount, escortCaptain) {
         addFactionRep("vc", 1, "quiet convoy side business", "private");
         factionChanged = true;
     }
-    if (factionChanged) changedSlices.add(StateSlice.FACTIONS);
+    if (factionChanged) changedSlices.add(StateSlice.ECONOMY);
     return [...changedSlices];
 }
 

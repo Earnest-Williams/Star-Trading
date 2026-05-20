@@ -112,7 +112,7 @@ export function setSiteCoord(siteId, coord) {
     state.siteIdByCoord[site.coordKey] = siteId;
     invalidateMapProjectionCache();
     markGraphDirty();
-    return { ok: true, slices: stateChanged(StateSlice.UNIVERSE, StateSlice.MAP_VIEW) };
+    return { ok: true, slices: stateChanged(StateSlice.UNIVERSE, StateSlice.UI_RUNTIME) };
 }
 
 export function getSiteTypeLabel(siteType) {

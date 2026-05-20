@@ -95,11 +95,11 @@ export const Renderer = (function() {
             if (slices.length === 0) return;
 
             const triggered = isDev ? [] : null;
-            const uniqueSlices = new Set(mapStateSlicesForInvalidation(...slices));
+            const effectiveSlices = mapStateSlicesForInvalidation(...slices);
             let changed = false;
 
             dependencies.forEach((deps, key) => {
-                for (const slice of uniqueSlices) {
+                for (const slice of effectiveSlices) {
                     if (!deps.has(slice)) continue;
                     dirty.add(key);
                     changed = true;

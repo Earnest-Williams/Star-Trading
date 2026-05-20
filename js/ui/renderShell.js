@@ -29,4 +29,4 @@ export function renderShell() {
     }
 }
 
-export const SHELL_RENDERER_DEPS = [StateSlice.APP_MODE];
+export const SHELL_RENDERER_DEPS = [StateSlice.UI_RUNTIME];
