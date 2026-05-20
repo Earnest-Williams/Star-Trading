@@ -62,6 +62,27 @@ test('market getPortPrice uses fallback stock-ratio behavior when pressure is mi
     assert.equal(quote, expected);
 });
 
+test('market getPortPrice uses stock-ratio behavior for ports without sector resolution', () => {
+    resetRuntimeState();
+    const commodity = 'ore';
+    const port = {
+        stock: { [commodity]: 20 },
+        maxStock: { [commodity]: 80 },
+        basePrices: { [commodity]: 150 },
+        factionId: 'traders'
+    };
+
+    const quote = getPortPrice(port, commodity, 'buy');
+    const stockRatio = 20 / 80;
+    const expectedMultiplier = BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER
+        + (1 - stockRatio) * BALANCE.MARKET.BUY_PRICE_SCARCITY_MULTIPLIER;
+    const expected = Math.max(
+        BALANCE.MIN_TRADE_PRICE,
+        Math.round(port.basePrices[commodity] * expectedMultiplier * getFactionPriceMultiplier(port, 'buy'))
+    );
+    assert.equal(quote, expected);
+});
+
 test('pressure raises spot and route expected values consistently', () => {
     resetRuntimeState();
     const commodity = 'ore';

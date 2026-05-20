@@ -9,7 +9,7 @@ import { getTraitBonus } from '../core/traitHooks.js';
 import { getSkillEffect } from '../core/skillHooks.js';
 import { getPortType } from '../core/ports.js';
 import { executeTradeDetailed } from './marketTrade.js';
-import { getSpotPriceForSector } from './economy/pricing.js';
+import { getSpotPrice } from './economy/pricing.js';
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -148,17 +148,7 @@ function resolvePortSectorId(port) {
 
 export function getPortPrice(port, commodity, mode) {
     const sectorId = resolvePortSectorId(port);
-    if (sectorId === null) {
-        const stock = Math.max(0, port.stock[commodity] || 0);
-        const maxStock = Math.max(1, port.maxStock[commodity] || 1);
-        const stockRatio = Math.max(0, Math.min(1, stock / maxStock));
-        const base = port.basePrices[commodity] || BALANCE.MIN_TRADE_PRICE;
-        const marketPrice = mode === "buy"
-            ? base * (BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER + (1 - stockRatio) * BALANCE.MARKET.BUY_PRICE_SCARCITY_MULTIPLIER)
-            : base * (BALANCE.MARKET.SELL_PRICE_BASE_MULTIPLIER + (1 - stockRatio) * BALANCE.MARKET.SELL_PRICE_SCARCITY_MULTIPLIER);
-        return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(marketPrice * getFactionPriceMultiplier(port, mode)));
-    }
-    const spotPrice = getSpotPriceForSector(sectorId, commodity, mode);
+    const spotPrice = getSpotPrice(port, sectorId, commodity, mode);
     return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(spotPrice * getFactionPriceMultiplier(port, mode)));
 }
 

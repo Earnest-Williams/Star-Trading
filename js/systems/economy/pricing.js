@@ -11,8 +11,8 @@ function toFiniteNumber(value, fallback = 0) {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function resolveBasePrice(sectorId, commodity) {
-    const portBase = state.ports?.[sectorId]?.basePrices?.[commodity];
+function resolveBasePrice(port, commodity) {
+    const portBase = port?.basePrices?.[commodity];
     if (typeof portBase === 'number' && Number.isFinite(portBase) && portBase > 0) {
         return portBase;
     }
@@ -23,15 +23,15 @@ function resolveBasePrice(sectorId, commodity) {
     return BALANCE.MIN_TRADE_PRICE;
 }
 
-function getStockRatio(sectorId, commodity) {
-    const stock = Math.max(0, toFiniteNumber(state.ports?.[sectorId]?.stock?.[commodity], 0));
-    const maxStock = Math.max(1, toFiniteNumber(state.ports?.[sectorId]?.maxStock?.[commodity], 1));
+function getStockRatio(port, commodity) {
+    const stock = Math.max(0, toFiniteNumber(port?.stock?.[commodity], 0));
+    const maxStock = Math.max(1, toFiniteNumber(port?.maxStock?.[commodity], 1));
     return clamp(stock / maxStock, 0, 1);
 }
 
-function getPressureMultiplier(sectorId, commodity, mode) {
-    const pressureRecord = state.economy?.pressureBySector?.[sectorId]?.[commodity];
-    const stockRatio = getStockRatio(sectorId, commodity);
+function getPressureMultiplier(port, sectorId, commodity, mode) {
+    const pressureRecord = sectorId === null ? null : state.economy?.pressureBySector?.[sectorId]?.[commodity];
+    const stockRatio = getStockRatio(port, commodity);
     if (!pressureRecord || typeof pressureRecord !== 'object') {
         return mode === 'buy'
             ? BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER
@@ -42,15 +42,19 @@ function getPressureMultiplier(sectorId, commodity, mode) {
 
     const shortageSeverity = clamp(toFiniteNumber(pressureRecord.shortageSeverity, 0), 0, 1);
     const surplusSeverity = clamp(toFiniteNumber(pressureRecord.surplusSeverity, 0), 0, 1);
-    const shortagePressure = clamp(toFiniteNumber(pressureRecord.pricePressure, 1), 0.7, 2.2);
+    const shortagePressure = clamp(
+        toFiniteNumber(pressureRecord.pricePressure, 1),
+        BALANCE.MARKET.PRESSURE_PRICE_MIN,
+        BALANCE.MARKET.PRESSURE_PRICE_MAX
+    );
 
     if (mode === 'buy') {
         return clamp(
             BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER
                 + shortageSeverity * BALANCE.MARKET.BUY_PRICE_SCARCITY_MULTIPLIER
-                - surplusSeverity * 0.12
-                + (shortagePressure - 1) * 0.2,
-            BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER * 0.75,
+                - surplusSeverity * BALANCE.MARKET.BUY_SURPLUS_SEVERITY_DISCOUNT
+                + (shortagePressure - 1) * BALANCE.MARKET.BUY_PRESSURE_EFFECT_MULTIPLIER,
+            BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER * BALANCE.MARKET.PRESSURE_MULTIPLIER_MIN_FACTOR,
             BALANCE.MARKET.BUY_PRICE_BASE_MULTIPLIER + BALANCE.MARKET.BUY_PRICE_SCARCITY_MULTIPLIER
         );
     }
@@ -58,17 +62,21 @@ function getPressureMultiplier(sectorId, commodity, mode) {
     return clamp(
         BALANCE.MARKET.SELL_PRICE_BASE_MULTIPLIER
             + shortageSeverity * BALANCE.MARKET.SELL_PRICE_SCARCITY_MULTIPLIER
-            - surplusSeverity * 0.18
-            + (shortagePressure - 1) * 0.35,
-        BALANCE.MARKET.SELL_PRICE_BASE_MULTIPLIER * 0.75,
+            - surplusSeverity * BALANCE.MARKET.SELL_SURPLUS_SEVERITY_DISCOUNT
+            + (shortagePressure - 1) * BALANCE.MARKET.SELL_PRESSURE_EFFECT_MULTIPLIER,
+        BALANCE.MARKET.SELL_PRICE_BASE_MULTIPLIER * BALANCE.MARKET.PRESSURE_MULTIPLIER_MIN_FACTOR,
         BALANCE.MARKET.SELL_PRICE_BASE_MULTIPLIER + BALANCE.MARKET.SELL_PRICE_SCARCITY_MULTIPLIER
     );
 }
 
-export function getSpotPriceForSector(sectorId, commodity, mode) {
-    const base = resolveBasePrice(sectorId, commodity);
-    const multiplier = getPressureMultiplier(sectorId, commodity, mode);
+export function getSpotPrice(port, sectorId, commodity, mode) {
+    const base = resolveBasePrice(port, commodity);
+    const multiplier = getPressureMultiplier(port, sectorId, commodity, mode);
     return Math.max(BALANCE.MIN_TRADE_PRICE, Math.round(base * multiplier));
+}
+
+export function getSpotPriceForSector(sectorId, commodity, mode) {
+    return getSpotPrice(state.ports?.[sectorId], sectorId, commodity, mode);
 }
 
 export function getExpectedRouteValue(originSector, destinationSector, commodity, amount) {
