@@ -11,7 +11,7 @@ const PRODUCTION_RECIPES = Object.freeze({
     electronics: Object.freeze({ role: 'industrial', baseCapacity: 3, output: 1, inputs: Object.freeze({ heavy_metals: 1, rare_earths: 1 }) }),
     machinery: Object.freeze({ role: 'industrial', baseCapacity: 2, output: 1, inputs: Object.freeze({ refined_metals: 1, electronics: 1 }) }),
     eq: Object.freeze({ role: 'stardock', baseCapacity: 2, output: 1, inputs: Object.freeze({ machinery: 1, electronics: 1 }) }),
-    pulse_canister: Object.freeze({ role: 'refinery', baseCapacity: 2, output: 1, inputs: Object.freeze({ water_ice: 2 }) })
+    pulse_canister: Object.freeze({ role: 'refinery', baseCapacity: 2, output: 1, inputs: Object.freeze({ water_ice: 1, coolants: 1 }) })
 });
 
 function roleMultiplier(profile, recipe) {
@@ -23,7 +23,7 @@ function roleMultiplier(profile, recipe) {
 }
 
 export function applyDailyProduction() {
-    const summary = { produced: makeStock() };
+    const summary = { produced: makeStock(), productionBySector: {} };
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
         const port = state.ports?.[sectorId];
         const site = state.universe?.[sectorId];
@@ -33,6 +33,7 @@ export function applyDailyProduction() {
         const updatedStock = { ...port.stock };
         let extractedOre = 0;
         let stockChanged = false;
+        if (!summary.productionBySector[sectorId]) summary.productionBySector[sectorId] = {};
         Object.entries(extraction).forEach(([commodity, amount]) => {
             const max = Math.max(0, port.maxStock?.[commodity] || 0);
             const current = Math.max(0, updatedStock?.[commodity] || 0);
@@ -40,6 +41,7 @@ export function applyDailyProduction() {
             if (add > 0) {
                 updatedStock[commodity] = current + add;
                 summary.produced[commodity] = (summary.produced[commodity] || 0) + add;
+                summary.productionBySector[sectorId][commodity] = (summary.productionBySector[sectorId][commodity] || 0) + add;
                 if (commodity === 'ore') extractedOre += add;
                 stockChanged = true;
             }
@@ -70,6 +72,7 @@ export function applyDailyProduction() {
             const produced = Math.min(outputUnits * recipe.output, Math.max(0, max - current));
             updatedStock[commodity] = current + produced;
             summary.produced[commodity] = (summary.produced[commodity] || 0) + produced;
+            summary.productionBySector[sectorId][commodity] = (summary.productionBySector[sectorId][commodity] || 0) + produced;
             stockChanged = true;
         });
         if (stockChanged) patchPort(sectorId, { stock: updatedStock });

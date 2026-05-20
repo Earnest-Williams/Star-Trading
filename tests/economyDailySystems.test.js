@@ -50,6 +50,7 @@ describe('economy daily systems', () => {
             sectorId: 3,
             stock: {
                 water_ice: 10,
+                coolants: 10,
                 pulse_canister: 0,
                 ore: 0,
                 heavy_metals: 0,
@@ -59,6 +60,7 @@ describe('economy daily systems', () => {
             },
             maxStock: {
                 water_ice: 100,
+                coolants: 100,
                 pulse_canister: 100,
                 ore: 100,
                 heavy_metals: 100,
@@ -70,7 +72,8 @@ describe('economy daily systems', () => {
 
         const summary = applyDailyProduction();
 
-        assert.equal(state.ports[3].stock.water_ice, 8);
+        assert.equal(state.ports[3].stock.water_ice, 9);
+        assert.equal(state.ports[3].stock.coolants, 9);
         assert.equal(state.ports[3].stock.pulse_canister, 1);
         assert.equal(summary.produced.pulse_canister, 1);
     });

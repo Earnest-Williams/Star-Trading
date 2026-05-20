@@ -135,8 +135,8 @@ export function buildEconomicProfileForSector(sectorId) {
 
     profile.likelyImports = toKnownCommodityList([...importSet]);
     profile.likelyExports = toKnownCommodityList([...exportSet]);
-    profile.likelyImports.forEach((commodity) => { profile.baselineConsumption[commodity] = Math.max(1, populationTier); profile.targetStock[commodity] = 16 + populationTier * 10; profile.strategicReserve[commodity] = Math.round(profile.targetStock[commodity] * 0.25); });
-    profile.likelyExports.forEach((commodity) => { profile.industrialConsumption[commodity] = profile.roleTags.includes('extractive') ? 1 : 0; profile.targetStock[commodity] = Math.max(profile.targetStock[commodity] || 0, 10); });
+    profile.likelyImports.forEach((commodity) => { profile.baselineConsumption[commodity] = populationTier; profile.targetStock[commodity] = 16 + populationTier * 10; profile.strategicReserve[commodity] = Math.round(profile.targetStock[commodity] * 0.25); });
+    profile.likelyExports.forEach((commodity) => { profile.industrialConsumption[commodity] = 0; profile.targetStock[commodity] = Math.max(profile.targetStock[commodity] || 0, 10); });
     return profile;
 }
 

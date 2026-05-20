@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { resetState, state } from '../js/state.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
 import { initSessionRng } from '../js/utils.js';
+import { COMMODITIES } from '../js/constants.js';
 import { runTradeRoute } from '../js/systems/tradeRoutes.js';
 import {
     acceptLogisticsObjective,
@@ -74,7 +75,7 @@ describe('logistics objectives', () => {
 
         assert.equal(state.logisticsObjectives[0].id, 7);
         assert.equal(state.logisticsObjectives[0].status, 'available');
-        assert.deepEqual(state.logisticsObjectives[0].progress.delivered, { ore: 0, org: 0, eq: 0 });
+        assert.deepEqual(state.logisticsObjectives[0].progress.delivered, Object.fromEntries(COMMODITIES.map(c => [c, 0])));
         assert.equal(state.nextLogisticsObjectiveId, 8);
     });
 
