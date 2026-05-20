@@ -48,7 +48,7 @@ export function createInitialState() {
         nextCaptainEventId: 1,
         worldEvents: [],
         nextWorldEventId: 1,
-        bounties: { byId: {}, allIds: [] },
+        bounties: { byId: {}, allIds: [], nextId: 1 },
         simulationTrace: [],
         nextSimulationTraceId: 1,
         dialogueMemories: [],

@@ -97,6 +97,24 @@ describe('bounty system', () => {
         assert.equal(state.bounties.byId[bounty.id].status, 'expired');
     });
 
+    it('keeps accepted contracts while traveling through unrecognized space', () => {
+        const bounty = issueBounty({
+            targetId: 'capt_transit',
+            targetKind: 'captain',
+            type: 'warrant',
+            issuedBy: 'sda',
+            jurisdictionFactionId: 'sda'
+        });
+        state.bounties.byId[bounty.id].acceptedByGuildId = 'sda_marshal';
+        state.bounties.byId[bounty.id].acceptedByPlayer = true;
+        state.player.currentSector = 2;
+
+        normalizeBountiesDaily();
+
+        assert.equal(state.bounties.byId[bounty.id].acceptedByGuildId, 'sda_marshal');
+        assert.equal(state.bounties.byId[bounty.id].acceptedByPlayer, true);
+    });
+
     it('enforces claim validations and rewards valid claims', () => {
         const bounty = issueBounty({
             targetId: 'capt_4',
@@ -114,6 +132,31 @@ describe('bounty system', () => {
         assert.ok(state.player.credits > 100);
     });
 
+    it('reports expired bounties accurately and filters inactive board entries', () => {
+        const expired = issueBounty({
+            targetId: 'capt_expired',
+            targetKind: 'captain',
+            type: 'warrant',
+            issuedBy: 'sda',
+            jurisdictionFactionId: 'sda',
+            expiresDay: 2
+        });
+        const claimed = issueBounty({
+            targetId: 'capt_claimed',
+            targetKind: 'captain',
+            type: 'warrant',
+            issuedBy: 'sda',
+            jurisdictionFactionId: 'sda'
+        });
+        state.bounties.byId[claimed.id].acceptedByGuildId = 'sda_marshal';
+        state.bounties.byId[claimed.id].acceptedByPlayer = true;
+        assert.equal(claimBounty(claimed.id, 'defeat'), true);
+
+        assert.deepEqual(canLegallyAcceptBounty(expired.id, 'sda_marshal', 1), { ok: false, reasons: ['expired'] });
+        assert.deepEqual(canLegallyAcceptBounty(claimed.id, 'sda_marshal', 1), { ok: false, reasons: ['already_claimed'] });
+        assert.deepEqual(getActiveBounties({ siteId: 1, guildId: 'sda_marshal' }).map(bounty => bounty.id), [expired.id]);
+    });
+
     it('derives player bounty status and supports legacy save normalization', () => {
         state.bounties = null;
         assert.equal(playerHasBounty(), false);
@@ -125,5 +168,44 @@ describe('bounty system', () => {
             jurisdictionFactionId: 'sda'
         });
         assert.equal(playerHasBounty(), true);
+    });
+
+    it('uses nextId normalization to avoid reusing legacy bounty ids', () => {
+        state.bounties = {
+            byId: {
+                bounty_2: {
+                    id: 'bounty_2',
+                    targetId: 'legacy_a',
+                    targetKind: 'captain',
+                    type: 'warrant',
+                    issuedBy: 'sda',
+                    jurisdictionFactionId: 'sda',
+                    status: 'claimed',
+                    expiresDay: 6
+                },
+                bounty_7: {
+                    id: 'bounty_7',
+                    targetId: 'legacy_b',
+                    targetKind: 'captain',
+                    type: 'warrant',
+                    issuedBy: 'fu',
+                    jurisdictionFactionId: 'fu',
+                    status: 'active',
+                    expiresDay: 9
+                }
+            },
+            allIds: ['bounty_2', 'bounty_7']
+        };
+
+        const bounty = issueBounty({
+            targetId: 'capt_legacy',
+            targetKind: 'captain',
+            type: 'private_contract',
+            issuedBy: 'hc',
+            jurisdictionFactionId: 'hc'
+        });
+
+        assert.equal(bounty.id, 'bounty_8');
+        assert.equal(state.bounties.nextId, 9);
     });
 });
