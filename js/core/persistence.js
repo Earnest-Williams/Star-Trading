@@ -30,6 +30,7 @@ import { normalisePriorityBriefingState } from './priorityBriefing.js';
 import { getPortType } from './ports.js';
 import { normaliseProperty } from '../systems/properties.js';
 import { normaliseLogisticsObjectives } from '../systems/logisticsObjectives.js';
+import { normaliseEconomyState } from '../systems/economy/migration.js';
 import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS, SAVE_SCHEMA_LIMITS } from './saveSchema.js';
 import { runMigrations } from './saveMigrations/index.js';
 import { migrateShipTransitFields } from './saveMigrations/helpers.js';
@@ -133,6 +134,7 @@ export function buildLoadedState(data) {
     loadedState.logisticsObjectives = Array.isArray(data.logisticsObjectives) ? data.logisticsObjectives : [];
     loadedState.nextLogisticsObjectiveId = data.nextLogisticsObjectiveId || (loadedState.logisticsObjectives.length + 1);
     loadedState.nextMissionId = data.nextMissionId || (loadedState.missions.length + 1);
+    loadedState.economy = normaliseEconomyState(data.economy);
     loadedState.ambientTrade = data.ambientTrade || loadedState.ambientTrade;
     loadedState.priorityBriefing = normalisePriorityBriefingState(data.priorityBriefing);
     loadedState.dataCargo = data.dataCargo || loadedState.dataCargo;
