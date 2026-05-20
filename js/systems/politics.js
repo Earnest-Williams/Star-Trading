@@ -15,6 +15,7 @@ import {
     bumpLogisticsNodeRevision,
     bumpMarketRevision
 } from '../core/state/mutations.js';
+import { StateSlice } from '../core/state/index.js';
 
 export function getSectorPoliticalMemory(sector) {
     if (!sector.politicalMemory) {
@@ -312,7 +313,9 @@ export function updatePortsDaily() {
     if (stockChanged) {
         bumpMarketRevision();
         bumpLogisticsNodeRevision();
+        return { changedSlices: [StateSlice.ECONOMY] };
     }
+    return null;
 }
 
 export function updateThreatsDaily() {
@@ -339,5 +342,9 @@ export function updateThreatsDaily() {
             if (top === "vc") addSectorInfluence(sector.id, "vc", 1, "");
         }
     });
-    if (threatChanged) bumpInfluenceRevision();
+    if (threatChanged) {
+        bumpInfluenceRevision();
+        return { changedSlices: [StateSlice.UNIVERSE] };
+    }
+    return null;
 }
