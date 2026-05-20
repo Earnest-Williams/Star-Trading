@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { mapStateSlicesForInvalidation } from "../core/state/index.js";
 
 export const Renderer = (function() {
     let dirty = new Set();
@@ -94,7 +95,7 @@ export const Renderer = (function() {
             if (slices.length === 0) return;
 
             const triggered = isDev ? [] : null;
-            const uniqueSlices = new Set(slices);
+            const uniqueSlices = new Set(mapStateSlicesForInvalidation(...slices));
             let changed = false;
 
             dependencies.forEach((deps, key) => {

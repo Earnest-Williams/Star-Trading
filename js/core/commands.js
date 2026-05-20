@@ -94,9 +94,15 @@ export function onActionExecuted(observer) {
 function validateCommandArgs(type, args) {
     const meta = actionManifest[type];
     if (!meta) return { ok: true, args };
-    const expectedArgs = Number.isInteger(meta.argCount) ? meta.argCount : null;
-    if (expectedArgs !== null && args.length !== expectedArgs) {
-        return { ok: false, message: `Invalid argument count for ${type}` };
+    const requiredArgs = Number.isInteger(meta.argCount) ? meta.argCount : null;
+    const optionalTrailingArgs = Number.isInteger(meta.optionalTrailingArgs)
+        ? Math.max(0, meta.optionalTrailingArgs)
+        : 0;
+    if (requiredArgs !== null) {
+        const maxArgs = requiredArgs + optionalTrailingArgs;
+        if (args.length < requiredArgs || args.length > maxArgs) {
+            return { ok: false, message: `Invalid argument count for ${type}` };
+        }
     }
     const coercers = Array.isArray(meta.coercers) ? meta.coercers : [];
     const normalized = [];

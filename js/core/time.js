@@ -35,12 +35,29 @@ export function resetTimeHooks() {
     clearHourlyHooks();
 }
 
+function aggregateTickSummaries(summaries) {
+    const changedSlices = new Set();
+    let eventCount = 0;
+    const warnings = [];
+    summaries.forEach(summary => {
+        if (!summary || typeof summary !== "object") return;
+        if (Array.isArray(summary.changedSlices)) summary.changedSlices.forEach(slice => changedSlices.add(slice));
+        eventCount += Number(summary.eventCount) || 0;
+        if (Array.isArray(summary.warnings)) warnings.push(...summary.warnings);
+    });
+    return { changedSlices: Array.from(changedSlices), eventCount, warnings };
+}
+
 export function runDailyWorldTick(reason) {
-    for (const hook of dailyHooks) hook(reason);
+    const summaries = [];
+    for (const hook of dailyHooks) summaries.push(hook(reason));
+    return aggregateTickSummaries(summaries);
 }
 
 export function runHourlyWorldTick(reason) {
-    for (const hook of hourlyHooks) hook(reason);
+    const summaries = [];
+    for (const hook of hourlyHooks) summaries.push(hook(reason));
+    return aggregateTickSummaries(summaries);
 }
 
 export function getAbsoluteMinute() {
@@ -75,7 +92,7 @@ export function spendTime(minutes, reason = "player action") {
 }
 
 export function advanceTime(minutes, reason = "time passes") {
-    if (!Number.isInteger(minutes) || minutes <= 0) return;
+    if (!Number.isInteger(minutes) || minutes <= 0) return null;
     const startAbsolute = getAbsoluteMinute();
     const endAbsolute = startAbsolute + minutes;
     let boundary;
@@ -84,15 +101,18 @@ export function advanceTime(minutes, reason = "time passes") {
     } else {
         boundary = Math.ceil(startAbsolute / MINUTES_PER_HOUR) * MINUTES_PER_HOUR;
     }
+    const summaries = [];
     while (boundary <= endAbsolute) {
         setTimeFromAbsoluteMinute(boundary);
         if (state.player.time.minuteOfDay === 0) {
-            runDailyWorldTick(reason);
+            summaries.push(runDailyWorldTick(reason));
         } else {
-            runHourlyWorldTick(reason);
+            summaries.push(runHourlyWorldTick(reason));
         }
         boundary += MINUTES_PER_HOUR;
     }
     setTimeFromAbsoluteMinute(endAbsolute);
-    EventBus.emit("time_advanced");
+    const tickSummary = aggregateTickSummaries(summaries);
+    EventBus.emit("time_advanced", { tickSummary });
+    return tickSummary;
 }
