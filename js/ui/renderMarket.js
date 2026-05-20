@@ -3,10 +3,12 @@ import { FACTIONS, BALANCE, MARKET_COMMODITIES } from "../constants.js";
 import { escapeHtml, formatCommodity } from "../utils.js";
 import { getFactionRep, getFactionLabel } from "../core/factions.js";
 import { getPortPrice } from "../systems/market.js";
+import { getMarketRecommendation } from "../systems/market.js";
 import { renderMissionBoard } from "./renderMissions.js";
 import { getPortType } from "../core/ports.js";
 import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
+import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
 
 function renderPressurePanel(sectorId) {
     const pressure = state.economy?.pressureBySector?.[String(sectorId)];
@@ -22,6 +24,38 @@ function renderPressurePanel(sectorId) {
         const stockRatio = Math.round(Math.max(0, Number(signal.stockRatio || 0)) * 100);
         html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%</div>`;
     });
+    return html;
+}
+
+function renderMarketIntelligencePanel(sectorId, port) {
+    const freshness = getFreshnessSummaryForSector(sectorId);
+    const nowDay = Number(state.player?.time?.day || 0);
+    const observedText = freshness.lastObservedDay === null ? "unknown" : `day ${freshness.lastObservedDay}`;
+    let html = `<h4>Market Intelligence</h4>`;
+    html += `<div class="small">Data freshness: <strong>${escapeHtml(freshness.label)}</strong>`;
+    if (freshness.label !== "current") {
+        const ageText = freshness.age === null ? "unknown age" : `${freshness.age} day(s) old`;
+        html += ` (${ageText}, observed ${observedText}, now day ${nowDay})`;
+    }
+    html += `.</div>`;
+    const character = state.player?.character || {};
+    const recRows = MARKET_COMMODITIES.map((commodity) => {
+        const recommendation = getMarketRecommendation(port, commodity, character);
+        const confidence = Math.round(Math.max(0, Number(recommendation.confidence || 0)) * 100);
+        return {
+            commodity,
+            recommendation,
+            confidence
+        };
+    })
+        .sort((a, b) => b.confidence - a.confidence || String(a.commodity).localeCompare(String(b.commodity)))
+        .slice(0, 5)
+        .map(({ commodity, recommendation, confidence }) => (
+            `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: `
+            + `${escapeHtml(recommendation.actionId)} (${confidence}% confidence) — `
+            + `${escapeHtml(recommendation.message)}</div>`
+        ));
+    html += recRows.join("");
     return html;
 }
 
@@ -90,6 +124,7 @@ export function renderMarketPanel() {
         html += `</div>`;
     });
     html += renderPressurePanel(player.currentSector);
+    html += renderMarketIntelligencePanel(player.currentSector, port);
     html += renderSiteEconomySummary(player.currentSector);
     html += renderEconomyContractBoard(player.currentSector);
     html += `<div class="small muted">${escapeHtml(describeAmbientTradeSummary())}</div>`;
