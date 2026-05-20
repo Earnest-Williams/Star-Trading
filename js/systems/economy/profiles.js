@@ -92,16 +92,28 @@ export function buildEconomicProfileForSector(sectorId) {
     const portType = port ? getPortType(port) : null;
     const planetType = planet ? PLANET_TYPES[planet.typeKey] : null;
 
+    const populationTier = inferPopulationTier(sectorId);
+    const extractionCapacity = estimateExtractionCapacity(sectorId);
     const profile = {
         sectorId: Number(sectorId),
         generatedDay: state.player?.time?.day ?? 1,
         roleTags: [],
         supplyWeight: getSectorWeight(sectorId),
         demandWeight: getSectorWeight(sectorId),
-        extractionCapacity: estimateExtractionCapacity(sectorId),
+        extractionCapacity,
         populationDemand: estimatePopulationDemand(sectorId),
         likelyExports: [],
-        likelyImports: []
+        likelyImports: [],
+        populationTier,
+        settlementRole: sector.siteType || (port ? 'port' : 'colony'),
+        baselineConsumption: {},
+        industrialConsumption: {},
+        targetStock: {},
+        strategicReserve: {},
+        companyCapacity: Math.max(1, Math.round(getSectorWeight(sectorId) * 3 + estimateExtractionCapacity(sectorId) * 0.2)),
+        facilityBias: { extraction: extractionCapacity, processing: 0.5, manufacturing: 0.5 },
+        marketPressure: { demandBias: getSectorWeight(sectorId), supplyBias: getSectorWeight(sectorId) },
+        routeDependence: Math.max(0, 1 - Math.min(1, estimateExtractionCapacity(sectorId) / 30))
     };
 
     if (portType) {
@@ -115,7 +127,6 @@ export function buildEconomicProfileForSector(sectorId) {
 
     const importSet = new Set(profile.likelyImports);
     const exportSet = new Set(profile.likelyExports);
-    const populationTier = inferPopulationTier(sectorId);
     // inferPopulationTier always returns 0–5; fallback to [] guards against future range changes.
     const populationImports = POPULATION_IMPORT_BY_TIER[populationTier] || [];
     populationImports.forEach((commodity) => {
@@ -124,6 +135,8 @@ export function buildEconomicProfileForSector(sectorId) {
 
     profile.likelyImports = toKnownCommodityList([...importSet]);
     profile.likelyExports = toKnownCommodityList([...exportSet]);
+    profile.likelyImports.forEach((commodity) => { profile.baselineConsumption[commodity] = Math.max(1, populationTier); profile.targetStock[commodity] = 16 + populationTier * 10; profile.strategicReserve[commodity] = Math.round(profile.targetStock[commodity] * 0.25); });
+    profile.likelyExports.forEach((commodity) => { profile.industrialConsumption[commodity] = profile.roleTags.includes('extractive') ? 1 : 0; profile.targetStock[commodity] = Math.max(profile.targetStock[commodity] || 0, 10); });
     return profile;
 }
 

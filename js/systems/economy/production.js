@@ -4,9 +4,13 @@ import { patchPort, patchSite } from '../../core/state/mutations.js';
 import { getAsteroidExtractionPotential } from './extraction.js';
 
 const PRODUCTION_RECIPES = Object.freeze({
-    heavy_metals: Object.freeze({ role: 'industrial', baseCapacity: 4, output: 1, inputs: Object.freeze({ ore: 2 }) }),
+    refined_metals: Object.freeze({ role: 'industrial', baseCapacity: 4, output: 1, inputs: Object.freeze({ ore: 1, heavy_metals: 1 }) }),
+    polymers: Object.freeze({ role: 'industrial', baseCapacity: 3, output: 1, inputs: Object.freeze({ org: 1, water_ice: 1 }) }),
+    coolants: Object.freeze({ role: 'refinery', baseCapacity: 3, output: 1, inputs: Object.freeze({ water_ice: 1, rare_earths: 1 }) }),
+    fertilizer: Object.freeze({ role: 'industrial', baseCapacity: 2, output: 1, inputs: Object.freeze({ org: 1, water_ice: 1 }) }),
     electronics: Object.freeze({ role: 'industrial', baseCapacity: 3, output: 1, inputs: Object.freeze({ heavy_metals: 1, rare_earths: 1 }) }),
-    eq: Object.freeze({ role: 'stardock', baseCapacity: 2, output: 1, inputs: Object.freeze({ heavy_metals: 1, electronics: 1 }) }),
+    machinery: Object.freeze({ role: 'industrial', baseCapacity: 2, output: 1, inputs: Object.freeze({ refined_metals: 1, electronics: 1 }) }),
+    eq: Object.freeze({ role: 'stardock', baseCapacity: 2, output: 1, inputs: Object.freeze({ machinery: 1, electronics: 1 }) }),
     pulse_canister: Object.freeze({ role: 'refinery', baseCapacity: 2, output: 1, inputs: Object.freeze({ water_ice: 2 }) })
 });
 

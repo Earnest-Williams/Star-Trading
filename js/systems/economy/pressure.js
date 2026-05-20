@@ -13,7 +13,8 @@ function clamp(value, min, max) {
 export function recomputeEconomyPressure() {
     if (!state.economy) return {};
     const pressureBySector = {};
-    Object.entries(state.ports || {}).forEach(([sectorId, port]) => {
+    Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
+        const port = state.ports?.[sectorId] || state.planets?.[sectorId] || {};
         const sectorPressure = {};
         MARKET_COMMODITIES.forEach((commodity) => {
             const maxStock = Math.max(1, toNumber(port?.maxStock?.[commodity], 1));
@@ -26,7 +27,13 @@ export function recomputeEconomyPressure() {
                 BALANCE.MARKET.PRESSURE_PRICE_MIN,
                 BALANCE.MARKET.PRESSURE_PRICE_MAX
             );
-            sectorPressure[commodity] = { shortageSeverity, surplusSeverity, pricePressure, stockRatio };
+            const targetStock = Math.max(1, Number(profile?.targetStock?.[commodity] || maxStock * BALANCE.ECONOMY.TARGET_STOCK_RATIO));
+            const currentStock = stock;
+            const dailyConsumption = Math.max(0, Number(profile?.baselineConsumption?.[commodity] || 0) + Number(profile?.industrialConsumption?.[commodity] || 0));
+            const dailyProduction = Math.max(0, Number(state.economy?.dailySummary?.production?.produced?.[commodity] || 0));
+            const unmetDemand = Math.max(0, dailyConsumption - currentStock);
+            const surplus = Math.max(0, currentStock - targetStock);
+            sectorPressure[commodity] = { targetStock, currentStock, dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, pricePressure, stockRatio, routeAccess: Number(profile?.routeDependence || 0), lastUpdatedDay: state.player?.time?.day ?? null };
         });
         pressureBySector[sectorId] = sectorPressure;
     });

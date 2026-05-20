@@ -1,61 +1,40 @@
 import { state } from '../../state.js';
 import { MARKET_COMMODITIES } from '../../constants.js';
-import { patchPort } from '../../core/state/mutations.js';
+import { patchPort, patchPlanet } from '../../core/state/mutations.js';
 
-const BASELINE_CONSUMPTION = Object.freeze({
-    water_ice: 2,
-    org: 2,
-    medical_supplies: 1,
-    repair_parts: 1
+const POPULATION_BASELINES = Object.freeze({
+    0: Object.freeze({}),
+    1: Object.freeze({ water_ice: 1, org: 1, repair_parts: 1 }),
+    2: Object.freeze({ water_ice: 2, org: 2, repair_parts: 1, medical_supplies: 1 }),
+    3: Object.freeze({ water_ice: 3, org: 3, repair_parts: 2, medical_supplies: 1, pulse_canister: 1 }),
+    4: Object.freeze({ water_ice: 4, org: 3, repair_parts: 2, medical_supplies: 2, electronics: 1, pulse_canister: 1 }),
+    5: Object.freeze({ water_ice: 5, org: 4, repair_parts: 3, medical_supplies: 2, electronics: 2, eq: 1, pulse_canister: 2 })
 });
 
-const ROLE_CONSUMPTION = Object.freeze({
-    'port:stardock': Object.freeze({ eq: 1, electronics: 1, repair_parts: 2, construction_kits: 1 }),
-    way_station: Object.freeze({ pulse_canister: 1, repair_parts: 1 }),
-    'port:way_station': Object.freeze({ pulse_canister: 1, repair_parts: 1 }),
-    extractive: Object.freeze({ repair_parts: 2, pulse_canister: 1 })
-});
-
-function asNumber(value) {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : 0;
-}
+function asNumber(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
 
 export function applyDailyConsumption() {
     const summary = { consumed: {}, unmetDemand: {}, sectorsWithShortage: 0 };
-    MARKET_COMMODITIES.forEach((commodity) => {
-        summary.consumed[commodity] = 0;
-        summary.unmetDemand[commodity] = 0;
-    });
+    MARKET_COMMODITIES.forEach((commodity) => { summary.consumed[commodity] = 0; summary.unmetDemand[commodity] = 0; });
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
-        const port = state.ports?.[sectorId];
-        if (!port) return;
-        if (!port.stock) port.stock = {};
+        const node = state.ports?.[sectorId] || state.planets?.[sectorId];
+        if (!node) return;
+        if (!node.stock) node.stock = {};
         let hadShortage = false;
-        const needs = { ...BASELINE_CONSUMPTION };
-        (profile.roleTags || []).forEach((tag) => {
-            const roleNeed = ROLE_CONSUMPTION[tag];
-            if (!roleNeed) return;
-            Object.entries(roleNeed).forEach(([commodity, amount]) => {
-                needs[commodity] = (needs[commodity] || 0) + amount;
-            });
-        });
-        const updatedStock = { ...port.stock };
-        let stockChanged = false;
+        const baseline = POPULATION_BASELINES[profile.populationTier || 0] || {};
+        const needs = { ...baseline, ...(profile.industrialConsumption || {}) };
+        const updatedStock = { ...node.stock };
         Object.entries(needs).forEach(([commodity, dailyNeed]) => {
             const need = Math.max(0, asNumber(dailyNeed));
-            const available = Math.max(0, asNumber(updatedStock?.[commodity]));
+            const available = Math.max(0, asNumber(updatedStock[commodity]));
             const consumed = Math.min(available, need);
             const unmet = Math.max(0, need - consumed);
-            if (consumed > 0) {
-                updatedStock[commodity] = Math.max(0, available - consumed);
-                stockChanged = true;
-            }
+            updatedStock[commodity] = Math.max(0, available - consumed);
             summary.consumed[commodity] = (summary.consumed[commodity] || 0) + consumed;
             summary.unmetDemand[commodity] = (summary.unmetDemand[commodity] || 0) + unmet;
             if (unmet > 0) hadShortage = true;
         });
-        if (stockChanged) patchPort(sectorId, { stock: updatedStock });
+        if (state.ports?.[sectorId]) patchPort(sectorId, { stock: updatedStock }); else patchPlanet(sectorId, { stock: updatedStock });
         if (hadShortage) summary.sectorsWithShortage += 1;
     });
     state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, consumption: summary };
