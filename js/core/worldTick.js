@@ -17,6 +17,9 @@ import { failExpiredSecurePayloads, generateSecureCourierContracts } from '../sy
 import { decayDialogueMemories, expireDialogueOffers, resolveDueDialogueTasks, runDialogueMaintenanceDaily } from '../systems/people.js';
 import { runPlayerPropertiesDaily } from '../systems/properties.js';
 import { runLogisticsObjectivesDaily } from '../systems/logisticsObjectives.js';
+import { applyDailyConsumption } from '../systems/economy/consumption.js';
+import { applyDailyProduction } from '../systems/economy/production.js';
+import { recomputeEconomyPressure } from '../systems/economy/pressure.js';
 
 const phaseFeatureFlags = BALANCE?.WORLD_TICK?.FEATURE_FLAGS || {};
 let schedulerInProgress = false;
@@ -66,6 +69,9 @@ function isFeatureEnabled(flag) {
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'colony_production', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => produceColonies() },
+    { id: 'economy_daily_consumption', cadence: 'daily', reads: ['economy'], writes: ['ports'], emits: [], expensive: false, run: () => applyDailyConsumption() },
+    { id: 'economy_daily_production', cadence: 'daily', reads: ['economy'], writes: ['ports'], emits: [], expensive: false, run: () => applyDailyProduction() },
+    { id: 'economy_pressure_recompute', cadence: 'daily', reads: ['ports'], writes: ['economy'], emits: [], expensive: false, run: () => recomputeEconomyPressure() },
     { id: 'explicit_trade_route_runs', cadence: 'daily', reads: ['tradeRoutes'], writes: ['tradeRoutes'], emits: ['route'], expensive: true, run: () => runTradeRoutesDaily() },
     { id: 'player_property_economics', cadence: 'daily', reads: ['properties'], writes: ['player'], emits: [], expensive: false, run: () => runPlayerPropertiesDaily() },
     { id: 'ambient_trade_response', cadence: 'daily', reads: ['ports'], writes: ['ports'], emits: ['world'], expensive: true, featureFlag: 'ambientTrade', run: () => runAmbientTradeDaily() },
