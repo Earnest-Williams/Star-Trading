@@ -83,7 +83,7 @@ describe('migrateSave — version stamping', () => {
 });
 
 describe('migrateSave — economy profile normalisation', () => {
-    it('drops invalid profile records and normalises valid entries', () => {
+    it('drops invalid profile records and normalises valid entries, defaulting zero weights', () => {
         const save = minimalSave(SAVE_VERSION);
         save.economy.profilesBySector = {
             1: {
@@ -117,6 +117,17 @@ describe('migrateSave — economy profile normalisation', () => {
                 populationDemand: 0,
                 likelyExports: ['ore'],
                 likelyImports: ['eq']
+            },
+            2: {
+                sectorId: 2,
+                generatedDay: 1,
+                roleTags: [],
+                supplyWeight: 1,
+                demandWeight: 1,
+                extractionCapacity: 0,
+                populationDemand: 0,
+                likelyExports: [],
+                likelyImports: []
             }
         });
     });

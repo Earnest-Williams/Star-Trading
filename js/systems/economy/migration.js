@@ -34,9 +34,8 @@ function normaliseProfile(profile, sectorId) {
     const generatedDay = Number.isFinite(Number(profile.generatedDay))
         ? Number(profile.generatedDay)
         : 1;
-    const supplyWeight = asNonNegativeNumber(profile.supplyWeight);
-    const demandWeight = asNonNegativeNumber(profile.demandWeight);
-    if (supplyWeight <= 0 || demandWeight <= 0) return null;
+    const supplyWeight = asNonNegativeNumber(profile.supplyWeight) || 1.0;
+    const demandWeight = asNonNegativeNumber(profile.demandWeight) || 1.0;
 
     return {
         sectorId: profileSectorId,

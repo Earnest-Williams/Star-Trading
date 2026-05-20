@@ -1,11 +1,29 @@
 import { state } from '../../state.js';
-import { MARKET_COMMODITIES, PORT_TYPES, PLANET_TYPES } from '../../constants.js';
+import { MARKET_COMMODITIES, PLANET_TYPES } from '../../constants.js';
 import { hasEconomicActivity } from '../../utils.js';
+import { getPortType, DEFAULT_PORT_TYPE_KEY } from '../../core/ports.js';
+
+const STARDOCK_PORT_TYPE_KEY = 'stardock';
 
 const MARKET_COMMODITY_SET = new Set(MARKET_COMMODITIES);
 
+// Population tier thresholds (colonist counts) for import demand classification.
+const POPULATION_TIER_LARGE = 1000;
+const POPULATION_TIER_SETTLED = 350;
+
+// Commodities demanded by population at each tier (0 = unpopulated, 5 = hub/capital).
+const POPULATION_IMPORT_BY_TIER = Object.freeze([
+    Object.freeze([]),
+    Object.freeze(['water_ice', 'org', 'repair_parts', 'medical_supplies']),
+    Object.freeze(['water_ice', 'org', 'repair_parts', 'medical_supplies', 'pulse_canister']),
+    Object.freeze(['water_ice', 'org', 'repair_parts', 'medical_supplies', 'pulse_canister', 'electronics']),
+    Object.freeze(['water_ice', 'org', 'repair_parts', 'medical_supplies', 'pulse_canister', 'electronics', 'eq']),
+    Object.freeze(['water_ice', 'org', 'repair_parts', 'medical_supplies', 'pulse_canister', 'electronics', 'eq', 'construction_kits'])
+]);
+
 function toFiniteNumber(value) {
-    return Number.isFinite(value) ? Number(value) : 0;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function getSectorWeight(sectorId) {
@@ -23,6 +41,23 @@ function estimatePopulationDemand(sectorId) {
     if (!planet) return 0;
     const colonists = toFiniteNumber(planet.colonists);
     return Math.max(0, colonists / 1000);
+}
+
+function inferPopulationTier(sectorId) {
+    const port = state.ports?.[sectorId];
+    const planet = state.planets?.[sectorId];
+    const sector = state.universe?.[sectorId];
+    if (port?.typeKey === STARDOCK_PORT_TYPE_KEY) return 5;
+    if (port?.typeKey === DEFAULT_PORT_TYPE_KEY) return 4;
+    if (planet) {
+        const colonists = toFiniteNumber(planet.colonists);
+        if (colonists >= POPULATION_TIER_LARGE) return 4;
+        if (colonists >= POPULATION_TIER_SETTLED) return 3;
+        if (colonists > 0) return 2;
+    }
+    if (sector?.siteType === 'way_station' || port) return 2;
+    if (sector?.asteroids) return 1;
+    return 0;
 }
 
 function estimateExtractionCapacity(sectorId) {
@@ -54,7 +89,7 @@ export function buildEconomicProfileForSector(sectorId) {
 
     const port = state.ports?.[sectorId] || null;
     const planet = state.planets?.[sectorId] || null;
-    const portType = port ? PORT_TYPES[port.typeKey] : null;
+    const portType = port ? getPortType(port) : null;
     const planetType = planet ? PLANET_TYPES[planet.typeKey] : null;
 
     const profile = {
@@ -80,11 +115,12 @@ export function buildEconomicProfileForSector(sectorId) {
 
     const importSet = new Set(profile.likelyImports);
     const exportSet = new Set(profile.likelyExports);
-    if (profile.populationDemand > 0) {
-        MARKET_COMMODITIES.forEach((commodity) => {
-            if (!exportSet.has(commodity)) importSet.add(commodity);
-        });
-    }
+    const populationTier = inferPopulationTier(sectorId);
+    // inferPopulationTier always returns 0–5; fallback to [] guards against future range changes.
+    const populationImports = POPULATION_IMPORT_BY_TIER[populationTier] || [];
+    populationImports.forEach((commodity) => {
+        if (!exportSet.has(commodity)) importSet.add(commodity);
+    });
 
     profile.likelyImports = toKnownCommodityList([...importSet]);
     profile.likelyExports = toKnownCommodityList([...exportSet]);
