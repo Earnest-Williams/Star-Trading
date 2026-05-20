@@ -41,17 +41,21 @@ export function applyDailyConsumption() {
             });
         });
         const updatedStock = { ...port.stock };
+        let stockChanged = false;
         Object.entries(needs).forEach(([commodity, dailyNeed]) => {
             const need = Math.max(0, asNumber(dailyNeed));
             const available = Math.max(0, asNumber(updatedStock?.[commodity]));
             const consumed = Math.min(available, need);
             const unmet = Math.max(0, need - consumed);
-            updatedStock[commodity] = Math.max(0, available - consumed);
+            if (consumed > 0) {
+                updatedStock[commodity] = Math.max(0, available - consumed);
+                stockChanged = true;
+            }
             summary.consumed[commodity] = (summary.consumed[commodity] || 0) + consumed;
             summary.unmetDemand[commodity] = (summary.unmetDemand[commodity] || 0) + unmet;
             if (unmet > 0) hadShortage = true;
         });
-        patchPort(sectorId, { stock: updatedStock });
+        if (stockChanged) patchPort(sectorId, { stock: updatedStock });
         if (hadShortage) summary.sectorsWithShortage += 1;
     });
     state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, consumption: summary };

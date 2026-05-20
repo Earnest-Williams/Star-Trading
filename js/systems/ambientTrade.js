@@ -45,6 +45,13 @@ export function runAmbientTradeDaily() {
         attemptedDemand: makeStock()
     };
     const nodes = getAllLogisticsNodes();
+    // Accumulate all stock changes keyed by sectorId; apply one patch per sector at the end.
+    const pendingStock = new Map();
+    function getPendingStock(sectorId, kind) {
+        if (pendingStock.has(sectorId)) return pendingStock.get(sectorId).stock;
+        const node = kind === 'port' ? state.ports?.[sectorId] : state.planets?.[sectorId];
+        return node?.stock || {};
+    }
     MARKET_COMMODITIES.forEach((commodity) => {
         const sources = nodes
             .map((node) => ({ node, surplus: getNodeSurplus(node, commodity) }))
@@ -79,15 +86,18 @@ export function runAmbientTradeDaily() {
                 const base = Math.floor(BALANCE.AMBIENT_TRADE.BASE_FLOW * distanceFactor * riskFactor * jitter);
                 const amount = Math.max(0, Math.min(base, exportCap, sourceItem.surplus, sinkRemainingCap));
                 if (amount <= 0) return;
-                const sourceNode = sourceItem.node.kind === 'port' ? state.ports?.[sourceItem.node.sectorId] : state.planets?.[sourceItem.node.sectorId];
-                const sinkNode = sinkItem.node.kind === 'port' ? state.ports?.[sinkItem.node.sectorId] : state.planets?.[sinkItem.node.sectorId];
-                if (!sourceNode || !sinkNode) return;
-                const sourceCommodityStock = Math.max(0, (sourceNode.stock?.[commodity] || 0) - amount);
-                const sinkCommodityStock = Math.min(sinkItem.node.maxStock[commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP, (sinkNode.stock?.[commodity] || 0) + amount);
-                if (sourceItem.node.kind === 'port') patchPort(sourceItem.node.sectorId, { stock: { ...sourceNode.stock, [commodity]: sourceCommodityStock } });
-                else patchPlanet(sourceItem.node.sectorId, { stock: { ...sourceNode.stock, [commodity]: sourceCommodityStock } });
-                if (sinkItem.node.kind === 'port') patchPort(sinkItem.node.sectorId, { stock: { ...sinkNode.stock, [commodity]: sinkCommodityStock } });
-                else patchPlanet(sinkItem.node.sectorId, { stock: { ...sinkNode.stock, [commodity]: sinkCommodityStock } });
+                const srcId = sourceItem.node.sectorId;
+                const snkId = sinkItem.node.sectorId;
+                const srcKind = sourceItem.node.kind;
+                const snkKind = sinkItem.node.kind;
+                // Verify backing state nodes exist before committing any change.
+                const srcStateNode = srcKind === 'port' ? state.ports?.[srcId] : state.planets?.[srcId];
+                const snkStateNode = snkKind === 'port' ? state.ports?.[snkId] : state.planets?.[snkId];
+                if (!srcStateNode || !snkStateNode) return;
+                const srcStock = getPendingStock(srcId, srcKind);
+                const snkStock = getPendingStock(snkId, snkKind);
+                pendingStock.set(srcId, { kind: srcKind, stock: { ...srcStock, [commodity]: Math.max(0, (srcStock[commodity] || 0) - amount) } });
+                pendingStock.set(snkId, { kind: snkKind, stock: { ...snkStock, [commodity]: Math.min(sinkItem.node.maxStock[commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP, (snkStock[commodity] || 0) + amount) } });
                 sourceItem.surplus -= amount;
                 sinkRemainingCap -= amount;
                 summary.moved[commodity] += amount;
@@ -96,6 +106,11 @@ export function runAmbientTradeDaily() {
             summary.residualDemand[commodity] += sinkRemainingCap;
             summary.blockedUnits[commodity] += Math.min(sinkBlockedUnits, summary.residualDemand[commodity]);
         });
+    });
+    // Apply one patch per sector, avoiding redundant revision increments.
+    pendingStock.forEach(({ kind, stock }, sectorId) => {
+        if (kind === 'port') patchPort(sectorId, { stock });
+        else patchPlanet(sectorId, { stock });
     });
     patchAmbientTrade(summary);
     return summary;

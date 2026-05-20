@@ -28,15 +28,19 @@ export function applyDailyProduction() {
         const extraction = getAsteroidExtractionPotential(site);
         const updatedStock = { ...port.stock };
         let extractedOre = 0;
+        let stockChanged = false;
         Object.entries(extraction).forEach(([commodity, amount]) => {
             const max = Math.max(0, port.maxStock?.[commodity] || 0);
             const current = Math.max(0, updatedStock?.[commodity] || 0);
             const add = Math.min(Math.max(0, amount), Math.max(0, max - current));
-            updatedStock[commodity] = current + add;
-            summary.produced[commodity] = (summary.produced[commodity] || 0) + add;
-            if (commodity === 'ore') extractedOre += add;
+            if (add > 0) {
+                updatedStock[commodity] = current + add;
+                summary.produced[commodity] = (summary.produced[commodity] || 0) + add;
+                if (commodity === 'ore') extractedOre += add;
+                stockChanged = true;
+            }
         });
-        if (site.asteroids) {
+        if (site.asteroids && extractedOre > 0) {
             patchSite(sectorId, {
                 asteroids: {
                     ...site.asteroids,
@@ -62,8 +66,9 @@ export function applyDailyProduction() {
             const produced = Math.min(outputUnits * recipe.output, Math.max(0, max - current));
             updatedStock[commodity] = current + produced;
             summary.produced[commodity] = (summary.produced[commodity] || 0) + produced;
+            stockChanged = true;
         });
-        patchPort(sectorId, { stock: updatedStock });
+        if (stockChanged) patchPort(sectorId, { stock: updatedStock });
     });
     state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, production: summary };
     return summary;
