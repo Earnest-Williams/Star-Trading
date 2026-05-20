@@ -64,7 +64,8 @@ export function runAmbientTradeDaily() {
                 const metrics = deriveRouteMetrics(sourceItem.node.sectorId, sinkItem.node.sectorId);
                 const distance = metrics.hopCount;
                 if (distance === null || distance > BALANCE.AMBIENT_TRADE.MAX_SEARCH_DISTANCE) {
-                    sinkBlockedUnits += Math.min(sinkRemainingCap, sourceItem.surplus);
+                    const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
+                    sinkBlockedUnits += Math.min(remainingBlockedCap, sourceItem.surplus);
                     summary.blockedFlows += 1;
                     return;
                 }

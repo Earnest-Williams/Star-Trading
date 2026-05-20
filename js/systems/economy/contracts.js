@@ -1,4 +1,5 @@
 import { state } from '../../state.js';
+import { BALANCE } from '../../constants.js';
 import { formatCommodity, log } from '../../utils.js';
 
 const CONTRACT_TYPES = Object.freeze({
@@ -6,6 +7,15 @@ const CONTRACT_TYPES = Object.freeze({
     industrial_feedstock: Object.freeze({ label: 'Industrial Feedstock', rewardScale: 1.15 }),
     station_reserve: Object.freeze({ label: 'Station Reserve', rewardScale: 1.2 }),
     pulse_tender: Object.freeze({ label: 'Pulse Tender', rewardScale: 1.3 })
+});
+const CONTRACT_BALANCE = Object.freeze({
+    MIN_AMOUNT: BALANCE.ECONOMY?.CONTRACTS?.MIN_AMOUNT ?? 8,
+    BASE_AMOUNT: BALANCE.ECONOMY?.CONTRACTS?.BASE_AMOUNT ?? 10,
+    AMOUNT_PRESSURE_MULTIPLIER: BALANCE.ECONOMY?.CONTRACTS?.AMOUNT_PRESSURE_MULTIPLIER ?? 30,
+    LIFESPAN_DAYS: BALANCE.ECONOMY?.CONTRACTS?.LIFESPAN_DAYS ?? 4,
+    MAX_ACTIVE: BALANCE.ECONOMY?.CONTRACTS?.MAX_ACTIVE ?? 18,
+    GENERATION_SHORTAGE_THRESHOLD: BALANCE.ECONOMY?.CONTRACTS?.GENERATION_SHORTAGE_THRESHOLD ?? 0.35,
+    PRESSURE_REDUCTION_PER_UNIT: BALANCE.ECONOMY?.CONTRACTS?.PRESSURE_REDUCTION_PER_UNIT ?? 0.01
 });
 
 function isOpenContractStatus(status) {
@@ -45,7 +55,10 @@ function createContract(sectorId, commodity, signal, profile) {
     const buyPressure = Math.max(1, Number(signal?.pricePressure || 1));
     const basePrice = Math.max(10, Number(destinationPort?.basePrices?.[commodity] || 100));
     const unitReward = Math.max(10, Math.round(basePrice * buyPressure * CONTRACT_TYPES[type].rewardScale));
-    const amount = Math.max(8, Math.round(10 + pressure * 30));
+    const amount = Math.max(
+        CONTRACT_BALANCE.MIN_AMOUNT,
+        Math.round(CONTRACT_BALANCE.BASE_AMOUNT + pressure * CONTRACT_BALANCE.AMOUNT_PRESSURE_MULTIPLIER)
+    );
     const day = Number(state.player?.time?.day || 1);
     return {
         id: `econ-${state.economy.nextContractId++}`,
@@ -56,7 +69,7 @@ function createContract(sectorId, commodity, signal, profile) {
         remaining: amount,
         destinationSector: Number(sectorId),
         postedDay: day,
-        expiresDay: day + 4,
+        expiresDay: day + CONTRACT_BALANCE.LIFESPAN_DAYS,
         unitReward,
         reward: unitReward * amount,
         reason: `${CONTRACT_TYPES[type].label} request due to sustained ${formatCommodity(commodity)} shortage pressure.`
@@ -87,10 +100,10 @@ export function generateEconomyContractsDaily() {
 
     let created = 0;
     let activeCount = economy.contracts.filter((contract) => isOpenContractStatus(contract.status)).length;
-    const maxActive = 18;
+    const maxActive = CONTRACT_BALANCE.MAX_ACTIVE;
     Object.entries(economy.pressureBySector || {}).forEach(([sectorId, pressureMap]) => {
         Object.entries(pressureMap || {}).forEach(([commodity, signal]) => {
-            if ((signal?.shortageSeverity || 0) < 0.35) return;
+            if ((signal?.shortageSeverity || 0) < CONTRACT_BALANCE.GENERATION_SHORTAGE_THRESHOLD) return;
             const alreadyOpen = economy.contracts.some((contract) =>
                 contract.destinationSector === Number(sectorId)
                 && contract.commodity === commodity
@@ -155,7 +168,7 @@ export function applyContractDeliveryHooks(sectorId, commodity, amount) {
         if (signal) {
             const amountBasis = Math.max(1, Number(contract.amount || 1));
             signal.shortageSeverity = clamp(Number(signal.shortageSeverity || 0) - step / amountBasis, 0, 1);
-            signal.pricePressure = Math.max(1, Number(signal.pricePressure || 1) - step * 0.01);
+            signal.pricePressure = Math.max(1, Number(signal.pricePressure || 1) - step * CONTRACT_BALANCE.PRESSURE_REDUCTION_PER_UNIT);
         }
     });
     return { completed, delivered };

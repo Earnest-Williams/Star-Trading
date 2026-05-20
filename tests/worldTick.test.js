@@ -17,6 +17,7 @@ describe('world tick phase order', () => {
                 'economy_daily_consumption',
                 'economy_daily_production',
                 'economy_pressure_recompute',
+                'economy_contracts',
                 'explicit_trade_route_runs',
                 'player_property_economics',
                 'ambient_trade_response',
