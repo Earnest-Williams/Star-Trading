@@ -1,4 +1,5 @@
 import { MARKET_BALANCE, TRADE_BALANCE, LOGISTICS_OBJECTIVE_BALANCE } from "./constants/marketBalance.js";
+import { MARKET_COMMODITIES } from "./config/economy/commodities.js";
 
 export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
@@ -472,7 +473,7 @@ export const SAVE_VERSION = 19;
 export const SAVE_KEY = "starTradingSaveV14";
 export const SAVE_KEY_LEGACY = "starTradingSaveV13";
 export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";
-export const COMMODITIES = ["ore", "org", "eq"];
+export const COMMODITIES = MARKET_COMMODITIES;
 export {
     COMMODITY_REGISTRY,
     RAW_COMMODITIES,
