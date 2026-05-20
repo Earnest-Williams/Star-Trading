@@ -12,6 +12,6 @@ describe('commodity registry exports', () => {
         const registryCommodityIds = Object.values(COMMODITY_REGISTRY).map((commodity) => commodity.id);
 
         assert.deepEqual(MARKET_COMMODITIES, registryCommodityIds);
-        assert.equal(CARGO_COMMODITIES, MARKET_COMMODITIES);
+        assert.strictEqual(CARGO_COMMODITIES, MARKET_COMMODITIES);
     });
 });
