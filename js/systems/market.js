@@ -10,6 +10,7 @@ import { getSkillEffect } from '../core/skillHooks.js';
 import { getPortType } from '../core/ports.js';
 import { executeTradeDetailed } from './marketTrade.js';
 import { getSpotPrice } from './economy/pricing.js';
+import { applyContractDeliveryHooks } from './economy/contracts.js';
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -156,4 +157,10 @@ export function tradeCommodity(commodity, mode) {
     const tradeResult = executeTradeDetailed(commodity, mode, getPortPrice, spendTime);
     if (tradeResult.amount <= 0) return;
     updatePoliticalAsksForTrade(commodity, tradeResult.amount, mode);
+    if (mode === 'sell') {
+        const hookSummary = applyContractDeliveryHooks(state.player?.currentSector, commodity, tradeResult.amount);
+        if (hookSummary.completed > 0) {
+            log(`Completed ${hookSummary.completed} economy contract(s) via market delivery.`);
+        }
+    }
 }

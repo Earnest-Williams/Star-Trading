@@ -50,6 +50,7 @@ import {
     assignCaptainToRoute, unassignRouteEscort, getLogisticsNode
 } from '../systems/tradeRoutes.js';
 import { acceptMission, completeMission } from '../systems/missions.js';
+import { acceptEconomyContract } from '../systems/economy/contracts.js';
 import { applyPlayerPropertyAction } from '../systems/properties.js';
 import { saveGame, loadGame } from '../core/persistence.js';
 import {
@@ -519,6 +520,7 @@ export function registerUIActions() {
     registerAction('dismissPriorityBriefing', dismissPriorityBriefing);
     registerAction('surveySector', surveySector);
     registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.UI_RUNTIME, StateSlice.EVENTS) : commandFailed());
+    registerAction('acceptEconomyContract', (contractId) => acceptEconomyContract(contractId) ? commandOk(StateSlice.ECONOMY, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('mineAsteroids', mineAsteroids);
     registerAction('foundColony', foundColony);
     registerAction('alignColony', alignColony);
@@ -588,6 +590,7 @@ export function registerUIActions() {
     registerActionManifest('dismissPriorityBriefing', { argCount: 0 });
     registerActionManifest('surveySector', { argCount: 0 });
     registerActionManifest('tradeCommodity', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('acceptEconomyContract', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('mineAsteroids', { argCount: 0 });
     registerActionManifest('foundColony', { argCount: 0 });
     registerActionManifest('alignColony', { argCount: 1, coercers: [parseNonEmptyString] });

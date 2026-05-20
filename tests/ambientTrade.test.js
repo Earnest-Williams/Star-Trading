@@ -54,4 +54,13 @@ describe('ambient trade', () => {
         assert.equal(state.ports[3].stock.ore, before);
         assert.equal(summary.flows, 0);
     });
+
+    it('tracks blocked units and residual demand without connectivity', () => {
+        buildWorld({ connected: false });
+        const summary = runAmbientTradeDaily();
+        assert.ok(summary.residualDemand.ore > 0);
+        assert.ok(summary.blockedUnits.ore > 0);
+        assert.ok(summary.blockedUnits.ore <= summary.residualDemand.ore);
+    });
+
 });

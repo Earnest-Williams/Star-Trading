@@ -5,6 +5,25 @@ import { getFactionRep, getFactionLabel } from "../core/factions.js";
 import { getPortPrice } from "../systems/market.js";
 import { renderMissionBoard } from "./renderMissions.js";
 import { getPortType } from "../core/ports.js";
+import { getMarketContractsForSector } from "../systems/economy/contracts.js";
+import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
+
+
+function renderEconomyContractBoard(sectorId) {
+    const contracts = getMarketContractsForSector(sectorId);
+    let html = '<h4>Economy Contracts</h4>';
+    if (contracts.length <= 0) return `${html}<div class="muted">No pressure-driven contracts posted here.</div>`;
+    contracts.forEach((contract) => {
+        const statusText = contract.status === 'accepted' ? `Accepted · remaining ${contract.remaining}` : 'Available';
+        const action = contract.status === 'available'
+            ? `<button data-action="acceptEconomyContract" data-arg0="${contract.id}">Accept</button>`
+            : '<span class="small muted">Deliver by selling commodity in this market.</span>';
+        html += `<div class="mission-row"><strong>${escapeHtml(contract.reason)}</strong><br>`
+            + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, reward ${contract.reward} credits, expires day ${contract.expiresDay}<br>`
+            + `<span class="small muted">${statusText}</span><br>${action}</div>`;
+    });
+    return html;
+}
 
 export function renderMarketPanel() {
     const { player, ports } = state;
@@ -33,6 +52,8 @@ export function renderMarketPanel() {
         if (!canBuy && !canSell) html += `<span class="muted">No trade in this commodity.</span>`;
         html += `</div>`;
     });
+    html += renderEconomyContractBoard(player.currentSector);
+    html += `<div class="small muted">${escapeHtml(describeAmbientTradeSummary())}</div>`;
     html += renderMissionBoard();
     document.getElementById("actions").innerHTML = html;
 }
