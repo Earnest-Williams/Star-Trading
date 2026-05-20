@@ -59,7 +59,7 @@ export function validateTradeAndAmount(context) {
         log("This port does not buy that commodity.");
         return 0;
     }
-    amount = Math.min(amount, state.player.cargo?.[commodity] || 0);
+    amount = Math.min(amount, state.player?.cargo?.[commodity] || 0);
     if (amount <= 0) {
         log("You do not have that cargo to sell.");
     }
@@ -68,20 +68,22 @@ export function validateTradeAndAmount(context) {
 
 export function applyTradeStateMutation(context, amount) {
     const { commodity, mode, port, price } = context;
+    if (!state.player || !port) return;
+    const player = state.player;
+    const cargo = player.cargo ?? (player.cargo = {});
+    const stock = port.stock ?? (port.stock = {});
+    const maxStock = port.maxStock ?? (port.maxStock = {});
     const total = amount * price;
-    state.player.cargo ||= {};
-    port.stock ||= {};
-    port.maxStock ||= {};
     if (mode === "buy") {
-        state.player.credits -= total;
-        state.player.cargo[commodity] = (state.player.cargo?.[commodity] || 0) + amount;
-        port.stock[commodity] = Math.max(0, (port.stock?.[commodity] || 0) - amount);
+        player.credits -= total;
+        cargo[commodity] = (cargo[commodity] || 0) + amount;
+        stock[commodity] = Math.max(0, (stock[commodity] || 0) - amount);
         log(`Bought ${amount} ${formatCommodity(commodity)} for ${formatCredits(total)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
         return;
     }
-    state.player.credits += total;
-    state.player.cargo[commodity] = Math.max(0, (state.player.cargo?.[commodity] || 0) - amount);
-    port.stock[commodity] = Math.min(port.maxStock?.[commodity] || 1, (port.stock?.[commodity] || 0) + amount);
+    player.credits += total;
+    cargo[commodity] = Math.max(0, (cargo[commodity] || 0) - amount);
+    stock[commodity] = Math.min(maxStock[commodity] || 1, (stock[commodity] || 0) + amount);
     log(`Sold ${amount} ${formatCommodity(commodity)} for ${formatCredits(total)} credits. Trade took ${BALANCE.TRADE_TIME_MINUTES} minutes.`);
     recordLogisticsDelivery({
         source: "market_trade",
