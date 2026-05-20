@@ -6,7 +6,6 @@ import { SAVE_VERSION } from '../constants.js';
 // selectedSectorId, currentScreen, reputationTab, selectedCaptainId,
 // mapNodeCache, mapLayers, mapLayersOpen, mapHelpOpen, mapInspectorCompact, and worldGraphRevision.
 // Add new save fields here first so tests catch accidental cache/UI leakage or serializer drift.
-// Note: legacy imports may still include additional fields like sitesById.
 export const SAVE_STATE_FIELDS = Object.freeze([
     'player',
     'universe',
@@ -72,12 +71,7 @@ export const MAX_OBJECT_KEYS = Object.freeze({
     sectorKnowledge: 5000
 });
 
-// Legacy top-level fields accepted for backward-compatibility:
-// - sitesById: pre-manifest save snapshots persisted this derived alias.
-// - factionRelations: pre-v10 saves stored this at top-level before migrating into player.
-// - sectorKnowledge/properties: prior experiments persisted these as top-level caches.
-const LEGACY_SAVE_FIELDS = Object.freeze(['sitesById', 'factionRelations', 'sectorKnowledge', 'properties']);
-const SAVE_TOP_LEVEL_FIELDS = new Set(['version', ...SAVE_STATE_FIELDS, ...LEGACY_SAVE_FIELDS]);
+const SAVE_TOP_LEVEL_FIELDS = new Set(['version', ...SAVE_STATE_FIELDS]);
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 // Schema-level structural limits; persistence import limits layer in payload-size checks.
 export const SAVE_SCHEMA_LIMITS = Object.freeze({
