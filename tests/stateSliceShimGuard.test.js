@@ -23,7 +23,7 @@ describe('state slice shim guard', () => {
             const filePath = `${REPO_ROOT}${file}`;
             if (!existsSync(filePath)) return;
             const contents = readFileSync(filePath, 'utf8');
-            if (contents.includes(LEGACY_IMPORT_PATH)) {
+            if (/['"](?:\.\.?\/)*(?:js\/)?ui\/stateSlices\.js['"]/.test(contents)) {
                 offenders.push(file);
             }
         });
