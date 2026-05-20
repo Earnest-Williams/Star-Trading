@@ -39,16 +39,22 @@ function renderMarketIntelligencePanel(sectorId, port) {
     }
     html += `.</div>`;
     const character = state.player?.character || {};
-    const recRows = [];
-    MARKET_COMMODITIES.slice(0, 5).forEach((commodity) => {
+    const recRows = MARKET_COMMODITIES.map((commodity) => {
         const recommendation = getMarketRecommendation(port, commodity, character);
         const confidence = Math.round(Math.max(0, Number(recommendation.confidence || 0)) * 100);
-        recRows.push(
+        return {
+            commodity,
+            recommendation,
+            confidence
+        };
+    })
+        .sort((a, b) => b.confidence - a.confidence || String(a.commodity).localeCompare(String(b.commodity)))
+        .slice(0, 5)
+        .map(({ commodity, recommendation, confidence }) => (
             `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: `
             + `${escapeHtml(recommendation.actionId)} (${confidence}% confidence) — `
             + `${escapeHtml(recommendation.message)}</div>`
-        );
-    });
+        ));
     html += recRows.join("");
     return html;
 }

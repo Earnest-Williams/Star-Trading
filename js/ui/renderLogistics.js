@@ -29,6 +29,7 @@ function renderRouteCreationPanel(snapshot) {
         found = true;
         const span = candidate.totalEffectiveSpan === null ? "n/a" : candidate.totalEffectiveSpan.toFixed(1);
         const surcharge = candidate.surcharge ? `, surcharge ${(candidate.surcharge * 100).toFixed(0)}%` : "";
+        const freshness = getFreshnessSummaryForSector(candidate.destination.sectorId);
         const riskLabel = candidate.risk === null
             ? "disconnected"
             : candidate.risk >= 7
@@ -39,11 +40,10 @@ function renderRouteCreationPanel(snapshot) {
         html += `<div class="mission"><strong>${escapeHtml(candidate.destination.name)}</strong> <span class="muted">${candidate.hopCount} corridors, span ${span}, risk ${candidate.risk}${surcharge}</span><br>`;
         commodities.forEach(option => {
             const marginBand = `${formatCredits(option.low)}c - ${formatCredits(option.high)}c`;
-            const freshness = getFreshnessSummaryForSector(candidate.destination.sectorId);
             const freshnessHint = freshness.label === "current"
                 ? "live local telemetry"
                 : freshness.known
-                    ? `${freshness.label} telemetry (${freshness.age}d old)`
+                    ? `${escapeHtml(freshness.label)} telemetry (${freshness.age}d old)`
                     : "unknown telemetry";
             html += `<button data-action="createTradeRoute" data-arg0="${candidate.destination.sectorId}" data-arg1="${option.commodity}">Open ${formatCommodity(option.commodity)} Route (${formatCredits(candidate.setupCost)}c, est ${formatCredits(option.estimatedProfit)}c/day)</button>`;
             html += `<div class="small muted">Opportunity: ${formatCommodity(option.commodity)} route projects ${marginBand} per day with ${riskLabel}. Corridor span ${span} across ${candidate.hopCount} hops.</div>`;
