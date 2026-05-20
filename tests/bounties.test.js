@@ -91,8 +91,8 @@ describe('bounty system', () => {
             jurisdictionFactionId: 'sda',
             expiresDay: 2
         });
-        const entries = getActiveBounties({ siteId: 2, guildId: 'sda_marshal' });
-        assert.deepEqual(entries[0].eligibility.reasons, ['expired']);
+        assert.deepEqual(canLegallyAcceptBounty(bounty.id, 'sda_marshal', 2), { ok: false, reasons: ['expired'] });
+        assert.deepEqual(getActiveBounties({ siteId: 2, guildId: 'sda_marshal' }), []);
         normalizeBountiesDaily();
         assert.equal(state.bounties.byId[bounty.id].status, 'expired');
     });
@@ -154,7 +154,7 @@ describe('bounty system', () => {
 
         assert.deepEqual(canLegallyAcceptBounty(expired.id, 'sda_marshal', 1), { ok: false, reasons: ['expired'] });
         assert.deepEqual(canLegallyAcceptBounty(claimed.id, 'sda_marshal', 1), { ok: false, reasons: ['already_claimed'] });
-        assert.deepEqual(getActiveBounties({ siteId: 1, guildId: 'sda_marshal' }).map(bounty => bounty.id), [expired.id]);
+        assert.deepEqual(getActiveBounties({ siteId: 1, guildId: 'sda_marshal' }), []);
     });
 
     it('derives player bounty status and supports legacy save normalization', () => {

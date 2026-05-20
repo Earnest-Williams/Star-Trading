@@ -90,12 +90,11 @@ export function issueBounty(def) {
             throw new Error('Duplicate active bounty for issuer-target-type');
         }
     }
-    let id = `bounty_${state.bounties.nextId}`;
-    while (state.bounties.byId[id]) {
-        state.bounties.nextId += 1;
+    let id = null;
+    do {
         id = `bounty_${state.bounties.nextId}`;
-    }
-    state.bounties.nextId += 1;
+        state.bounties.nextId += 1;
+    } while (state.bounties.byId[id]);
     const createdDay = getCurrentDay();
     const expiresDay = def.expiresDay || (createdDay + BALANCE.BOUNTIES.EXPIRY_DEFAULT_DAYS);
     const knownSiteId = def.knownSiteId || state.player?.currentSector || null;
@@ -138,14 +137,11 @@ export function getActiveBounties(context = {}) {
     const guildId = context.guildId || state.player?.bountyGuilds?.activeGuildId || null;
     return state.bounties.allIds
         .map(id => state.bounties.byId[id])
-        .filter(bounty => bounty && bounty.status === 'active')
+        .filter(bounty => bounty && bounty.status === 'active' && bounty.expiresDay >= getCurrentDay())
         .map(bounty => {
-        const eligibility = canLegallyAcceptBounty(bounty.id, guildId, siteId);
-        if (bounty.expiresDay < getCurrentDay()) {
-            return { ...bounty, eligibility: { ok: false, reasons: ['expired'] } };
-        }
-        return { ...bounty, eligibility };
-    });
+            const eligibility = canLegallyAcceptBounty(bounty.id, guildId, siteId);
+            return { ...bounty, eligibility };
+        });
 }
 
 export function claimBounty(id, resolution = 'defeat') {
