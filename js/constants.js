@@ -485,7 +485,31 @@ export const BALANCE = {
         STALE_SIGNAL_REWARD_PER_HOP: 45,
         STALE_SIGNAL_REWARD_AGE_BONUS: 15,
         STALE_SIGNAL_EXPIRY_DAYS: 10
-    }
+    },
+    BOUNTIES: {
+        REWARD_FLOOR: 500,
+        REWARD_MULTIPLIER_HEAT: 40,
+        EXPIRY_MIN_DAYS: 2,
+        EXPIRY_MAX_DAYS: 14,
+        EXPIRY_DEFAULT_DAYS: 6,
+        VISIBILITY_CAP: 40,
+        CLAIM_REP_GAIN: 4,
+        DUPLICATE_WINDOW_DAYS: 7,
+        HUNTER_PRESSURE_HEAT_THRESHOLD: 20,
+        VALIDATION: {
+            MIN_REWARD: 100,
+            MAX_REWARD: 200000
+        }
+    },
+    BOUNTY_GUILDS: [
+        { id: 'sda_marshal', name: 'SDA Marshal Compact', sponsorFactionIds: ['sda'], rivalGuildIds: ['free_hands_union'], baseFee: 0.12, legalMethods: ['defeat', 'capture'], minimumTierRules: { warrant: 1 }, claimEvidenceRules: ['combat_log', 'transponder_ping'], defaultRecognitionProfile: ['sda', 'fu'] },
+        { id: 'free_hands_union', name: 'Free Hands Union', sponsorFactionIds: ['fu'], rivalGuildIds: ['sda_marshal', 'frontier_wardens'], baseFee: 0.08, legalMethods: ['defeat', 'capture'], minimumTierRules: { private_contract: 1 }, claimEvidenceRules: ['combat_log'], defaultRecognitionProfile: ['fu', 'hc'] },
+        { id: 'helios_reclaimers', name: 'Helios Reclaimers', sponsorFactionIds: ['hc'], rivalGuildIds: ['void_retribution'], baseFee: 0.09, legalMethods: ['capture'], minimumTierRules: { pirate_suppression: 2 }, claimEvidenceRules: ['biometric_scan', 'combat_log'], defaultRecognitionProfile: ['hc'] },
+        { id: 'frontier_wardens', name: 'Frontier Wardens', sponsorFactionIds: ['colonists'], rivalGuildIds: ['free_hands_union'], baseFee: 0.07, legalMethods: ['defeat', 'capture'], minimumTierRules: { warrant: 1 }, claimEvidenceRules: ['witness_affidavit'], defaultRecognitionProfile: ['colonists', 'fu'] },
+        { id: 'oreline_recovery', name: 'Oreline Recovery Office', sponsorFactionIds: ['miners'], rivalGuildIds: ['void_retribution'], baseFee: 0.1, legalMethods: ['capture'], minimumTierRules: { cargo_theft: 2 }, claimEvidenceRules: ['manifest_hash', 'combat_log'], defaultRecognitionProfile: ['miners', 'hc'] },
+        { id: 'void_retribution', name: 'Void Retribution League', sponsorFactionIds: ['traders'], rivalGuildIds: ['helios_reclaimers', 'oreline_recovery'], baseFee: 0.11, legalMethods: ['defeat'], minimumTierRules: { pirate_suppression: 1 }, claimEvidenceRules: ['combat_log', 'wreck_signature'], defaultRecognitionProfile: ['traders', 'fu'] },
+        { id: 'captain_compact', name: 'Captain Compact Registry', sponsorFactionIds: ['fu', 'colonists'], rivalGuildIds: ['sda_marshal'], baseFee: 0.06, legalMethods: ['defeat', 'capture'], minimumTierRules: { frontier_vendetta: 1 }, claimEvidenceRules: ['captain_attestation'], defaultRecognitionProfile: ['fu', 'colonists', 'traders'] }
+    ]
 };
 
 export const SAVE_VERSION = 19;

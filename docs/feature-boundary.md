@@ -98,14 +98,18 @@ state. Relationship events may affect missions, trust, faction pressure, or
 captain behavior, but they should not bypass save normalization or duplicate
 faction/reputation stores.
 
-## Deferred feature: Bounties
+## Bounty boundary
 
-Bounties stay planned until the game has clearer combat-result, capture, and
-surrender flows. Contraband enforcement status now proves the legality/heat
-precursor that future warrants can consume, but the bounty board remains
-deferred. The current bounty stub should remain non-authoritative and must not
-introduce a parallel legality model that conflicts with SDA heat, captain
-combat, pirate threat, contraband, or way-station inspection rules.
+Bounties are now implemented as a regulated contract layer that consumes
+existing enforcement and faction signals. Canonical ownership lives in
+`js/systems/bounties.js`, with `js/new/bounties.js` retained as a compatibility
+entry point. The bounty system must not introduce a separate criminality store
+or parallel faction/legality model.
+
+Guild licensing and recognition are political and local: jurisdictions may
+recognize overlapping guilds, and acceptance legality must be derived from
+membership, recognition, and tier rules. Bounty issuance, visibility, and
+claiming must remain deterministic and testable for fixed world states.
 
 ## Non-goals for this boundary
 
@@ -119,9 +123,8 @@ combat, pirate threat, contraband, or way-station inspection rules.
 - No ambient market layer that replaces explicit route gameplay.
 - No second intel store or parallel intel API.
 - No renderer/EventBus subscriptions that cannot be removed.
-- No bounty board expansion until combat-result, capture, and surrender flows
-  can consume the proven contraband enforcement status without creating a
-  parallel legality model.
+- No bounty rules that bypass guild recognition, local politics, or existing
+  faction/enforcement state.
 
 ## Required documentation updates when crossing boundaries
 
