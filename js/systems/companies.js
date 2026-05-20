@@ -5,6 +5,7 @@ import { getDominantInfluence } from '../core/influence.js';
 import { createGeneratedPerson, resetPeopleState } from './people.js';
 import { hasEconomicActivity } from '../utils.js';
 import { MARKET_COMMODITIES } from '../constants.js';
+import { deriveRouteMetrics } from './tradeRoutes.js';
 
 function pick(list, rng) {
     return list[Math.floor(rng() * list.length)];
@@ -127,6 +128,63 @@ function chooseCompanyType(sectorId) {
     return state.planets[sectorId] ? 'haulage' : 'security_contractor';
 }
 
+function getEconomicProfile(sectorId) {
+    return state.economy?.profilesBySector?.[sectorId] || null;
+}
+
+function getRouteConnectivityScore(sectorId) {
+    const gates = Array.isArray(state.universe?.[sectorId]?.jumpGates)
+        ? state.universe[sectorId].jumpGates
+        : [];
+    const activeDestinations = gates
+        .filter(gate => gate.status !== 'closed' && state.universe[gate.destinationSectorId])
+        .map(gate => gate.destinationSectorId);
+    if (activeDestinations.length === 0) return 0;
+    let score = 0;
+    activeDestinations.forEach((destinationSectorId) => {
+        const metrics = deriveRouteMetrics(sectorId, destinationSectorId);
+        if (!metrics.path || typeof metrics.risk !== 'number') return;
+        const hopScore = Math.max(0.2, 1 / Math.max(1, metrics.hopCount || 1));
+        const riskScore = Math.max(0.2, 1 - Math.max(0, metrics.risk) * 0.1);
+        score += hopScore * riskScore;
+    });
+    return score;
+}
+
+function computeExtractionCompanyCount(sectorId) {
+    const profile = getEconomicProfile(sectorId);
+    const extractionCapacity = Number(profile?.extractionCapacity) || 0;
+    if (extractionCapacity >= 12000) return 3;
+    if (extractionCapacity >= 5000) return 2;
+    if (extractionCapacity > 800) return 1;
+    const sector = state.universe?.[sectorId];
+    if (sector?.asteroids) return 1;
+    return 0;
+}
+
+function scoreProcessingPresence(sectorId, connectivityScore = getRouteConnectivityScore(sectorId)) {
+    const profile = getEconomicProfile(sectorId);
+    const extraction = Number(profile?.extractionCapacity) || 0;
+    const localExtraction = Math.min(2, extraction / 4000);
+    const connectivity = Math.min(2, connectivityScore);
+    const roleTags = Array.isArray(profile?.roleTags) ? profile.roleTags : [];
+    const industrialBias = roleTags.some(tag => tag === 'port:industrial' || tag === 'port:refinery')
+        ? 1
+        : 0;
+    return localExtraction + connectivity + industrialBias;
+}
+
+function computeTradeScaling(sectorId, connectivityScore = getRouteConnectivityScore(sectorId)) {
+    const profile = getEconomicProfile(sectorId);
+    const importPressure = Array.isArray(profile?.likelyImports) ? profile.likelyImports.length : 0;
+    const exportPressure = Array.isArray(profile?.likelyExports) ? profile.likelyExports.length : 0;
+    const throughput = importPressure + exportPressure + connectivityScore;
+    return {
+        haulageCount: throughput >= 7 ? 2 : throughput >= 3 ? 1 : 0,
+        importExportCount: throughput >= 8 ? 2 : throughput >= 4 ? 1 : 0
+    };
+}
+
 function chooseFaction(sectorId, type) {
     const port = state.ports[sectorId];
     if (type === 'black_market_front') return 'vc';
@@ -175,10 +233,26 @@ export function seedCompaniesAndPeople(rng) {
         if (!hasEconomicActivity(sectorId)) return;
         const type = chooseCompanyType(sectorId);
         createCompany(sectorId, type, rng);
+        const extractionCount = computeExtractionCompanyCount(sectorId);
+        const startMiningIndex = type === 'mining_contractor' ? 1 : 0;
+        for (let index = startMiningIndex; index < extractionCount; index++) {
+            createCompany(sectorId, 'mining_contractor', rng);
+        }
+        const connectivityScore = getRouteConnectivityScore(sectorId);
+        if (scoreProcessingPresence(sectorId, connectivityScore) >= 2.75 && type !== 'refinery_operator') {
+            createCompany(sectorId, 'refinery_operator', rng);
+        }
         const port = state.ports[sectorId];
         const portType = port ? getPortType(port) : null;
         const isHub = port && (portType.sells.length > 0 || port.typeKey === 'stardock');
         if (isHub) createCompany(sectorId, type === 'import_export' ? 'haulage' : 'import_export', rng);
+        const scaling = computeTradeScaling(sectorId, connectivityScore);
+        for (let index = 0; index < scaling.haulageCount; index++) {
+            createCompany(sectorId, 'haulage', rng);
+        }
+        for (let index = 0; index < scaling.importExportCount; index++) {
+            createCompany(sectorId, 'import_export', rng);
+        }
         if (shouldSeedShipRefitter(sectorId, rng)) createCompany(sectorId, 'ship_refitter', rng);
         for (let index = 0; index < getDockyardCount(sectorId, rng); index++) {
             createCompany(sectorId, 'dockyard', rng);
