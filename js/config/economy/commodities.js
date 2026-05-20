@@ -35,12 +35,9 @@ export const PROCESSED_COMMODITIES = idsByTier("processed");
 export const MANUFACTURED_COMMODITIES = idsByTier("manufactured");
 export const PULSE_COMMODITIES = idsByTier("pulse");
 
-export const MARKET_COMMODITIES = Object.freeze([
-    ...RAW_COMMODITIES,
-    ...PROCESSED_COMMODITIES,
-    ...MANUFACTURED_COMMODITIES,
-    ...PULSE_COMMODITIES
-]);
+export const MARKET_COMMODITIES = Object.freeze(
+    Object.values(COMMODITY_REGISTRY).map((commodity) => commodity.id)
+);
 
 export const CARGO_COMMODITIES = MARKET_COMMODITIES;
 
