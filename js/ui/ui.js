@@ -1,6 +1,6 @@
 import { state, APP_MODES } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
-import { StateSlice, mapStateSlicesForInvalidation, stateChanged } from '../core/state/index.js';
+import { StateSlice, stateChanged } from '../core/state/index.js';
 import { BALANCE, UI_LABELS } from '../constants.js';
 import { advanceTime } from '../core/time.js';
 import { commandFailed, commandOk, executeAction, registerAction, registerActionManifest, resetActions, parseIntegerArg } from '../core/commands.js';
@@ -85,7 +85,7 @@ export function applyCommandResult(result) {
         return;
     }
     if (result.slices.length > 0) {
-        Renderer.sliceChanged(...mapStateSlicesForInvalidation(...result.slices));
+        Renderer.sliceChanged(...result.slices);
     }
     if (result.invalidateAll) updateUI();
 }
@@ -551,11 +551,11 @@ export function registerUIActions() {
         const result = applyPlayerPropertyAction(propertyId, actionId);
         return result.ok ? commandOk(StateSlice.PLAYER, StateSlice.CURRENT_SCREEN) : commandFailed(result.reason || null);
     });
-    registerAction('createTradeRoute', (...args) => createTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('closeTradeRoute', (...args) => closeTradeRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('assignCaptainToRoute', (...args) => assignCaptainToRoute(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('unassignRouteEscort', (...args) => unassignRouteEscort(...args) ? commandOk(StateSlice.ROUTES, StateSlice.PLAYER, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('createTradeRoute', (...args) => createTradeRoute(...args));
+    registerAction('toggleTradeRoute', (...args) => toggleTradeRoute(...args));
+    registerAction('closeTradeRoute', (...args) => closeTradeRoute(...args));
+    registerAction('assignCaptainToRoute', (...args) => assignCaptainToRoute(...args));
+    registerAction('unassignRouteEscort', (...args) => unassignRouteEscort(...args));
     registerAction('acceptLogisticsObjective', acceptLogisticsObjective);
     registerAction('abandonLogisticsObjective', abandonLogisticsObjective);
     registerAction('restUntilMorning', restUntilMorning);
@@ -636,7 +636,11 @@ export function registerUIActions() {
     ['hailCaptain','offerHelpToCaptain','tradeRumorsWithCaptain','supportCaptainJob','buyOffCaptain','provokeCaptain','startRomanceWithCaptain','deepenRomanceWithCaptain','startPersonalChat','selectDialogueConversation','archiveDialogueConversation'].forEach(name => registerActionManifest(name, { argCount: 1, coercers: [parseNonEmptyString] }));
     registerActionManifest('askNpcToFindPart', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
     registerActionManifest('checkBackWithNpc', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
-    registerActionManifest('requestContactService', { argCount: 3, coercers: [parseNonEmptyString, parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('requestContactService', {
+        argCount: 2,
+        optionalTrailingArgs: 1,
+        coercers: [parseNonEmptyString, parseNonEmptyString, parseNonEmptyString]
+    });
     registerActionManifest('deepenRelationship', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
     registerActionManifest('markDialogueMessageRead', { argCount: 1, coercers: [parsePositiveId] });
     registerActionManifest('acceptDialogueOffer', { argCount: 1, coercers: [parsePositiveId] });

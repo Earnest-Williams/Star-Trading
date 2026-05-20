@@ -13,6 +13,10 @@ const incrementRevision = key => {
     const value = Number(state[key]);
     state[key] = Number.isFinite(value) ? value + 1 : 1;
 };
+export const bumpMarketRevision = () => incrementRevision('marketRevision');
+export const bumpLogisticsNodeRevision = () => incrementRevision('logisticsNodeRevision');
+export const bumpInfluenceRevision = () => incrementRevision('influenceRevision');
+export const bumpWorldGraphRevision = () => incrementRevision('worldGraphRevision');
 
 export const patchPlayer = patch => mergeInto(state.player, patch) ? stateChanged(StateSlice.PLAYER) : [];
 export const patchPlayerCargo = patch => mergeInto(state.player?.cargo, patch) ? stateChanged(StateSlice.PLAYER) : [];

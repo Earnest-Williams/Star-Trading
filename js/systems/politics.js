@@ -10,6 +10,12 @@ import { prepareMissionOpportunity, activePortSectors, makeBaseMission } from '.
 import { generateFactionAsks } from '../systems/guilds.js';
 import { getSectorNeighbors } from '../core/navigation.js';
 import { POLITICS } from '../config/politics.js';
+import {
+    bumpInfluenceRevision,
+    bumpLogisticsNodeRevision,
+    bumpMarketRevision
+} from '../core/state/mutations.js';
+import { StateSlice } from '../core/state/index.js';
 
 export function getSectorPoliticalMemory(sector) {
     if (!sector.politicalMemory) {
@@ -288,9 +294,11 @@ export function updateFactionsDaily() {
 }
 
 export function updatePortsDaily() {
+    let stockChanged = false;
     Object.values(state.ports).forEach(port => {
         const type = getPortType(port);
         MARKET_COMMODITIES.forEach(c => {
+            const before = port.stock[c];
             if (type.sells.includes(c)) {
                 const refill = Math.ceil(port.maxStock[c] * (POLITICS.PORT_ECONOMY.SELLER_REFILL_BASE + random() * POLITICS.PORT_ECONOMY.SELLER_REFILL_SPAN));
                 port.stock[c] = Math.min(port.maxStock[c], port.stock[c] + refill);
@@ -299,11 +307,19 @@ export function updatePortsDaily() {
                 const consumption = Math.ceil(port.maxStock[c] * (POLITICS.PORT_ECONOMY.BUYER_CONSUMPTION_BASE + random() * POLITICS.PORT_ECONOMY.BUYER_CONSUMPTION_SPAN));
                 port.stock[c] = Math.max(0, port.stock[c] - consumption);
             }
+            if (port.stock[c] !== before) stockChanged = true;
         });
     });
+    if (stockChanged) {
+        bumpMarketRevision();
+        bumpLogisticsNodeRevision();
+        return { changedSlices: [StateSlice.ECONOMY] };
+    }
+    return null;
 }
 
 export function updateThreatsDaily() {
+    let threatChanged = false;
     Object.values(state.universe).forEach(sector => {
         if (sector.region === "Core") return;
         let chance = sector.region === "Badlands" ? POLITICS.THREATS.BADLANDS_BASE_CHANCE : POLITICS.THREATS.FRONTIER_BASE_CHANCE;
@@ -320,8 +336,15 @@ export function updateThreatsDaily() {
         }
         chance *= getPirateIncidentMultiplier();
         if (random() < Math.max(POLITICS.THREATS.MIN_CHANCE, chance)) {
+            const beforeThreat = sector.pirateThreat;
             sector.pirateThreat = Math.min(POLITICS.THREATS.PIRATE_THREAT_CAP, sector.pirateThreat + 1);
+            if (sector.pirateThreat !== beforeThreat) threatChanged = true;
             if (top === "vc") addSectorInfluence(sector.id, "vc", 1, "");
         }
     });
+    if (threatChanged) {
+        bumpInfluenceRevision();
+        return { changedSlices: [StateSlice.UNIVERSE] };
+    }
+    return null;
 }
