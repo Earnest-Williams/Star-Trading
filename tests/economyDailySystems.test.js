@@ -18,12 +18,8 @@ describe('economy daily systems', () => {
         state.ports[1] = { sectorId: 1 };
 
         assert.doesNotThrow(() => applyDailyConsumption());
-        assert.deepEqual(state.ports[1].stock, {
-            water_ice: 0,
-            org: 0,
-            medical_supplies: 0,
-            repair_parts: 0
-        });
+        // No stock available → nothing consumed → patchPort not called; stock stays empty.
+        assert.deepEqual(state.ports[1].stock, {});
         assert.equal(state.economy.dailySummary?.day, null);
     });
 
@@ -39,7 +35,8 @@ describe('economy daily systems', () => {
         };
 
         assert.doesNotThrow(() => applyDailyProduction());
-        assert.equal(state.ports[2].stock.ore, 0);
+        // No asteroids → no extraction → patchPort not called; stock stays empty.
+        assert.equal(state.ports[2].stock?.ore ?? 0, 0);
         assert.equal(state.economy.dailySummary?.day, null);
     });
 

@@ -9,6 +9,8 @@ import { Notifications } from '../ui/notifications.js';
 import { getTraitBonus } from '../core/traitHooks.js';
 import { getColonyActionAdjustment, getPoliticalActionAdjustment } from '../core/characterChecks.js';
 import { recordLogisticsDelivery } from './logisticsObjectives.js';
+import { rebuildEconomicProfiles } from './economy/profiles.js';
+import { setSectorPirateThreat } from '../core/state/mutations.js';
 
 export function foundColony() {
     const planet = state.planets[state.player.currentSector];
@@ -37,6 +39,7 @@ export function foundColony() {
     applyPoliticalEffect({ factionId: "fu", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 7, reason: "frontier settlement" });
     addFactionHeat("sda", planet.policy.registration === "registered" ? 0 : 3, "informal colony paperwork");
     addWorldEvent({ type: "colony", factionId: planet.factionId, sectorId: state.player.currentSector, text: `You founded a colony on the ${PLANET_TYPES[planet.typeKey].name} planet in sector ${state.player.currentSector}.`, importance: 3, alert: false });
+    rebuildEconomicProfiles();
     log(`Founded a colony on the ${PLANET_TYPES[planet.typeKey].name} planet in sector ${state.player.currentSector}.`);
     Notifications.show(`Colony founded in sector ${state.player.currentSector}`, 3);
 }
@@ -60,12 +63,17 @@ export function alignColony(factionId) {
     addFactionTrust(factionId, 1, "colony charter");
     const major = FACTIONS[factionId].majorAffinity;
     if (major) addSectorInfluence(state.player.currentSector, major, 4, "guild colony charter");
+    rebuildEconomicProfiles();
     log(`Colony aligned with ${FACTIONS[factionId].name}.`);
 }
 
 export function setColonyPolicy(key, value) {
     const planet = state.planets[state.player.currentSector];
     if (!planet || planet.owner !== "Player") return;
+    if (key === "security" && value === "cartel_protection" && getGuildTier("smugglers") <= 0) {
+        log("You need Smugglers Syndicate membership for Cartel protection.");
+        return;
+    }
     if (!planet.policy) planet.policy = { registration: "registered", economy: "free_trade", security: "local_militia", hiddenInfluence: { vc: 0 } };
     if (!spendTime(60)) return;
     planet.policy[key] = value;
@@ -80,20 +88,17 @@ export function setColonyPolicy(key, value) {
     if (key === "security" && value === "sda_patrol") {
         applyPoliticalEffect({ factionId: "sda", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 4, reason: "colony patrol contract" });
         const sector = state.universe[state.player.currentSector];
-        sector.pirateThreat = Math.max(0, sector.pirateThreat - 1);
+        setSectorPirateThreat(state.player.currentSector, Math.max(0, Number(sector?.pirateThreat || 0) - 1));
     }
     if (key === "security" && value === "local_militia") {
         applyPoliticalEffect({ factionId: "fu", publicRep: 2, trust: 1, sectorId: state.player.currentSector, influence: 3, reason: "local militia charter" });
     }
     if (key === "security" && value === "cartel_protection") {
-        if (getGuildTier("smugglers") <= 0) {
-            log("You need Smugglers Syndicate membership for Cartel protection.");
-            return;
-        }
         planet.policy.hiddenInfluence.vc = Math.min(100, (planet.policy.hiddenInfluence.vc || 0) + 20);
         applyPoliticalEffect({ factionId: "vc", privateRep: 5, trust: 2, sectorId: state.player.currentSector, influence: 6, reason: "cartel protection compact" });
         addFactionHeat("sda", 6, "shadow protection rumors");
     }
+    rebuildEconomicProfiles();
     log(`Colony policy updated: ${key} = ${value}.`);
 }
 
@@ -138,6 +143,7 @@ export function buildColonyStructure(key) {
     state.player.credits -= def.credits;
     removeCargo(def.cargo);
     planet.buildings[key] += 1;
+    rebuildEconomicProfiles();
     log(`Built ${def.name} level ${planet.buildings[key]} on the colony.`);
 }
 

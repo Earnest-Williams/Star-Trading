@@ -21,6 +21,7 @@ describe('world tick phase order', () => {
                 'explicit_trade_route_runs',
                 'player_property_economics',
                 'ambient_trade_response',
+                'economy_pressure_post_ambient',
                 'ambient_data_propagation',
                 'data_cargo_culling',
                 'colony_needs',

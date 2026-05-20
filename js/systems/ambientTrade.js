@@ -2,6 +2,7 @@ import { state } from '../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../constants.js';
 import { formatCommodity, makeStock, random } from '../utils.js';
 import { getAllLogisticsNodes, getRouteMarketValue, deriveRouteMetrics } from './tradeRoutes.js';
+import { patchPort, patchPlanet, patchAmbientTrade } from '../core/state/mutations.js';
 
 function getNodePressureSignal(node, commodity) {
     return state.economy?.pressureBySector?.[node.sectorId]?.[commodity] || null;
@@ -44,6 +45,13 @@ export function runAmbientTradeDaily() {
         attemptedDemand: makeStock()
     };
     const nodes = getAllLogisticsNodes();
+    // Accumulate all stock changes keyed by sectorId; apply one patch per sector at the end.
+    const pendingStock = new Map();
+    function getPendingStock(sectorId, kind) {
+        if (pendingStock.has(sectorId)) return pendingStock.get(sectorId).stock;
+        const node = kind === 'port' ? state.ports?.[sectorId] : state.planets?.[sectorId];
+        return node?.stock || {};
+    }
     MARKET_COMMODITIES.forEach((commodity) => {
         const sources = nodes
             .map((node) => ({ node, surplus: getNodeSurplus(node, commodity) }))
@@ -78,8 +86,18 @@ export function runAmbientTradeDaily() {
                 const base = Math.floor(BALANCE.AMBIENT_TRADE.BASE_FLOW * distanceFactor * riskFactor * jitter);
                 const amount = Math.max(0, Math.min(base, exportCap, sourceItem.surplus, sinkRemainingCap));
                 if (amount <= 0) return;
-                sourceItem.node.stock[commodity] = Math.max(0, (sourceItem.node.stock[commodity] || 0) - amount);
-                sinkItem.node.stock[commodity] = Math.min(sinkItem.node.maxStock[commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP, (sinkItem.node.stock[commodity] || 0) + amount);
+                const srcId = sourceItem.node.sectorId;
+                const snkId = sinkItem.node.sectorId;
+                const srcKind = sourceItem.node.kind;
+                const snkKind = sinkItem.node.kind;
+                // Verify backing state nodes exist before committing any change.
+                const srcStateNode = srcKind === 'port' ? state.ports?.[srcId] : state.planets?.[srcId];
+                const snkStateNode = snkKind === 'port' ? state.ports?.[snkId] : state.planets?.[snkId];
+                if (!srcStateNode || !snkStateNode) return;
+                const srcStock = getPendingStock(srcId, srcKind);
+                const snkStock = getPendingStock(snkId, snkKind);
+                pendingStock.set(srcId, { kind: srcKind, stock: { ...srcStock, [commodity]: Math.max(0, (srcStock[commodity] || 0) - amount) } });
+                pendingStock.set(snkId, { kind: snkKind, stock: { ...snkStock, [commodity]: Math.min(sinkItem.node.maxStock[commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP, (snkStock[commodity] || 0) + amount) } });
                 sourceItem.surplus -= amount;
                 sinkRemainingCap -= amount;
                 summary.moved[commodity] += amount;
@@ -89,7 +107,12 @@ export function runAmbientTradeDaily() {
             summary.blockedUnits[commodity] += Math.min(sinkBlockedUnits, summary.residualDemand[commodity]);
         });
     });
-    state.ambientTrade = summary;
+    // Apply one patch per sector, avoiding redundant revision increments.
+    pendingStock.forEach(({ kind, stock }, sectorId) => {
+        if (kind === 'port') patchPort(sectorId, { stock });
+        else patchPlanet(sectorId, { stock });
+    });
+    patchAmbientTrade(summary);
     return summary;
 }
 

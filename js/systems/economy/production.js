@@ -1,5 +1,6 @@
 import { state } from '../../state.js';
 import { makeStock } from '../../utils.js';
+import { patchPort, patchSite } from '../../core/state/mutations.js';
 import { getAsteroidExtractionPotential } from './extraction.js';
 
 const PRODUCTION_RECIPES = Object.freeze({
@@ -12,7 +13,7 @@ const PRODUCTION_RECIPES = Object.freeze({
 function roleMultiplier(profile, recipe) {
     const tags = profile.roleTags || [];
     if (tags.includes('port:stardock') && recipe.role === 'stardock') return 1;
-    if (tags.includes('port:way_station') && recipe.role === 'refinery') return 0.5;
+    if ((tags.includes('port:way_station') || tags.includes('way_station')) && recipe.role === 'refinery') return 0.5;
     if (tags.includes('extractive') && recipe.role === 'industrial') return 0.4;
     return 0.25;
 }
@@ -25,32 +26,49 @@ export function applyDailyProduction() {
         if (!port || !site) return;
         if (!port.stock) port.stock = {};
         const extraction = getAsteroidExtractionPotential(site);
+        const updatedStock = { ...port.stock };
+        let extractedOre = 0;
+        let stockChanged = false;
         Object.entries(extraction).forEach(([commodity, amount]) => {
             const max = Math.max(0, port.maxStock?.[commodity] || 0);
-            const current = Math.max(0, port.stock?.[commodity] || 0);
+            const current = Math.max(0, updatedStock?.[commodity] || 0);
             const add = Math.min(Math.max(0, amount), Math.max(0, max - current));
-            port.stock[commodity] = current + add;
-            summary.produced[commodity] = (summary.produced[commodity] || 0) + add;
+            if (add > 0) {
+                updatedStock[commodity] = current + add;
+                summary.produced[commodity] = (summary.produced[commodity] || 0) + add;
+                if (commodity === 'ore') extractedOre += add;
+                stockChanged = true;
+            }
         });
+        if (site.asteroids && extractedOre > 0) {
+            patchSite(sectorId, {
+                asteroids: {
+                    ...site.asteroids,
+                    ore: Math.max(0, Number(site.asteroids.ore || 0) - extractedOre)
+                }
+            });
+        }
         Object.entries(PRODUCTION_RECIPES).forEach(([commodity, recipe]) => {
             const capacity = Math.floor(recipe.baseCapacity * roleMultiplier(profile, recipe));
             if (capacity <= 0) return;
             let maxByInput = capacity;
             Object.entries(recipe.inputs).forEach(([input, amountPerUnit]) => {
-                const current = Math.max(0, port.stock?.[input] || 0);
+                const current = Math.max(0, updatedStock?.[input] || 0);
                 maxByInput = Math.min(maxByInput, Math.floor(current / amountPerUnit));
             });
             const outputUnits = Math.max(0, maxByInput);
             if (outputUnits <= 0) return;
             Object.entries(recipe.inputs).forEach(([input, amountPerUnit]) => {
-                port.stock[input] = Math.max(0, (port.stock[input] || 0) - outputUnits * amountPerUnit);
+                updatedStock[input] = Math.max(0, (updatedStock[input] || 0) - outputUnits * amountPerUnit);
             });
             const max = Math.max(0, port.maxStock?.[commodity] || 0);
-            const current = Math.max(0, port.stock?.[commodity] || 0);
+            const current = Math.max(0, updatedStock?.[commodity] || 0);
             const produced = Math.min(outputUnits * recipe.output, Math.max(0, max - current));
-            port.stock[commodity] = current + produced;
+            updatedStock[commodity] = current + produced;
             summary.produced[commodity] = (summary.produced[commodity] || 0) + produced;
+            stockChanged = true;
         });
+        if (stockChanged) patchPort(sectorId, { stock: updatedStock });
     });
     state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, production: summary };
     return summary;
