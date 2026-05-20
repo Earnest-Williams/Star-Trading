@@ -21,6 +21,7 @@ import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../constants.js';
 import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { getSpotPriceForSector, getExpectedRouteValue } from '../economy/pricing.js';
+import { recomputeEconomyPressure } from '../economy/pressure.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../../utils.js';
 import { addSectorInfluence } from '../../core/influence.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
@@ -575,6 +576,7 @@ export function unassignRouteEscort(routeId) {
 
 export function runTradeRoutesDaily() {
     const changedSlices = new Set();
+    recomputeEconomyPressure();
     const normalisationSlices = normaliseTradeRoutes();
     normalisationSlices.forEach(slice => changedSlices.add(slice));
     getTradeRoutes().forEach(route => {
@@ -584,6 +586,7 @@ export function runTradeRoutesDaily() {
         const nextRunDay = state.player.time.day + route.intervalDays;
         patchRoute(route.id, { nextRunDay }).forEach(slice => changedSlices.add(slice));
     });
+    recomputeEconomyPressure();
     return [...changedSlices];
 }
 
@@ -797,4 +800,3 @@ export function estimateRouteProfit(originSector, destinationSector, commodity, 
     const quote = getExpectedRouteValue(originSector, destinationSector, commodity, amount);
     return quote.expectedProfit;
 }
-
