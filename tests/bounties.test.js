@@ -91,6 +91,9 @@ describe('bounty system', () => {
             jurisdictionFactionId: 'sda',
             expiresDay: 2
         });
+        state.player.time.day = 1;
+        assert.deepEqual(getActiveBounties({ siteId: 2, guildId: 'sda_marshal' }).map(entry => entry.id), [bounty.id]);
+        state.player.time.day = 3;
         assert.deepEqual(canLegallyAcceptBounty(bounty.id, 'sda_marshal', 2), { ok: false, reasons: ['expired'] });
         assert.deepEqual(getActiveBounties({ siteId: 2, guildId: 'sda_marshal' }), []);
         normalizeBountiesDaily();
