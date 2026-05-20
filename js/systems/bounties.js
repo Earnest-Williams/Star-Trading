@@ -54,9 +54,9 @@ export function canLegallyAcceptBounty(bountyId, guildId, siteId) {
     if (bounty.status !== 'active') return { ok: false, reasons: ['unavailable'] };
     if (!guildId) return { ok: false, reasons: ['no_membership'] };
     const membership = state.player?.bountyGuilds?.memberships?.[guildId];
-    if (!membership || membership.licenseState !== 'active' || membership.duesStatus !== 'paid') {
-        return { ok: false, reasons: ['no_membership'] };
-    }
+    if (!membership) return { ok: false, reasons: ['no_membership'] };
+    if (membership.licenseState !== 'active') return { ok: false, reasons: ['inactive_license'] };
+    if (membership.duesStatus !== 'paid') return { ok: false, reasons: ['unpaid_dues'] };
     const recognized = getRecognizedBountyGuilds(siteId);
     if (!recognized.length) return { ok: false, reasons: ['unavailable_jurisdiction'] };
     if (!recognized.includes(guildId) || !bounty.recognizedGuildIds.includes(guildId)) {
@@ -83,8 +83,11 @@ export function issueBounty(def) {
     if (state.bounties.byId[id]) throw new Error(`Bounty id collision for ${id}`);
     state.bounties.nextId += 1;
     const createdDay = getCurrentDay();
-    const expirySpan = Math.max(BALANCE.BOUNTIES.EXPIRY_MIN_DAYS, Math.min(BALANCE.BOUNTIES.EXPIRY_DEFAULT_DAYS, BALANCE.BOUNTIES.EXPIRY_MAX_DAYS));
-    const expiresDay = def.expiresDay || (createdDay + expirySpan);
+    const requestedSpan = Number.isFinite(def.expiresDay)
+        ? (def.expiresDay - createdDay)
+        : BALANCE.BOUNTIES.EXPIRY_DEFAULT_DAYS;
+    const expirySpan = Math.max(BALANCE.BOUNTIES.EXPIRY_MIN_DAYS, Math.min(requestedSpan, BALANCE.BOUNTIES.EXPIRY_MAX_DAYS));
+    const expiresDay = createdDay + expirySpan;
     const knownSiteId = def.knownSiteId || state.player?.currentSector || null;
     const recognizedGuildIds = def.recognizedGuildIds || getRecognizedBountyGuilds(knownSiteId);
     const bounty = {

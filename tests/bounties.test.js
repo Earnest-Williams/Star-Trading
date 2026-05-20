@@ -82,18 +82,59 @@ describe('bounty system', () => {
         assert.deepEqual(blocked, { ok: false, reasons: ['no_membership'] });
     });
 
+    it('returns distinct membership reason codes for license and dues status', () => {
+        const bounty = issueBounty({
+            targetId: 'capt_dues',
+            targetKind: 'captain',
+            type: 'warrant',
+            issuedBy: 'sda',
+            jurisdictionFactionId: 'sda'
+        });
+
+        state.player.bountyGuilds.memberships.sda_marshal.licenseState = 'suspended';
+        assert.deepEqual(canLegallyAcceptBounty(bounty.id, 'sda_marshal', 1), { ok: false, reasons: ['inactive_license'] });
+
+        state.player.bountyGuilds.memberships.sda_marshal.licenseState = 'active';
+        state.player.bountyGuilds.memberships.sda_marshal.duesStatus = 'late';
+        assert.deepEqual(canLegallyAcceptBounty(bounty.id, 'sda_marshal', 1), { ok: false, reasons: ['unpaid_dues'] });
+    });
+
+    it('clamps provided expiry day to configured min and max span', () => {
+        const createdDay = state.player.time.day;
+        const minClamped = issueBounty({
+            targetId: 'capt_min_clamp',
+            targetKind: 'captain',
+            type: 'warrant',
+            issuedBy: 'sda',
+            jurisdictionFactionId: 'sda',
+            expiresDay: createdDay - 5
+        });
+        assert.equal(minClamped.expiresDay, createdDay + BALANCE.BOUNTIES.EXPIRY_MIN_DAYS);
+
+        const maxClamped = issueBounty({
+            targetId: 'capt_max_clamp',
+            targetKind: 'captain',
+            type: 'private_contract',
+            issuedBy: 'sda',
+            jurisdictionFactionId: 'sda',
+            expiresDay: createdDay + 999
+        });
+        assert.equal(maxClamped.expiresDay, createdDay + BALANCE.BOUNTIES.EXPIRY_MAX_DAYS);
+    });
+
     it('handles political nonrecognition and expiry normalization', () => {
+        const createdDay = state.player.time.day;
         const bounty = issueBounty({
             targetId: 'capt_3',
             targetKind: 'captain',
             type: 'warrant',
             issuedBy: 'sda',
             jurisdictionFactionId: 'sda',
-            expiresDay: 2
+            expiresDay: createdDay + BALANCE.BOUNTIES.EXPIRY_MIN_DAYS
         });
-        state.player.time.day = 1;
+        state.player.time.day = createdDay;
         assert.deepEqual(getActiveBounties({ siteId: 2, guildId: 'sda_marshal' }).map(entry => entry.id), [bounty.id]);
-        state.player.time.day = 3;
+        state.player.time.day = bounty.expiresDay + 1;
         assert.deepEqual(canLegallyAcceptBounty(bounty.id, 'sda_marshal', 2), { ok: false, reasons: ['expired'] });
         assert.deepEqual(getActiveBounties({ siteId: 2, guildId: 'sda_marshal' }), []);
         normalizeBountiesDaily();
@@ -157,6 +198,7 @@ describe('bounty system', () => {
         state.bounties.byId[claimed.id].acceptedByGuildId = 'sda_marshal';
         state.bounties.byId[claimed.id].acceptedByPlayer = true;
         assert.equal(claimBounty(claimed.id, 'defeat'), true);
+        state.player.time.day = expired.expiresDay + 1;
 
         assert.deepEqual(canLegallyAcceptBounty(expired.id, 'sda_marshal', 1), { ok: false, reasons: ['expired'] });
         assert.deepEqual(canLegallyAcceptBounty(claimed.id, 'sda_marshal', 1), { ok: false, reasons: ['already_claimed'] });
