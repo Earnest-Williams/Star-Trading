@@ -17,6 +17,7 @@ import { stateChanged, StateSlice } from '../../core/state/index.js';
 import { getTraitDefinition } from '../../config/traits.js';
 import { assignSectorPolities } from '../../systems/polities.js';
 import { seedCompaniesAndPeople } from '../../systems/companies.js';
+import { rebuildEconomicProfiles } from '../../systems/economy/profiles.js';
 
 export { makeStock };
 
@@ -692,6 +693,7 @@ export function generateUniverse() {
     buildCorridors(config);
     seedPortsPlanetsAndResources();
     ensureEconomicActivityConnectivity();
+    rebuildEconomicProfiles();
     assignSectorPolities();
     seedCompaniesAndPeople(rng);
     // Callers (main.js) are responsible for calling createCaptains, generateMissionPool, generateFactionAsks
