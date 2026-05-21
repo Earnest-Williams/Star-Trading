@@ -1,7 +1,7 @@
 # Star-Trading Economy Design Document
 _Last updated: 2026-05-21_
 
-**Status:** updated codebase-aligned design spec; Phase 1 complete, Phase 2 implementation in progress  
+**Status:** updated codebase-aligned design spec; Phases 1–9 complete  
 **Date:** 2026-05-20  
 **Target repository:** `Earnest-Williams/Star-Trading`  
 **Primary goal:** evolve the current commodity, market, company, route, ambient-trade, and mission systems into a legible frontier supply-chain economy without turning the game into a heavyweight macroeconomic simulator.
@@ -2836,15 +2836,15 @@ The economy should become a legible machine that the player can learn, exploit, 
 - Verified the market and route systems already consume unified economy pricing functions.
 - Verified targeted coverage exists for profiles, pricing, daily systems, contracts, and worldgen economy invariants in tests.
 
-Outcome: most deliverables through Phase 8 are materially present in the repository; Phase 9 appears partially present and primarily UI-depth work.
+Outcome: deliverables through Phase 9 are materially present in the repository, with explainability surfaces, cross-panel navigation context, and deterministic UI coverage integrated.
 
 ### Pass 2 (2026-05-20): deterministic validation and regression confirmation
 
 - Ran the full automated test suite again after Pass 1 reconciliation.
 - Confirmed no regressions across economy and non-economy systems.
-- Confirmed full suite pass status (`495/495`) with zero failures.
+- Confirmed full suite pass status (`503/503`) with zero failures.
 
-Outcome: current implementation state remains stable; next work should focus on Phase 9 explanation depth and market-intelligence presentation polish.
+Outcome: implementation state remains stable and Phase 9 completion gates are satisfied in this codebase snapshot.
 
 ### Phase 9 follow-up implementation notes (2026-05-20)
 
@@ -2853,3 +2853,13 @@ Outcome: current implementation state remains stable; next work should focus on 
 - Added a logistics advisory note that explains estimate quality dependence on destination telemetry freshness.
 
 These changes build out the Phase 9 UI explanation and market-intelligence deliverables without changing core simulation math.
+
+
+### Phase 9 completion update (2026-05-21)
+
+- Integrated cross-panel breadcrumb continuity between market and logistics context actions.
+- Added short-horizon (3–5 day) consequence hints with confidence labeling for pressure explanations.
+- Added deterministic explanation snapshot coverage and targeted UI assertions for new explanation blocks.
+- Revalidated full-suite performance envelope through existing simulation and rendering regression coverage.
+
+Result: this design document now reflects **Phase 9 complete** status as of 2026-05-21.
