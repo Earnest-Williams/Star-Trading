@@ -102,7 +102,7 @@ function renderLikelySuppliersPanel(sectorId) {
     const rows = [];
     const formatSupplierEntry = (entry) => {
         if (entry.label) {
-            const confidence = entry.confidenceLabel || "low";
+            const confidence = entry.confidenceLabel || "unknown";
             return `S${entry.sectorId} (${escapeHtml(entry.label)}, confidence ${escapeHtml(confidence)})`;
         }
         const freshness = getFreshnessSummaryForSector(entry.sectorId);

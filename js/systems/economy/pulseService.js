@@ -30,7 +30,7 @@ export function getPulseServiceSignalForPath(pathOrSectorIds) {
   const sectors = Array.isArray(pathOrSectorIds) ? pathOrSectorIds : [];
   if (sectors.length <= 0) return { reserveRatio: 1, serviceQuality: 'stable', routeSurchargeMultiplier: 1, reliabilityPenalty: 0, deepRoutePenalty: 0, causes: [] };
   const signals = sectors.map(getPulseServiceSignalForSector);
-  const worstSignal = signals.reduce((worst, current) => (!worst || current.reserveRatio < worst.reserveRatio ? current : worst), null);
+  const worstSignal = signals.slice(1).reduce((worst, current) => (current.reserveRatio < worst.reserveRatio ? current : worst), signals[0]);
   return {
     reserveRatio: Math.min(...signals.map((s) => s.reserveRatio)),
     serviceQuality: worstSignal?.serviceQuality || 'stable',
