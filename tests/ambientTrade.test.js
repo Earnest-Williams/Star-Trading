@@ -43,8 +43,11 @@ describe('ambient trade', () => {
         buildWorld();
         const safe = runAmbientTradeDaily().moved.ore;
         buildWorld({ badlands: true });
-        const risky = runAmbientTradeDaily().moved.ore;
+        const riskySummary = runAmbientTradeDaily();
+        const risky = riskySummary.moved.ore;
         assert.ok(risky < safe);
+        assert.ok(riskySummary.blockedByReason.highRisk.ore > 0);
+        assert.ok(riskySummary.blockedFlows > 0);
     });
 
     it('no ambient trade occurs without connectivity', () => {

@@ -44,6 +44,11 @@ export function runAmbientTradeDaily() {
         residualDemand: makeStock(),
         attemptedDemand: makeStock()
     };
+    summary.blockedByReason = {
+        disconnected: makeStock(),
+        unprofitable: makeStock(),
+        highRisk: makeStock()
+    };
     const nodes = getAllLogisticsNodes();
     // Accumulate all stock changes keyed by sectorId; apply one patch per sector at the end.
     const pendingStock = new Map();
@@ -66,19 +71,32 @@ export function runAmbientTradeDaily() {
             if (sinkRemainingCap <= 0) return;
             summary.attemptedDemand[commodity] += sinkRemainingCap;
             let sinkBlockedUnits = 0;
+            const recordBlockedFlow = (reason, sourceSurplus) => {
+                const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
+                const blocked = Math.min(remainingBlockedCap, sourceSurplus);
+                if (blocked <= 0) return;
+                sinkBlockedUnits += blocked;
+                summary.blockedByReason[reason][commodity] += blocked;
+                summary.blockedFlows += 1;
+            };
             sources.forEach((sourceItem) => {
                 if (sinkRemainingCap <= 0 || sourceItem.surplus <= 0) return;
                 if (sourceItem.node.sectorId === sinkItem.node.sectorId) return;
                 const metrics = deriveRouteMetrics(sourceItem.node.sectorId, sinkItem.node.sectorId);
                 const distance = metrics.hopCount;
                 if (distance === null || distance > BALANCE.AMBIENT_TRADE.MAX_SEARCH_DISTANCE) {
-                    const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
-                    sinkBlockedUnits += Math.min(remainingBlockedCap, sourceItem.surplus);
-                    summary.blockedFlows += 1;
+                    recordBlockedFlow('disconnected', sourceItem.surplus);
                     return;
                 }
                 const risk = metrics.risk || 0;
-                if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity)) return;
+                if (risk >= BALANCE.AMBIENT_TRADE.RISK_REJECTION_THRESHOLD) {
+                    recordBlockedFlow('highRisk', sourceItem.surplus);
+                    return;
+                }
+                if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity)) {
+                    recordBlockedFlow('unprofitable', sourceItem.surplus);
+                    return;
+                }
                 const distanceFactor = 1 / (1 + Math.max(0, distance - BALANCE.AMBIENT_TRADE.DISTANCE_BASELINE) * BALANCE.AMBIENT_TRADE.DISTANCE_PENALTY);
                 const riskFactor = 1 / (1 + risk * BALANCE.AMBIENT_TRADE.RISK_PENALTY);
                 const jitter = 1 - BALANCE.AMBIENT_TRADE.JITTER + random() * BALANCE.AMBIENT_TRADE.JITTER * 2;
@@ -104,7 +122,7 @@ export function runAmbientTradeDaily() {
                 summary.flows += 1;
             });
             summary.residualDemand[commodity] += sinkRemainingCap;
-            summary.blockedUnits[commodity] += Math.min(sinkBlockedUnits, summary.residualDemand[commodity]);
+            summary.blockedUnits[commodity] += Math.min(sinkBlockedUnits, sinkRemainingCap);
         });
     });
     // Apply one patch per sector, avoiding redundant revision increments.
@@ -121,5 +139,9 @@ export function describeAmbientTradeSummary(summary = state.ambientTrade) {
     const moved = MARKET_COMMODITIES.map((commodity) => `${summary.moved[commodity]} ${formatCommodity(commodity)}`).join(' / ');
     const residual = MARKET_COMMODITIES.map((commodity) => `${summary.residualDemand[commodity]} ${formatCommodity(commodity)}`).join(' / ');
     const blocked = MARKET_COMMODITIES.map((commodity) => `${summary.blockedUnits[commodity]} ${formatCommodity(commodity)}`).join(' / ');
-    return `Ambient trade moved ${moved} across ${summary.flows} flows. Residual demand for routed/player trade: ${residual}. Blocked network pressure: ${blocked}.`;
+    const blockedReasons = summary.blockedByReason;
+    const disconnected = MARKET_COMMODITIES.map((commodity) => `${blockedReasons.disconnected?.[commodity] || 0} ${formatCommodity(commodity)}`).join(' / ');
+    const unprofitable = MARKET_COMMODITIES.map((commodity) => `${blockedReasons.unprofitable?.[commodity] || 0} ${formatCommodity(commodity)}`).join(' / ');
+    const highRisk = MARKET_COMMODITIES.map((commodity) => `${blockedReasons.highRisk?.[commodity] || 0} ${formatCommodity(commodity)}`).join(' / ');
+    return `Ambient trade moved ${moved} across ${summary.flows} flows. Residual demand for routed/player trade: ${residual}. Blocked network pressure: ${blocked}. Blocked by disconnection: ${disconnected}. Blocked by unprofitable margin: ${unprofitable}. Blocked by high risk: ${highRisk}.`;
 }
