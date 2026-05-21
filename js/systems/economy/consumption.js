@@ -13,6 +13,17 @@ const POPULATION_BASELINES = Object.freeze({
 
 function asNumber(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
 
+function mergeNeeds(...sources) {
+    const merged = {};
+    sources.forEach((source) => {
+        if (!source || typeof source !== 'object') return;
+        Object.entries(source).forEach(([commodity, amount]) => {
+            merged[commodity] = (merged[commodity] || 0) + asNumber(amount);
+        });
+    });
+    return merged;
+}
+
 export function applyDailyConsumption() {
     const summary = { consumed: {}, unmetDemand: {}, consumedBySector: {}, unmetDemandBySector: {}, sectorsWithShortage: 0 };
     MARKET_COMMODITIES.forEach((commodity) => { summary.consumed[commodity] = 0; summary.unmetDemand[commodity] = 0; });
@@ -21,7 +32,7 @@ export function applyDailyConsumption() {
         const planet = state.planets?.[sectorId];
         if (!port && !planet) return;
         const baseline = POPULATION_BASELINES[profile.populationTier || 0] || {};
-        const needs = { ...baseline, ...(profile.industrialConsumption || {}), ...(profile.serviceConsumption || {}) };
+        const needs = mergeNeeds(baseline, profile.industrialConsumption, profile.serviceConsumption);
         const sectorConsumed = {};
         const sectorUnmet = {};
         let hadShortage = false;

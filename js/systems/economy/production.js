@@ -1,4 +1,5 @@
 import { state } from '../../state.js';
+import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { makeStock } from '../../utils.js';
 import { patchPort, patchSite } from '../../core/state/mutations.js';
 import { getAsteroidExtractionPotential } from './extraction.js';
@@ -28,6 +29,16 @@ function roleMultiplier(profile, recipe) {
     return 0.25;
 }
 
+function getCommodityCapacity(port, profile, commodity) {
+    const explicit = Number(port?.maxStock?.[commodity]);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const target = Number(profile?.targetStock?.[commodity]);
+    if (Number.isFinite(target) && target > 0) return Math.max(1, target * 2);
+    const fallback = Number(PORT_DEFAULTS.MAX_STOCK?.[commodity]);
+    if (Number.isFinite(fallback) && fallback > 0) return fallback;
+    return Math.max(1, Number(port?.stock?.[commodity]) || 0);
+}
+
 export function applyDailyProduction() {
     const summary = { produced: makeStock(), productionBySector: {} };
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
@@ -41,7 +52,7 @@ export function applyDailyProduction() {
         let stockChanged = false;
         if (!summary.productionBySector[sectorId]) summary.productionBySector[sectorId] = {};
         Object.entries(extraction).forEach(([commodity, amount]) => {
-            const max = Math.max(0, port.maxStock?.[commodity] || 0);
+            const max = getCommodityCapacity(port, profile, commodity);
             const current = Math.max(0, updatedStock?.[commodity] || 0);
             const add = Math.min(Math.max(0, amount), Math.max(0, max - current));
             if (add > 0) {
@@ -68,11 +79,11 @@ export function applyDailyProduction() {
                 const current = Math.max(0, updatedStock?.[input] || 0);
                 maxByInput = Math.min(maxByInput, Math.floor(current / amountPerUnit));
             });
-            const max = Math.max(0, port.maxStock?.[commodity] || 0);
+            const max = getCommodityCapacity(port, profile, commodity);
             const current = Math.max(0, updatedStock?.[commodity] || 0);
             const outputCapacity = Math.max(0, max - current);
             if (outputCapacity <= 0) return;
-            const outputUnits = Math.min(Math.max(0, maxByInput), Math.ceil(outputCapacity / recipe.output));
+            const outputUnits = Math.min(Math.max(0, maxByInput), Math.floor(outputCapacity / recipe.output));
             if (outputUnits <= 0) return;
             Object.entries(recipe.inputs).forEach(([input, amountPerUnit]) => {
                 updatedStock[input] = Math.max(0, (updatedStock[input] || 0) - outputUnits * amountPerUnit);

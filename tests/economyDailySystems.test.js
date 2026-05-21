@@ -94,6 +94,27 @@ describe('economy daily systems', () => {
         assert.equal(state.ports[4].stock.pulse_canister < 5, true);
     });
 
+    it('sums baseline, industrial, and service demand for overlapping commodities', () => {
+        state.player = { time: { day: 10 } };
+        state.economy.profilesBySector = {
+            6: {
+                populationTier: 1,
+                industrialConsumption: { water_ice: 2 },
+                serviceConsumption: { water_ice: 3 }
+            }
+        };
+        state.ports[6] = {
+            sectorId: 6,
+            stock: { water_ice: 20 },
+            maxStock: { water_ice: 100 }
+        };
+
+        const summary = applyDailyConsumption();
+
+        assert.equal(summary.consumed.water_ice, 6);
+        assert.equal(state.ports[6].stock.water_ice, 14);
+    });
+
     it('does not consume production inputs when output storage is full', () => {
         state.player = { time: { day: 11 } };
         state.economy.profilesBySector = {
@@ -119,5 +140,32 @@ describe('economy daily systems', () => {
         assert.equal(state.ports[5].stock.machinery, 5);
         assert.equal(state.ports[5].stock.electronics, 5);
         assert.equal(state.ports[5].stock.eq, 10);
+    });
+
+    it('uses fallback capacity when maxStock for output commodity is missing', () => {
+        state.player = { time: { day: 12 } };
+        state.economy.profilesBySector = {
+            7: { roleTags: ['port:stardock'], targetStock: { eq: 2 } }
+        };
+        state.universe[7] = { id: 7 };
+        state.ports[7] = {
+            sectorId: 7,
+            stock: {
+                machinery: 5,
+                electronics: 5,
+                eq: 0
+            },
+            maxStock: {
+                machinery: 100,
+                electronics: 100
+            }
+        };
+
+        const summary = applyDailyProduction();
+
+        assert.equal(summary.produced.eq, 2);
+        assert.equal(state.ports[7].stock.eq, 2);
+        assert.equal(state.ports[7].stock.machinery, 3);
+        assert.equal(state.ports[7].stock.electronics, 3);
     });
 });
