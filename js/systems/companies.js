@@ -128,6 +128,21 @@ function chooseCompanyType(sectorId) {
     return state.planets[sectorId] ? 'haulage' : 'security_contractor';
 }
 
+function chooseCapacityDrivenPrimaryType(sectorId, connectivityScore) {
+    const sector = state.universe[sectorId];
+    const port = state.ports[sectorId];
+    const profile = getEconomicProfile(sectorId);
+    if (sector?.front || port?.hiddenFactionId === 'vc') return 'black_market_front';
+    const extractionCapacity = Number(profile?.extractionCapacity) || 0;
+    const processingScore = scoreProcessingPresence(sectorId, connectivityScore);
+    const populationDemand = Number(profile?.demandWeight) || 0;
+    if (extractionCapacity >= 2400) return 'mining_contractor';
+    if (processingScore >= 3.2) return 'refinery_operator';
+    if (populationDemand >= 2.8 && connectivityScore >= 0.8) return 'industrial_supplier';
+    if (connectivityScore >= 1.2) return 'import_export';
+    return chooseCompanyType(sectorId);
+}
+
 function getEconomicProfile(sectorId) {
     return state.economy?.profilesBySector?.[sectorId] || null;
 }
@@ -231,14 +246,14 @@ export function seedCompaniesAndPeople(rng) {
     resetPeopleState();
     Object.keys(state.universe).map(Number).forEach(sectorId => {
         if (!hasEconomicActivity(sectorId)) return;
-        const type = chooseCompanyType(sectorId);
+        const connectivityScore = getRouteConnectivityScore(sectorId);
+        const type = chooseCapacityDrivenPrimaryType(sectorId, connectivityScore);
         createCompany(sectorId, type, rng);
         const extractionCount = computeExtractionCompanyCount(sectorId);
         const startMiningIndex = type === 'mining_contractor' ? 1 : 0;
         for (let index = startMiningIndex; index < extractionCount; index++) {
             createCompany(sectorId, 'mining_contractor', rng);
         }
-        const connectivityScore = getRouteConnectivityScore(sectorId);
         if (scoreProcessingPresence(sectorId, connectivityScore) >= 2.75 && type !== 'refinery_operator') {
             createCompany(sectorId, 'refinery_operator', rng);
         }

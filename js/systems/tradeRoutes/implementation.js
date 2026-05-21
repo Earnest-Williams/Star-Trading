@@ -699,10 +699,12 @@ export function runTradeRoute(route) {
         return [...changedSlices];
     }
     patchRouteEconomyAtEndpoints(route, amount).forEach(slice => changedSlices.add(slice));
-    const contractProgress = applyContractDeliveryHooks(route.destinationSector, route.commodity, amount);
-    if ((contractProgress.completed || 0) > 0 || (contractProgress.delivered || 0) > 0) {
-        changedSlices.add(StateSlice.ECONOMY);
-        if ((contractProgress.completed || 0) > 0) changedSlices.add(StateSlice.PLAYER);
+    if (route.ownerType === "player") {
+        const contractProgress = applyContractDeliveryHooks(route.destinationSector, route.commodity, amount);
+        if ((contractProgress.completed || 0) > 0 || (contractProgress.delivered || 0) > 0) {
+            changedSlices.add(StateSlice.ECONOMY);
+            if ((contractProgress.completed || 0) > 0) changedSlices.add(StateSlice.PLAYER);
+        }
     }
     const profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
     if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {

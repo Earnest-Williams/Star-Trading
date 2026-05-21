@@ -24,6 +24,7 @@ describe('economy contracts', () => {
         assert.equal(contract.type, 'pulse_tender');
         assert.deepEqual(contract.sourceCandidates, [1, 3]);
         assert.equal(contract.routeRisk, 0.8);
+        assert.equal(contract.premiumModel, 'procurement_subsidy');
         assert.equal(acceptEconomyContract(contract.id), true);
         assert.equal(contract.status, 'accepted');
     });

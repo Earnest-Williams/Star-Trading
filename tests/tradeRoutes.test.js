@@ -314,6 +314,24 @@ describe('explicit trade route execution', () => {
         assert.equal(state.economy.contracts[0].remaining < 12, true);
     });
 
+    it('captain routes do not progress player economy contracts', () => {
+        state.economy.contracts = [{
+            id: 'econ-29',
+            type: 'pulse_tender',
+            status: 'accepted',
+            destinationSector: 4,
+            commodity: 'ore',
+            amount: 12,
+            remaining: 12,
+            rewardCredits: 500
+        }];
+        const route = { id: 12, name: 'Captain ore line', originSector: 1, destinationSector: 4, commodity: 'ore', amount: 12, ownerType: 'captain', ownerId: 'cap-3', status: 'active', heat: 0, reliability: 50, runs: 0, failures: 0 };
+        state.captains['cap-3'] = { id: 'cap-3', ship: { cargoCapacity: 70 }, credits: 0, status: 'active' };
+        state.tradeRoutes = [route];
+        for (let attempt = 0; attempt < 4; attempt += 1) runTradeRoute(route);
+        assert.equal(state.economy.contracts[0].remaining, 12);
+    });
+
     it('closing a route does not mutate corridor infrastructure', () => {
         state.tradeRoutes = [{ id: 3, originSector: 1, destinationSector: 4, commodity: 'ore', status: 'active' }];
         const before = JSON.stringify(state.universe);

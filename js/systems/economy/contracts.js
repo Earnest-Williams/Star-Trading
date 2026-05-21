@@ -6,7 +6,13 @@ const CONTRACT_TYPES = Object.freeze({
     shortage_relief: Object.freeze({ label: 'Shortage Relief', rewardScale: 1.05 }),
     industrial_feedstock: Object.freeze({ label: 'Industrial Feedstock', rewardScale: 1.15 }),
     station_reserve: Object.freeze({ label: 'Station Reserve', rewardScale: 1.2 }),
-    pulse_tender: Object.freeze({ label: 'Pulse Tender', rewardScale: 1.3 })
+    pulse_tender: Object.freeze({ label: 'Pulse Tender', rewardScale: 1.3 }),
+    colony_supply: Object.freeze({ label: 'Colony Supply', rewardScale: 1.22 }),
+    shipyard_procurement: Object.freeze({ label: 'Shipyard Procurement', rewardScale: 1.25 }),
+    company_purchase_order: Object.freeze({ label: 'Company Purchase Order', rewardScale: 1.1 }),
+    surplus_export: Object.freeze({ label: 'Surplus Export', rewardScale: 1.08 }),
+    embargo_run: Object.freeze({ label: 'Embargo Run', rewardScale: 1.35 }),
+    black_market_diversion: Object.freeze({ label: 'Black-Market Diversion', rewardScale: 1.4 })
 });
 const CONTRACT_BALANCE = Object.freeze({
     MIN_AMOUNT: BALANCE.ECONOMY.CONTRACTS.MIN_AMOUNT,
@@ -40,9 +46,15 @@ function ensureEconomyState() {
 
 function inferContractType(commodity, signal, profile) {
     const tags = Array.isArray(profile?.roleTags) ? profile.roleTags : [];
+    if ((signal?.routeAccess || 1) < 0.2) return 'embargo_run';
+    if (tags.includes('site:frontier')) return 'colony_supply';
+    if (tags.includes('port:stardock')) return 'shipyard_procurement';
+    if (tags.includes('faction:vc') || tags.includes('front:hidden')) return 'black_market_diversion';
     if (commodity === 'pulse_canister') return 'pulse_tender';
     if (tags.includes('port:way_station') || tags.includes('port:stardock')) return 'station_reserve';
     if (['ore', 'heavy_metals', 'rare_earths', 'electronics'].includes(commodity)) return 'industrial_feedstock';
+    if ((signal?.surplus || 0) > (signal?.unmetDemand || 0) * 2) return 'surplus_export';
+    if ((signal?.dailyDemand || 0) >= (signal?.dailyProduction || 0) * 1.2) return 'company_purchase_order';
     if ((signal?.shortageSeverity || 0) >= 0.4) return 'shortage_relief';
     return null;
 }
@@ -99,7 +111,8 @@ function createContract(sectorId, commodity, signal, profile) {
         expiresDay: day + CONTRACT_BALANCE.LIFESPAN_DAYS,
         unitReward,
         reward: unitReward * amount,
-        reason: `${CONTRACT_TYPES[type].label} request due to sustained ${formatCommodity(commodity)} shortage pressure.`,
+        reason: `${CONTRACT_TYPES[type].label} procurement premium for sustained ${formatCommodity(commodity)} pressure.`,
+        premiumModel: 'procurement_subsidy',
         unmetDemand,
         localProductionLimit,
         sourceCandidates,
