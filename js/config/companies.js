@@ -24,6 +24,14 @@ export const COMPANY_SPAWN_RULES = Object.freeze({
     })
 });
 
+export const COMPANY_CAPACITY_SELECTION_RULES = Object.freeze({
+    PRIMARY_MINING_EXTRACTION_CAPACITY: 2400,
+    PRIMARY_REFINERY_PROCESSING_SCORE: 3.2,
+    PRIMARY_INDUSTRIAL_DEMAND_WEIGHT: 2.8,
+    PRIMARY_INDUSTRIAL_CONNECTIVITY: 0.8,
+    PRIMARY_IMPORT_EXPORT_CONNECTIVITY: 1.2
+});
+
 export const RAW_GOOD_ORIGINS = Object.freeze({
     ore: Object.freeze(["mining_contractor"]),
     heavy_metals: Object.freeze(["mining_contractor"]),
