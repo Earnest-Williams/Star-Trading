@@ -9,6 +9,7 @@ import { getPortType } from "../core/ports.js";
 import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
+import { getDisplayedSupplierSignals } from "../systems/economy/marketIntelligence.js";
 
 function renderEconomyBreadcrumbs(screen) {
     const focus = state.economyFocus || {};
@@ -97,32 +98,29 @@ function renderMarketIntelligencePanel(sectorId, port) {
 
 
 function renderLikelySuppliersPanel(sectorId) {
-    const pressureBySector = state.economy?.pressureBySector || {};
     let html = `<h4>Likely Suppliers</h4>`;
     const rows = [];
+    const clampProbability = (value) => Math.max(0, Math.min(1, Number(value || 0)));
     const formatSupplierEntry = (entry) => {
+        if (entry.label) {
+            const numericConfidence = Number(entry.confidenceLabel);
+            const confidence = Number.isFinite(numericConfidence)
+                ? `${Math.round(clampProbability(numericConfidence) * 100)}%`
+                : (entry.confidenceLabel || "unknown");
+            return `S${entry.sectorId} (${escapeHtml(entry.label)}, telemetry limited, confidence ${escapeHtml(confidence)})`;
+        }
         const freshness = getFreshnessSummaryForSector(entry.sectorId);
         const freshnessNote = freshness.label === "current" ? "live" : freshness.label;
-        const accessPct = Math.round(entry.routeAccess * 100);
+        const accessPct = Math.round(clampProbability(entry.routeAccess) * 100);
         const riskPct = 100 - accessPct;
-        const confidencePct = Math.round(entry.confidence * 100);
-        const exportable = Math.round(entry.surplus * entry.routeAccess);
-        return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}, confidence ${confidencePct}%)`;
+        const confidencePct = Math.round(clampProbability(entry.confidence) * 100);
+        const surplus = Math.max(0, Number(entry.surplus || 0));
+        const exportable = Math.round(surplus * clampProbability(entry.routeAccess));
+        const confidenceSuffix = entry.confidenceLabel ? `, confidence ${escapeHtml(entry.confidenceLabel)}` : `, confidence ${confidencePct}%`;
+        return `S${entry.sectorId} (surplus ${Math.round(surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}${confidenceSuffix})`;
     };
     MARKET_COMMODITIES.forEach((commodity) => {
-        const top = Object.entries(pressureBySector)
-            .filter(([sid, pressureMap]) => Number(sid) !== Number(sectorId) && Number(pressureMap?.[commodity]?.surplus || 0) > 0)
-            .map(([sid, pressureMap]) => {
-                const signal = pressureMap?.[commodity] || {};
-                return {
-                    sectorId: Number(sid),
-                    surplus: Math.max(0, Number(signal.surplus || 0)),
-                    routeAccess: Math.max(0, Math.min(1, Number(signal.routeAccess || 0))),
-                    confidence: Math.max(0, Math.min(1, Number(signal.confidence || 0)))
-                };
-            })
-            .sort((a, b) => b.surplus - a.surplus)
-            .slice(0, 2);
+        const top = getDisplayedSupplierSignals(sectorId, commodity, state.player?.character || {}, {}).slice(0, 2);
         if (top.length <= 0) return;
         rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map(formatSupplierEntry).join("; ")}</div>`);
     });
@@ -162,7 +160,7 @@ function renderEconomyContractBoard(sectorId) {
             ? `<button data-action="acceptEconomyContract" data-arg0="${contract.id}">Accept</button>`
             : '<span class="small muted">Deliver by selling commodity in this market.</span>';
         html += `<div class="mission-row"><strong>${escapeHtml(contract.reason)}</strong><br>`
-            + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, reward ${contract.reward} credits (${contract.unitReward}/unit), expires in ${daysLeft} day(s)<br>`
+            + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, premium ${contract.reward} credits (${contract.unitPremium || 0}/unit), market value ${contract.expectedMarketValue || 0}c, expected total payout ${contract.expectedTotalPayout || 0}c, expires in ${daysLeft} day(s)<br>`
             + `<span class="small muted">${statusText}</span><br>`
             + `<span class="small muted">Gap ${Math.max(0, Number(contract.targetStockGap || 0))}, unmet trend ${Math.max(0, Number(contract.unmetDemand || 0)).toFixed(1)}, shortage severity ${Math.max(0, Number(contract.shortageSeverity || 0)).toFixed(2)}</span><br>`
             + `<span class="small muted">Supplier hints: ${(Array.isArray(contract.sourceCandidates) && contract.sourceCandidates.length > 0) ? contract.sourceCandidates.map((sid) => `S${sid}`).join(", ") : "none"}</span><br>`

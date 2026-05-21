@@ -1,6 +1,7 @@
 import { state } from '../state.js';
 import { BALANCE } from '../constants.js';
 import { getDominantInfluence } from './influence.js';
+import { getPulseServiceSignalForSector } from '../systems/economy/pulseService.js';
 
 const routeCache = new Map();
 let cachedRevision = null;
@@ -117,7 +118,9 @@ function edgeCost(fromSectorId, gate) {
     const stabilityPenalty = Math.max(0, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY - numeric(gate.stability, BALANCE.ROUTE_PLANNER.DEFAULT_STABILITY)) / BALANCE.ROUTE_PLANNER.STABILITY_PENALTY_DIVISOR;
     const reserveCost = reservePressureCost(state.universe[fromSectorId])
         + reservePressureCost(state.universe[gate.destinationSectorId]) * BALANCE.ROUTE_PLANNER.DESTINATION_RESERVE_COST_MULTIPLIER;
-    return BALANCE.ROUTE_PLANNER.BASE_EDGE_COST + spanCost + tollCost + stabilityPenalty + reserveCost + sectorRiskCost(gate.destinationSectorId);
+    const pulse = getPulseServiceSignalForSector(gate.destinationSectorId);
+    const pulseCost = Math.max(0, (pulse.routeSurchargeMultiplier - 1) * 3);
+    return BALANCE.ROUTE_PLANNER.BASE_EDGE_COST + spanCost + tollCost + stabilityPenalty + reserveCost + sectorRiskCost(gate.destinationSectorId) + pulseCost;
 }
 
 function buildSegment(fromSectorId, gate) {

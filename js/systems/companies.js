@@ -11,6 +11,7 @@ import { createGeneratedPerson, resetPeopleState } from './people.js';
 import { hasEconomicActivity } from '../utils.js';
 import { MARKET_COMMODITIES } from '../constants.js';
 import { deriveRouteMetrics } from './tradeRoutes.js';
+import { chooseCapacityBasedCompanyTypes } from './economy/companyScoring.js';
 
 function pick(list, rng) {
     return list[Math.floor(rng() * list.length)];
@@ -255,32 +256,9 @@ export function seedCompaniesAndPeople(rng) {
     resetPeopleState();
     Object.keys(state.universe).map(Number).forEach(sectorId => {
         if (!hasEconomicActivity(sectorId)) return;
-        const connectivityScore = getRouteConnectivityScore(sectorId);
-        const type = chooseCapacityDrivenPrimaryType(sectorId, connectivityScore);
-        createCompany(sectorId, type, rng);
-        const extractionCount = computeExtractionCompanyCount(sectorId);
-        const startMiningIndex = type === 'mining_contractor' ? 1 : 0;
-        for (let index = startMiningIndex; index < extractionCount; index++) {
-            createCompany(sectorId, 'mining_contractor', rng);
-        }
-        if (scoreProcessingPresence(sectorId, connectivityScore) >= 2.75 && type !== 'refinery_operator') {
-            createCompany(sectorId, 'refinery_operator', rng);
-        }
-        const port = state.ports[sectorId];
-        const portType = port ? getPortType(port) : null;
-        const isHub = port && (portType.sells.length > 0 || port.typeKey === 'stardock');
-        if (isHub) createCompany(sectorId, type === 'import_export' ? 'haulage' : 'import_export', rng);
-        const scaling = computeTradeScaling(sectorId, connectivityScore);
-        for (let index = 0; index < scaling.haulageCount; index++) {
-            createCompany(sectorId, 'haulage', rng);
-        }
-        for (let index = 0; index < scaling.importExportCount; index++) {
-            createCompany(sectorId, 'import_export', rng);
-        }
-        if (shouldSeedShipRefitter(sectorId, rng)) createCompany(sectorId, 'ship_refitter', rng);
-        for (let index = 0; index < getDockyardCount(sectorId, rng); index++) {
-            createCompany(sectorId, 'dockyard', rng);
-        }
+        const profile = state.economy?.profilesBySector?.[sectorId];
+        const chosenTypes = profile ? chooseCapacityBasedCompanyTypes(sectorId) : [chooseCompanyType(sectorId)];
+        chosenTypes.forEach((type) => createCompany(sectorId, type, rng));
     });
 }
 
