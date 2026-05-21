@@ -1,5 +1,10 @@
 import { state } from '../state.js';
-import { COMPANY_ARCHETYPES, COMPANY_NAME_PARTS, COMPANY_SPAWN_RULES } from '../config/companies.js';
+import {
+    COMPANY_ARCHETYPES,
+    COMPANY_CAPACITY_SELECTION_RULES,
+    COMPANY_NAME_PARTS,
+    COMPANY_SPAWN_RULES
+} from '../config/companies.js';
 import { getPortType, normalisePortTypeKey } from '../core/ports.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { createGeneratedPerson, resetPeopleState } from './people.js';
@@ -114,10 +119,11 @@ function getDockyardCount(sectorId, rng) {
     return 0;
 }
 
-function chooseCompanyType(sectorId) {
+function chooseCompanyType(sectorId, options = {}) {
+    const includeFrontOverride = options.includeFrontOverride !== false;
     const sector = state.universe[sectorId];
     const port = state.ports[sectorId];
-    if (sector?.front || port?.hiddenFactionId === 'vc') return 'black_market_front';
+    if (includeFrontOverride && (sector?.front || port?.hiddenFactionId === 'vc')) return 'black_market_front';
     if (sector?.asteroids) return 'mining_contractor';
     const typeKey = port ? normalisePortTypeKey(port) : null;
     if (typeKey === 'mining') return 'mining_contractor';
@@ -126,6 +132,24 @@ function chooseCompanyType(sectorId) {
     if (typeKey === 'industrial' || typeKey === 'consumer') return 'industrial_supplier';
     if (port) return 'import_export';
     return state.planets[sectorId] ? 'haulage' : 'security_contractor';
+}
+
+function chooseCapacityDrivenPrimaryType(sectorId, connectivityScore) {
+    const sector = state.universe[sectorId];
+    const port = state.ports[sectorId];
+    const profile = getEconomicProfile(sectorId);
+    if (sector?.front || port?.hiddenFactionId === 'vc') return 'black_market_front';
+    const extractionCapacity = Number(profile?.extractionCapacity) || 0;
+    const processingScore = scoreProcessingPresence(sectorId, connectivityScore);
+    const populationDemand = Number(profile?.demandWeight) || 0;
+    if (extractionCapacity >= COMPANY_CAPACITY_SELECTION_RULES.PRIMARY_MINING_EXTRACTION_CAPACITY) return 'mining_contractor';
+    if (processingScore >= COMPANY_CAPACITY_SELECTION_RULES.PRIMARY_REFINERY_PROCESSING_SCORE) return 'refinery_operator';
+    if (
+        populationDemand >= COMPANY_CAPACITY_SELECTION_RULES.PRIMARY_INDUSTRIAL_DEMAND_WEIGHT
+        && connectivityScore >= COMPANY_CAPACITY_SELECTION_RULES.PRIMARY_INDUSTRIAL_CONNECTIVITY
+    ) return 'industrial_supplier';
+    if (connectivityScore >= COMPANY_CAPACITY_SELECTION_RULES.PRIMARY_IMPORT_EXPORT_CONNECTIVITY) return 'import_export';
+    return chooseCompanyType(sectorId, { includeFrontOverride: false });
 }
 
 function getEconomicProfile(sectorId) {
@@ -231,14 +255,14 @@ export function seedCompaniesAndPeople(rng) {
     resetPeopleState();
     Object.keys(state.universe).map(Number).forEach(sectorId => {
         if (!hasEconomicActivity(sectorId)) return;
-        const type = chooseCompanyType(sectorId);
+        const connectivityScore = getRouteConnectivityScore(sectorId);
+        const type = chooseCapacityDrivenPrimaryType(sectorId, connectivityScore);
         createCompany(sectorId, type, rng);
         const extractionCount = computeExtractionCompanyCount(sectorId);
         const startMiningIndex = type === 'mining_contractor' ? 1 : 0;
         for (let index = startMiningIndex; index < extractionCount; index++) {
             createCompany(sectorId, 'mining_contractor', rng);
         }
-        const connectivityScore = getRouteConnectivityScore(sectorId);
         if (scoreProcessingPresence(sectorId, connectivityScore) >= 2.75 && type !== 'refinery_operator') {
             createCompany(sectorId, 'refinery_operator', rng);
         }
