@@ -10,6 +10,13 @@ import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
 
+function formatConfidenceLabel(value) {
+    const confidence = Math.max(0, Math.min(1, Number(value || 0)));
+    if (confidence >= 0.85) return "high";
+    if (confidence >= 0.6) return "medium";
+    return "low";
+}
+
 function renderPressurePanel(sectorId) {
     const pressure = state.economy?.pressureBySector?.[String(sectorId)];
     let html = `<h4>Market Pressure</h4>`;
@@ -22,7 +29,15 @@ function renderPressurePanel(sectorId) {
         const shortage = Math.round(Math.max(0, Number(signal.shortageSeverity || 0)) * 100);
         const surplus = Math.round(Math.max(0, Number(signal.surplusSeverity || 0)) * 100);
         const stockRatio = Math.round(Math.max(0, Number(signal.stockRatio || 0)) * 100);
-        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%</div>`;
+        const target = Math.max(1, Number(signal.targetStock || 1));
+        const current = Math.max(0, Number(signal.currentStock || 0));
+        const dailyUse = Number(signal.dailyConsumption || 0).toFixed(1);
+        const dailyOutput = Number(signal.dailyProduction || 0).toFixed(1);
+        const primaryCause = signal.primaryCause || "No dominant cause telemetry.";
+        const confidence = Math.max(0, Math.min(100, Math.round(Number(signal.confidence || 0) * 100)));
+        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%<br>`
+            + `Stock ${current}/${target} | daily use ${dailyUse} | daily output ${dailyOutput} | confidence ${confidence}%<br>`
+            + `<span class="muted">Cause: ${escapeHtml(primaryCause)}</span></div>`;
     });
     return html;
 }
@@ -52,10 +67,37 @@ function renderMarketIntelligencePanel(sectorId, port) {
         .slice(0, 5)
         .map(({ commodity, recommendation, confidence }) => (
             `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: `
-            + `${escapeHtml(recommendation.actionId)} (${confidence}% confidence) — `
+            + `${escapeHtml(recommendation.actionId)} (${confidence}% confidence, ${formatConfidenceLabel(recommendation.confidence)} quality) — `
             + `${escapeHtml(recommendation.message)}</div>`
         ));
     html += recRows.join("");
+    return html;
+}
+
+
+function renderLikelySuppliersPanel(sectorId) {
+    const pressureBySector = state.economy?.pressureBySector || {};
+    let html = `<h4>Likely Suppliers</h4>`;
+    const rows = [];
+    MARKET_COMMODITIES.forEach((commodity) => {
+        const top = Object.entries(pressureBySector)
+            .filter(([sid, pressureMap]) => Number(sid) !== Number(sectorId) && Number(pressureMap?.[commodity]?.surplus || 0) > 0)
+            .map(([sid, pressureMap]) => {
+                const signal = pressureMap?.[commodity] || {};
+                return {
+                    sectorId: Number(sid),
+                    surplus: Math.max(0, Number(signal.surplus || 0)),
+                    routeAccess: Math.max(0, Math.min(1, Number(signal.routeAccess || 0))),
+                    confidence: Math.max(0, Math.min(1, Number(signal.confidence || 0)))
+                };
+            })
+            .sort((a, b) => b.surplus - a.surplus)
+            .slice(0, 2);
+        if (top.length <= 0) return;
+        rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map((entry) => `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, access ${Math.round(entry.routeAccess * 100)}%, confidence ${Math.round(entry.confidence * 100)}%)`).join("; ")}</div>`);
+    });
+    if (rows.length <= 0) return `${html}<div class="muted">No strong supplier telemetry right now.</div>`;
+    html += rows.join("");
     return html;
 }
 
@@ -91,7 +133,9 @@ function renderEconomyContractBoard(sectorId) {
             : '<span class="small muted">Deliver by selling commodity in this market.</span>';
         html += `<div class="mission-row"><strong>${escapeHtml(contract.reason)}</strong><br>`
             + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, reward ${contract.reward} credits (${contract.unitReward}/unit), expires in ${daysLeft} day(s)<br>`
-            + `<span class="small muted">${statusText}</span><br>${action}</div>`;
+            + `<span class="small muted">${statusText}</span><br>`
+            + `<span class="small muted">Gap ${Math.max(0, Number(contract.targetStockGap || 0))}, unmet trend ${Math.max(0, Number(contract.unmetDemand || 0)).toFixed(1)}, shortage severity ${Math.max(0, Number(contract.shortageSeverity || 0)).toFixed(2)}</span><br>`
+            + `<span class="small muted">Supplier hints: ${(Array.isArray(contract.sourceCandidates) && contract.sourceCandidates.length > 0) ? contract.sourceCandidates.map((sid) => `S${sid}`).join(", ") : "none"}</span><br>${action}</div>`;
     });
     return html;
 }
@@ -126,8 +170,14 @@ export function renderMarketPanel() {
     html += renderPressurePanel(player.currentSector);
     html += renderMarketIntelligencePanel(player.currentSector, port);
     html += renderSiteEconomySummary(player.currentSector);
+    html += renderLikelySuppliersPanel(player.currentSector);
     html += renderEconomyContractBoard(player.currentSector);
     html += `<div class="small muted">${escapeHtml(describeAmbientTradeSummary())}</div>`;
+    const ambient = state.ambientTrade || {};
+    const cap = Number(BALANCE.AMBIENT_TRADE.MAX_DAILY_FILL_SHARE || 0);
+    const exportCap = Number(BALANCE.AMBIENT_TRADE.MAX_DAILY_EXPORT_SHARE || 0);
+    const moved = Object.values(ambient.moved || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+    html += `<div class="small muted">Ambient constraint detail: fill cap ${(cap * 100).toFixed(0)}%, export cap ${(exportCap * 100).toFixed(0)}%, moved ${moved} units. Residual shortages require explicit routes.</div>`;
     html += renderMissionBoard();
     document.getElementById("actions").innerHTML = html;
 }

@@ -33,7 +33,10 @@ export function recomputeEconomyPressure() {
             const dailyProduction = Math.max(0, Number(state.economy?.dailySummary?.production?.productionBySector?.[sectorId]?.[commodity] || 0));
             const unmetDemand = Math.max(0, dailyConsumption - currentStock);
             const surplus = Math.max(0, currentStock - targetStock);
-            sectorPressure[commodity] = { targetStock, currentStock, dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, pricePressure, stockRatio, routeAccess: Number(profile?.routeDependence || 0), lastUpdatedDay: state.player?.time?.day ?? null };
+            const signalMagnitude = Math.max(shortageSeverity, surplusSeverity);
+            const throughputRatio = clamp((dailyConsumption + dailyProduction) / Math.max(1, targetStock), 0, 1);
+            const confidence = clamp(0.25 + signalMagnitude * 0.5 + throughputRatio * 0.25, 0, 1);
+            sectorPressure[commodity] = { targetStock, currentStock, dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, confidence, pricePressure, stockRatio, routeAccess: Number(profile?.routeDependence || 0), lastUpdatedDay: state.player?.time?.day ?? null };
         });
         pressureBySector[sectorId] = sectorPressure;
     });

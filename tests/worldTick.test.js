@@ -127,7 +127,9 @@ describe('economy post-ambient integration seam', () => {
         const before = state.economy.pressureBySector?.['2']?.ore?.shortageSeverity ?? 0;
         runAmbientTradeDaily();
         recomputeEconomyPressure();
-        const after = state.economy.pressureBySector?.['2']?.ore?.shortageSeverity ?? 0;
+        const signal = state.economy.pressureBySector?.['2']?.ore || {};
+        const after = signal.shortageSeverity ?? 0;
         assert.equal(after <= before, true);
+        assert.equal(signal.confidence >= 0 && signal.confidence <= 1, true);
     });
 });
