@@ -50,7 +50,7 @@ export function getDisplayedMarketSignal(sectorId, commodity, actorContext, opti
             dailyProduction: num(s.dailyProduction),
             shortageSeverity: num(s.shortageSeverity),
             surplusSeverity: num(s.surplusSeverity),
-            confidence: s.confidence == null ? q.score : num(s.confidence, q.score),
+            confidence: num(s.confidence ?? undefined, q.score),
             causes,
             primaryCause: causes[0],
             intelPrompt: null

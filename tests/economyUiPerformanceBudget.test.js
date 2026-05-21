@@ -40,6 +40,7 @@ function makeCommodityMap(factory) {
 }
 
 function setupMarketPerformanceState() {
+    const movedValues = { ore: 8, org: 4, eq: 2 };
     resetState();
     setupDocument();
     state.player = {
@@ -55,7 +56,7 @@ function setupMarketPerformanceState() {
     state.captains = {};
     state.ambientTrade = {
         flows: 14,
-        moved: makeCommodityMap((commodity) => ({ ore: 8, org: 4, eq: 2 }[commodity] || 0)),
+        moved: makeCommodityMap((commodity) => movedValues[commodity] || 0),
         residualDemand: makeCommodityMap(() => 0),
         blockedUnits: makeCommodityMap(() => 0),
         blockedByReason: {
