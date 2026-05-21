@@ -86,6 +86,7 @@ export function createInitialState() {
         settingsOpenTab: "general",
         isTransitioning: false,
         selectedCaptainId: null,
+        economyFocus: { sectorId: null, commodity: null, source: null, updatedDay: null },
         mapNodeCache: {},
         hoveredSectorId: null,
         mapLayers: {

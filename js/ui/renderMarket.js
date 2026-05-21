@@ -10,6 +10,25 @@ import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
 
+function renderEconomyBreadcrumbs(screen) {
+    const focus = state.economyFocus || {};
+    if (!focus.sectorId && !focus.commodity) return '';
+    const bits = [];
+    if (focus.sectorId) bits.push(`S${focus.sectorId}`);
+    if (focus.commodity) bits.push(formatCommodity(focus.commodity));
+    bits.push(screen);
+    return `<div class="small muted">Context trail: ${escapeHtml(bits.join(' → '))}</div>`;
+}
+
+function buildConsequenceHint(signal) {
+    const dailyNet = Number(signal.dailyProduction || 0) - Number(signal.dailyConsumption || 0);
+    const shortage = Math.max(0, Number(signal.shortageSeverity || 0));
+    const confidence = Math.max(0, Math.min(1, Number(signal.confidence || 0)));
+    const horizon = shortage > 0.2 ? 3 : 5;
+    if (dailyNet >= 0) return `${horizon}-day outlook: stabilizing (${formatConfidenceLabel(confidence)} confidence).`;
+    return `${horizon}-day outlook: tightening shortage unless resupplied (${formatConfidenceLabel(confidence)} confidence).`;
+}
+
 function formatConfidenceLabel(value) {
     const confidence = Math.max(0, Math.min(1, Number(value || 0)));
     if (confidence >= 0.85) return "high";
@@ -19,7 +38,7 @@ function formatConfidenceLabel(value) {
 
 function renderPressurePanel(sectorId) {
     const pressure = state.economy?.pressureBySector?.[String(sectorId)];
-    let html = `<h4>Market Pressure</h4>`;
+    let html = `<h4>Market Pressure</h4>` + renderEconomyBreadcrumbs("market");
     if (!pressure || typeof pressure !== "object") {
         return `${html}<div class="muted">No pressure telemetry recorded for this site yet.</div>`;
     }
@@ -37,7 +56,9 @@ function renderPressurePanel(sectorId) {
         const confidence = Math.max(0, Math.min(100, Math.round(Number(signal.confidence || 0) * 100)));
         html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%<br>`
             + `Stock ${current}/${target} | daily use ${dailyUse} | daily output ${dailyOutput} | confidence ${confidence}%<br>`
-            + `<span class="muted">Cause: ${escapeHtml(primaryCause)}</span></div>`;
+            + `<span class="muted">Cause: ${escapeHtml(primaryCause)}</span><br>`
+            + `<span class="muted">${escapeHtml(buildConsequenceHint(signal))}</span><br>`
+            + `<button data-action="setEconomyFocus" data-arg0="${sectorId}" data-arg1="${commodity}" data-arg2="market-pressure">Track context</button></div>`;
     });
     return html;
 }
@@ -79,6 +100,15 @@ function renderLikelySuppliersPanel(sectorId) {
     const pressureBySector = state.economy?.pressureBySector || {};
     let html = `<h4>Likely Suppliers</h4>`;
     const rows = [];
+    const formatSupplierEntry = (entry) => {
+        const freshness = getFreshnessSummaryForSector(entry.sectorId);
+        const freshnessNote = freshness.label === "current" ? "live" : freshness.label;
+        const accessPct = Math.round(entry.routeAccess * 100);
+        const riskPct = 100 - accessPct;
+        const confidencePct = Math.round(entry.confidence * 100);
+        const exportable = Math.round(entry.surplus * entry.routeAccess);
+        return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}, confidence ${confidencePct}%)`;
+    };
     MARKET_COMMODITIES.forEach((commodity) => {
         const top = Object.entries(pressureBySector)
             .filter(([sid, pressureMap]) => Number(sid) !== Number(sectorId) && Number(pressureMap?.[commodity]?.surplus || 0) > 0)
@@ -94,7 +124,7 @@ function renderLikelySuppliersPanel(sectorId) {
             .sort((a, b) => b.surplus - a.surplus)
             .slice(0, 2);
         if (top.length <= 0) return;
-        rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map((entry) => `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, access ${Math.round(entry.routeAccess * 100)}%, confidence ${Math.round(entry.confidence * 100)}%)`).join("; ")}</div>`);
+        rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map(formatSupplierEntry).join("; ")}</div>`);
     });
     if (rows.length <= 0) return `${html}<div class="muted">No strong supplier telemetry right now.</div>`;
     html += rows.join("");
@@ -122,7 +152,7 @@ function renderSiteEconomySummary(sectorId) {
 
 function renderEconomyContractBoard(sectorId) {
     const contracts = getMarketContractsForSector(sectorId);
-    let html = '<h4>Economy Contracts</h4>';
+    let html = '<h4>Economy Contracts</h4>' + renderEconomyBreadcrumbs("contracts");
     if (contracts.length <= 0) return `${html}<div class="muted">No pressure-driven contracts posted here.</div>`;
     contracts.forEach((contract) => {
         const today = Number(state.player?.time?.day || 0);
@@ -135,7 +165,8 @@ function renderEconomyContractBoard(sectorId) {
             + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, reward ${contract.reward} credits (${contract.unitReward}/unit), expires in ${daysLeft} day(s)<br>`
             + `<span class="small muted">${statusText}</span><br>`
             + `<span class="small muted">Gap ${Math.max(0, Number(contract.targetStockGap || 0))}, unmet trend ${Math.max(0, Number(contract.unmetDemand || 0)).toFixed(1)}, shortage severity ${Math.max(0, Number(contract.shortageSeverity || 0)).toFixed(2)}</span><br>`
-            + `<span class="small muted">Supplier hints: ${(Array.isArray(contract.sourceCandidates) && contract.sourceCandidates.length > 0) ? contract.sourceCandidates.map((sid) => `S${sid}`).join(", ") : "none"}</span><br>${action}</div>`;
+            + `<span class="small muted">Supplier hints: ${(Array.isArray(contract.sourceCandidates) && contract.sourceCandidates.length > 0) ? contract.sourceCandidates.map((sid) => `S${sid}`).join(", ") : "none"}</span><br>`
+            + `<button data-action="showEconomyLinkedScreen" data-arg0="market" data-arg1="${sectorId}" data-arg2="${contract.commodity}">Open commodity context</button><br>${action}</div>`;
     });
     return html;
 }
