@@ -103,7 +103,7 @@ function renderLikelySuppliersPanel(sectorId) {
     const formatSupplierEntry = (entry) => {
         if (entry.label) {
             const confidence = entry.confidenceLabel || "unknown";
-            return `S${entry.sectorId} (${escapeHtml(entry.label)}, confidence ${escapeHtml(confidence)})`;
+            return `S${entry.sectorId} (${escapeHtml(entry.label)}, telemetry limited, confidence ${escapeHtml(confidence)})`;
         }
         const freshness = getFreshnessSummaryForSector(entry.sectorId);
         const freshnessNote = freshness.label === "current" ? "live" : freshness.label;
@@ -112,8 +112,8 @@ function renderLikelySuppliersPanel(sectorId) {
         const confidencePct = Math.round(Math.max(0, Math.min(1, Number(entry.confidence || 0))) * 100);
         const surplus = Math.max(0, Number(entry.surplus || 0));
         const exportable = Math.round(surplus * Math.max(0, Math.min(1, Number(entry.routeAccess || 0))));
-        const confidenceLabel = entry.confidenceLabel ? `, confidence ${escapeHtml(entry.confidenceLabel)}` : `, confidence ${confidencePct}%`;
-        return `S${entry.sectorId} (surplus ${Math.round(surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}${confidenceLabel})`;
+        const confidenceSuffix = entry.confidenceLabel ? `, confidence ${escapeHtml(entry.confidenceLabel)}` : `, confidence ${confidencePct}%`;
+        return `S${entry.sectorId} (surplus ${Math.round(surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}${confidenceSuffix})`;
     };
     MARKET_COMMODITIES.forEach((commodity) => {
         const top = getDisplayedSupplierSignals(sectorId, commodity, state.player?.character || {}, {}).slice(0, 2);
