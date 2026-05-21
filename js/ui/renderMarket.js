@@ -37,6 +37,19 @@ function formatConfidenceLabel(value) {
     return "low";
 }
 
+function formatSignalSeverity(signal) {
+    const shortage = Math.max(0, Number(signal.shortageSeverity || 0));
+    const surplus = Math.max(0, Number(signal.surplusSeverity || 0));
+    if (shortage >= surplus && shortage > 0) return `shortage ${shortage.toFixed(2)}`;
+    if (surplus > 0) return `surplus ${surplus.toFixed(2)}`;
+    return "balanced";
+}
+
+function renderTrackContextButton(sectorId, commodity, source) {
+    return `<button data-action="setEconomyFocus" data-arg0="${Number(sectorId)}" `
+        + `data-arg1="${escapeHtml(commodity)}" data-arg2="${escapeHtml(source)}">Track context</button>`;
+}
+
 function getSectorFactionStanding(sectorId) {
     const port = state.ports?.[sectorId];
     return port?.factionId ? getFactionRep(port.factionId) : 0;
@@ -55,16 +68,27 @@ function renderPressurePanel(sectorId) {
         const signal = getDisplayedMarketSignal(sectorId, commodity, actorContext, { purpose: "market_panel" });
         if (!signal) return;
         if (signal.quality?.tier === 'high') {
-            html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: Stock ${signal.stock}/${signal.target} | daily use ${Number(signal.dailyDemand || 0).toFixed(1)} | daily output ${Number(signal.dailyProduction || 0).toFixed(1)}<br>`
-            + `<span class="muted">Cause: ${escapeHtml((signal.causes || [])[0] || "No dominant cause telemetry.")} · ${escapeHtml(formatMarketIntelligenceQuality(signal.quality))}</span><br>`
+            const dailyConsumption = Number(signal.dailyConsumption ?? signal.dailyDemand ?? 0).toFixed(1);
+            const dailyProduction = Number(signal.dailyProduction || 0).toFixed(1);
+            const confidence = formatConfidenceLabel(signal.confidence ?? signal.quality?.score);
+            const cause = signal.primaryCause || (signal.causes || [])[0] || "No dominant cause telemetry.";
+            html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: `
+            + `Stock ${signal.stock}/${signal.target} | daily use ${dailyConsumption} | daily output ${dailyProduction}<br>`
+            + `<span class="muted">Severity: ${escapeHtml(formatSignalSeverity(signal))} | Confidence ${escapeHtml(confidence)}</span><br>`
+            + `<span class="muted">Cause: ${escapeHtml(cause)} · ${escapeHtml(formatMarketIntelligenceQuality(signal.quality))}</span><br>`
             + `<span class="muted">${escapeHtml(buildConsequenceHint(signal))}</span><br>`
-            + `<button data-action="setEconomyFocus" data-arg0="${sectorId}" data-arg1="${commodity}" data-arg2="market-pressure">Track context</button></div>`; return;
-        }
-        if (signal.quality?.tier === 'medium') {
-            html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock band ${signal.stockBand} | target band ${signal.targetBand} | daily-use band ${signal.dailyUseBand}<br><span class="muted">Cause: trend pressure · ${escapeHtml(formatMarketIntelligenceQuality(signal.quality))}</span></div>`;
+            + `${renderTrackContextButton(sectorId, commodity, "market-pressure")}</div>`;
             return;
         }
-        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${escapeHtml(signal.label || 'volatile')}<br><span class="muted">${escapeHtml(signal.intelPrompt || 'Gather intel for better visibility.')}</span></div>`;
+        if (signal.quality?.tier === 'medium') {
+            html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock band ${signal.stockBand} | target band ${signal.targetBand} | daily-use band ${signal.dailyUseBand}<br>`
+            + `<span class="muted">Cause: trend pressure · ${escapeHtml(formatMarketIntelligenceQuality(signal.quality))}</span><br>`
+            + `${renderTrackContextButton(sectorId, commodity, "market-pressure")}</div>`;
+            return;
+        }
+        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${escapeHtml(signal.label || 'volatile')}<br>`
+            + `<span class="muted">${escapeHtml(signal.intelPrompt || 'Gather intel for better visibility.')}</span><br>`
+            + `${renderTrackContextButton(sectorId, commodity, "market-pressure")}</div>`;
     });
     return html;
 }

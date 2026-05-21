@@ -226,7 +226,7 @@ describe('port type normalisation', () => {
     it('renders deterministic market explainability blocks for focus, outlook, supplier telemetry, and contract links', () => {
         resetState();
         setupDocument();
-        state.player = { currentSector: 1, time: { day: 12 }, character: {} };
+        state.player = { currentSector: 1, time: { day: 12 }, character: { acumen: 100, tradecraft: 100 } };
         state.economyFocus = { sectorId: 1, commodity: 'ore', source: 'test', updatedDay: 12 };
         state.ports = {
             1: {
@@ -284,10 +284,12 @@ describe('port type normalisation', () => {
         assert.doesNotThrow(() => renderMarketPanel());
         const html = globalThis.document.getElementById('actions').innerHTML;
         assert.match(html, /Context trail: S1 → Common Ore → market/);
-        assert.match(html, /stock band 20 \| target band 200 \| daily-use band 20/);
-        assert.match(html, /Cause: trend pressure · medium/);
-        assert.match(html, /telemetry (unknown|stale|limited)/);
-        assert.doesNotMatch(html, /data-action="setEconomyFocus"/);
+        assert.match(html, /Stock 20\/200 \| daily use 18\.0 \| daily output 4\.0/);
+        assert.match(html, /Severity: shortage 0\.50 \| Confidence high/);
+        assert.match(html, /Cause: Refinery feedstock deficit\. · high/);
+        assert.match(html, /3-day outlook: tightening shortage unless resupplied \(high confidence\)\./);
+        assert.match(html, /telemetry unknown/);
+        assert.match(html, /data-action="setEconomyFocus"/);
         assert.match(html, /data-action="showEconomyLinkedScreen"/);
     });
 
