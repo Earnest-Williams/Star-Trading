@@ -7,5 +7,4 @@ export function setEconomyFocus(sectorId, commodity, source) {
         source: source || null,
         updatedDay: Number(state.player?.time?.day || 0)
     };
-    return state.economyFocus;
 }

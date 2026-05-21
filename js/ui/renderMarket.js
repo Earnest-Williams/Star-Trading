@@ -106,7 +106,8 @@ function renderLikelySuppliersPanel(sectorId) {
         const accessPct = Math.round(entry.routeAccess * 100);
         const riskPct = 100 - accessPct;
         const confidencePct = Math.round(entry.confidence * 100);
-        return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}, confidence ${confidencePct}%)`;
+        const exportable = Math.round(entry.surplus * entry.routeAccess);
+        return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}, confidence ${confidencePct}%)`;
     };
     MARKET_COMMODITIES.forEach((commodity) => {
         const top = Object.entries(pressureBySector)
