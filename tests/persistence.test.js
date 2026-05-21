@@ -449,7 +449,7 @@ describe('save serialization', () => {
         state.economy = {
             version: 1,
             profilesBySector: { 1: { profile: 'industrial' } },
-            pressureBySector: { 1: { ore: 0.25 } },
+            pressureBySector: { 1: { ore: { shortageSeverity: 0.25, surplus: 0, pricePressure: 0.1, routeAccess: 1 } } },
             recentVolumeBySector: { 1: { ore: 12 } },
             contracts: [{ id: 1, commodity: 'ore', status: 'open' }],
             nextContractId: 2,
@@ -485,7 +485,7 @@ describe('save serialization', () => {
         assert.equal(state.nextSimulationTraceId, 2);
         assert.equal(state.economy.contracts[0].commodity, 'ore');
         assert.equal(state.economy.nextContractId, 2);
-        assert.equal(state.economy.pressureBySector[1].ore, 0.25);
+        assert.equal(state.economy.pressureBySector[1].ore.shortageSeverity, 0.25);
         assert.equal(state.selectedSectorId, state.player.currentSector);
         assert.equal(state.currentScreen, 'sector');
         assert.deepEqual(state.starField, []);
