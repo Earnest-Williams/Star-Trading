@@ -172,6 +172,7 @@ ROUTE_PLANNER: {
         BASE_FLOW: 22,
         DISTANCE_PENALTY: 0.45,
         RISK_PENALTY: 0.28,
+        RISK_REJECTION_THRESHOLD: 6,
         JITTER: 0.18,
         MIN_MARGIN: 10,
         NODE_TARGETS: {

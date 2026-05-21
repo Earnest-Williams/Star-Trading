@@ -60,6 +60,21 @@ function createContract(sectorId, commodity, signal, profile) {
         Math.round(CONTRACT_BALANCE.BASE_AMOUNT + pressure * CONTRACT_BALANCE.AMOUNT_PRESSURE_MULTIPLIER)
     );
     const day = Number(state.player?.time?.day || 1);
+    const sourceCandidates = Array.isArray(profile?.likelyExports)
+        ? profile.likelyExports.filter((item) => item !== commodity).slice(0, 3)
+        : [];
+    const routeRisk = clamp(Number(signal?.routeAccess || 0), 0, 1);
+    const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
+    const unmetDemand = Math.max(0, Number(signal?.unmetDemand || 0));
+    const issuer = {
+        entityType: 'company',
+        name: `${CONTRACT_TYPES[type].label} Board`,
+        sectorId: Number(sectorId)
+    };
+    const failureConsequences = {
+        marketImpact: 'shortage_worsens',
+        factionImpact: routeRisk > 0.6 ? 'frontier_stress' : 'minor_local_tension'
+    };
     return {
         id: `econ-${state.economy.nextContractId++}`,
         type,
@@ -72,7 +87,14 @@ function createContract(sectorId, commodity, signal, profile) {
         expiresDay: day + CONTRACT_BALANCE.LIFESPAN_DAYS,
         unitReward,
         reward: unitReward * amount,
-        reason: `${CONTRACT_TYPES[type].label} request due to sustained ${formatCommodity(commodity)} shortage pressure.`
+        reason: `${CONTRACT_TYPES[type].label} request due to sustained ${formatCommodity(commodity)} shortage pressure.`,
+        unmetDemand,
+        localProductionLimit,
+        sourceCandidates,
+        routeRisk,
+        issuer,
+        supplierHints: sourceCandidates,
+        failureConsequences
     };
 }
 
