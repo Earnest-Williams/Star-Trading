@@ -258,6 +258,19 @@ describe('explicit trade route execution', () => {
         assert.equal(route.ownerId, 'cap');
     });
 
+    it('direct economy tick via route run bumps market revision', () => {
+        state.player.currentSector = 1;
+        state.player.credits = 100000;
+        state.player.ship = { travelMinutesPerCorridor: 45 };
+        createTradeRoute(4, 'ore');
+        const route = state.tradeRoutes[0];
+        route.nextRunDay = state.player.time.day;
+        const beforeRevision = Number(state.marketRevision) || 0;
+        runTradeRoute(route);
+        const afterRevision = Number(state.marketRevision) || 0;
+        assert.equal(afterRevision > beforeRevision, true);
+    });
+
     it('allows player and captain routes on the same commodity flow', () => {
         state.player.currentSector = 1;
         state.player.credits = 100000;
@@ -280,6 +293,25 @@ describe('explicit trade route execution', () => {
         assert.equal(state.ports[1].stock.ore, originBefore - 12);
         assert.equal(state.ports[4].stock.ore, destinationBefore + 12);
         assert.equal(state.tradeRoutes[0].runs, 1);
+    });
+
+    it('accepted economy contracts progress from explicit route delivery', () => {
+        state.economy.contracts = [{
+            id: 'econ-21',
+            type: 'pulse_tender',
+            status: 'accepted',
+            destinationSector: 4,
+            commodity: 'ore',
+            amount: 12,
+            remaining: 12,
+            rewardCredits: 500
+        }];
+        const route = { id: 2, name: 'Ore line', originSector: 1, destinationSector: 4, commodity: 'ore', amount: 12, ownerType: 'player', ownerId: null, status: 'active', heat: 0, reliability: 50, runs: 0, failures: 0 };
+        state.tradeRoutes = [route];
+        for (let attempt = 0; attempt < 8 && state.economy.contracts[0].remaining >= 12; attempt += 1) {
+            runTradeRoute(route);
+        }
+        assert.equal(state.economy.contracts[0].remaining < 12, true);
     });
 
     it('closing a route does not mutate corridor infrastructure', () => {

@@ -60,6 +60,65 @@ function normaliseProfilesBySector(profilesBySector) {
     return normalised;
 }
 
+function normalisePressureBySector(pressureBySector) {
+    if (!isObject(pressureBySector)) return {};
+    const normalised = {};
+    Object.entries(pressureBySector).forEach(([sectorId, pressureMap]) => {
+        if (!isObject(pressureMap)) return;
+        const commodityMap = {};
+        Object.entries(pressureMap).forEach(([commodity, record]) => {
+            if (!isObject(record)) return;
+            commodityMap[commodity] = {
+                shortageSeverity: asNonNegativeNumber(record.shortageSeverity),
+                surplus: asNonNegativeNumber(record.surplus),
+                pricePressure: asNonNegativeNumber(record.pricePressure),
+                routeAccess: asNonNegativeNumber(record.routeAccess)
+            };
+        });
+        if (Object.keys(commodityMap).length > 0) normalised[sectorId] = commodityMap;
+    });
+    return normalised;
+}
+
+function normaliseRecentVolumeBySector(recentVolumeBySector) {
+    if (!isObject(recentVolumeBySector)) return {};
+    const normalised = {};
+    Object.entries(recentVolumeBySector).forEach(([sectorId, volumeMap]) => {
+        if (!isObject(volumeMap)) return;
+        const commodityMap = {};
+        Object.entries(volumeMap).forEach(([commodity, amount]) => {
+            commodityMap[commodity] = asNonNegativeNumber(amount);
+        });
+        if (Object.keys(commodityMap).length > 0) normalised[sectorId] = commodityMap;
+    });
+    return normalised;
+}
+
+function normaliseContract(contract) {
+    if (!isObject(contract)) return null;
+    const id = Number(contract.id);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    const destinationSectorId = Number(contract.destinationSectorId);
+    const destinationProvided = Object.hasOwn(contract, 'destinationSectorId');
+    const hasDestinationSectorId = Number.isInteger(destinationSectorId) && destinationSectorId > 0;
+    if (destinationProvided && !hasDestinationSectorId) return null;
+    const commodity = typeof contract.commodity === 'string' ? contract.commodity : '';
+    if (!commodity) return null;
+    return {
+        ...contract,
+        id,
+        destinationSectorId: hasDestinationSectorId ? destinationSectorId : null,
+        commodity,
+        amount: asNonNegativeNumber(contract.amount),
+        delivered: asNonNegativeNumber(contract.delivered)
+    };
+}
+
+function normaliseContracts(contracts) {
+    if (!Array.isArray(contracts)) return [];
+    return contracts.map(normaliseContract).filter(Boolean);
+}
+
 export function createInitialEconomyState() {
     return {
         version: INITIAL_ECONOMY_VERSION,
@@ -82,9 +141,9 @@ export function normaliseEconomyState(candidate) {
     return {
         version: asPositiveInteger(candidate.version, fallback.version),
         profilesBySector: normaliseProfilesBySector(candidate.profilesBySector),
-        pressureBySector: isObject(candidate.pressureBySector) ? candidate.pressureBySector : {},
-        recentVolumeBySector: isObject(candidate.recentVolumeBySector) ? candidate.recentVolumeBySector : {},
-        contracts: Array.isArray(candidate.contracts) ? candidate.contracts : [],
+        pressureBySector: normalisePressureBySector(candidate.pressureBySector),
+        recentVolumeBySector: normaliseRecentVolumeBySector(candidate.recentVolumeBySector),
+        contracts: normaliseContracts(candidate.contracts),
         nextContractId: asPositiveInteger(candidate.nextContractId, fallback.nextContractId),
         dailySummary: isObject(candidate.dailySummary) ? candidate.dailySummary : null,
         lastProfileBuildDay: asNullableNumber(candidate.lastProfileBuildDay),

@@ -12,6 +12,7 @@ import {
     patchPort,
     patchPlanet,
     patchRoute,
+    patchRouteEconomyAtEndpoints,
     adjustSectorPirateThreat,
     setTradeRoutes
 } from '../../core/state/mutations.js';
@@ -697,15 +698,7 @@ export function runTradeRoute(route) {
         changedSlices.add(StateSlice.EVENTS);
         return [...changedSlices];
     }
-    const originCommodityStock = Math.max(0, (origin.stock[route.commodity] || 0) - amount);
-    const destinationCommodityStock = Math.min(
-        destination.maxStock[route.commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP,
-        (destination.stock[route.commodity] || 0) + amount
-    );
-    if (origin.kind === "port") patchPort(route.originSector, { stock: { ...origin.stock, [route.commodity]: originCommodityStock } }).forEach(slice => changedSlices.add(slice));
-    else patchPlanet(route.originSector, { stock: { ...origin.stock, [route.commodity]: originCommodityStock } }).forEach(slice => changedSlices.add(slice));
-    if (destination.kind === "port") patchPort(route.destinationSector, { stock: { ...destination.stock, [route.commodity]: destinationCommodityStock } }).forEach(slice => changedSlices.add(slice));
-    else patchPlanet(route.destinationSector, { stock: { ...destination.stock, [route.commodity]: destinationCommodityStock } }).forEach(slice => changedSlices.add(slice));
+    patchRouteEconomyAtEndpoints(route, amount).forEach(slice => changedSlices.add(slice));
     const contractProgress = applyContractDeliveryHooks(route.destinationSector, route.commodity, amount);
     if ((contractProgress.completed || 0) > 0 || (contractProgress.delivered || 0) > 0) {
         changedSlices.add(StateSlice.ECONOMY);

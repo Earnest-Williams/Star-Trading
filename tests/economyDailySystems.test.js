@@ -77,4 +77,20 @@ describe('economy daily systems', () => {
         assert.equal(state.ports[3].stock.pulse_canister, 1);
         assert.equal(summary.produced.pulse_canister, 1);
     });
+
+    it('way-station role triggers pulse-canister consumption inputs', () => {
+        state.player = { time: { day: 9 } };
+        state.economy.profilesBySector = {
+            4: { roleTags: ['port:way_station'], industrialConsumption: { pulse_canister: 2 } }
+        };
+        state.ports[4] = {
+            sectorId: 4,
+            stock: { pulse_canister: 5, coolants: 5, repair_parts: 5, ore: 0, org: 0, eq: 0 },
+            maxStock: { pulse_canister: 100, coolants: 100, repair_parts: 100, ore: 100, org: 100, eq: 100 }
+        };
+
+        const summary = applyDailyConsumption();
+        assert.equal(summary.consumed.pulse_canister > 0, true);
+        assert.equal(state.ports[4].stock.pulse_canister < 5, true);
+    });
 });
