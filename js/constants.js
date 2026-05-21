@@ -477,13 +477,16 @@ export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";
 export const COMMODITIES = MARKET_COMMODITIES;
 export {
     COMMODITY_REGISTRY,
+    getCommodityDef,
+    getCommodityIdsByCategory,
     RAW_COMMODITIES,
     PROCESSED_COMMODITIES,
     MANUFACTURED_COMMODITIES,
     PULSE_COMMODITIES,
     MARKET_COMMODITIES,
     CARGO_COMMODITIES,
-    COMMODITY_NAMES
+    COMMODITY_NAMES,
+    COMMODITY_BASE_PRICES
 } from "./config/economy/commodities.js";
 export const NPC_FINDABLE_PART_DEFS = Object.freeze({
     fuel_injector: Object.freeze({

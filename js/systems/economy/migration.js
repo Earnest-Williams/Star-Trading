@@ -101,7 +101,7 @@ function normaliseContract(contract) {
     const destinationSectorId = Number(contract.destinationSectorId);
     const destinationProvided = Object.hasOwn(contract, 'destinationSectorId');
     const hasDestinationSectorId = Number.isInteger(destinationSectorId) && destinationSectorId > 0;
-    if (destinationProvided && !hasDestinationSectorId) return null;
+    if (destinationProvided && contract.destinationSectorId !== null && !hasDestinationSectorId) return null;
     const commodity = typeof contract.commodity === 'string' ? contract.commodity : '';
     if (!commodity) return null;
     return {
