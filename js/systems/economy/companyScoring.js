@@ -3,6 +3,8 @@ import { deriveRouteMetrics } from '../tradeRoutes.js';
 import { COMPANY_ARCHETYPES } from '../../config/companies.js';
 
 const TYPES = Object.freeze(Object.keys(COMPANY_ARCHETYPES));
+const MAX_NEARBY_EXTRACTION_HOPS = 3;
+const MISSING_HOP_COUNT_FALLBACK = MAX_NEARBY_EXTRACTION_HOPS + 1;
 const SCORE_REASONS = Object.freeze({
     localExtraction: extraction => `local extraction ${Math.round(extraction)}`,
     nearbyExtraction: nearby => `nearby extraction ${Math.round(nearby)}`,
@@ -35,7 +37,7 @@ const hasAny = (items, needles) => {
 function nearbyExtraction(sectorId) {
     return Object.keys(state.economy?.profilesBySector || {}).reduce((sum, sid) => {
         const metrics = deriveRouteMetrics(Number(sectorId), Number(sid));
-        if (!metrics?.path || (metrics.hopCount || 99) > 3) return sum;
+        if (!metrics?.path || (metrics.hopCount || MISSING_HOP_COUNT_FALLBACK) > MAX_NEARBY_EXTRACTION_HOPS) return sum;
         return sum + num(state.economy?.profilesBySector?.[sid]?.extractionCapacity)
             / Math.max(1, metrics.hopCount || 1);
     }, 0);
@@ -81,7 +83,8 @@ function getSectorScoringContext(sectorId) {
     };
 }
 
-export function scoreCompanyTypeForSector(sectorId, type, context = getSectorScoringContext(sectorId)) {
+export function scoreCompanyTypeForSector(sectorId, type, context) {
+    const sectorContext = context || getSectorScoringContext(sectorId);
     const {
         routeAccess,
         extraction,
@@ -101,7 +104,7 @@ export function scoreCompanyTypeForSector(sectorId, type, context = getSectorSco
         industrialOutputs,
         agriPlanet,
         stardock
-    } = context;
+    } = sectorContext;
     const reasons = [];
     let score = 0;
 
