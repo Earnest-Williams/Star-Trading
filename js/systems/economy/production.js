@@ -11,7 +11,13 @@ const PRODUCTION_RECIPES = Object.freeze({
     electronics: Object.freeze({ role: 'industrial', baseCapacity: 3, output: 1, inputs: Object.freeze({ heavy_metals: 1, rare_earths: 1 }) }),
     machinery: Object.freeze({ role: 'industrial', baseCapacity: 2, output: 1, inputs: Object.freeze({ refined_metals: 1, electronics: 1 }) }),
     eq: Object.freeze({ role: 'stardock', baseCapacity: 2, output: 1, inputs: Object.freeze({ machinery: 1, electronics: 1 }) }),
-    pulse_canister: Object.freeze({ role: 'refinery', baseCapacity: 2, output: 1, inputs: Object.freeze({ water_ice: 1, coolants: 1 }) })
+    pulse_canister: Object.freeze({ role: 'refinery', baseCapacity: 2, output: 1, inputs: Object.freeze({ water_ice: 1, coolants: 1 }) }),
+    repair_parts: Object.freeze({ role: 'industrial', baseCapacity: 2, output: 1, inputs: Object.freeze({ refined_metals: 1, polymers: 1 }) }),
+    medical_supplies: Object.freeze({ role: 'industrial', baseCapacity: 2, output: 1, inputs: Object.freeze({ polymers: 1, water_ice: 1 }) }),
+    construction_kits: Object.freeze({ role: 'stardock', baseCapacity: 1, output: 1, inputs: Object.freeze({ refined_metals: 1, machinery: 1 }) }),
+    heavy_pulse_module: Object.freeze({ role: 'stardock', baseCapacity: 1, output: 1, inputs: Object.freeze({ pulse_canister: 1, machinery: 1 }) }),
+    gate_coils: Object.freeze({ role: 'stardock', baseCapacity: 1, output: 1, inputs: Object.freeze({ heavy_metals: 1, electronics: 1 }) }),
+    control_cores: Object.freeze({ role: 'industrial', baseCapacity: 1, output: 1, inputs: Object.freeze({ electronics: 1, rare_earths: 1 }) })
 });
 
 function roleMultiplier(profile, recipe) {
@@ -31,7 +37,7 @@ export function applyDailyProduction() {
         if (!port.stock) port.stock = {};
         const extraction = getAsteroidExtractionPotential(site);
         const updatedStock = { ...port.stock };
-        let extractedOre = 0;
+        let extractedReserveDraw = 0;
         let stockChanged = false;
         if (!summary.productionBySector[sectorId]) summary.productionBySector[sectorId] = {};
         Object.entries(extraction).forEach(([commodity, amount]) => {
@@ -42,15 +48,15 @@ export function applyDailyProduction() {
                 updatedStock[commodity] = current + add;
                 summary.produced[commodity] = (summary.produced[commodity] || 0) + add;
                 summary.productionBySector[sectorId][commodity] = (summary.productionBySector[sectorId][commodity] || 0) + add;
-                if (commodity === 'ore') extractedOre += add;
+                if (['ore', 'heavy_metals', 'rare_earths', 'water_ice'].includes(commodity)) extractedReserveDraw += add;
                 stockChanged = true;
             }
         });
-        if (site.asteroids && extractedOre > 0) {
+        if (site.asteroids && extractedReserveDraw > 0) {
             patchSite(sectorId, {
                 asteroids: {
                     ...site.asteroids,
-                    ore: Math.max(0, Number(site.asteroids.ore || 0) - extractedOre)
+                    ore: Math.max(0, Number(site.asteroids.ore || 0) - extractedReserveDraw)
                 }
             });
         }
@@ -62,14 +68,16 @@ export function applyDailyProduction() {
                 const current = Math.max(0, updatedStock?.[input] || 0);
                 maxByInput = Math.min(maxByInput, Math.floor(current / amountPerUnit));
             });
-            const outputUnits = Math.max(0, maxByInput);
+            const max = Math.max(0, port.maxStock?.[commodity] || 0);
+            const current = Math.max(0, updatedStock?.[commodity] || 0);
+            const outputCapacity = Math.max(0, max - current);
+            if (outputCapacity <= 0) return;
+            const outputUnits = Math.min(Math.max(0, maxByInput), Math.ceil(outputCapacity / recipe.output));
             if (outputUnits <= 0) return;
             Object.entries(recipe.inputs).forEach(([input, amountPerUnit]) => {
                 updatedStock[input] = Math.max(0, (updatedStock[input] || 0) - outputUnits * amountPerUnit);
             });
-            const max = Math.max(0, port.maxStock?.[commodity] || 0);
-            const current = Math.max(0, updatedStock?.[commodity] || 0);
-            const produced = Math.min(outputUnits * recipe.output, Math.max(0, max - current));
+            const produced = Math.min(outputUnits * recipe.output, outputCapacity);
             updatedStock[commodity] = current + produced;
             summary.produced[commodity] = (summary.produced[commodity] || 0) + produced;
             summary.productionBySector[sectorId][commodity] = (summary.productionBySector[sectorId][commodity] || 0) + produced;

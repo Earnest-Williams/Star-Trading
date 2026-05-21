@@ -18,7 +18,7 @@ describe('economy daily systems', () => {
         state.ports[1] = { sectorId: 1 };
 
         assert.doesNotThrow(() => applyDailyConsumption());
-        // No stock available → nothing consumed → patchPort not called; stock stays empty.
+        // No stock available -> nothing consumed -> patchPort not called; stock stays empty.
         assert.deepEqual(state.ports[1].stock, {});
         assert.equal(state.economy.dailySummary?.day, null);
     });
@@ -35,7 +35,7 @@ describe('economy daily systems', () => {
         };
 
         assert.doesNotThrow(() => applyDailyProduction());
-        // No asteroids → no extraction → patchPort not called; stock stays empty.
+        // No asteroids -> no extraction -> patchPort not called; stock stays empty.
         assert.equal(state.ports[2].stock?.ore ?? 0, 0);
         assert.equal(state.economy.dailySummary?.day, null);
     });
@@ -92,5 +92,32 @@ describe('economy daily systems', () => {
         const summary = applyDailyConsumption();
         assert.equal(summary.consumed.pulse_canister > 0, true);
         assert.equal(state.ports[4].stock.pulse_canister < 5, true);
+    });
+
+    it('does not consume production inputs when output storage is full', () => {
+        state.player = { time: { day: 11 } };
+        state.economy.profilesBySector = {
+            5: { roleTags: ['port:stardock'] }
+        };
+        state.universe[5] = { id: 5 };
+        state.ports[5] = {
+            sectorId: 5,
+            stock: {
+                machinery: 5,
+                electronics: 5,
+                eq: 10
+            },
+            maxStock: {
+                machinery: 100,
+                electronics: 100,
+                eq: 10
+            }
+        };
+
+        applyDailyProduction();
+
+        assert.equal(state.ports[5].stock.machinery, 5);
+        assert.equal(state.ports[5].stock.electronics, 5);
+        assert.equal(state.ports[5].stock.eq, 10);
     });
 });

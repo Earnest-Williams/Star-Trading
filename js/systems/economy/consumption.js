@@ -14,14 +14,16 @@ const POPULATION_BASELINES = Object.freeze({
 function asNumber(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
 
 export function applyDailyConsumption() {
-    const summary = { consumed: {}, unmetDemand: {}, sectorsWithShortage: 0 };
+    const summary = { consumed: {}, unmetDemand: {}, consumedBySector: {}, unmetDemandBySector: {}, sectorsWithShortage: 0 };
     MARKET_COMMODITIES.forEach((commodity) => { summary.consumed[commodity] = 0; summary.unmetDemand[commodity] = 0; });
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
         const port = state.ports?.[sectorId];
         const planet = state.planets?.[sectorId];
         if (!port && !planet) return;
         const baseline = POPULATION_BASELINES[profile.populationTier || 0] || {};
-        const needs = { ...baseline, ...(profile.industrialConsumption || {}) };
+        const needs = { ...baseline, ...(profile.industrialConsumption || {}), ...(profile.serviceConsumption || {}) };
+        const sectorConsumed = {};
+        const sectorUnmet = {};
         let hadShortage = false;
         const processNode = (node, isPort) => {
             if (!node.stock) node.stock = {};
@@ -38,6 +40,8 @@ export function applyDailyConsumption() {
                 }
                 summary.consumed[commodity] = (summary.consumed[commodity] || 0) + consumed;
                 summary.unmetDemand[commodity] = (summary.unmetDemand[commodity] || 0) + unmet;
+                sectorConsumed[commodity] = (sectorConsumed[commodity] || 0) + consumed;
+                sectorUnmet[commodity] = (sectorUnmet[commodity] || 0) + unmet;
                 if (unmet > 0) hadShortage = true;
             });
             if (stockChanged) {
@@ -46,6 +50,8 @@ export function applyDailyConsumption() {
         };
         if (port) processNode(port, true);
         if (planet) processNode(planet, false);
+        summary.consumedBySector[sectorId] = sectorConsumed;
+        summary.unmetDemandBySector[sectorId] = sectorUnmet;
         if (hadShortage) summary.sectorsWithShortage += 1;
     });
     state.economy.dailySummary = { ...(state.economy.dailySummary || {}), day: state.player?.time?.day ?? null, consumption: summary };
