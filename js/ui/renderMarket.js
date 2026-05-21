@@ -9,6 +9,7 @@ import { getPortType } from "../core/ports.js";
 import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
+import { getDisplayedMarketSignal, getDisplayedSupplierSignals, getMarketInformationQuality } from "../systems/economy/marketIntelligence.js";
 
 function renderEconomyBreadcrumbs(screen) {
     const focus = state.economyFocus || {};
@@ -113,7 +114,8 @@ function renderLikelySuppliersPanel(sectorId) {
         const top = Object.entries(pressureBySector)
             .filter(([sid, pressureMap]) => Number(sid) !== Number(sectorId) && Number(pressureMap?.[commodity]?.surplus || 0) > 0)
             .map(([sid, pressureMap]) => {
-                const signal = pressureMap?.[commodity] || {};
+                const displaySignal = getDisplayedMarketSignal(sectorId, commodity, state.player?.character || {}, {});
+        const signal = pressureMap?.[commodity] || {};
                 return {
                     sectorId: Number(sid),
                     surplus: Math.max(0, Number(signal.surplus || 0)),
@@ -162,7 +164,7 @@ function renderEconomyContractBoard(sectorId) {
             ? `<button data-action="acceptEconomyContract" data-arg0="${contract.id}">Accept</button>`
             : '<span class="small muted">Deliver by selling commodity in this market.</span>';
         html += `<div class="mission-row"><strong>${escapeHtml(contract.reason)}</strong><br>`
-            + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, reward ${contract.reward} credits (${contract.unitReward}/unit), expires in ${daysLeft} day(s)<br>`
+            + `${escapeHtml(formatCommodity(contract.commodity))}: ${contract.amount} units, premium ${contract.reward} credits (${contract.unitPremium || 0}/unit), market value ${contract.expectedMarketValue || 0}c, expected total payout ${contract.expectedTotalPayout || 0}c, expires in ${daysLeft} day(s)<br>`
             + `<span class="small muted">${statusText}</span><br>`
             + `<span class="small muted">Gap ${Math.max(0, Number(contract.targetStockGap || 0))}, unmet trend ${Math.max(0, Number(contract.unmetDemand || 0)).toFixed(1)}, shortage severity ${Math.max(0, Number(contract.shortageSeverity || 0)).toFixed(2)}</span><br>`
             + `<span class="small muted">Supplier hints: ${(Array.isArray(contract.sourceCandidates) && contract.sourceCandidates.length > 0) ? contract.sourceCandidates.map((sid) => `S${sid}`).join(", ") : "none"}</span><br>`

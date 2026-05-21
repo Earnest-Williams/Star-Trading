@@ -1,6 +1,7 @@
 import { state } from '../../state.js';
 import { BALANCE, COMMODITY_BASE_PRICES } from '../../constants.js';
 import { formatCommodity, log } from '../../utils.js';
+import { getPulseServiceSignalForSector } from './pulseService.js';
 
 const CONTRACT_TYPES = Object.freeze({
     shortage_relief: Object.freeze({ label: 'Shortage Relief', rewardScale: 1.05 }),
@@ -85,15 +86,19 @@ function createContract(sectorId, commodity, signal, profile) {
     const destinationPort = state.ports?.[sectorId] || null;
     const buyPressure = Math.max(1, Number(signal?.pricePressure || 1));
     const basePrice = Math.max(10, Number(destinationPort?.basePrices?.[commodity] || COMMODITY_BASE_PRICES[commodity] || 100));
-    const unitReward = Math.max(10, Math.round(basePrice * buyPressure * CONTRACT_TYPES[type].rewardScale));
+    const urgency = clamp(Number(signal?.unmetDemand || 0) / Math.max(1, Number(signal?.dailyDemand || signal?.dailyConsumption || 1)), 0, 1);
+        const pulseSignal = getPulseServiceSignalForSector(sectorId);
+    const criticalPulseBonus = (type === 'pulse_tender' || type === 'station_reserve') && (pulseSignal.serviceQuality === 'critical' || pulseSignal.serviceQuality === 'failing') ? BALANCE.ECONOMY.CONTRACTS.CRITICAL_PULSE_PREMIUM_BONUS : 0;
+    const blackMarketBonus = type === 'black_market_diversion' ? BALANCE.ECONOMY.CONTRACTS.BLACK_MARKET_PREMIUM_BONUS : 0;
+    const premiumRate = clamp(BALANCE.ECONOMY.CONTRACTS.PREMIUM_MIN_RATE + pressure * BALANCE.ECONOMY.CONTRACTS.SHORTAGE_PREMIUM_MULTIPLIER + urgency * BALANCE.ECONOMY.CONTRACTS.URGENCY_PREMIUM_MULTIPLIER + routeRisk * BALANCE.ECONOMY.CONTRACTS.ROUTE_RISK_PREMIUM_MULTIPLIER + criticalPulseBonus + blackMarketBonus, BALANCE.ECONOMY.CONTRACTS.PREMIUM_MIN_RATE, BALANCE.ECONOMY.CONTRACTS.PREMIUM_MAX_RATE);
+    const unitPremium = Math.max(1, Math.round(basePrice * premiumRate));
     const amount = Math.max(
         CONTRACT_BALANCE.MIN_AMOUNT,
         Math.round(CONTRACT_BALANCE.BASE_AMOUNT + pressure * CONTRACT_BALANCE.AMOUNT_PRESSURE_MULTIPLIER)
     );
     const day = Number(state.player?.time?.day || 1);
     const sourceCandidates = deriveSourceCandidates(sectorId, commodity);
-    const routeRisk = 1 - clamp(Number(signal?.routeAccess ?? 1), 0, 1);
-    const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
+        const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
     const unmetDemand = Math.max(0, Number(signal?.unmetDemand || 0));
     const issuer = {
         entityType: 'company',
@@ -115,10 +120,14 @@ function createContract(sectorId, commodity, signal, profile) {
         destinationSector: Number(sectorId),
         postedDay: day,
         expiresDay: day + CONTRACT_BALANCE.LIFESPAN_DAYS,
-        unitReward,
-        reward: unitReward * amount,
+        unitPremium,
+        premiumRate,
+        totalPremiumReward: Math.round(basePrice * amount * premiumRate),
+        expectedMarketValue: Math.round(basePrice * amount),
+        expectedTotalPayout: Math.round(basePrice * amount * (1 + premiumRate)),
+        reward: Math.round(basePrice * amount * premiumRate),
         reason: `${CONTRACT_TYPES[type].label} procurement premium for sustained ${formatCommodity(commodity)} pressure.`,
-        premiumModel: 'procurement_subsidy',
+        premiumModel: 'bounded_procurement_premium',
         unmetDemand,
         targetStockGap,
         shortageSeverity: pressure,
@@ -219,7 +228,7 @@ export function applyContractDeliveryHooks(sectorId, commodity, amount) {
         recordRecentDeliveredVolume(sid, commodity, step);
         if (contract.remaining <= 0) {
             contract.status = 'completed';
-            state.player.credits = (Number(state.player?.credits) || 0) + Number(contract.reward || 0);
+            state.player.credits = (Number(state.player?.credits) || 0) + Number(contract.totalPremiumReward || contract.reward || 0);
             completed += 1;
         }
         const signal = state.economy?.pressureBySector?.[sid]?.[commodity];

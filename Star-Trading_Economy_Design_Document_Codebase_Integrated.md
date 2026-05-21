@@ -2870,3 +2870,11 @@ Result: this design document now reflects **Phase 9 complete** status as of 2026
 - `recomputeEconomyPressure` now attaches a human-readable `primaryCause` string to every per-commodity pressure record covering the four scenarios: unmet demand, below-target shortage with persistent consumption, export surplus pressure, and near-target equilibrium.
 - Added five targeted tests in `tests/worldTick.test.js` covering each `explainPressure` branch plus a structural invariant asserting every commodity record carries a non-empty `primaryCause` string.
 - Confirmed full suite pass status (`508/508`) with zero failures.
+
+## 2026-05-21 Implementation Note
+- Company seeding now uses capacity-scoring (`js/systems/economy/companyScoring.js`).
+- Pulse goods now contribute to route service costs (`js/systems/economy/pulseService.js`).
+- Market telemetry display now supports intelligence degradation (`js/systems/economy/marketIntelligence.js`).
+- Ambient trade core moved to economy ambient flows (`js/systems/economy/ambientFlows.js`) with wrapper retained.
+- Contracts now use bounded procurement premium fields.
+
