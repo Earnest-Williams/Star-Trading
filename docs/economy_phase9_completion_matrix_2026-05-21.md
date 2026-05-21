@@ -36,7 +36,7 @@ This matrix verifies each item listed in `docs/unimplemented_or_underimplemented
    - Added focused market render test validating breadcrumb, outlook, supplier telemetry label, and contract deep-link action.
 
 10. **Performance budget checks for tick + render cost** — **Implemented**
-    - Added explicit deterministic render budget assertion for economy explainability in `tests/economyUiPerformanceBudget.test.js` (average market render <= 2.5ms over repeated runs).
+    - Added explicit deterministic render budget assertion for economy explainability in `tests/economyUiPerformanceBudget.test.js` (average market render <= 5.0ms over 1,000 iterations with 120 sectors, providing a realistic scalability gate).
     - Existing benchmark harness remains available in `benchmarks/mapProjectionBenchmark.js`.
 
 11. **Integrated design-doc status update to “Phase 9 complete”** — **Implemented**
