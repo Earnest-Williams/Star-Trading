@@ -100,18 +100,22 @@ function renderMarketIntelligencePanel(sectorId, port) {
 function renderLikelySuppliersPanel(sectorId) {
     let html = `<h4>Likely Suppliers</h4>`;
     const rows = [];
+    const clampProbability = (value) => Math.max(0, Math.min(1, Number(value || 0)));
     const formatSupplierEntry = (entry) => {
         if (entry.label) {
-            const confidence = entry.confidenceLabel || "unknown";
+            const numericConfidence = Number(entry.confidenceLabel);
+            const confidence = Number.isFinite(numericConfidence)
+                ? `${Math.round(clampProbability(numericConfidence) * 100)}%`
+                : (entry.confidenceLabel || "unknown");
             return `S${entry.sectorId} (${escapeHtml(entry.label)}, telemetry limited, confidence ${escapeHtml(confidence)})`;
         }
         const freshness = getFreshnessSummaryForSector(entry.sectorId);
         const freshnessNote = freshness.label === "current" ? "live" : freshness.label;
-        const accessPct = Math.round(Math.max(0, Math.min(1, Number(entry.routeAccess || 0))) * 100);
+        const accessPct = Math.round(clampProbability(entry.routeAccess) * 100);
         const riskPct = 100 - accessPct;
-        const confidencePct = Math.round(Math.max(0, Math.min(1, Number(entry.confidence || 0))) * 100);
+        const confidencePct = Math.round(clampProbability(entry.confidence) * 100);
         const surplus = Math.max(0, Number(entry.surplus || 0));
-        const exportable = Math.round(surplus * Math.max(0, Math.min(1, Number(entry.routeAccess || 0))));
+        const exportable = Math.round(surplus * clampProbability(entry.routeAccess));
         const confidenceSuffix = entry.confidenceLabel ? `, confidence ${escapeHtml(entry.confidenceLabel)}` : `, confidence ${confidencePct}%`;
         return `S${entry.sectorId} (surplus ${Math.round(surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}${confidenceSuffix})`;
     };
