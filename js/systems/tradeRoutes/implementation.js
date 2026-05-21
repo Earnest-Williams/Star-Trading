@@ -285,13 +285,18 @@ function computeRouteSetupCost(metrics) {
 }
 
 function getProfitBand(originSector, destinationSector, commodity) {
-    const expected = estimateRouteProfit(originSector, destinationSector, commodity);
+    const volume = BALANCE.TRADE_ROUTE_BASE_AMOUNT;
+    const quote = getExpectedRouteValue(originSector, destinationSector, commodity, volume);
+    const expected = quote.expectedProfit;
     return {
         commodity,
         low: Math.max(0, Math.floor(expected * BALANCE.TRADE_ROUTE.PROFIT_BAND_LOW_MULTIPLIER)),
         expected,
         high: Math.ceil(expected * BALANCE.TRADE_ROUTE.PROFIT_BAND_HIGH_MULTIPLIER),
-        estimatedProfit: expected
+        estimatedProfit: expected,
+        buyPrice: quote.buyPrice,
+        sellPrice: quote.sellPrice,
+        volume
     };
 }
 

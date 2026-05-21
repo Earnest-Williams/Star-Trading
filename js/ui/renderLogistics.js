@@ -46,7 +46,12 @@ function renderRouteCreationPanel(snapshot) {
                     ? `${escapeHtml(freshness.label)} telemetry (${freshness.age}d old)`
                     : "unknown telemetry";
             html += `<button data-action="createTradeRoute" data-arg0="${candidate.destination.sectorId}" data-arg1="${option.commodity}">Open ${formatCommodity(option.commodity)} Route (${formatCredits(candidate.setupCost)}c, est ${formatCredits(option.estimatedProfit)}c/day)</button>`;
+            const estBuy = Math.max(0, Number(option.buyPrice || 0));
+            const estSell = Math.max(0, Number(option.sellPrice || 0));
+            const estVolume = Math.max(0, Number(option.volume || 0));
+            const riskFactor = candidate.risk === null ? "unknown" : (1 - Math.min(0.9, Number(candidate.risk || 0) / 10)).toFixed(2);
             html += `<div class="small muted">Opportunity: ${formatCommodity(option.commodity)} route projects ${marginBand} per day with ${riskLabel}. Corridor span ${span} across ${candidate.hopCount} hops.</div>`;
+            html += `<div class="small muted">Estimate trail: buy ${formatCredits(estBuy)}c, sell ${formatCredits(estSell)}c, volume ${estVolume}, risk factor ${riskFactor}, est net ${formatCredits(option.estimatedProfit)}c/day.</div>`;
             html += `<div class="small muted">Signal quality: ${freshnessHint}. Refresh data via comms courier work for tighter estimates.</div>`;
         });
         html += `</div>`;

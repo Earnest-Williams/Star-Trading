@@ -106,6 +106,7 @@ function createContract(sectorId, commodity, signal, profile) {
         marketImpact: 'shortage_worsens',
         factionImpact: routeRisk > 0.6 ? 'frontier_stress' : 'minor_local_tension'
     };
+    const targetStockGap = Math.max(0, Number(signal?.targetStock || 0) - Number(signal?.currentStock || 0));
     return {
         id: `econ-${state.economy.nextContractId++}`,
         type,
@@ -121,6 +122,8 @@ function createContract(sectorId, commodity, signal, profile) {
         reason: `${CONTRACT_TYPES[type].label} procurement premium for sustained ${formatCommodity(commodity)} pressure.`,
         premiumModel: 'procurement_subsidy',
         unmetDemand,
+        targetStockGap,
+        shortageSeverity: pressure,
         localProductionLimit,
         sourceCandidates,
         routeRisk,
