@@ -24,6 +24,7 @@ import { renderPropertyScreen } from './renderProperty.js';
 import { renderCommunicationsScreen } from './renderComms.js';
 import { bindSpreadsheetScreen, renderSpreadsheetScreen } from './renderSpreadsheet.js';
 import { renderShell, SHELL_RENDERER_DEPS } from './renderShell.js';
+import { setEconomyFocus } from './economyFocus.js';
 import { renderNextStepsPanel } from './onboarding.js';
 import { dismissPriorityBriefing } from '../core/priorityBriefingActions.js';
 import { Notifications } from './notifications.js';
@@ -120,24 +121,9 @@ const GAMEPLAY_SCREENS = new Set([
 ]);
 
 
-function setEconomyFocus(sectorId, commodity, source) {
-    state.economyFocus = {
-        sectorId: Number(sectorId || state.player?.currentSector || 0),
-        commodity: commodity || null,
-        source: source || null,
-        updatedDay: Number(state.player?.time?.day || 0)
-    };
-    return true;
-}
-
 function showEconomyLinkedScreen(screen, sectorId, commodity) {
     const targetSector = Number(sectorId || state.player?.currentSector || 0);
-    state.economyFocus = {
-        sectorId: targetSector,
-        commodity: commodity || null,
-        source: screen || state.currentScreen,
-        updatedDay: Number(state.player?.time?.day || 0)
-    };
+    setEconomyFocus(targetSector, commodity, screen || state.currentScreen);
     return showScreen(screen || 'market');
 }
 
@@ -543,7 +529,10 @@ export function registerUIActions() {
     registerAction('surveySector', surveySector);
     registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.UI_RUNTIME, StateSlice.EVENTS) : commandFailed());
     registerAction('acceptEconomyContract', (contractId) => acceptEconomyContract(contractId) ? commandOk(StateSlice.ECONOMY, StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('setEconomyFocus', (sectorId, commodity, source) => setEconomyFocus(sectorId, commodity, source) ? commandOk(StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('setEconomyFocus', (sectorId, commodity, source) => {
+        setEconomyFocus(sectorId, commodity, source);
+        return commandOk(StateSlice.UI_RUNTIME);
+    });
     registerAction('showEconomyLinkedScreen', (screen, sectorId, commodity) => showEconomyLinkedScreen(screen, sectorId, commodity) ? commandOk(StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('mineAsteroids', mineAsteroids);
     registerAction('foundColony', foundColony);

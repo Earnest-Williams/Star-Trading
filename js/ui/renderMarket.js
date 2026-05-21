@@ -10,16 +10,6 @@ import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
 
-
-function setEconomyFocus(sectorId, commodity, source) {
-    state.economyFocus = {
-        sectorId: Number(sectorId || state.player?.currentSector || 0),
-        commodity: commodity || null,
-        source: source || null,
-        updatedDay: Number(state.player?.time?.day || 0)
-    };
-}
-
 function renderEconomyBreadcrumbs(screen) {
     const focus = state.economyFocus || {};
     if (!focus.sectorId && !focus.commodity) return '';
@@ -110,6 +100,14 @@ function renderLikelySuppliersPanel(sectorId) {
     const pressureBySector = state.economy?.pressureBySector || {};
     let html = `<h4>Likely Suppliers</h4>`;
     const rows = [];
+    const formatSupplierEntry = (entry) => {
+        const freshness = getFreshnessSummaryForSector(entry.sectorId);
+        const freshnessNote = freshness.label === "current" ? "live" : freshness.label;
+        const accessPct = Math.round(entry.routeAccess * 100);
+        const riskPct = 100 - accessPct;
+        const confidencePct = Math.round(entry.confidence * 100);
+        return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}, confidence ${confidencePct}%)`;
+    };
     MARKET_COMMODITIES.forEach((commodity) => {
         const top = Object.entries(pressureBySector)
             .filter(([sid, pressureMap]) => Number(sid) !== Number(sectorId) && Number(pressureMap?.[commodity]?.surplus || 0) > 0)
@@ -125,7 +123,7 @@ function renderLikelySuppliersPanel(sectorId) {
             .sort((a, b) => b.surplus - a.surplus)
             .slice(0, 2);
         if (top.length <= 0) return;
-        rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map((entry) => { const freshness = getFreshnessSummaryForSector(entry.sectorId); const freshnessNote = freshness.label === "current" ? "live" : freshness.label; return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, exportable ${Math.round(entry.surplus)}, access ${Math.round(entry.routeAccess * 100)}%, est risk ${(100 - Math.round(entry.routeAccess * 100))}%, telemetry ${freshnessNote}, confidence ${Math.round(entry.confidence * 100)}%)`; }).join("; ")}</div>`);
+        rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map(formatSupplierEntry).join("; ")}</div>`);
     });
     if (rows.length <= 0) return `${html}<div class="muted">No strong supplier telemetry right now.</div>`;
     html += rows.join("");
@@ -176,7 +174,6 @@ export function renderMarketPanel() {
     const { player, ports } = state;
     const port = ports[player.currentSector];
     if (!port) { console.log("No port here."); return; }
-    setEconomyFocus(player.currentSector, state.economyFocus?.commodity, "market");
     const type = getPortType(port);
     const faction = FACTIONS[port.factionId];
     let html = `<h4>${escapeHtml(type.name)}</h4>`;
