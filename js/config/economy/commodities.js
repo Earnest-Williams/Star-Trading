@@ -33,7 +33,17 @@ const COMMODITY_REGISTRY = Object.freeze({
 });
 
 function idsByTier(tier) { return Object.freeze(Object.values(COMMODITY_REGISTRY).filter((c) => c.tier === tier).map((c) => c.id)); }
+function idsByCategory(category) { return Object.freeze(Object.values(COMMODITY_REGISTRY).filter((c) => c.category === category).map((c) => c.id)); }
+
 export { COMMODITY_REGISTRY };
+
+export function getCommodityDef(id) {
+    return COMMODITY_REGISTRY[id] || null;
+}
+
+export function getCommodityIdsByCategory(category) {
+    return idsByCategory(category);
+}
 export const RAW_COMMODITIES = idsByTier('raw');
 export const PROCESSED_COMMODITIES = idsByTier('processed');
 export const MANUFACTURED_COMMODITIES = idsByTier('manufactured');
@@ -41,3 +51,4 @@ export const PULSE_COMMODITIES = idsByTier('pulse');
 export const MARKET_COMMODITIES = Object.freeze(Object.values(COMMODITY_REGISTRY).map((commodity) => commodity.id));
 export const CARGO_COMMODITIES = MARKET_COMMODITIES;
 export const COMMODITY_NAMES = Object.freeze(Object.fromEntries(Object.values(COMMODITY_REGISTRY).map((commodity) => [commodity.id, commodity.name])));
+export const COMMODITY_BASE_PRICES = Object.freeze(Object.fromEntries(Object.values(COMMODITY_REGISTRY).map((commodity) => [commodity.id, commodity.basePrice])));

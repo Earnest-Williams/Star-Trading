@@ -1,6 +1,7 @@
 import { state } from '../../state.js';
 import { BALANCE } from '../../constants.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
+import { getCommodityDef } from '../../config/economy/commodities.js';
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -19,6 +20,10 @@ function resolveBasePrice(port, commodity) {
     const fallbackBase = PORT_DEFAULTS.BASE_PRICES?.[commodity];
     if (typeof fallbackBase === 'number' && Number.isFinite(fallbackBase) && fallbackBase > 0) {
         return fallbackBase;
+    }
+    const commodityBase = getCommodityDef(commodity)?.basePrice;
+    if (typeof commodityBase === 'number' && Number.isFinite(commodityBase) && commodityBase > 0) {
+        return commodityBase;
     }
     return BALANCE.MIN_TRADE_PRICE;
 }
