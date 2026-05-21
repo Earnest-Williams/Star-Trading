@@ -1,13 +1,15 @@
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { describe, it, before, after } from 'node:test';
 import { performance } from 'node:perf_hooks';
 
 import { resetState, state } from '../js/state.js';
+import { MARKET_COMMODITIES } from '../js/constants.js';
 import { renderMarketPanel } from '../js/ui/renderMarket.js';
 
 const SECTOR_COUNT = 120;
-
-let _originalDocument;
+const ITERATIONS = 1000;
+const WARMUP_ITERATIONS = 20;
+const AVERAGE_RENDER_BUDGET_MS = 5.0;
 
 function setupDocument() {
     const elements = new Map();
@@ -30,101 +32,129 @@ function setupDocument() {
     };
 }
 
-function buildSectorPressure(sectorId) {
-    const isMining = sectorId % 3 === 0;
-    return {
-        ore: isMining
-            ? { surplus: 80 + (sectorId % 40), routeAccess: 0.7, confidence: 0.75 }
-            : { shortageSeverity: 0.4 + (sectorId % 10) * 0.02, surplusSeverity: 0, stockRatio: 0.15, targetStock: 220, currentStock: 30, dailyConsumption: 18, dailyProduction: 4, primaryCause: 'Manufacturing draw exceeds local refining throughput.', confidence: 0.8 },
-        org: { surplus: isMining ? 0 : 20, routeAccess: 0.5, confidence: 0.6 },
-        eq: { shortageSeverity: 0.1, surplusSeverity: 0, confidence: 0.5 }
-    };
+function makeCommodityMap(factory) {
+    return Object.fromEntries(MARKET_COMMODITIES.map((commodity, index) => [
+        commodity,
+        factory(commodity, index)
+    ]));
 }
 
-function setupEconomyMarketState() {
+function setupMarketPerformanceState() {
+    const movedValues = { ore: 8, org: 4, eq: 2 };
     resetState();
     setupDocument();
-    state.player = { currentSector: 1, time: { day: 24 }, character: {} };
-
-    state.ports = {};
-    const pressureBySector = {};
-    for (let i = 1; i <= SECTOR_COUNT; i++) {
-        state.ports[i] = {
-            typeKey: i % 3 === 0 ? 'mining' : 'industrial',
-            factionId: i % 2 === 0 ? 'fu' : 'hc',
-            stock: { ore: 30 + i, org: 140, eq: 40 },
-            maxStock: { ore: 220, org: 220, eq: 220 },
-            basePrices: { ore: 80, org: 150, eq: 300 }
-        };
-        pressureBySector[String(i)] = buildSectorPressure(i);
-    }
-
-    state.economyFocus = { sectorId: 1, commodity: 'ore', source: 'perf-test', updatedDay: 24 };
-    state.economy = {
-        ...(state.economy || {}),
-        pressureBySector,
-        contracts: [{
-            id: 'econ-perf-1',
-            destinationSector: 1,
-            status: 'available',
-            reason: 'Shortage relief requisition',
-            commodity: 'ore',
-            amount: 60,
-            reward: 1800,
-            unitReward: 30,
-            expiresDay: 27,
-            targetStockGap: 90,
-            unmetDemand: 15,
-            shortageSeverity: 0.42,
-            sourceCandidates: [2]
-        }]
+    state.player = {
+        currentSector: 1,
+        time: { day: 30, minuteOfDay: 480 },
+        character: { acumen: 100, tradecraft: 100 },
+        cargo: {}
     };
+    state.universe = {};
+    state.ports = {};
+    state.planets = {};
     state.missions = [];
+    state.captains = {};
+    state.ambientTrade = {
+        flows: 14,
+        moved: makeCommodityMap((commodity) => movedValues[commodity] || 0),
+        residualDemand: makeCommodityMap(() => 0),
+        blockedUnits: makeCommodityMap(() => 0),
+        blockedByReason: {
+            disconnected: makeCommodityMap(() => 0),
+            unprofitable: makeCommodityMap(() => 0),
+            highRisk: makeCommodityMap(() => 0)
+        }
+    };
     state.dataCargo = {
-        sectorKnowledge: { 2: { lastObservedDay: 23 } },
+        sectorKnowledge: {},
         playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] },
         secureContracts: [],
         ambientTransfers: [],
         nextPayloadId: 1,
         license: { secureCourier: false, issuedByFactionId: null, issuedDay: null }
     };
-    state.ambientTrade = {
-        flows: 1,
-        moved: { ore: 5, org: 2, eq: 1 },
-        residualDemand: { ore: 7, org: 0, eq: 0 },
-        blockedUnits: { ore: 2, org: 0, eq: 0 },
-        blockedByReason: {
-            disconnected: { ore: 1, org: 0, eq: 0 },
-            unprofitable: { ore: 1, org: 0, eq: 0 },
-            highRisk: { ore: 0, org: 0, eq: 0 }
-        }
+    state.economy = {
+        ...(state.economy || {}),
+        profilesBySector: {},
+        pressureBySector: {},
+        recentVolumeBySector: {},
+        contracts: [],
+        nextContractId: 1
     };
+
+    for (let sectorId = 1; sectorId <= SECTOR_COUNT; sectorId += 1) {
+        const isCurrentSector = sectorId === 1;
+        state.universe[sectorId] = {
+            id: sectorId,
+            name: `Budget Sector ${sectorId}`,
+            pirateThreat: sectorId % 4,
+            surveyed: true,
+            charted: true,
+            reachable: true,
+            jumpGates: []
+        };
+        state.ports[sectorId] = {
+            sectorId,
+            typeKey: sectorId % 5 === 0 ? 'mining' : 'industrial',
+            factionId: 'fu',
+            stock: makeCommodityMap((commodity, index) => isCurrentSector ? 35 + index * 5 : 260 + sectorId + index * 3),
+            maxStock: makeCommodityMap((commodity, index) => 300 + index * 20),
+            basePrices: makeCommodityMap((commodity, index) => 80 + index * 25)
+        };
+        state.economy.profilesBySector[String(sectorId)] = {
+            populationDemand: 100,
+            extractionCapacity: sectorId % 7,
+            targetStock: makeCommodityMap((commodity, index) => 220 + index * 10),
+            routeAccess: 0.85
+        };
+        state.economy.pressureBySector[String(sectorId)] = makeCommodityMap((commodity, index) => {
+            const targetStock = 220 + index * 10;
+            const currentStock = isCurrentSector ? 35 + index * 5 : 260 + sectorId + index * 3;
+            const surplus = Math.max(0, currentStock - targetStock);
+            return {
+                targetStock,
+                currentStock,
+                dailyConsumption: isCurrentSector ? 18 + index : 8 + index,
+                dailyDemand: isCurrentSector ? 18 + index : 8 + index,
+                dailyProduction: isCurrentSector ? 4 + index : 14 + index,
+                unmetDemand: isCurrentSector ? 12 + index : 0,
+                surplus,
+                shortageSeverity: isCurrentSector ? 0.45 : 0,
+                surplusSeverity: isCurrentSector ? 0 : Math.min(1, surplus / Math.max(1, targetStock)),
+                confidence: 0.9,
+                pricePressure: isCurrentSector ? 1.2 : 0.9,
+                stockRatio: currentStock / Math.max(1, targetStock),
+                routeAccess: 0.85,
+                lastUpdatedDay: 30,
+                primaryCause: isCurrentSector
+                    ? `${commodity} stock is below target and local demand is persistent.`
+                    : `${commodity} stock is above local target; export pressure is likely.`
+            };
+        });
+    }
 }
 
-describe('economy market explainability render performance budget', () => {
-    before(() => {
-        _originalDocument = globalThis.document;
+describe('economy UI performance budget', () => {
+    afterEach(() => {
+        delete globalThis.document;
+        resetState();
     });
 
-    after(() => {
-        globalThis.document = _originalDocument;
-    });
+    it('renders market explainability within the Phase 9 budget envelope', () => {
+        setupMarketPerformanceState();
+        for (let index = 0; index < WARMUP_ITERATIONS; index += 1) renderMarketPanel();
 
-    it('stays within an average render budget for repeated market panel updates', () => {
-        setupEconomyMarketState();
+        const startedAt = performance.now();
+        for (let index = 0; index < ITERATIONS; index += 1) renderMarketPanel();
+        const averageMs = (performance.now() - startedAt) / ITERATIONS;
 
-        renderMarketPanel();
-        const iterations = 1000;
-        const start = performance.now();
-        for (let i = 0; i < iterations; i += 1) {
-            renderMarketPanel();
-        }
-        const elapsedMs = performance.now() - start;
-        const averageMs = elapsedMs / iterations;
-
+        assert.ok(Number.isFinite(averageMs));
         assert.ok(
-            averageMs <= 5.0,
-            `Expected average market render <= 5.0ms, got ${averageMs.toFixed(4)}ms`
+            averageMs <= AVERAGE_RENDER_BUDGET_MS,
+            `market explainability render averaged ${averageMs.toFixed(3)}ms; budget is ${AVERAGE_RENDER_BUDGET_MS.toFixed(1)}ms`
         );
+        const html = globalThis.document.getElementById('actions').innerHTML;
+        assert.match(html, /Severity: shortage/);
+        assert.match(html, /Track context/);
     });
 });
