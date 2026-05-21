@@ -83,6 +83,10 @@ function getSectorScoringContext(sectorId) {
     };
 }
 
+/**
+ * Score a company archetype for a sector.
+ * Pass a precomputed context when scoring multiple types for the same sector.
+ */
 export function scoreCompanyTypeForSector(sectorId, type, context) {
     const sectorContext = context || getSectorScoringContext(sectorId);
     const {
