@@ -483,7 +483,7 @@ describe('save serialization', () => {
         assert.equal(state.simulationTrace[0].summary.text, 'Trace event');
         assert.equal(state.simulationTrace[0].causedBy[0].eventId, 7);
         assert.equal(state.nextSimulationTraceId, 2);
-        assert.ok(Array.isArray(state.economy.contracts), 'economy contracts should be an array after load');
+        assert.equal(state.economy.contracts[0].commodity, 'ore');
         assert.equal(state.economy.nextContractId, 2);
         assert.equal(state.economy.pressureBySector[1].ore.shortageSeverity, 0.25);
         assert.equal(state.selectedSectorId, state.player.currentSector);
