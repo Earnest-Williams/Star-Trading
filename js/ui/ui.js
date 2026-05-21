@@ -119,6 +119,28 @@ const GAMEPLAY_SCREENS = new Set([
     'reputation', 'communications', 'spreadsheet', 'shipyard', 'property', 'character'
 ]);
 
+
+function setEconomyFocus(sectorId, commodity, source) {
+    state.economyFocus = {
+        sectorId: Number(sectorId || state.player?.currentSector || 0),
+        commodity: commodity || null,
+        source: source || null,
+        updatedDay: Number(state.player?.time?.day || 0)
+    };
+    return true;
+}
+
+function showEconomyLinkedScreen(screen, sectorId, commodity) {
+    const targetSector = Number(sectorId || state.player?.currentSector || 0);
+    state.economyFocus = {
+        sectorId: targetSector,
+        commodity: commodity || null,
+        source: screen || state.currentScreen,
+        updatedDay: Number(state.player?.time?.day || 0)
+    };
+    return showScreen(screen || 'market');
+}
+
 export function showScreen(screen) {
     if (!GAMEPLAY_SCREENS.has(screen)) return false;
     if (state.appMode !== APP_MODES.IN_GAME || !state.player) return false;
@@ -521,6 +543,8 @@ export function registerUIActions() {
     registerAction('surveySector', surveySector);
     registerAction('tradeCommodity', (commodityId, mode) => tradeCommodity(commodityId, mode) ? commandOk(StateSlice.PLAYER, StateSlice.ECONOMY, StateSlice.UI_RUNTIME, StateSlice.EVENTS) : commandFailed());
     registerAction('acceptEconomyContract', (contractId) => acceptEconomyContract(contractId) ? commandOk(StateSlice.ECONOMY, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('setEconomyFocus', (sectorId, commodity, source) => setEconomyFocus(sectorId, commodity, source) ? commandOk(StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('showEconomyLinkedScreen', (screen, sectorId, commodity) => showEconomyLinkedScreen(screen, sectorId, commodity) ? commandOk(StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('mineAsteroids', mineAsteroids);
     registerAction('foundColony', foundColony);
     registerAction('alignColony', alignColony);
@@ -585,6 +609,8 @@ export function registerUIActions() {
 
     registerActionManifest('moveTo', { argCount: 1, coercers: [parsePositiveId] });
     registerActionManifest('showScreen', { argCount: 1, coercers: [parseScreen] });
+    registerActionManifest('setEconomyFocus', { argCount: 3 });
+    registerActionManifest('showEconomyLinkedScreen', { argCount: 3 });
     registerActionManifest('showCommunications', { argCount: 0 });
     registerActionManifest('toggleMapInspectorCompact', { argCount: 0 });
     registerActionManifest('dismissPriorityBriefing', { argCount: 0 });

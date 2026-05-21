@@ -221,6 +221,75 @@ describe('port type normalisation', () => {
         assert.equal(state.ports[1].typeKey, 'industrial');
     });
 
+
+
+    it('renders deterministic market explainability blocks for focus, outlook, supplier telemetry, and contract links', () => {
+        resetState();
+        setupDocument();
+        state.player = { currentSector: 1, time: { day: 12 }, character: {} };
+        state.economyFocus = { sectorId: 1, commodity: 'ore', source: 'test', updatedDay: 12 };
+        state.ports = {
+            1: {
+                typeKey: 'industrial',
+                factionId: 'fu',
+                stock: { ore: 20, org: 100, eq: 100 },
+                maxStock: { ore: 200, org: 200, eq: 200 },
+                basePrices: { ore: 80, org: 150, eq: 300 }
+            }
+        };
+        state.economy = {
+            ...(state.economy || {}),
+            pressureBySector: {
+                '1': {
+                    ore: {
+                        shortageSeverity: 0.5,
+                        surplusSeverity: 0,
+                        stockRatio: 0.1,
+                        targetStock: 200,
+                        currentStock: 20,
+                        dailyConsumption: 18,
+                        dailyProduction: 4,
+                        primaryCause: 'Refinery feedstock deficit.',
+                        confidence: 0.9
+                    }
+                },
+                '2': {
+                    ore: {
+                        surplus: 120,
+                        routeAccess: 0.8,
+                        confidence: 0.7
+                    }
+                }
+            },
+            contracts: [{
+                id: 'econ-1',
+                destinationSector: 1,
+                status: 'available',
+                reason: 'Industrial shortage tender',
+                commodity: 'ore',
+                amount: 40,
+                reward: 1200,
+                unitReward: 30,
+                expiresDay: 15,
+                targetStockGap: 80,
+                unmetDemand: 14,
+                shortageSeverity: 0.5,
+                sourceCandidates: [2]
+            }]
+        };
+        state.dataCargo = { sectorKnowledge: { 2: { lastObservedDay: 10 } }, playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] }, secureContracts: [], ambientTransfers: [], nextPayloadId: 1, license: { secureCourier: false, issuedByFactionId: null, issuedDay: null } };
+        state.missions = [];
+        state.ambientTrade = { flows: 0, moved: { ore: 3, org: 2, eq: 1 } };
+
+        assert.doesNotThrow(() => renderMarketPanel());
+        const html = globalThis.document.getElementById('actions').innerHTML;
+        assert.match(html, /Context trail: S1 → Common Ore → market/);
+        assert.match(html, /3-day outlook: tightening shortage unless resupplied \(high confidence\)/);
+        assert.match(html, /telemetry (unknown|stale)/);
+        assert.match(html, /data-action="setEconomyFocus"/);
+        assert.match(html, /data-action="showEconomyLinkedScreen"/);
+    });
+
     it('renders a market panel for a port with an unknown legacy type key', () => {
         resetState();
         setupDocument();
