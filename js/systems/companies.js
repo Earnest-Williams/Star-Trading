@@ -257,7 +257,7 @@ export function seedCompaniesAndPeople(rng) {
     Object.keys(state.universe).map(Number).forEach(sectorId => {
         if (!hasEconomicActivity(sectorId)) return;
         const profile = state.economy?.profilesBySector?.[sectorId];
-        const chosenTypes = profile ? chooseCapacityBasedCompanyTypes(sectorId, rng) : [chooseCompanyType(sectorId)];
+        const chosenTypes = profile ? chooseCapacityBasedCompanyTypes(sectorId) : [chooseCompanyType(sectorId)];
         chosenTypes.forEach((type) => createCompany(sectorId, type, rng));
     });
 }

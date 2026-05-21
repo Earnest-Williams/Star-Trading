@@ -36,7 +36,7 @@ export function scoreCompanyTypeForSector(sectorId,type){
   return { type, score: Math.max(0, score), count: Math.max(0, Math.min(3, Math.round(score/4))), reasons: [`route:${routeAccess.toFixed(2)}`,`extract:${Math.round(extraction)}`] };
 }
 export function scoreCompanyTypesForSector(sectorId){ return TYPES.map((t)=>scoreCompanyTypeForSector(sectorId,t)).sort((a,b)=>b.score-a.score); }
-export function chooseCapacityBasedCompanyTypes(sectorId, rng){
+export function chooseCapacityBasedCompanyTypes(sectorId){
   const ranked = scoreCompanyTypesForSector(sectorId);
   const picks = [];
   ranked.slice(0,4).forEach((r,idx)=>{ const count = Math.max(idx===0?1:0, r.count); for(let i=0;i<count;i++) picks.push(r.type);});

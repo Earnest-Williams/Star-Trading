@@ -9,7 +9,7 @@ import { getPortType } from "../core/ports.js";
 import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
-import { getDisplayedMarketSignal, getDisplayedSupplierSignals, getMarketInformationQuality } from "../systems/economy/marketIntelligence.js";
+import { getDisplayedSupplierSignals } from "../systems/economy/marketIntelligence.js";
 
 function renderEconomyBreadcrumbs(screen) {
     const focus = state.economyFocus || {};
@@ -98,33 +98,25 @@ function renderMarketIntelligencePanel(sectorId, port) {
 
 
 function renderLikelySuppliersPanel(sectorId) {
-    const pressureBySector = state.economy?.pressureBySector || {};
     let html = `<h4>Likely Suppliers</h4>`;
     const rows = [];
     const formatSupplierEntry = (entry) => {
+        if (entry.label) {
+            const confidence = entry.confidenceLabel || "low";
+            return `S${entry.sectorId} (${escapeHtml(entry.label)}, confidence ${escapeHtml(confidence)})`;
+        }
         const freshness = getFreshnessSummaryForSector(entry.sectorId);
         const freshnessNote = freshness.label === "current" ? "live" : freshness.label;
-        const accessPct = Math.round(entry.routeAccess * 100);
+        const accessPct = Math.round(Math.max(0, Math.min(1, Number(entry.routeAccess || 0))) * 100);
         const riskPct = 100 - accessPct;
-        const confidencePct = Math.round(entry.confidence * 100);
-        const exportable = Math.round(entry.surplus * entry.routeAccess);
-        return `S${entry.sectorId} (surplus ${Math.round(entry.surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}, confidence ${confidencePct}%)`;
+        const confidencePct = Math.round(Math.max(0, Math.min(1, Number(entry.confidence || 0))) * 100);
+        const surplus = Math.max(0, Number(entry.surplus || 0));
+        const exportable = Math.round(surplus * Math.max(0, Math.min(1, Number(entry.routeAccess || 0))));
+        const confidenceLabel = entry.confidenceLabel ? `, confidence ${escapeHtml(entry.confidenceLabel)}` : `, confidence ${confidencePct}%`;
+        return `S${entry.sectorId} (surplus ${Math.round(surplus)}, exportable ${exportable}, access ${accessPct}%, est risk ${riskPct}%, telemetry ${freshnessNote}${confidenceLabel})`;
     };
     MARKET_COMMODITIES.forEach((commodity) => {
-        const top = Object.entries(pressureBySector)
-            .filter(([sid, pressureMap]) => Number(sid) !== Number(sectorId) && Number(pressureMap?.[commodity]?.surplus || 0) > 0)
-            .map(([sid, pressureMap]) => {
-                const displaySignal = getDisplayedMarketSignal(sectorId, commodity, state.player?.character || {}, {});
-        const signal = pressureMap?.[commodity] || {};
-                return {
-                    sectorId: Number(sid),
-                    surplus: Math.max(0, Number(signal.surplus || 0)),
-                    routeAccess: Math.max(0, Math.min(1, Number(signal.routeAccess || 0))),
-                    confidence: Math.max(0, Math.min(1, Number(signal.confidence || 0)))
-                };
-            })
-            .sort((a, b) => b.surplus - a.surplus)
-            .slice(0, 2);
+        const top = getDisplayedSupplierSignals(sectorId, commodity, state.player?.character || {}, {}).slice(0, 2);
         if (top.length <= 0) return;
         rows.push(`<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${top.map(formatSupplierEntry).join("; ")}</div>`);
     });

@@ -84,10 +84,10 @@ function createContract(sectorId, commodity, signal, profile) {
     if (!type) return null;
     const pressure = clamp(Number(signal?.shortageSeverity || 0), 0, 1);
     const destinationPort = state.ports?.[sectorId] || null;
-    const buyPressure = Math.max(1, Number(signal?.pricePressure || 1));
     const basePrice = Math.max(10, Number(destinationPort?.basePrices?.[commodity] || COMMODITY_BASE_PRICES[commodity] || 100));
     const urgency = clamp(Number(signal?.unmetDemand || 0) / Math.max(1, Number(signal?.dailyDemand || signal?.dailyConsumption || 1)), 0, 1);
-        const pulseSignal = getPulseServiceSignalForSector(sectorId);
+    const routeRisk = 1 - clamp(Number(signal?.routeAccess ?? 1), 0, 1);
+    const pulseSignal = getPulseServiceSignalForSector(sectorId);
     const criticalPulseBonus = (type === 'pulse_tender' || type === 'station_reserve') && (pulseSignal.serviceQuality === 'critical' || pulseSignal.serviceQuality === 'failing') ? BALANCE.ECONOMY.CONTRACTS.CRITICAL_PULSE_PREMIUM_BONUS : 0;
     const blackMarketBonus = type === 'black_market_diversion' ? BALANCE.ECONOMY.CONTRACTS.BLACK_MARKET_PREMIUM_BONUS : 0;
     const premiumRate = clamp(BALANCE.ECONOMY.CONTRACTS.PREMIUM_MIN_RATE + pressure * BALANCE.ECONOMY.CONTRACTS.SHORTAGE_PREMIUM_MULTIPLIER + urgency * BALANCE.ECONOMY.CONTRACTS.URGENCY_PREMIUM_MULTIPLIER + routeRisk * BALANCE.ECONOMY.CONTRACTS.ROUTE_RISK_PREMIUM_MULTIPLIER + criticalPulseBonus + blackMarketBonus, BALANCE.ECONOMY.CONTRACTS.PREMIUM_MIN_RATE, BALANCE.ECONOMY.CONTRACTS.PREMIUM_MAX_RATE);
@@ -98,7 +98,7 @@ function createContract(sectorId, commodity, signal, profile) {
     );
     const day = Number(state.player?.time?.day || 1);
     const sourceCandidates = deriveSourceCandidates(sectorId, commodity);
-        const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
+    const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
     const unmetDemand = Math.max(0, Number(signal?.unmetDemand || 0));
     const issuer = {
         entityType: 'company',
