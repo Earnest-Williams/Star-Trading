@@ -84,7 +84,10 @@ describe('economy contracts', () => {
     });
 
     it('caps daily contract premium payout', () => {
-        state.economy.dailySummary = { contractPremiumPayout: BALANCE.ECONOMY.CONTRACTS.MAX_DAILY_CONTRACT_PREMIUM_PAYOUT - 5 };
+        state.economy.dailySummary = {
+            contractPremiumPayout: BALANCE.ECONOMY.CONTRACTS.MAX_DAILY_CONTRACT_PREMIUM_PAYOUT - 5,
+            contractPremiumPayoutDay: state.player.time.day
+        };
         generateEconomyContractsDaily();
         const contract = pickContract();
         acceptEconomyContract(contract.id);
@@ -92,5 +95,24 @@ describe('economy contracts', () => {
         const hook = applyContractDeliveryHooks(contract.destinationSector, contract.commodity, contract.amount);
         assert.equal(hook.completed, 1);
         assert.equal(state.player.credits - priorCredits, 5);
+    });
+
+    it('resets daily contract premium payout when day advances', () => {
+        state.economy.dailySummary = {
+            contractPremiumPayout: 123,
+            contractPremiumPayoutDay: state.player.time.day - 1
+        };
+        generateEconomyContractsDaily();
+        assert.equal(state.economy.dailySummary.contractPremiumPayout, 0);
+        assert.equal(state.economy.dailySummary.contractPremiumPayoutDay, state.player.time.day);
+    });
+
+    it('completes contract payout without throwing when player state is missing', () => {
+        generateEconomyContractsDaily();
+        const contract = pickContract();
+        acceptEconomyContract(contract.id);
+        state.player = null;
+        assert.doesNotThrow(() => applyContractDeliveryHooks(contract.destinationSector, contract.commodity, contract.amount));
+        assert.equal(contract.status, 'completed');
     });
 });

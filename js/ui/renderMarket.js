@@ -37,9 +37,18 @@ function formatConfidenceLabel(value) {
     return "low";
 }
 
+function getSectorFactionStanding(sectorId) {
+    const port = state.ports?.[sectorId];
+    return port?.factionId ? getFactionRep(port.factionId) : 0;
+}
+
 function renderPressurePanel(sectorId) {
     let html = `<h4>Market Pressure</h4>` + renderEconomyBreadcrumbs("market");
-    const actorContext = { character: state.player?.character || {}, currentSector: state.player?.currentSector, factionStanding: 0 };
+    const actorContext = {
+        character: state.player?.character || {},
+        currentSector: state.player?.currentSector,
+        factionStanding: getSectorFactionStanding(sectorId)
+    };
     const pressure = state.economy?.pressureBySector?.[String(sectorId)] || {};
     MARKET_COMMODITIES.forEach((commodity) => {
         if (!pressure[commodity]) return;
@@ -72,7 +81,7 @@ function renderMarketIntelligencePanel(sectorId, port) {
     }
     const character = state.player?.character || {};
     html += `.</div>`;
-    const infoQuality = getMarketInformationQuality({ character }, sectorId);
+    const infoQuality = getMarketInformationQuality({ character, factionStanding: getSectorFactionStanding(sectorId) }, sectorId);
     html += `<div class="small">Information quality tier: <strong>${escapeHtml(formatMarketIntelligenceQuality(infoQuality))}</strong>; freshness is <strong>${escapeHtml(freshness.label)}</strong>.</div>`;
     const recRows = MARKET_COMMODITIES.map((commodity) => {
         const recommendation = getMarketRecommendation(port, commodity, character);

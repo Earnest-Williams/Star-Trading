@@ -284,9 +284,10 @@ describe('port type normalisation', () => {
         assert.doesNotThrow(() => renderMarketPanel());
         const html = globalThis.document.getElementById('actions').innerHTML;
         assert.match(html, /Context trail: S1 → Common Ore → market/);
-        assert.match(html, /3-day outlook: tightening shortage unless resupplied \(high confidence\)/);
-        assert.match(html, /telemetry (unknown|stale)/);
-        assert.match(html, /data-action="setEconomyFocus"/);
+        assert.match(html, /stock band 20 \| target band 200 \| daily-use band 20/);
+        assert.match(html, /Cause: trend pressure · medium/);
+        assert.match(html, /telemetry (unknown|stale|limited)/);
+        assert.doesNotMatch(html, /data-action="setEconomyFocus"/);
         assert.match(html, /data-action="showEconomyLinkedScreen"/);
     });
 
