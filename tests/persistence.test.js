@@ -151,6 +151,35 @@ describe('migrateSave — economy scaffolding', () => {
             generatedByVersion: 1
         });
     });
+
+    it('sanitizes economy pressure, volume, and contracts from user-imported save payloads', () => {
+        const save = minimalSave(SAVE_VERSION);
+        save.economy.pressureBySector = {
+            1: { ore: { shortageSeverity: '0.5', surplus: -2, pricePressure: '1.3', routeAccess: null } },
+            2: 'invalid'
+        };
+        save.economy.recentVolumeBySector = {
+            1: { ore: '5', eq: -1 },
+            2: 10
+        };
+        save.economy.contracts = [
+            { id: '4', destinationSectorId: '3', commodity: 'ore', amount: '8', delivered: '2', status: 'accepted' },
+            { id: 'bad', destinationSectorId: 3, commodity: 'ore' },
+            { id: 5, destinationSectorId: 'x', commodity: 'ore' }
+        ];
+
+        const result = migrateSave(save);
+
+        assert.deepEqual(result.economy.pressureBySector, {
+            1: { ore: { shortageSeverity: 0.5, surplus: 0, pricePressure: 1.3, routeAccess: 0 } }
+        });
+        assert.deepEqual(result.economy.recentVolumeBySector, {
+            1: { ore: 5, eq: 0 }
+        });
+        assert.deepEqual(result.economy.contracts, [
+            { id: 4, destinationSectorId: 3, commodity: 'ore', amount: 8, delivered: 2, status: 'accepted' }
+        ]);
+    });
 });
 
 describe('migrateSave — pre-v6 (faction rebuild)', () => {

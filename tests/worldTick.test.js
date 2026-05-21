@@ -7,6 +7,8 @@ import {
     expireFactionIntel,
     runWorldTickPhases
 } from '../js/core/worldTick.js';
+import { runAmbientTradeDaily } from '../js/systems/ambientTrade.js';
+import { recomputeEconomyPressure } from '../js/systems/economy/pressure.js';
 
 describe('world tick phase order', () => {
     it('keeps the daily simulation contract explicit and ordered', () => {
@@ -98,5 +100,34 @@ describe('expireFactionIntel', () => {
 
         assert.doesNotThrow(() => expireFactionIntel());
         assert.deepEqual(state.player.factions, {});
+    });
+});
+
+describe('economy post-ambient integration seam', () => {
+    beforeEach(() => {
+        resetState();
+        state.player = { time: { day: 5 } };
+        state.universe = {
+            1: { id: 1, jumpGates: [2], pirateThreat: 0 },
+            2: { id: 2, jumpGates: [1], pirateThreat: 0 }
+        };
+        state.ports = {
+            1: { stock: { ore: 180 }, maxStock: { ore: 200 }, basePrices: { ore: 80 } },
+            2: { stock: { ore: 0 }, maxStock: { ore: 200 }, basePrices: { ore: 80 } }
+        };
+        state.planets = {};
+        state.economy.profilesBySector = {
+            1: { roleTags: ['port:mining'], supplyWeight: 1, demandWeight: 1 },
+            2: { roleTags: ['port:industrial'], supplyWeight: 1, demandWeight: 1 }
+        };
+        recomputeEconomyPressure();
+    });
+
+    it('ambient trade flow is followed by a pressure recompute update', () => {
+        const before = state.economy.pressureBySector?.['2']?.ore?.shortageSeverity ?? 0;
+        runAmbientTradeDaily();
+        recomputeEconomyPressure();
+        const after = state.economy.pressureBySector?.['2']?.ore?.shortageSeverity ?? 0;
+        assert.equal(after <= before, true);
     });
 });
