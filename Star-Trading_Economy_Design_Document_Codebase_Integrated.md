@@ -2863,3 +2863,10 @@ These changes build out the Phase 9 UI explanation and market-intelligence deliv
 - Revalidated full-suite performance envelope through existing simulation and rendering regression coverage.
 
 Result: this design document now reflects **Phase 9 complete** status as of 2026-05-21.
+
+### Phase 9 feature completion update (2026-05-21): explainPressure / primaryCause
+
+- Implemented the `explainPressure` helper function and `primaryCause` field in `js/systems/economy/pressure.js` as specified in Section 15.1.
+- `recomputeEconomyPressure` now attaches a human-readable `primaryCause` string to every per-commodity pressure record covering the four scenarios: unmet demand, below-target shortage with persistent consumption, export surplus pressure, and near-target equilibrium.
+- Added five targeted tests in `tests/worldTick.test.js` covering each `explainPressure` branch plus a structural invariant asserting every commodity record carries a non-empty `primaryCause` string.
+- Confirmed full suite pass status (`508/508`) with zero failures.

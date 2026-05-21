@@ -10,6 +10,23 @@ function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
 
+// Minimum shortageSeverity (0–1) above which persistent local demand is considered a primary cause.
+const SHORTAGE_SEVERITY_THRESHOLD = 0.45;
+
+function profileDailyConsumption(profile, commodity) {
+    return (Number(profile?.baselineConsumption?.[commodity]) || 0)
+        + (Number(profile?.industrialConsumption?.[commodity]) || 0)
+        + (Number(profile?.serviceConsumption?.[commodity]) || 0);
+}
+
+function explainPressure(profile, commodity, record) {
+    if (record.unmetDemand > 0) return `${commodity} demand is not fully met.`;
+    if (record.shortageSeverity > SHORTAGE_SEVERITY_THRESHOLD && profileDailyConsumption(profile, commodity) > 0)
+        return `${commodity} stock is below target and local demand is persistent.`;
+    if (record.surplus > 0) return `${commodity} stock is above local target; export pressure is likely.`;
+    return `${commodity} is near local target.`;
+}
+
 export function recomputeEconomyPressure() {
     if (!state.economy) return {};
     const pressureBySector = {};
@@ -36,7 +53,9 @@ export function recomputeEconomyPressure() {
             const signalMagnitude = Math.max(shortageSeverity, surplusSeverity);
             const throughputRatio = clamp((dailyConsumption + dailyProduction) / Math.max(1, targetStock), 0, 1);
             const confidence = clamp(0.25 + signalMagnitude * 0.5 + throughputRatio * 0.25, 0, 1);
-            sectorPressure[commodity] = { targetStock, currentStock, dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, confidence, pricePressure, stockRatio, routeAccess: Number(profile?.routeDependence || 0), lastUpdatedDay: state.player?.time?.day ?? null };
+            const record = { targetStock, currentStock, dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, confidence, pricePressure, stockRatio, routeAccess: Number(profile?.routeDependence || 0), lastUpdatedDay: state.player?.time?.day ?? null };
+            record.primaryCause = explainPressure(profile, commodity, record);
+            sectorPressure[commodity] = record;
         });
         pressureBySector[sectorId] = sectorPressure;
     });

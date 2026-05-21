@@ -133,3 +133,83 @@ describe('economy post-ambient integration seam', () => {
         assert.equal(signal.confidence >= 0 && signal.confidence <= 1, true);
     });
 });
+
+describe('recomputeEconomyPressure / explainPressure — primaryCause', () => {
+    beforeEach(() => {
+        resetState();
+        state.player = { time: { day: 10 } };
+        state.planets = {};
+    });
+
+    it('reports unmet demand when consumption exceeds current stock', () => {
+        state.ports = {
+            1: { stock: { ore: 5 }, maxStock: { ore: 200 } }
+        };
+        state.economy.profilesBySector = {
+            1: { baselineConsumption: { ore: 20 }, targetStock: { ore: 80 } }
+        };
+        recomputeEconomyPressure();
+        const signal = state.economy.pressureBySector?.['1']?.ore;
+        assert.ok(signal, 'pressure record exists');
+        assert.equal(typeof signal.primaryCause, 'string');
+        assert.match(signal.primaryCause, /ore demand is not fully met/);
+    });
+
+    it('reports below-target shortage when stock is low and consumption is positive', () => {
+        // Stock is 20/200 (10%), well below TARGET_STOCK_RATIO (~45%), but > dailyConsumption
+        state.ports = {
+            1: { stock: { ore: 20 }, maxStock: { ore: 200 } }
+        };
+        state.economy.profilesBySector = {
+            1: { baselineConsumption: { ore: 3 }, targetStock: { ore: 90 } }
+        };
+        recomputeEconomyPressure();
+        const signal = state.economy.pressureBySector?.['1']?.ore;
+        assert.ok(signal, 'pressure record exists');
+        assert.match(signal.primaryCause, /below target and local demand is persistent/);
+    });
+
+    it('reports export pressure when stock exceeds target', () => {
+        // Stock is 170/200 (85%), well above TARGET_STOCK_RATIO (~45%)
+        state.ports = {
+            1: { stock: { ore: 170 }, maxStock: { ore: 200 } }
+        };
+        state.economy.profilesBySector = {
+            1: { baselineConsumption: { ore: 2 }, targetStock: { ore: 90 } }
+        };
+        recomputeEconomyPressure();
+        const signal = state.economy.pressureBySector?.['1']?.ore;
+        assert.ok(signal, 'pressure record exists');
+        assert.match(signal.primaryCause, /above local target; export pressure is likely/);
+    });
+
+    it('reports near target when stock is at target and no consumption', () => {
+        // Stock is exactly at TARGET_STOCK_RATIO (45%) with no consumption
+        state.ports = {
+            1: { stock: { ore: 90 }, maxStock: { ore: 200 } }
+        };
+        state.economy.profilesBySector = {
+            1: { baselineConsumption: { ore: 0 }, targetStock: { ore: 90 } }
+        };
+        recomputeEconomyPressure();
+        const signal = state.economy.pressureBySector?.['1']?.ore;
+        assert.ok(signal, 'pressure record exists');
+        assert.match(signal.primaryCause, /near local target/);
+    });
+
+    it('exposes primaryCause as a string on every commodity record', () => {
+        state.ports = {
+            1: { stock: { ore: 100 }, maxStock: { ore: 200 } }
+        };
+        state.economy.profilesBySector = {
+            1: { roleTags: [] }
+        };
+        recomputeEconomyPressure();
+        const sectorPressure = state.economy.pressureBySector?.['1'];
+        assert.ok(sectorPressure, 'sector pressure exists');
+        Object.values(sectorPressure).forEach(record => {
+            assert.equal(typeof record.primaryCause, 'string', 'primaryCause is a string');
+            assert.ok(record.primaryCause.length > 0, 'primaryCause is non-empty');
+        });
+    });
+});
