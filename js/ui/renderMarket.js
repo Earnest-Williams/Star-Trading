@@ -68,10 +68,10 @@ function renderPressurePanel(sectorId) {
         const signal = getDisplayedMarketSignal(sectorId, commodity, actorContext, { purpose: "market_panel" });
         if (!signal) return;
         if (signal.quality?.tier === 'high') {
-            const dailyConsumption = Number(signal.dailyConsumption ?? signal.dailyDemand ?? 0).toFixed(1);
-            const dailyProduction = Number(signal.dailyProduction || 0).toFixed(1);
+            const dailyConsumption = signal.dailyConsumption.toFixed(1);
+            const dailyProduction = signal.dailyProduction.toFixed(1);
             const confidence = formatConfidenceLabel(signal.confidence ?? signal.quality?.score);
-            const cause = signal.primaryCause || (signal.causes || [])[0] || "No dominant cause telemetry.";
+            const cause = signal.primaryCause;
             html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: `
             + `Stock ${signal.stock}/${signal.target} | daily use ${dailyConsumption} | daily output ${dailyProduction}<br>`
             + `<span class="muted">Severity: ${escapeHtml(formatSignalSeverity(signal))} | Confidence ${escapeHtml(confidence)}</span><br>`

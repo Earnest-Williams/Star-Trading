@@ -53,7 +53,17 @@ function setupMarketPerformanceState() {
     state.planets = {};
     state.missions = [];
     state.captains = {};
-    state.ambientTrade = { flows: 14, moved: { ore: 8, org: 4, eq: 2 } };
+    state.ambientTrade = {
+        flows: 14,
+        moved: makeCommodityMap((commodity) => ({ ore: 8, org: 4, eq: 2 }[commodity] || 0)),
+        residualDemand: makeCommodityMap(() => 0),
+        blockedUnits: makeCommodityMap(() => 0),
+        blockedByReason: {
+            disconnected: makeCommodityMap(() => 0),
+            unprofitable: makeCommodityMap(() => 0),
+            highRisk: makeCommodityMap(() => 0)
+        }
+    };
     state.dataCargo = {
         sectorKnowledge: {},
         playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] },

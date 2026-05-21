@@ -39,17 +39,18 @@ export function getDisplayedMarketSignal(sectorId, commodity, actorContext, opti
     const s = state.economy?.pressureBySector?.[sectorId]?.[commodity] || {};
     if (q.tier === 'high') {
         const dailyConsumption = num(s.dailyConsumption ?? s.dailyDemand);
+        const dailyDemand = num(s.dailyDemand ?? s.dailyConsumption);
         const causes = buildPrimaryCauses(s);
         return {
             quality: q,
             stock: num(s.currentStock),
             target: num(s.targetStock),
-            dailyDemand: dailyConsumption,
+            dailyDemand,
             dailyConsumption,
             dailyProduction: num(s.dailyProduction),
             shortageSeverity: num(s.shortageSeverity),
             surplusSeverity: num(s.surplusSeverity),
-            confidence: num(s.confidence, q.score),
+            confidence: s.confidence == null ? q.score : num(s.confidence, q.score),
             causes,
             primaryCause: causes[0],
             intelPrompt: null
