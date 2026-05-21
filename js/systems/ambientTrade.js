@@ -71,32 +71,30 @@ export function runAmbientTradeDaily() {
             if (sinkRemainingCap <= 0) return;
             summary.attemptedDemand[commodity] += sinkRemainingCap;
             let sinkBlockedUnits = 0;
+            const recordBlockedFlow = (reason, sourceSurplus) => {
+                const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
+                const blocked = Math.min(remainingBlockedCap, sourceSurplus);
+                if (blocked <= 0) return;
+                sinkBlockedUnits += blocked;
+                summary.blockedByReason[reason][commodity] += blocked;
+                summary.blockedFlows += 1;
+            };
             sources.forEach((sourceItem) => {
                 if (sinkRemainingCap <= 0 || sourceItem.surplus <= 0) return;
                 if (sourceItem.node.sectorId === sinkItem.node.sectorId) return;
                 const metrics = deriveRouteMetrics(sourceItem.node.sectorId, sinkItem.node.sectorId);
                 const distance = metrics.hopCount;
                 if (distance === null || distance > BALANCE.AMBIENT_TRADE.MAX_SEARCH_DISTANCE) {
-                    const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
-                    const blocked = Math.min(remainingBlockedCap, sourceItem.surplus);
-                    sinkBlockedUnits += blocked;
-                    summary.blockedByReason.disconnected[commodity] += blocked;
-                    summary.blockedFlows += 1;
+                    recordBlockedFlow('disconnected', sourceItem.surplus);
                     return;
                 }
                 const risk = metrics.risk || 0;
                 if (risk >= BALANCE.AMBIENT_TRADE.RISK_REJECTION_THRESHOLD) {
-                    const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
-                    const blocked = Math.min(remainingBlockedCap, sourceItem.surplus);
-                    sinkBlockedUnits += blocked;
-                    summary.blockedByReason.highRisk[commodity] += blocked;
+                    recordBlockedFlow('highRisk', sourceItem.surplus);
                     return;
                 }
                 if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity)) {
-                    const remainingBlockedCap = Math.max(0, sinkRemainingCap - sinkBlockedUnits);
-                    const blocked = Math.min(remainingBlockedCap, sourceItem.surplus);
-                    sinkBlockedUnits += blocked;
-                    summary.blockedByReason.unprofitable[commodity] += blocked;
+                    recordBlockedFlow('unprofitable', sourceItem.surplus);
                     return;
                 }
                 const distanceFactor = 1 / (1 + Math.max(0, distance - BALANCE.AMBIENT_TRADE.DISTANCE_BASELINE) * BALANCE.AMBIENT_TRADE.DISTANCE_PENALTY);
