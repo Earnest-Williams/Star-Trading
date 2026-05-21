@@ -1,4 +1,5 @@
 # Blackline Command Design Bible
+_Last updated: 2026-05-21_
 
 **One-line definition:** Blackline Command is an OLED-black, hard-angle interface language built from heavy typography, 2-4px technical borders, mechanical text motion, dense telemetry, and restrained neon signal colors.
 

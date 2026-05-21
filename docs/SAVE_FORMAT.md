@@ -1,4 +1,5 @@
 # Save Format and Migration Guide
+_Last updated: 2026-05-21_
 
 Star-Trading saves are versioned, normalized at load time, and expected to remain
 compatible with older prototype payloads. The current save version is defined by

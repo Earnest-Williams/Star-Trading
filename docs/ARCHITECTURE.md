@@ -1,4 +1,5 @@
 # Star-Trading Architecture
+_Last updated: 2026-05-21_
 
 Star-Trading is a browser-based sparse-3D galaxy space-trading and logistics
 simulation. Players and AI captains operate persistent trade routes across real

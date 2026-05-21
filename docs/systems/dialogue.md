@@ -1,4 +1,5 @@
 # Dialogue System
+_Last updated: 2026-05-21_
 
 The dialogue system models local-contact requests, NPC follow-up, located-item offers, and the Communications console.
 

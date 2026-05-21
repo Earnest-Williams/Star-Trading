@@ -1,4 +1,5 @@
 # Systems Guide
+_Last updated: 2026-05-21_
 
 This guide maps major gameplay systems to their canonical modules, state, config,
 and testing surfaces. Use it to find the correct home for new behavior before

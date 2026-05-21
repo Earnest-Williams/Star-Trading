@@ -1,4 +1,5 @@
 # Blackline Command Implementation Guide
+_Last updated: 2026-05-21_
 
 This guide defines a staged, low-risk migration path for applying the Blackline Command design language to the existing Star-Trading browser prototype.
 
