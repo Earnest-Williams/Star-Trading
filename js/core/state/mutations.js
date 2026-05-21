@@ -1,5 +1,6 @@
 // @ts-check
 import { state } from '../../state.js';
+import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { StateSlice, stateChanged } from './domains.js';
 
 const cleanPatch = patch => Object.fromEntries(Object.entries(patch || {}).filter(([, value]) => typeof value !== 'undefined'));
@@ -97,6 +98,14 @@ export const clearEscortAssignmentsForCaptain = captainId => {
     });
     return changed ? stateChanged(StateSlice.ROUTES) : [];
 };
+const getNodeCommodityCapacity = (node, commodity) => {
+    const explicit = Number(node?.maxStock?.[commodity]);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const fallback = Number(PORT_DEFAULTS.MAX_STOCK?.[commodity]);
+    if (Number.isFinite(fallback) && fallback > 0) return fallback;
+    return Math.max(1, Number(node?.stock?.[commodity]) || 0);
+};
+
 export const patchRouteEconomyAtEndpoints = (route, amount) => {
     if (!route || !Number.isFinite(amount)) return [];
     const originPort = state.ports?.[route.originSector];
@@ -105,10 +114,10 @@ export const patchRouteEconomyAtEndpoints = (route, amount) => {
     const destPlanet = state.planets?.[route.destinationSector];
     const originNode = originPort || originPlanet;
     const destNode = destPort || destPlanet;
-    if (!originNode?.stock || !destNode?.stock || !destNode?.maxStock) return [];
+    if (!originNode?.stock || !destNode?.stock) return [];
     const originCommodityStock = Math.max(0, (originNode.stock[route.commodity] || 0) - amount);
     const destCommodityStock = Math.min(
-        destNode.maxStock[route.commodity] || 0,
+        getNodeCommodityCapacity(destNode, route.commodity),
         (destNode.stock[route.commodity] || 0) + amount
     );
     const patchNodeStock = (sectorId, isPort, node, value) => {

@@ -18,7 +18,7 @@ describe('economy daily systems', () => {
         state.ports[1] = { sectorId: 1 };
 
         assert.doesNotThrow(() => applyDailyConsumption());
-        // No stock available → nothing consumed → patchPort not called; stock stays empty.
+        // No stock available -> nothing consumed -> patchPort not called; stock stays empty.
         assert.deepEqual(state.ports[1].stock, {});
         assert.equal(state.economy.dailySummary?.day, null);
     });
@@ -35,7 +35,7 @@ describe('economy daily systems', () => {
         };
 
         assert.doesNotThrow(() => applyDailyProduction());
-        // No asteroids → no extraction → patchPort not called; stock stays empty.
+        // No asteroids -> no extraction -> patchPort not called; stock stays empty.
         assert.equal(state.ports[2].stock?.ore ?? 0, 0);
         assert.equal(state.economy.dailySummary?.day, null);
     });
@@ -92,5 +92,80 @@ describe('economy daily systems', () => {
         const summary = applyDailyConsumption();
         assert.equal(summary.consumed.pulse_canister > 0, true);
         assert.equal(state.ports[4].stock.pulse_canister < 5, true);
+    });
+
+    it('sums baseline, industrial, and service demand for overlapping commodities', () => {
+        state.player = { time: { day: 10 } };
+        state.economy.profilesBySector = {
+            6: {
+                populationTier: 1,
+                industrialConsumption: { water_ice: 2 },
+                serviceConsumption: { water_ice: 3 }
+            }
+        };
+        state.ports[6] = {
+            sectorId: 6,
+            stock: { water_ice: 20 },
+            maxStock: { water_ice: 100 }
+        };
+
+        const summary = applyDailyConsumption();
+
+        assert.equal(summary.consumed.water_ice, 6);
+        assert.equal(state.ports[6].stock.water_ice, 14);
+    });
+
+    it('does not consume production inputs when output storage is full', () => {
+        state.player = { time: { day: 11 } };
+        state.economy.profilesBySector = {
+            5: { roleTags: ['port:stardock'] }
+        };
+        state.universe[5] = { id: 5 };
+        state.ports[5] = {
+            sectorId: 5,
+            stock: {
+                machinery: 5,
+                electronics: 5,
+                eq: 10
+            },
+            maxStock: {
+                machinery: 100,
+                electronics: 100,
+                eq: 10
+            }
+        };
+
+        applyDailyProduction();
+
+        assert.equal(state.ports[5].stock.machinery, 5);
+        assert.equal(state.ports[5].stock.electronics, 5);
+        assert.equal(state.ports[5].stock.eq, 10);
+    });
+
+    it('uses fallback capacity when maxStock for output commodity is missing', () => {
+        state.player = { time: { day: 12 } };
+        state.economy.profilesBySector = {
+            7: { roleTags: ['port:stardock'], targetStock: { eq: 2 } }
+        };
+        state.universe[7] = { id: 7 };
+        state.ports[7] = {
+            sectorId: 7,
+            stock: {
+                machinery: 5,
+                electronics: 5,
+                eq: 0
+            },
+            maxStock: {
+                machinery: 100,
+                electronics: 100
+            }
+        };
+
+        const summary = applyDailyProduction();
+
+        assert.equal(summary.produced.eq, 2);
+        assert.equal(state.ports[7].stock.eq, 2);
+        assert.equal(state.ports[7].stock.machinery, 3);
+        assert.equal(state.ports[7].stock.electronics, 3);
     });
 });

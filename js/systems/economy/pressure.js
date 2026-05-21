@@ -19,6 +19,14 @@ function profileDailyConsumption(profile, commodity) {
         + (Number(profile?.serviceConsumption?.[commodity]) || 0);
 }
 
+function getEffectiveMaxStock(node, profile, commodity) {
+    const explicit = toNumber(node?.maxStock?.[commodity], 0);
+    if (explicit > 0) return explicit;
+    const target = toNumber(profile?.targetStock?.[commodity], 0);
+    if (target > 0) return Math.max(1, target * 2);
+    return Math.max(1, toNumber(node?.stock?.[commodity], 0));
+}
+
 function explainPressure(profile, commodity, record) {
     if (record.unmetDemand > 0) return `${commodity} demand is not fully met.`;
     if (record.shortageSeverity > SHORTAGE_SEVERITY_THRESHOLD && profileDailyConsumption(profile, commodity) > 0)
@@ -34,7 +42,7 @@ export function recomputeEconomyPressure() {
         const port = state.ports?.[sectorId] || state.planets?.[sectorId] || {};
         const sectorPressure = {};
         MARKET_COMMODITIES.forEach((commodity) => {
-            const maxStock = Math.max(1, toNumber(port?.maxStock?.[commodity], 1));
+            const maxStock = getEffectiveMaxStock(port, profile, commodity);
             const stock = clamp(toNumber(port?.stock?.[commodity], 0), 0, maxStock);
             const stockRatio = stock / maxStock;
             const shortageSeverity = clamp((BALANCE.ECONOMY.TARGET_STOCK_RATIO - stockRatio) / BALANCE.ECONOMY.TARGET_STOCK_RATIO, 0, 1);
@@ -46,14 +54,18 @@ export function recomputeEconomyPressure() {
             );
             const targetStock = Math.max(1, Number(profile?.targetStock?.[commodity] || maxStock * BALANCE.ECONOMY.TARGET_STOCK_RATIO));
             const currentStock = stock;
-            const dailyConsumption = Math.max(0, Number(profile?.baselineConsumption?.[commodity] || 0) + Number(profile?.industrialConsumption?.[commodity] || 0));
+            const profileConsumption = profileDailyConsumption(profile, commodity);
+            const consumedToday = Number(state.economy?.dailySummary?.consumption?.consumedBySector?.[sectorId]?.[commodity] || 0);
+            const unmetToday = Number(state.economy?.dailySummary?.consumption?.unmetDemandBySector?.[sectorId]?.[commodity] || 0);
+            const dailyConsumption = Math.max(0, profileConsumption, consumedToday + unmetToday);
             const dailyProduction = Math.max(0, Number(state.economy?.dailySummary?.production?.productionBySector?.[sectorId]?.[commodity] || 0));
-            const unmetDemand = Math.max(0, dailyConsumption - currentStock);
+            const unmetDemand = Math.max(0, unmetToday, dailyConsumption - currentStock);
             const surplus = Math.max(0, currentStock - targetStock);
             const signalMagnitude = Math.max(shortageSeverity, surplusSeverity);
             const throughputRatio = clamp((dailyConsumption + dailyProduction) / Math.max(1, targetStock), 0, 1);
             const confidence = clamp(0.25 + signalMagnitude * 0.5 + throughputRatio * 0.25, 0, 1);
-            const record = { targetStock, currentStock, dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, confidence, pricePressure, stockRatio, routeAccess: Number(profile?.routeDependence || 0), lastUpdatedDay: state.player?.time?.day ?? null };
+            const routeAccess = clamp(Number(profile?.routeAccess ?? (1 - Number(profile?.routeDependence || 0))), 0, 1);
+            const record = { targetStock, currentStock, dailyConsumption, dailyDemand: dailyConsumption, dailyProduction, unmetDemand, surplus, shortageSeverity, surplusSeverity, confidence, pricePressure, stockRatio, routeAccess, lastUpdatedDay: state.player?.time?.day ?? null };
             record.primaryCause = explainPressure(profile, commodity, record);
             sectorPressure[commodity] = record;
         });

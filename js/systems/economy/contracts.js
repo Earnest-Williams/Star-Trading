@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { BALANCE } from '../../constants.js';
+import { BALANCE, COMMODITY_BASE_PRICES } from '../../constants.js';
 import { formatCommodity, log } from '../../utils.js';
 
 const CONTRACT_TYPES = Object.freeze({
@@ -58,10 +58,8 @@ function inferContractType(commodity, signal, profile) {
     if (tags.includes('port:way_station') || tags.includes('port:stardock')) return 'station_reserve';
     if (['ore', 'heavy_metals', 'rare_earths', 'electronics'].includes(commodity)) return 'industrial_feedstock';
     if ((signal?.surplus || 0) > (signal?.unmetDemand || 0) * CONTRACT_BALANCE.SURPLUS_EXPORT_RATIO_THRESHOLD) return 'surplus_export';
-    if (
-        (signal?.dailyDemand || 0)
-        >= (signal?.dailyProduction || 0) * CONTRACT_BALANCE.PURCHASE_ORDER_DEMAND_RATIO_THRESHOLD
-    ) return 'company_purchase_order';
+    const dailyDemand = Number(signal?.dailyDemand ?? signal?.dailyConsumption ?? 0);
+    if (dailyDemand >= (signal?.dailyProduction || 0) * CONTRACT_BALANCE.PURCHASE_ORDER_DEMAND_RATIO_THRESHOLD) return 'company_purchase_order';
     if ((signal?.shortageSeverity || 0) >= CONTRACT_BALANCE.SHORTAGE_RELIEF_SEVERITY_THRESHOLD) return 'shortage_relief';
     return null;
 }
@@ -86,7 +84,7 @@ function createContract(sectorId, commodity, signal, profile) {
     const pressure = clamp(Number(signal?.shortageSeverity || 0), 0, 1);
     const destinationPort = state.ports?.[sectorId] || null;
     const buyPressure = Math.max(1, Number(signal?.pricePressure || 1));
-    const basePrice = Math.max(10, Number(destinationPort?.basePrices?.[commodity] || 100));
+    const basePrice = Math.max(10, Number(destinationPort?.basePrices?.[commodity] || COMMODITY_BASE_PRICES[commodity] || 100));
     const unitReward = Math.max(10, Math.round(basePrice * buyPressure * CONTRACT_TYPES[type].rewardScale));
     const amount = Math.max(
         CONTRACT_BALANCE.MIN_AMOUNT,
@@ -94,7 +92,7 @@ function createContract(sectorId, commodity, signal, profile) {
     );
     const day = Number(state.player?.time?.day || 1);
     const sourceCandidates = deriveSourceCandidates(sectorId, commodity);
-    const routeRisk = 1 - clamp(Number(signal?.routeAccess || 0), 0, 1);
+    const routeRisk = 1 - clamp(Number(signal?.routeAccess ?? 1), 0, 1);
     const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
     const unmetDemand = Math.max(0, Number(signal?.unmetDemand || 0));
     const issuer = {
@@ -160,7 +158,10 @@ export function generateEconomyContractsDaily() {
     const maxActive = CONTRACT_BALANCE.MAX_ACTIVE;
     Object.entries(economy.pressureBySector || {}).forEach(([sectorId, pressureMap]) => {
         Object.entries(pressureMap || {}).forEach(([commodity, signal]) => {
-            if ((signal?.shortageSeverity || 0) < CONTRACT_BALANCE.GENERATION_SHORTAGE_THRESHOLD) return;
+            const shortage = Number(signal?.shortageSeverity || 0);
+            const surplus = Number(signal?.surplus || 0);
+            const targetStock = Math.max(1, Number(signal?.targetStock || 1));
+            if (shortage < CONTRACT_BALANCE.GENERATION_SHORTAGE_THRESHOLD && surplus / targetStock < CONTRACT_BALANCE.GENERATION_SHORTAGE_THRESHOLD) return;
             const alreadyOpen = economy.contracts.some((contract) =>
                 contract.destinationSector === Number(sectorId)
                 && contract.commodity === commodity

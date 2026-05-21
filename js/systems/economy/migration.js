@@ -26,6 +26,11 @@ function asNonNegativeNumber(value) {
     return parsed;
 }
 
+function normaliseNumberMap(value) {
+    if (!isObject(value)) return {};
+    return Object.fromEntries(Object.entries(value).map(([key, amount]) => [key, asNonNegativeNumber(amount)]));
+}
+
 function normaliseProfile(profile, sectorId) {
     if (!isObject(profile)) return null;
     const profileSectorId = Number.isFinite(Number(profile.sectorId))
@@ -46,7 +51,17 @@ function normaliseProfile(profile, sectorId) {
         extractionCapacity: asNonNegativeNumber(profile.extractionCapacity),
         populationDemand: asNonNegativeNumber(profile.populationDemand),
         likelyExports: asStringArray(profile.likelyExports),
-        likelyImports: asStringArray(profile.likelyImports)
+        likelyImports: asStringArray(profile.likelyImports),
+        populationTier: asNonNegativeNumber(profile.populationTier),
+        settlementRole: typeof profile.settlementRole === 'string' ? profile.settlementRole : null,
+        baselineConsumption: normaliseNumberMap(profile.baselineConsumption),
+        industrialConsumption: normaliseNumberMap(profile.industrialConsumption),
+        serviceConsumption: normaliseNumberMap(profile.serviceConsumption),
+        targetStock: normaliseNumberMap(profile.targetStock),
+        strategicReserve: normaliseNumberMap(profile.strategicReserve),
+        companyCapacity: asNonNegativeNumber(profile.companyCapacity),
+        routeAccess: asNonNegativeNumber(profile.routeAccess),
+        routeDependence: asNonNegativeNumber(profile.routeDependence)
     };
 }
 
@@ -69,10 +84,21 @@ function normalisePressureBySector(pressureBySector) {
         Object.entries(pressureMap).forEach(([commodity, record]) => {
             if (!isObject(record)) return;
             commodityMap[commodity] = {
-                shortageSeverity: asNonNegativeNumber(record.shortageSeverity),
+                targetStock: asNonNegativeNumber(record.targetStock),
+                currentStock: asNonNegativeNumber(record.currentStock),
+                dailyConsumption: asNonNegativeNumber(record.dailyConsumption),
+                dailyDemand: asNonNegativeNumber(record.dailyDemand),
+                dailyProduction: asNonNegativeNumber(record.dailyProduction),
+                unmetDemand: asNonNegativeNumber(record.unmetDemand),
                 surplus: asNonNegativeNumber(record.surplus),
+                shortageSeverity: asNonNegativeNumber(record.shortageSeverity),
+                surplusSeverity: asNonNegativeNumber(record.surplusSeverity),
+                confidence: asNonNegativeNumber(record.confidence),
                 pricePressure: asNonNegativeNumber(record.pricePressure),
-                routeAccess: asNonNegativeNumber(record.routeAccess)
+                stockRatio: asNonNegativeNumber(record.stockRatio),
+                routeAccess: asNonNegativeNumber(record.routeAccess),
+                lastUpdatedDay: asNullableNumber(record.lastUpdatedDay),
+                primaryCause: typeof record.primaryCause === 'string' ? record.primaryCause : ''
             };
         });
         if (Object.keys(commodityMap).length > 0) normalised[sectorId] = commodityMap;
@@ -96,20 +122,29 @@ function normaliseRecentVolumeBySector(recentVolumeBySector) {
 
 function normaliseContract(contract) {
     if (!isObject(contract)) return null;
-    const id = Number(contract.id);
-    if (!Number.isInteger(id) || id <= 0) return null;
-    const destinationSectorId = Number(contract.destinationSectorId);
-    const destinationProvided = Object.hasOwn(contract, 'destinationSectorId');
-    const hasDestinationSectorId = Number.isInteger(destinationSectorId) && destinationSectorId > 0;
-    if (destinationProvided && contract.destinationSectorId !== null && !hasDestinationSectorId) return null;
+    const rawId = typeof contract.id === 'string' && contract.id.trim().length > 0
+        ? contract.id.trim()
+        : Number(contract.id);
+    if (typeof rawId !== 'string' && (!Number.isInteger(rawId) || rawId <= 0)) return null;
+    const destinationSector = Number(contract.destinationSector ?? contract.destinationSectorId);
+    if (!Number.isInteger(destinationSector) || destinationSector <= 0) return null;
     const commodity = typeof contract.commodity === 'string' ? contract.commodity : '';
     if (!commodity) return null;
     return {
         ...contract,
-        id,
-        destinationSectorId: hasDestinationSectorId ? destinationSectorId : null,
+        id: rawId,
+        destinationSector,
+        destinationSectorId: destinationSector,
         commodity,
         amount: asNonNegativeNumber(contract.amount),
+        remaining: asNonNegativeNumber(contract.remaining ?? contract.amount),
+        reward: asNonNegativeNumber(contract.reward),
+        unitReward: asNonNegativeNumber(contract.unitReward),
+        postedDay: asNonNegativeNumber(contract.postedDay),
+        expiresDay: asNonNegativeNumber(contract.expiresDay),
+        sourceCandidates: Array.isArray(contract.sourceCandidates)
+            ? contract.sourceCandidates.map(Number).filter(Number.isInteger)
+            : [],
         delivered: asNonNegativeNumber(contract.delivered)
     };
 }
