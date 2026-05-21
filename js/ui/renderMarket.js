@@ -174,9 +174,9 @@ export function renderMarketPanel() {
     html += renderEconomyContractBoard(player.currentSector);
     html += `<div class="small muted">${escapeHtml(describeAmbientTradeSummary())}</div>`;
     const ambient = state.ambientTrade || {};
-    const cap = Number(ambient.maxFillShare || 0);
-    const exportCap = Number(ambient.maxExportShare || 0);
-    const moved = Number(ambient.totalMoved || 0);
+    const cap = Number(BALANCE.AMBIENT_TRADE.MAX_DAILY_FILL_SHARE || 0);
+    const exportCap = Number(BALANCE.AMBIENT_TRADE.MAX_DAILY_EXPORT_SHARE || 0);
+    const moved = Object.values(ambient.moved || {}).reduce((sum, value) => sum + Number(value || 0), 0);
     html += `<div class="small muted">Ambient constraint detail: fill cap ${(cap * 100).toFixed(0)}%, export cap ${(exportCap * 100).toFixed(0)}%, moved ${moved} units. Residual shortages require explicit routes.</div>`;
     html += renderMissionBoard();
     document.getElementById("actions").innerHTML = html;

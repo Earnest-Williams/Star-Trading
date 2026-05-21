@@ -235,8 +235,10 @@ describe('port type normalisation', () => {
             }
         };
         state.missions = [];
+        state.ambientTrade = { flows: 0, moved: { ore: 3, org: 2, eq: 1 } };
 
         assert.doesNotThrow(() => renderMarketPanel());
         assert.equal(state.ports[1].typeKey, 'consumer');
+        assert.match(globalThis.document.getElementById('actions').innerHTML, /Ambient constraint detail: fill cap 28%, export cap 18%, moved 6 units\./);
     });
 });
