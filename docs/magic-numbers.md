@@ -1,4 +1,5 @@
 # Magic Number Audit
+_Last updated: 2026-05-21_
 
 This audit treats numeric literals as editable configuration when changing the
 value would affect balance, routing, economy, UI timing, world-generation shape,

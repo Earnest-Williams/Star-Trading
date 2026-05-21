@@ -1,4 +1,5 @@
 # Contributor Guide
+_Last updated: 2026-05-21_
 
 Star-Trading is a framework-light browser prototype built from ES modules. The
 project intentionally keeps gameplay logic testable without a browser DOM, so

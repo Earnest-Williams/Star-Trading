@@ -1,4 +1,5 @@
 # Feature Boundary: Sparse Worldgen, Gate Physics, Frontier Legality, Intel, and Logistics
+_Last updated: 2026-05-21_
 
 This document defines the shipped design boundaries that new work must preserve.
 It is intentionally stricter than a roadmap: if a feature needs to cross one of

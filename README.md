@@ -1,4 +1,5 @@
 # Star-Trading
+_Last updated: 2026-05-21_
 
 **Star-Trading** is a browser-based space trading and logistics simulation set in
 a sparse frontier galaxy.

@@ -1,4 +1,5 @@
 # RPG careers and property
+_Last updated: 2026-05-21_
 
 Ships are one productive asset class, not the default character identity.
 Property, contracts, offices, warehouses, concessions, information, debt, and

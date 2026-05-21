@@ -1,4 +1,5 @@
 # Character-mediated challenges
+_Last updated: 2026-05-21_
 
 Star-Trading uses the rule: the player chooses the strategy; the character
 performs the test. The player chooses goals, methods, risk tolerance, timing,

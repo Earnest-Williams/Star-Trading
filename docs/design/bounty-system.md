@@ -1,4 +1,5 @@
 # Bounty System Design
+_Last updated: 2026-05-21_
 
 ## Purpose and boundary
 

@@ -1,4 +1,5 @@
 # Documentation Index
+_Last updated: 2026-05-21_
 
 This directory collects the design, contributor, and maintenance notes for
 Star-Trading. Start here when changing systems, balance, saves, or UI behavior.

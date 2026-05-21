@@ -1,4 +1,5 @@
 # Dynamic Dialogue, Memory, and Deferred Follow-Up Architecture
+_Last updated: 2026-05-21_
 
 This document defines a staged architecture for semi-dynamic NPC dialogue in Star-Trading.
 

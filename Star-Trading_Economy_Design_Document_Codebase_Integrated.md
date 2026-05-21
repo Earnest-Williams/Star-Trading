@@ -1,4 +1,5 @@
 # Star-Trading Economy Design Document
+_Last updated: 2026-05-21_
 
 **Status:** updated codebase-aligned design spec; Phase 1 complete, Phase 2 implementation in progress  
 **Date:** 2026-05-20  

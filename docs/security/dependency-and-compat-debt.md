@@ -1,4 +1,5 @@
 # Dependency and compatibility debt tracker
+_Last updated: 2026-05-21_
 
 ## Inflight deprecation cleanup
 
