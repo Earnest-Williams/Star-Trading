@@ -9,7 +9,7 @@ import { getPortType } from "../core/ports.js";
 import { getMarketContractsForSector } from "../systems/economy/contracts.js";
 import { describeAmbientTradeSummary } from "../systems/ambientTrade.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
-import { getDisplayedSupplierSignals } from "../systems/economy/marketIntelligence.js";
+import { getDisplayedSupplierSignals, getDisplayedMarketSignal, formatMarketIntelligenceQuality, getMarketInformationQuality } from "../systems/economy/marketIntelligence.js";
 
 function renderEconomyBreadcrumbs(screen) {
     const focus = state.economyFocus || {};
@@ -22,7 +22,7 @@ function renderEconomyBreadcrumbs(screen) {
 }
 
 function buildConsequenceHint(signal) {
-    const dailyNet = Number(signal.dailyProduction || 0) - Number(signal.dailyConsumption || 0);
+    const dailyNet = Number(signal.dailyProduction || 0) - Number(signal.dailyConsumption || signal.dailyDemand || 0);
     const shortage = Math.max(0, Number(signal.shortageSeverity || 0));
     const confidence = Math.max(0, Math.min(1, Number(signal.confidence || 0)));
     const horizon = shortage > 0.2 ? 3 : 5;
@@ -37,29 +37,34 @@ function formatConfidenceLabel(value) {
     return "low";
 }
 
+function getSectorFactionStanding(sectorId) {
+    const port = state.ports?.[sectorId];
+    return port?.factionId ? getFactionRep(port.factionId) : 0;
+}
+
 function renderPressurePanel(sectorId) {
-    const pressure = state.economy?.pressureBySector?.[String(sectorId)];
     let html = `<h4>Market Pressure</h4>` + renderEconomyBreadcrumbs("market");
-    if (!pressure || typeof pressure !== "object") {
-        return `${html}<div class="muted">No pressure telemetry recorded for this site yet.</div>`;
-    }
+    const actorContext = {
+        character: state.player?.character || {},
+        currentSector: state.player?.currentSector,
+        factionStanding: getSectorFactionStanding(sectorId)
+    };
+    const pressure = state.economy?.pressureBySector?.[String(sectorId)] || {};
     MARKET_COMMODITIES.forEach((commodity) => {
-        const signal = pressure[commodity];
+        if (!pressure[commodity]) return;
+        const signal = getDisplayedMarketSignal(sectorId, commodity, actorContext, { purpose: "market_panel" });
         if (!signal) return;
-        const shortage = Math.round(Math.max(0, Number(signal.shortageSeverity || 0)) * 100);
-        const surplus = Math.round(Math.max(0, Number(signal.surplusSeverity || 0)) * 100);
-        const stockRatio = Math.round(Math.max(0, Number(signal.stockRatio || 0)) * 100);
-        const target = Math.max(1, Number(signal.targetStock || 1));
-        const current = Math.max(0, Number(signal.currentStock || 0));
-        const dailyUse = Number(signal.dailyConsumption || 0).toFixed(1);
-        const dailyOutput = Number(signal.dailyProduction || 0).toFixed(1);
-        const primaryCause = signal.primaryCause || "No dominant cause telemetry.";
-        const confidence = Math.max(0, Math.min(100, Math.round(Number(signal.confidence || 0) * 100)));
-        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock ${stockRatio}% | shortage ${shortage}% | surplus ${surplus}%<br>`
-            + `Stock ${current}/${target} | daily use ${dailyUse} | daily output ${dailyOutput} | confidence ${confidence}%<br>`
-            + `<span class="muted">Cause: ${escapeHtml(primaryCause)}</span><br>`
+        if (signal.quality?.tier === 'high') {
+            html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: Stock ${signal.stock}/${signal.target} | daily use ${Number(signal.dailyDemand || 0).toFixed(1)} | daily output ${Number(signal.dailyProduction || 0).toFixed(1)}<br>`
+            + `<span class="muted">Cause: ${escapeHtml((signal.causes || [])[0] || "No dominant cause telemetry.")} · ${escapeHtml(formatMarketIntelligenceQuality(signal.quality))}</span><br>`
             + `<span class="muted">${escapeHtml(buildConsequenceHint(signal))}</span><br>`
-            + `<button data-action="setEconomyFocus" data-arg0="${sectorId}" data-arg1="${commodity}" data-arg2="market-pressure">Track context</button></div>`;
+            + `<button data-action="setEconomyFocus" data-arg0="${sectorId}" data-arg1="${commodity}" data-arg2="market-pressure">Track context</button></div>`; return;
+        }
+        if (signal.quality?.tier === 'medium') {
+            html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: stock band ${signal.stockBand} | target band ${signal.targetBand} | daily-use band ${signal.dailyUseBand}<br><span class="muted">Cause: trend pressure · ${escapeHtml(formatMarketIntelligenceQuality(signal.quality))}</span></div>`;
+            return;
+        }
+        html += `<div class="small"><strong>${escapeHtml(formatCommodity(commodity))}</strong>: ${escapeHtml(signal.label || 'volatile')}<br><span class="muted">${escapeHtml(signal.intelPrompt || 'Gather intel for better visibility.')}</span></div>`;
     });
     return html;
 }
@@ -74,8 +79,10 @@ function renderMarketIntelligencePanel(sectorId, port) {
         const ageText = freshness.age === null ? "unknown age" : `${freshness.age} day(s) old`;
         html += ` (${ageText}, observed ${observedText}, now day ${nowDay})`;
     }
-    html += `.</div>`;
     const character = state.player?.character || {};
+    html += `.</div>`;
+    const infoQuality = getMarketInformationQuality({ character, factionStanding: getSectorFactionStanding(sectorId) }, sectorId);
+    html += `<div class="small">Information quality tier: <strong>${escapeHtml(formatMarketIntelligenceQuality(infoQuality))}</strong>; freshness is <strong>${escapeHtml(freshness.label)}</strong>.</div>`;
     const recRows = MARKET_COMMODITIES.map((commodity) => {
         const recommendation = getMarketRecommendation(port, commodity, character);
         const confidence = Math.round(Math.max(0, Number(recommendation.confidence || 0)) * 100);

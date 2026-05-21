@@ -46,6 +46,18 @@ function ensureEconomyState() {
     if (!state.economy.recentVolumeBySector || typeof state.economy.recentVolumeBySector !== 'object') {
         state.economy.recentVolumeBySector = {};
     }
+    if (!state.economy.dailySummary || typeof state.economy.dailySummary !== 'object') {
+        state.economy.dailySummary = {};
+    }
+    if (!Number.isFinite(Number(state.economy.dailySummary.contractPremiumPayout))) {
+        state.economy.dailySummary.contractPremiumPayout = 0;
+    }
+    const currentDay = Number(state.player?.time?.day || 1);
+    const payoutDay = Number(state.economy.dailySummary.contractPremiumPayoutDay);
+    if (!Number.isFinite(payoutDay) || payoutDay !== currentDay) {
+        state.economy.dailySummary.contractPremiumPayout = 0;
+        state.economy.dailySummary.contractPremiumPayoutDay = currentDay;
+    }
     return state.economy;
 }
 
@@ -209,6 +221,7 @@ export function acceptEconomyContract(contractId) {
 }
 
 export function applyContractDeliveryHooks(sectorId, commodity, amount) {
+    ensureEconomyState();
     if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) return { completed: 0, delivered: 0 };
     const sid = Number(sectorId);
     const sectorContracts = getMarketContractsForSector(sid).filter((contract) =>
@@ -228,7 +241,13 @@ export function applyContractDeliveryHooks(sectorId, commodity, amount) {
         recordRecentDeliveredVolume(sid, commodity, step);
         if (contract.remaining <= 0) {
             contract.status = 'completed';
-            state.player.credits = (Number(state.player?.credits) || 0) + Number(contract.totalPremiumReward || contract.reward || 0);
+            const currentPayout = Number(state.economy?.dailySummary?.contractPremiumPayout || 0);
+            const payoutCap = Number(BALANCE.ECONOMY.CONTRACTS.MAX_DAILY_CONTRACT_PREMIUM_PAYOUT || 0);
+            const requestedPayout = Number(contract.totalPremiumReward || contract.reward || 0);
+            const remainingCap = Number.isFinite(payoutCap) ? Math.max(0, payoutCap - currentPayout) : requestedPayout;
+            const paidPremium = Math.max(0, Math.min(requestedPayout, remainingCap));
+            if (state.player) state.player.credits = (Number(state.player.credits) || 0) + paidPremium;
+            state.economy.dailySummary.contractPremiumPayout = currentPayout + paidPremium;
             completed += 1;
         }
         const signal = state.economy?.pressureBySector?.[sid]?.[commodity];
