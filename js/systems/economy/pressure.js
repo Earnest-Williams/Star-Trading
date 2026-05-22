@@ -1,5 +1,6 @@
 import { state } from '../../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../../constants.js';
+import { recomputeSpatialPrices } from './spatialPrices.js';
 
 function toNumber(value, fallback = 0) {
     const parsed = Number(value);
@@ -73,5 +74,6 @@ export function recomputeEconomyPressure() {
     });
     state.economy.pressureBySector = pressureBySector;
     state.economy.lastPressureDay = state.player?.time?.day ?? null;
+    recomputeSpatialPrices();
     return pressureBySector;
 }

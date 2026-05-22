@@ -40,18 +40,20 @@ function renderRouteCreationPanel(snapshot) {
         html += `<div class="mission"><strong>${escapeHtml(candidate.destination.name)}</strong> <span class="muted">${candidate.hopCount} corridors, span ${span}, risk ${candidate.risk}${surcharge}</span><br>`;
         commodities.forEach(option => {
             const marginBand = `${formatCredits(option.low)}c - ${formatCredits(option.high)}c`;
+            const unprofitable = Number(option.estimatedNet || 0) < 0;
             const freshnessHint = freshness.label === "current"
                 ? "live local telemetry"
                 : freshness.known
                     ? `${escapeHtml(freshness.label)} telemetry (${freshness.age}d old)`
                     : "unknown telemetry";
-            html += `<button data-action="createTradeRoute" data-arg0="${candidate.destination.sectorId}" data-arg1="${option.commodity}">Open ${formatCommodity(option.commodity)} Route (${formatCredits(candidate.setupCost)}c, est ${formatCredits(option.estimatedProfit)}c/day)</button>`;
+            html += `<button data-action="createTradeRoute" data-arg0="${candidate.destination.sectorId}" data-arg1="${option.commodity}">Open ${formatCommodity(option.commodity)} Route (${formatCredits(candidate.setupCost)}c, est net ${formatCredits(option.estimatedNet)}c/day)</button>`;
             const estBuy = Math.max(0, Number(option.buyPrice || 0));
             const estSell = Math.max(0, Number(option.sellPrice || 0));
             const estVolume = Math.max(0, Number(option.volume || 0));
             const riskFactor = candidate.risk === null ? "unknown" : (1 - Math.min(0.9, Number(candidate.risk || 0) / 10)).toFixed(2);
-            html += `<div class="small muted">Opportunity: ${formatCommodity(option.commodity)} route projects ${marginBand} per day with ${riskLabel}. Corridor span ${span} across ${candidate.hopCount} hops.</div>`;
-            html += `<div class="small muted">Estimate trail: buy ${formatCredits(estBuy)}c, sell ${formatCredits(estSell)}c, volume ${estVolume}, risk factor ${riskFactor}, est net ${formatCredits(option.estimatedProfit)}c/day.</div>`;
+            html += `<div class="small muted">Opportunity: ${formatCommodity(option.commodity)} route projects ${marginBand} net band with ${riskLabel}. Corridor span ${span} across ${candidate.hopCount} hops.</div>`;
+            html += `<div class="small muted">Estimate trail: origin ask ${formatCredits(option.originAsk)}c, destination bid ${formatCredits(option.destinationBid)}c, spread ${formatCredits(option.spread)}c, gross ${formatCredits(option.estimatedGross)}c, transport/risk ${formatCredits(option.transportCost)}c, net ${formatCredits(option.estimatedNet)}c, confidence ${(Number(option.confidence || 0) * 100).toFixed(0)}%.</div>`;
+            if (unprofitable) html += `<div class="small muted">Route is currently unprofitable; consider safer or shorter corridors, or different cargo.</div>`;
             html += `<div class="small muted">Signal quality: ${freshnessHint}. Refresh data via comms courier work for tighter estimates.</div>`;
         });
         html += `</div>`;
