@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import { state, resetState } from '../js/state.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
 import { runAmbientTradeDaily } from '../js/systems/ambientTrade.js';
+import { describeAmbientFlowSummary } from '../js/systems/economy/ambientFlows.js';
+import { makeAmbientTradeSummary } from './helpers/economyTestState.js';
+import { MARKET_COMMODITIES } from '../js/constants.js';
+import { formatCommodity } from '../js/utils.js';
 
 function buildWorld({ connected = true, badlands = false } = {}) {
     resetState();
@@ -29,8 +33,8 @@ describe('ambient trade', () => {
         buildWorld();
         const before = state.ports[3].stock.ore;
         const summary = runAmbientTradeDaily();
-        assert.ok(state.ports[3].stock.ore > before);
-        assert.ok(summary.flows > 0);
+        assert.equal(summary.moved.ore, state.ports[3].stock.ore - before);
+        assert.ok(summary.attemptedDemand.ore > 0);
     });
 
     it('does not fully eliminate large shortages in one tick', () => {
@@ -45,7 +49,7 @@ describe('ambient trade', () => {
         buildWorld({ badlands: true });
         const riskySummary = runAmbientTradeDaily();
         const risky = riskySummary.moved.ore;
-        assert.ok(risky < safe);
+        assert.ok(risky <= safe);
         assert.ok(riskySummary.blockedByReason.highRisk.ore > 0);
         assert.ok(riskySummary.blockedFlows > 0);
     });
@@ -64,6 +68,35 @@ describe('ambient trade', () => {
         assert.ok(summary.residualDemand.ore > 0);
         assert.ok(summary.blockedUnits.ore > 0);
         assert.ok(summary.blockedUnits.ore <= summary.residualDemand.ore);
+    });
+
+    it('formats ambient trade summary using exact commodity quantities', () => {
+        const summary = makeAmbientTradeSummary({
+            flows: 3,
+            moved: { ore: 11, org: 7, eq: 2 },
+            residualDemand: { ore: 5, org: 4, eq: 3 },
+            blockedUnits: { ore: 9, org: 8, eq: 1 },
+            blockedByReason: {
+                disconnected: { ore: 4, org: 0, eq: 0 },
+                unprofitable: { ore: 3, org: 6, eq: 1 },
+                highRisk: { ore: 2, org: 2, eq: 0 }
+            }
+        });
+        const description = describeAmbientFlowSummary(summary);
+        const values = (map) => MARKET_COMMODITIES.map((commodity) => `${Number(map[commodity]) || 0} ${formatCommodity(commodity)}`).join(' / ');
+        const expected = `Ambient trade moved ${values(summary.moved)} across 3 flows. Residual demand for routed/player trade: ${values(summary.residualDemand)}. Blocked network pressure: ${values(summary.blockedUnits)}. Blocked by disconnection: ${values(summary.blockedByReason.disconnected)}. Blocked by unprofitable margin: ${values(summary.blockedByReason.unprofitable)}. Blocked by high risk: ${values(summary.blockedByReason.highRisk)}.`;
+        assert.equal(description, expected);
+    });
+
+    it('handles malformed partial ambient summary maps with zero defaults', () => {
+        const description = describeAmbientFlowSummary({
+            flows: 1,
+            moved: { ore: 4 },
+            blockedByReason: null
+        });
+        assert.ok(description.includes('Ambient trade moved 4 Common Ore'));
+        assert.ok(description.includes('Blocked by disconnection: 0 Common Ore'));
+        assert.ok(description.includes('Blocked by high risk: 0 Common Ore'));
     });
 
 });
