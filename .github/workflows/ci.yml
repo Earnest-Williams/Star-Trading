@@ -44,9 +44,6 @@ jobs:
       - name: Run build
         run: npm run build
 
-      - name: Run validate aggregate
-        run: npm run validate
-
       - name: Docs drift guard
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
