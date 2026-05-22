@@ -6,15 +6,13 @@ import { addJumpGateCorridor } from '../js/core/universe.js';
 import { runAmbientTradeDaily } from '../js/systems/ambientTrade.js';
 import { describeAmbientFlowSummary } from '../js/systems/economy/ambientFlows.js';
 import { makeAmbientTradeSummary } from './helpers/economyTestState.js';
-import { MARKET_COMMODITIES } from '../js/constants.js';
-import { formatCommodity } from '../js/utils.js';
 
 function buildWorld({ connected = true, badlands = false } = {}) {
     resetState();
     state.player = { time: { day: 1 }, seed: 12345 };
     state.universe = {
         1: { id: 1, jumpGates: [], region: 'Core', pirateThreat: 0, influence: { sda: 60, fu: 0, hc: 0, vc: 0 } },
-        2: { id: 2, jumpGates: [], region: badlands ? 'Badlands' : 'Core', pirateThreat: badlands ? 6 : 0, influence: { sda: 20, fu: 0, hc: 0, vc: badlands ? 80 : 0 } },
+        2: { id: 2, jumpGates: [], region: badlands ? 'Badlands' : 'Core', pirateThreat: badlands ? 10 : 0, influence: { sda: 20, fu: 0, hc: 0, vc: badlands ? 100 : 0 } },
         3: { id: 3, jumpGates: [], region: 'Core', pirateThreat: 0, influence: { sda: 60, fu: 0, hc: 0, vc: 0 } }
     };
     if (connected) {
@@ -22,8 +20,8 @@ function buildWorld({ connected = true, badlands = false } = {}) {
         addJumpGateCorridor(2, 3);
     }
     state.ports = {
-        1: { typeKey: 'mining', factionId: 'hc', stock: { ore: 5500, org: 0, eq: 0 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 80, org: 150, eq: 300 } },
-        3: { typeKey: 'industrial', factionId: 'hc', stock: { ore: 100, org: 3000, eq: 3000 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 80, org: 150, eq: 300 } }
+        1: { typeKey: 'mining', factionId: 'hc', stock: { ore: 5500, org: 0, eq: 0 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 20, org: 90, eq: 180 } },
+        3: { typeKey: 'industrial', factionId: 'hc', stock: { ore: 100, org: 3000, eq: 3000 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 420, org: 240, eq: 420 } }
     };
     state.planets = {};
 }
@@ -45,11 +43,14 @@ describe('ambient trade', () => {
 
     it('high risk reduces ambient flow', () => {
         buildWorld();
-        const safe = runAmbientTradeDaily().moved.ore;
+        const safeSummary = runAmbientTradeDaily();
+        const safe = safeSummary.moved.ore;
+
         buildWorld({ badlands: true });
         const riskySummary = runAmbientTradeDaily();
         const risky = riskySummary.moved.ore;
-        assert.ok(risky <= safe);
+
+        assert.ok(risky < safe);
         assert.ok(riskySummary.blockedByReason.highRisk.ore > 0);
         assert.ok(riskySummary.blockedFlows > 0);
     });
@@ -83,8 +84,7 @@ describe('ambient trade', () => {
             }
         });
         const description = describeAmbientFlowSummary(summary);
-        const values = (map) => MARKET_COMMODITIES.map((commodity) => `${Number(map[commodity]) || 0} ${formatCommodity(commodity)}`).join(' / ');
-        const expected = `Ambient trade moved ${values(summary.moved)} across 3 flows. Residual demand for routed/player trade: ${values(summary.residualDemand)}. Blocked network pressure: ${values(summary.blockedUnits)}. Blocked by disconnection: ${values(summary.blockedByReason.disconnected)}. Blocked by unprofitable margin: ${values(summary.blockedByReason.unprofitable)}. Blocked by high risk: ${values(summary.blockedByReason.highRisk)}.`;
+        const expected = 'Ambient trade moved 11 Common Ore / 0 Heavy Metals / 0 Rare Earths / 0 Water Ice / 7 Biomass / 0 Refined Metals / 0 Polymers / 0 Coolants / 0 Fertilizer / 2 Equipment / 0 Machinery / 0 Repair Parts / 0 Electronics / 0 Medical Supplies / 0 Construction Kits / 0 Pulse Canisters / 0 Heavy Pulse Modules / 0 Gate Coils / 0 Control Cores across 3 flows. Residual demand for routed/player trade: 5 Common Ore / 0 Heavy Metals / 0 Rare Earths / 0 Water Ice / 4 Biomass / 0 Refined Metals / 0 Polymers / 0 Coolants / 0 Fertilizer / 3 Equipment / 0 Machinery / 0 Repair Parts / 0 Electronics / 0 Medical Supplies / 0 Construction Kits / 0 Pulse Canisters / 0 Heavy Pulse Modules / 0 Gate Coils / 0 Control Cores. Blocked network pressure: 9 Common Ore / 0 Heavy Metals / 0 Rare Earths / 0 Water Ice / 8 Biomass / 0 Refined Metals / 0 Polymers / 0 Coolants / 0 Fertilizer / 1 Equipment / 0 Machinery / 0 Repair Parts / 0 Electronics / 0 Medical Supplies / 0 Construction Kits / 0 Pulse Canisters / 0 Heavy Pulse Modules / 0 Gate Coils / 0 Control Cores. Blocked by disconnection: 4 Common Ore / 0 Heavy Metals / 0 Rare Earths / 0 Water Ice / 0 Biomass / 0 Refined Metals / 0 Polymers / 0 Coolants / 0 Fertilizer / 0 Equipment / 0 Machinery / 0 Repair Parts / 0 Electronics / 0 Medical Supplies / 0 Construction Kits / 0 Pulse Canisters / 0 Heavy Pulse Modules / 0 Gate Coils / 0 Control Cores. Blocked by unprofitable margin: 3 Common Ore / 0 Heavy Metals / 0 Rare Earths / 0 Water Ice / 6 Biomass / 0 Refined Metals / 0 Polymers / 0 Coolants / 0 Fertilizer / 1 Equipment / 0 Machinery / 0 Repair Parts / 0 Electronics / 0 Medical Supplies / 0 Construction Kits / 0 Pulse Canisters / 0 Heavy Pulse Modules / 0 Gate Coils / 0 Control Cores. Blocked by high risk: 2 Common Ore / 0 Heavy Metals / 0 Rare Earths / 0 Water Ice / 2 Biomass / 0 Refined Metals / 0 Polymers / 0 Coolants / 0 Fertilizer / 0 Equipment / 0 Machinery / 0 Repair Parts / 0 Electronics / 0 Medical Supplies / 0 Construction Kits / 0 Pulse Canisters / 0 Heavy Pulse Modules / 0 Gate Coils / 0 Control Cores.';
         assert.equal(description, expected);
     });
 

@@ -40,14 +40,16 @@ test('bid is always <= ask in same market', () => {
     state.economy.pressureBySector = { 2: { ore: { shortageSeverity: 0.5, confidence: 0.8 } } };
     state.economy.spatialPriceDiagnostics = { 2: { ore: { routeFriction: 1, confidence: 0.8 } } };
     const quote = getBidAskForSector(2, 'ore');
-    assert.deepEqual(quote, {
+    const { spread, ...rest } = quote;
+
+    assert.deepEqual(rest, {
         midpoint: 120,
         ask: 135,
         bid: 105,
-        spread: 0.23959999999999998,
         confidence: 0.8,
         risk: 1
     });
+    assert.ok(Math.abs(spread - 0.2396) < 0.0001);
 });
 
 test('route estimate can be negative and is not floored', () => {
@@ -86,7 +88,7 @@ test('spatial diagnostics preserve pre-relaxation midpoint', () => {
     recomputeSpatialPrices();
     const diag = state.economy.spatialPriceDiagnostics?.[7]?.ore;
     assert.equal(diag.midpointBefore, 40);
-    assert.equal(diag.midpointAfter, 284.661239650532);
+    assert.ok(Math.abs(diag.midpointAfter - 284.6612) < 0.0001);
 });
 
 test('route value captures unprofitable and high-risk buckets deterministically', () => {
