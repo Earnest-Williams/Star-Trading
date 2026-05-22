@@ -1,6 +1,7 @@
 import { state } from '../../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../../constants.js';
 import { recomputeSpatialPrices } from './spatialPrices.js';
+import { getEconomyNode } from './nodeAdapter.js';
 
 function toNumber(value, fallback = 0) {
     const parsed = Number(value);
@@ -40,21 +41,22 @@ export function recomputeEconomyPressure() {
     if (!state.economy) return {};
     const pressureBySector = {};
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
-        const port = state.ports?.[sectorId] || state.planets?.[sectorId] || {};
+        const nodeRef = getEconomyNode(sectorId);
+        const node = nodeRef?.node || {};
         const sectorPressure = {};
         MARKET_COMMODITIES.forEach((commodity) => {
-            const maxStock = getEffectiveMaxStock(port, profile, commodity);
-            const stock = clamp(toNumber(port?.stock?.[commodity], 0), 0, maxStock);
-            const stockRatio = stock / maxStock;
-            const shortageSeverity = clamp((BALANCE.ECONOMY.TARGET_STOCK_RATIO - stockRatio) / BALANCE.ECONOMY.TARGET_STOCK_RATIO, 0, 1);
-            const surplusSeverity = clamp((stockRatio - BALANCE.ECONOMY.TARGET_STOCK_RATIO) / (1 - BALANCE.ECONOMY.TARGET_STOCK_RATIO), 0, 1);
+            const maxStock = getEffectiveMaxStock(node, profile, commodity);
+            const fallbackTarget = Math.max(1, maxStock * BALANCE.ECONOMY.TARGET_STOCK_RATIO);
+            const targetStock = Math.max(1, Number(profile?.targetStock?.[commodity] || fallbackTarget));
+            const currentStock = clamp(toNumber(node?.stock?.[commodity], 0), 0, maxStock);
+            const stockRatio = currentStock / targetStock;
+            const shortageSeverity = clamp(1 - stockRatio, 0, 1);
+            const surplusSeverity = clamp(stockRatio - 1, 0, 1);
             const pricePressure = clamp(
                 1 + shortageSeverity * BALANCE.ECONOMY.SHORTAGE_PRICE_MULTIPLIER - surplusSeverity * BALANCE.ECONOMY.SURPLUS_PRICE_DISCOUNT,
                 BALANCE.MARKET.PRESSURE_PRICE_MIN,
                 BALANCE.MARKET.PRESSURE_PRICE_MAX
             );
-            const targetStock = Math.max(1, Number(profile?.targetStock?.[commodity] || maxStock * BALANCE.ECONOMY.TARGET_STOCK_RATIO));
-            const currentStock = stock;
             const profileConsumption = profileDailyConsumption(profile, commodity);
             const consumedToday = Number(state.economy?.dailySummary?.consumption?.consumedBySector?.[sectorId]?.[commodity] || 0);
             const unmetToday = Number(state.economy?.dailySummary?.consumption?.unmetDemandBySector?.[sectorId]?.[commodity] || 0);

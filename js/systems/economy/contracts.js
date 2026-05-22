@@ -1,7 +1,9 @@
 import { state } from '../../state.js';
-import { BALANCE, COMMODITY_BASE_PRICES } from '../../constants.js';
+import { BALANCE } from '../../constants.js';
 import { formatCommodity, log } from '../../utils.js';
 import { getPulseServiceSignalForSector } from './pulseService.js';
+import { getUniverseBasePrice } from './initialPrices.js';
+import { getCommodityDef } from '../../config/economy/commodities.js';
 
 const CONTRACT_TYPES = Object.freeze({
     shortage_relief: Object.freeze({ label: 'Shortage Relief', rewardScale: 1.05 }),
@@ -63,7 +65,7 @@ function ensureEconomyState() {
 
 function inferContractType(commodity, signal, profile) {
     const tags = Array.isArray(profile?.roleTags) ? profile.roleTags : [];
-    if ((signal?.routeAccess || 1) < CONTRACT_BALANCE.EMBARGO_ROUTE_ACCESS_THRESHOLD) return 'embargo_run';
+    if ((signal?.routeAccess ?? 1) < CONTRACT_BALANCE.EMBARGO_ROUTE_ACCESS_THRESHOLD) return 'embargo_run';
     if (tags.includes('site:frontier')) return 'colony_supply';
     if (tags.includes('port:stardock')) return 'shipyard_procurement';
     if (tags.includes('faction:vc') || tags.includes('front:hidden')) return 'black_market_diversion';
@@ -91,12 +93,27 @@ function deriveSourceCandidates(destinationSectorId, commodity) {
         .map(([sectorId]) => Number(sectorId));
 }
 
+
+function deriveDestinationCandidates(originSectorId, commodity) {
+    return Object.entries(state.economy?.pressureBySector || {})
+        .filter(([sectorId, pressureMap]) => {
+            if (Number(sectorId) === Number(originSectorId)) return false;
+            const signal = pressureMap?.[commodity];
+            if (!signal) return false;
+            const shortage = Number(signal.shortageSeverity || 0);
+            const dailyDemand = Number(signal.dailyDemand ?? signal.dailyConsumption ?? 0);
+            return shortage > 0.15 || dailyDemand > 0;
+        })
+        .sort(([, a], [, b]) => Number(b?.[commodity]?.shortageSeverity || 0) - Number(a?.[commodity]?.shortageSeverity || 0))
+        .slice(0, 3)
+        .map(([sectorId]) => Number(sectorId));
+}
+
 function createContract(sectorId, commodity, signal, profile) {
     const type = inferContractType(commodity, signal, profile);
     if (!type) return null;
     const pressure = clamp(Number(signal?.shortageSeverity || 0), 0, 1);
-    const destinationPort = state.ports?.[sectorId] || null;
-    const basePrice = Math.max(10, Number(destinationPort?.basePrices?.[commodity] || COMMODITY_BASE_PRICES[commodity] || 100));
+    const basePrice = Math.max(BALANCE.MIN_TRADE_PRICE, Number(getUniverseBasePrice(commodity) || getCommodityDef(commodity)?.basePrice || BALANCE.MIN_TRADE_PRICE));
     const urgency = clamp(Number(signal?.unmetDemand || 0) / Math.max(1, Number(signal?.dailyDemand || signal?.dailyConsumption || 1)), 0, 1);
     const routeRisk = 1 - clamp(Number(signal?.routeAccess ?? 1), 0, 1);
     const pulseSignal = getPulseServiceSignalForSector(sectorId);
@@ -110,6 +127,7 @@ function createContract(sectorId, commodity, signal, profile) {
     );
     const day = Number(state.player?.time?.day || 1);
     const sourceCandidates = deriveSourceCandidates(sectorId, commodity);
+    const destinationCandidates = deriveDestinationCandidates(sectorId, commodity);
     const localProductionLimit = Math.max(0, Number(signal?.dailyProduction || 0));
     const unmetDemand = Math.max(0, Number(signal?.unmetDemand || 0));
     const issuer = {
@@ -122,6 +140,8 @@ function createContract(sectorId, commodity, signal, profile) {
         factionImpact: routeRisk > 0.6 ? 'frontier_stress' : 'minor_local_tension'
     };
     const targetStockGap = Math.max(0, Number(signal?.targetStock || 0) - Number(signal?.currentStock || 0));
+    const destinationSector = type === 'surplus_export' ? Number(destinationCandidates[0] ?? sectorId) : Number(sectorId);
+    const originSector = type === 'surplus_export' ? Number(sectorId) : null;
     return {
         id: `econ-${state.economy.nextContractId++}`,
         type,
@@ -129,7 +149,8 @@ function createContract(sectorId, commodity, signal, profile) {
         commodity,
         amount,
         remaining: amount,
-        destinationSector: Number(sectorId),
+        destinationSector,
+        originSector,
         postedDay: day,
         expiresDay: day + CONTRACT_BALANCE.LIFESPAN_DAYS,
         unitPremium,
@@ -144,10 +165,10 @@ function createContract(sectorId, commodity, signal, profile) {
         targetStockGap,
         shortageSeverity: pressure,
         localProductionLimit,
-        sourceCandidates,
+        sourceCandidates: type === 'surplus_export' ? [Number(sectorId)] : sourceCandidates,
         routeRisk,
         issuer,
-        supplierHints: sourceCandidates,
+        supplierHints: type === 'surplus_export' ? destinationCandidates : sourceCandidates,
         failureConsequences
     };
 }
@@ -184,7 +205,7 @@ export function generateEconomyContractsDaily() {
             const targetStock = Math.max(1, Number(signal?.targetStock || 1));
             if (shortage < CONTRACT_BALANCE.GENERATION_SHORTAGE_THRESHOLD && surplus / targetStock < CONTRACT_BALANCE.GENERATION_SHORTAGE_THRESHOLD) return;
             const alreadyOpen = economy.contracts.some((contract) =>
-                contract.destinationSector === Number(sectorId)
+                (contract.destinationSector === Number(sectorId) || contract.originSector === Number(sectorId))
                 && contract.commodity === commodity
                 && isOpenContractStatus(contract.status)
             );
@@ -257,5 +278,7 @@ export function applyContractDeliveryHooks(sectorId, commodity, amount) {
             signal.pricePressure = Math.max(1, Number(signal.pricePressure || 1) - step * CONTRACT_BALANCE.PRESSURE_REDUCTION_PER_UNIT);
         }
     });
+    const destinationSector = type === 'surplus_export' ? Number(destinationCandidates[0] ?? sectorId) : Number(sectorId);
+    const originSector = type === 'surplus_export' ? Number(sectorId) : null;
     return { completed, delivered };
 }

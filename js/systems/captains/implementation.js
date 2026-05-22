@@ -2,6 +2,8 @@
 import { state } from '../../state.js';
 import { FACTIONS, BALANCE, CAPTAIN_DEFS, MAJOR_FACTIONS } from '../../constants.js';
 import { getPortType } from '../../core/ports.js';
+import { getUniverseBasePrice } from '../economy/initialPrices.js';
+import { getCommodityDef } from '../../config/economy/commodities.js';
 import { clampRange, log, random } from '../../utils.js';
 import { addSectorInfluence, getDominantInfluence } from '../../core/influence.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
@@ -385,7 +387,8 @@ function captainTrade(captain) {
     const amount = 5 + Math.floor(random() * 16);
     if (type.buys.includes(commodity)) port.stock[commodity] = Math.min(port.maxStock[commodity], port.stock[commodity] + amount);
     if (type.sells.includes(commodity)) port.stock[commodity] = Math.max(0, port.stock[commodity] - amount);
-    captain.credits += Math.floor(amount * (port.basePrices[commodity] || 100) * 0.12);
+    const basePrice = getUniverseBasePrice(commodity) || getCommodityDef(commodity)?.basePrice || 100;
+    captain.credits += Math.floor(amount * basePrice * 0.12);
     nudgeCaptainFaction(captain, factionId, 1);
     addSectorInfluence(captain.currentSector, factionId, 1, "captain trade volume");
     if (captain.currentSector === state.player.currentSector) addCaptainHistory(captain, `worked the ${type.name} market.`, false);

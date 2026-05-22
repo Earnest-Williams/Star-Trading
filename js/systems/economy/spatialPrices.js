@@ -6,7 +6,33 @@ import { getUniverseBasePrice } from './initialPrices.js';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const n = (v, f = 0) => { const x = Number(v); return Number.isFinite(x) ? x : f; };
+let neighborCacheRevision = null;
+let neighborCache = new Map();
 
+function getGraphRevision() {
+  return Number(state.routePathMetricsRevision ?? state.world?.graphRevision ?? 0);
+}
+
+function buildNeighborCache(sectorIds) {
+  const revision = getGraphRevision();
+  if (revision === neighborCacheRevision && neighborCache.size) return;
+  neighborCacheRevision = revision;
+  neighborCache = new Map();
+  const hopLimit = Number(BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.MAX_HOPS || 8);
+  for (const sid of sectorIds) {
+    const neighbors = [];
+    for (const other of sectorIds) {
+      if (other === sid) continue;
+      const m = deriveRouteMetrics(other, sid);
+      if (!m?.path || m.hopCount === null || m.hopCount > hopLimit) continue;
+      const distW = 1 / (1 + n(m.hopCount) * BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.DISTANCE_WEIGHT_MULTIPLIER);
+      const riskW = 1 / (1 + n(m.risk) * BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.RISK_WEIGHT_MULTIPLIER);
+      const frictionW = 1 / (1 + n(m.surcharge, 0));
+      neighbors.push({ sectorId: other, weight: distW * riskW * frictionW });
+    }
+    neighborCache.set(sid, neighbors);
+  }
+}
 export function recomputeSpatialPrices() {
   if (!state.economy) return {};
   const profiles = state.economy.profilesBySector || {};
@@ -24,16 +50,11 @@ export function recomputeSpatialPrices() {
     for (const sid of sectorIds) {
       let regionalDemandPressure = 0;
       let regionalSupplyPressure = 0;
-      for (const other of sectorIds) {
-        if (other === sid) continue;
-        const m = deriveRouteMetrics(other, sid);
-        if (!m?.path || m.hopCount === null) continue;
-        const distW = 1 / (1 + n(m.hopCount) * BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.DISTANCE_WEIGHT_MULTIPLIER);
-        const riskW = 1 / (1 + n(m.risk) * BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.RISK_WEIGHT_MULTIPLIER);
-        const weight = distW * riskW;
-        const os = state.economy?.pressureBySector?.[other]?.[commodity] || {};
-        regionalDemandPressure += clamp(n(os.shortageSeverity), 0, 1) * weight;
-        regionalSupplyPressure += clamp(n(os.surplusSeverity), 0, 1) * weight;
+      const neighbors = neighborCache.get(sid) || [];
+      for (const neighbor of neighbors) {
+        const os = state.economy?.pressureBySector?.[neighbor.sectorId]?.[commodity] || {};
+        regionalDemandPressure += clamp(n(os.shortageSeverity), 0, 1) * neighbor.weight;
+        regionalSupplyPressure += clamp(n(os.surplusSeverity), 0, 1) * neighbor.weight;
       }
       regionalPressures.set(sid, { regionalDemandPressure, regionalSupplyPressure });
     }
