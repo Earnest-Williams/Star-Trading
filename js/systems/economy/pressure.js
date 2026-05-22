@@ -1,7 +1,7 @@
 import { state } from '../../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../../constants.js';
 import { recomputeSpatialPrices } from './spatialPrices.js';
-import { getEconomyNode } from './nodeAdapter.js';
+import { getEconomyNodes } from './nodeAdapter.js';
 
 function toNumber(value, fallback = 0) {
     const parsed = Number(value);
@@ -12,7 +12,6 @@ function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
 
-// Minimum shortageSeverity (0–1) above which persistent local demand is considered a primary cause.
 const SHORTAGE_SEVERITY_THRESHOLD = 0.45;
 
 function profileDailyConsumption(profile, commodity) {
@@ -41,14 +40,18 @@ export function recomputeEconomyPressure() {
     if (!state.economy) return {};
     const pressureBySector = {};
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
-        const nodeRef = getEconomyNode(sectorId);
-        const node = nodeRef?.node || {};
+        const nodeRefs = getEconomyNodes(sectorId);
         const sectorPressure = {};
         MARKET_COMMODITIES.forEach((commodity) => {
-            const maxStock = getEffectiveMaxStock(node, profile, commodity);
+            let maxStock = 0;
+            let currentStock = 0;
+            nodeRefs.forEach((nodeRef) => {
+                const nodeMax = getEffectiveMaxStock(nodeRef.node, profile, commodity);
+                maxStock += nodeMax;
+                currentStock += clamp(toNumber(nodeRef.node?.stock?.[commodity], 0), 0, nodeMax);
+            });
             const fallbackTarget = Math.max(1, maxStock * BALANCE.ECONOMY.TARGET_STOCK_RATIO);
             const targetStock = Math.max(1, Number(profile?.targetStock?.[commodity] || fallbackTarget));
-            const currentStock = clamp(toNumber(node?.stock?.[commodity], 0), 0, maxStock);
             const stockRatio = currentStock / targetStock;
             const shortageSeverity = clamp(1 - stockRatio, 0, 1);
             const surplusSeverity = clamp(stockRatio - 1, 0, 1);

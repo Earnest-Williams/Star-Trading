@@ -278,7 +278,5 @@ export function applyContractDeliveryHooks(sectorId, commodity, amount) {
             signal.pricePressure = Math.max(1, Number(signal.pricePressure || 1) - step * CONTRACT_BALANCE.PRESSURE_REDUCTION_PER_UNIT);
         }
     });
-    const destinationSector = type === 'surplus_export' ? Number(destinationCandidates[0] ?? sectorId) : Number(sectorId);
-    const originSector = type === 'surplus_export' ? Number(sectorId) : null;
     return { completed, delivered };
 }

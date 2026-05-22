@@ -195,7 +195,8 @@ ROUTE_PLANNER: {
         },
         SPATIAL_PRICE_RELAXATION: {
             DISTANCE_WEIGHT_MULTIPLIER: 0.8,
-            RISK_WEIGHT_MULTIPLIER: 0.6
+            RISK_WEIGHT_MULTIPLIER: 0.6,
+            MAX_HOPS: 8
         },
         CONTRACTS: {
             MIN_AMOUNT: 8,

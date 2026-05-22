@@ -1,7 +1,7 @@
 import { state } from '../../state.js';
 import { MARKET_COMMODITIES } from '../../constants.js';
 import { patchPort, patchPlanet } from '../../core/state/mutations.js';
-import { getEconomyNode } from './nodeAdapter.js';
+import { getEconomyNodes } from './nodeAdapter.js';
 
 function asNumber(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
 
@@ -20,12 +20,13 @@ export function applyDailyConsumption() {
     const summary = { consumed: {}, unmetDemand: {}, consumedBySector: {}, unmetDemandBySector: {}, sectorsWithShortage: 0 };
     MARKET_COMMODITIES.forEach((commodity) => { summary.consumed[commodity] = 0; summary.unmetDemand[commodity] = 0; });
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
-        const nodeRef = getEconomyNode(sectorId);
-        if (!nodeRef) return;
+        const nodeRefs = getEconomyNodes(sectorId);
+        if (!nodeRefs.length) return;
         const needs = mergeNeeds(profile.baselineConsumption, profile.industrialConsumption, profile.serviceConsumption);
         const sectorConsumed = {};
         const sectorUnmet = {};
         let hadShortage = false;
+        nodeRefs.forEach((nodeRef) => {
         const node = nodeRef.node;
         if (!node.stock) node.stock = {};
         const updatedStock = { ...node.stock };
@@ -50,6 +51,7 @@ export function applyDailyConsumption() {
             else if (nodeRef.kind === 'planet') patchPlanet(sectorId, { stock: updatedStock });
             else node.stock = updatedStock;
         }
+        });
         summary.consumedBySector[sectorId] = sectorConsumed;
         summary.unmetDemandBySector[sectorId] = sectorUnmet;
         if (hadShortage) summary.sectorsWithShortage += 1;

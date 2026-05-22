@@ -18,7 +18,7 @@ function buildNeighborCache(sectorIds) {
   if (revision === neighborCacheRevision && neighborCache.size) return;
   neighborCacheRevision = revision;
   neighborCache = new Map();
-  const hopLimit = Number(BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.MAX_HOPS || 8);
+  const hopLimit = Number(BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.MAX_HOPS);
   for (const sid of sectorIds) {
     const neighbors = [];
     for (const other of sectorIds) {

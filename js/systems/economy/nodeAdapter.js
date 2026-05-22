@@ -22,21 +22,28 @@ function ensureStationStock(site) {
     return site.station;
 }
 
-export function getEconomyNode(sectorId) {
+export function getEconomyNodes(sectorId) {
+    const nodes = [];
+    const numericSectorId = Number(sectorId);
     const port = state.ports?.[sectorId];
     if (port) {
         ensureStockBag(port);
         ensureMaxStockBag(port);
-        return { sectorId: Number(sectorId), kind: 'port', node: port };
+        nodes.push({ sectorId: numericSectorId, kind: 'port', node: port });
     }
     const planet = state.planets?.[sectorId];
     if (planet) {
         ensureStockBag(planet);
         ensureMaxStockBag(planet);
-        return { sectorId: Number(sectorId), kind: 'planet', node: planet };
+        nodes.push({ sectorId: numericSectorId, kind: 'planet', node: planet });
     }
     const site = state.universe?.[sectorId];
     const station = ensureStationStock(site);
-    if (station) return { sectorId: Number(sectorId), kind: 'station', node: station };
-    return null;
+    if (station) nodes.push({ sectorId: numericSectorId, kind: 'station', node: station });
+    return nodes;
+}
+
+export function getEconomyNode(sectorId) {
+    const nodes = getEconomyNodes(sectorId);
+    return nodes.length > 0 ? nodes[0] : null;
 }
