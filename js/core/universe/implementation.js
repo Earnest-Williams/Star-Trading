@@ -18,6 +18,8 @@ import { getTraitDefinition } from '../../config/traits.js';
 import { assignSectorPolities } from '../../systems/polities.js';
 import { seedCompaniesAndPeople } from '../../systems/companies.js';
 import { rebuildEconomicProfiles } from '../../systems/economy/profiles.js';
+import { calibrateInitialUniversePrices } from '../../systems/economy/initialPrices.js';
+import { recomputeEconomyPressure } from '../../systems/economy/pressure.js';
 
 export { makeStock };
 
@@ -694,6 +696,8 @@ export function generateUniverse() {
     seedPortsPlanetsAndResources();
     ensureEconomicActivityConnectivity();
     rebuildEconomicProfiles();
+    calibrateInitialUniversePrices();
+    recomputeEconomyPressure();
     assignSectorPolities();
     seedCompaniesAndPeople(rng);
     // Callers (main.js) are responsible for calling createCaptains, generateMissionPool, generateFactionAsks

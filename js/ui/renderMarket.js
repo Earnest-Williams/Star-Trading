@@ -215,16 +215,19 @@ export function renderMarketPanel() {
     MARKET_COMMODITIES.forEach(c => {
         const canBuy = type.sells.includes(c);
         const canSell = type.buys.includes(c);
-        html += `<div class="commodity-row"><strong>${formatCommodity(c)}</strong>: stock ${port.stock[c] || 0}/${port.maxStock[c] || 0}<br>`;
-        if (canBuy) {
-            const price = getPortPrice(port, c, "buy");
-            html += `Buy price: ${price} each <button data-action="tradeCommodity" data-arg0="${c}" data-arg1="buy">Buy ${BALANCE.TRADE_BATCH}</button> `;
+        const stock = Number(port.stock[c] || 0);
+        const maxStock = Number(port.maxStock[c] || 0);
+        html += `<div class="commodity-row"><strong>${formatCommodity(c)}</strong>: stock ${stock}/${maxStock}<br>`;
+        if (canBuy && stock > 0) {
+            const ask = getPortPrice(port, c, "buy");
+            html += `For sale: ask ${ask} each <button data-action="tradeCommodity" data-arg0="${c}" data-arg1="buy">Buy ${BALANCE.TRADE_BATCH}</button><br>`;
         }
         if (canSell) {
-            const price = getPortPrice(port, c, "sell");
-            html += `Sell price: ${price} each <button data-action="tradeCommodity" data-arg0="${c}" data-arg1="sell">Sell ${BALANCE.TRADE_BATCH}</button>`;
+            const bid = getPortPrice(port, c, "sell");
+            html += `Wanted: bid ${bid} each <button data-action="tradeCommodity" data-arg0="${c}" data-arg1="sell">Sell ${BALANCE.TRADE_BATCH}</button><br>`;
         }
-        if (!canBuy && !canSell) html += `<span class="muted">No trade in this commodity.</span>`;
+        if (!canBuy && stock > 0) html += `Local reserve: ${stock}/${maxStock}, not publicly offered<br>`;
+        if (!canBuy && !canSell && stock <= 0) html += `<span class="muted">No public market for this commodity.</span>`;
         html += `</div>`;
     });
     html += renderPressurePanel(player.currentSector);

@@ -165,7 +165,13 @@ export function createInitialEconomyState() {
         dailySummary: null,
         lastProfileBuildDay: null,
         lastPressureDay: null,
-        generatedByVersion: INITIAL_ECONOMY_VERSION
+        generatedByVersion: INITIAL_ECONOMY_VERSION,
+        universeBasePrices: {},
+        priceDiagnostics: {},
+        nodeMidPrices: {},
+        spatialPriceDiagnostics: {},
+        lastPriceCalibrationDay: null,
+        lastSpatialPriceDay: null
     };
 }
 
@@ -183,6 +189,12 @@ export function normaliseEconomyState(candidate) {
         dailySummary: isObject(candidate.dailySummary) ? candidate.dailySummary : null,
         lastProfileBuildDay: asNullableNumber(candidate.lastProfileBuildDay),
         lastPressureDay: asNullableNumber(candidate.lastPressureDay),
-        generatedByVersion: asPositiveInteger(candidate.generatedByVersion, fallback.generatedByVersion)
+        generatedByVersion: asPositiveInteger(candidate.generatedByVersion, fallback.generatedByVersion),
+        universeBasePrices: isObject(candidate.universeBasePrices) ? candidate.universeBasePrices : fallback.universeBasePrices,
+        priceDiagnostics: isObject(candidate.priceDiagnostics) ? candidate.priceDiagnostics : fallback.priceDiagnostics,
+        nodeMidPrices: isObject(candidate.nodeMidPrices) ? candidate.nodeMidPrices : fallback.nodeMidPrices,
+        spatialPriceDiagnostics: isObject(candidate.spatialPriceDiagnostics) ? candidate.spatialPriceDiagnostics : fallback.spatialPriceDiagnostics,
+        lastPriceCalibrationDay: asNullableNumber(candidate.lastPriceCalibrationDay ?? fallback.lastPriceCalibrationDay),
+        lastSpatialPriceDay: asNullableNumber(candidate.lastSpatialPriceDay ?? fallback.lastSpatialPriceDay)
     };
 }

@@ -1,8 +1,10 @@
 # Star-Trading Economy Design Document
-_Last updated: 2026-05-21_
+_Last updated: 2026-05-22
+
+_Previous update marker:_ 2026-05-21_
 
 **Status:** updated codebase-aligned design spec; Phases 1–9 complete  
-**Date:** 2026-05-20  
+**Date:** 2026-05-22  
 **Target repository:** `Earnest-Williams/Star-Trading`  
 **Primary goal:** evolve the current commodity, market, company, route, ambient-trade, and mission systems into a legible frontier supply-chain economy without turning the game into a heavyweight macroeconomic simulator.
 
@@ -2878,3 +2880,61 @@ Result: this design document now reflects **Phase 9 complete** status as of 2026
 - Ambient trade core moved to economy ambient flows (`js/systems/economy/ambientFlows.js`) with wrapper retained.
 - Contracts now use bounded procurement premium fields.
 
+
+
+## Addendum: Economy Cohesion Update — Dynamic Spatial Markets
+
+### Problem
+Pricing, route estimates, ambient flows, and UI explanations were not fully unified. Independent buy/sell formulas could produce same-market arbitrage and mixed base-price sources weakened procedural universe cohesion.
+
+### Design Goal
+Each generated universe calibrates commodity values from supply, demand, producer/consumer structure, route friction/risk, and isolated demand; each sector/commodity then has one midpoint with bid/ask derived from it.
+
+### Model
+commodity intrinsic base price → generated universe calibration → local/network midpoint price → bid/ask market prices → ambient flows, contracts, and route estimates
+
+### Generated Universe Calibration
+universeBasePrice = intrinsicBasePrice × supplyDemandIndex × producerConcentrationIndex × networkFrictionIndex × isolationIndex
+
+Diagnostics include base price, demand/supply totals, producer/consumer counts, network cost, isolated demand share, all indices, and final calibrated price.
+
+### Spatial Midpoint Prices
+Bounded deterministic relaxation combines local stock pressure, local production/consumption pressure, reachable regional supply/demand, and route distance/risk/friction with damping and volatility clamps. No heavyweight global solver is used.
+
+### Bid/Ask Pricing
+Buy/sell quotes derive from one midpoint:
+ask = midpoint + spread, bid = midpoint - spread,
+with spread driven by volatility, scarcity, risk/friction, confidence, and faction modifiers.
+
+### Ambient Trade and Routes
+Ambient flows and explicit route estimates use the same bid/ask model. Route estimates expose negative spreads/margins when present.
+
+### UI Requirements
+UI must separate public sale stock, wanted imports, local reserve, and no public trade rows.
+
+### Invariants
+- ask >= bid in same market
+- no same-market arbitrage except explicit subsidies/contracts
+- nearby markets affect price more than distant markets
+- route risk weakens price transmission
+- waystations transmit logistics but do not create supply/demand
+- ambient trade reduces but does not erase opportunity
+- route estimates can be negative
+
+### Implementation Notes
+- js/systems/economy/initialPrices.js
+- js/systems/economy/spatialPrices.js
+- js/systems/economy/pricing.js
+- js/systems/economy/ambientFlows.js
+- js/systems/tradeRoutes/implementation.js
+- js/ui/renderMarket.js
+- js/ui/renderLogistics.js
+
+### Acceptance Criteria
+Deterministic calibration, midpoint/bid/ask safety, no same-market arbitrage, distance/risk/disconnect transmission behavior, waystation non-generation, negative route estimates allowed, local reserve UI wording, and deterministic ambient blocked-reason diagnostics.
+
+### Documentation Alignment Note (2026-05-22)
+- Economy state defaults now include cohesion fields directly in `createInitialEconomyState()` so fresh runtime state and migrated legacy saves converge to the same schema shape.
+- Economy normalization now falls back to canonical default cohesion objects/values when legacy saves omit those fields.
+- Pricing now guards invalid/non-finite sector ids in `getSpotPrice()` by returning a resolved base commodity price fallback.
+- Ambient-flow profitability remains midpoint/bid/ask aligned, with conservative transport friction and bounded required margin so flows can occur without reintroducing same-market arbitrage.

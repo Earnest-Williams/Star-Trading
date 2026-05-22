@@ -1,7 +1,8 @@
 import { state } from '../../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../../constants.js';
 import { formatCommodity, makeStock, random } from '../../utils.js';
-import { getAllLogisticsNodes, getRouteMarketValue, deriveRouteMetrics } from '../tradeRoutes.js';
+import { getAllLogisticsNodes, deriveRouteMetrics } from '../tradeRoutes.js';
+import { getBidAskForSector, getMidMarketPriceForSector } from './pricing.js';
 import { patchPort, patchPlanet, patchAmbientTrade } from '../../core/state/mutations.js';
 
 function getNodePressureSignal(node, commodity) {
@@ -28,10 +29,16 @@ function getNodeShortage(node, commodity) {
     return Math.max(0, Math.floor(maxStock * shortageSeverity));
 }
 
-function isProfitableAmbientFlow(source, sink, commodity) {
-    const buy = getRouteMarketValue(source.sectorId, commodity, 'buy');
-    const sell = getRouteMarketValue(sink.sectorId, commodity, 'sell');
-    return sell - buy >= BALANCE.AMBIENT_TRADE.MIN_MARGIN;
+function isProfitableAmbientFlow(source, sink, commodity, metrics) {
+    const sourceQuote = getBidAskForSector(source.sectorId, commodity);
+    const sinkQuote = getBidAskForSector(sink.sectorId, commodity);
+    const sourceMid = getMidMarketPriceForSector(source.sectorId, commodity);
+    const sinkMid = getMidMarketPriceForSector(sink.sectorId, commodity);
+    const sourceAcquisition = Math.min(sourceQuote.ask || sourceMid, sourceMid);
+    const deliveredValue = Math.max(sinkQuote.bid || sinkMid, sinkMid);
+    const transportFriction = (Number(metrics?.hopCount || 0) * 1) + (Number(metrics?.risk || 0) * 0.8);
+    const requiredMargin = Math.max(2, BALANCE.AMBIENT_TRADE.MIN_MARGIN * 0.2);
+    return deliveredValue >= sourceAcquisition + transportFriction + requiredMargin;
 }
 
 export function runEconomyAmbientFlowsDaily() {
@@ -42,7 +49,9 @@ export function runEconomyAmbientFlowsDaily() {
         blockedFlows: 0,
         blockedUnits: makeStock(),
         residualDemand: makeStock(),
-        attemptedDemand: makeStock()
+        attemptedDemand: makeStock(),
+        pricePressureBefore: {},
+        pricePressureAfter: {}
     };
     summary.blockedByReason = {
         disconnected: makeStock(),
@@ -93,7 +102,7 @@ export function runEconomyAmbientFlowsDaily() {
                     recordBlockedFlow('highRisk', sourceItem.surplus);
                     return;
                 }
-                if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity)) {
+                if (!isProfitableAmbientFlow(sourceItem.node, sinkItem.node, commodity, metrics)) {
                     recordBlockedFlow('unprofitable', sourceItem.surplus);
                     return;
                 }
