@@ -120,6 +120,8 @@ class TurnRunner:
         actual_quantity = float(sum(float(txn.quantity) for txn in result.transactions))
         actual_quantity = 0.0 if abs(actual_quantity) <= self.EPSILON else actual_quantity
         market_price = result.new_price if result.new_price is not None else result.clearing_price
+        if hasattr(market, "current_price"):
+            market.current_price = market_price
         market.record_turn_results(price=market_price, quantity=actual_quantity)
 
         if result.quantity_traded != actual_quantity:

@@ -40,6 +40,8 @@ class Market:
     name: str
     good_id: str
     is_active: bool = True
+    current_price: float = 1.0
+    min_price: float = 0.01
     price_history: list[float] = field(default_factory=list)
     quantity_history: list[float] = field(default_factory=list)
 
@@ -355,3 +357,132 @@ def test_turn_runner_epsilon_allows_tiny_float_residue() -> None:
 def test_turn_runner_requires_resolver_constructor_argument() -> None:
     with pytest.raises(TypeError):
         TurnRunner()  # type: ignore[call-arg]
+
+
+def test_market_settlement_invariants_and_history() -> None:
+    buyer = Agent(id="buyer", cash_balance=100.0, inventory={"food": 1.0})
+    seller = Agent(id="seller", cash_balance=20.0, inventory={"food": 10.0})
+    market = Market(id="m1", name="Food Market", good_id="food", current_price=5.0)
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[market],
+    )
+    transactions = [
+        Transaction("buyer", "seller", "food", 5.0, 2.0),
+        Transaction("buyer", "seller", "food", 5.0, 1.0),
+    ]
+    before_buyer_cash = buyer.cash_balance
+    before_seller_cash = seller.cash_balance
+    before_buyer_inventory = buyer.inventory["food"]
+    before_seller_inventory = seller.inventory["food"]
+
+    result = TurnRunner(
+        resolver=StaticResolver(
+            {"m1": MarketResult(clearing_price=5.0, quantity_traded=3.0, transactions=transactions, new_price=5.2)}
+        )
+    ).step(economy)[0]
+
+    total_value = sum(txn.price * txn.quantity for txn in transactions)
+    total_quantity = sum(txn.quantity for txn in transactions)
+
+    assert before_buyer_cash - buyer.cash_balance == pytest.approx(total_value)
+    assert seller.cash_balance - before_seller_cash == pytest.approx(total_value)
+    assert buyer.inventory["food"] - before_buyer_inventory == pytest.approx(total_quantity)
+    assert before_seller_inventory - seller.inventory["food"] == pytest.approx(total_quantity)
+    assert buyer.cash_balance >= 0.0
+    assert seller.cash_balance >= 0.0
+    assert buyer.inventory["food"] >= 0.0
+    assert seller.inventory["food"] >= 0.0
+    assert sum(txn.quantity for txn in transactions) == pytest.approx(result.quantity_traded)
+    assert total_value == pytest.approx(before_buyer_cash - buyer.cash_balance)
+    assert economy.transactions == transactions
+    assert market.quantity_history[-1] == pytest.approx(total_quantity)
+    assert market.price_history[-1] == pytest.approx(5.2)
+
+
+def test_turn_runner_sets_current_price_to_new_price() -> None:
+    market = Market(id="m1", name="Food", good_id="food", current_price=10.0)
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={},
+        markets=[market],
+    )
+
+    TurnRunner(
+        resolver=StaticResolver(
+            {"m1": MarketResult(clearing_price=10.0, quantity_traded=0.0, transactions=[], new_price=11.0)}
+        )
+    ).step(economy)
+
+    assert market.current_price == pytest.approx(11.0)
+    assert market.price_history[-1] == pytest.approx(11.0)
+
+
+def test_turn_runner_fallback_new_price_equals_clearing_price() -> None:
+    market = Market(id="m1", name="Food", good_id="food", current_price=3.0)
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={},
+        markets=[market],
+    )
+
+    TurnRunner(
+        resolver=StaticResolver(
+            {"m1": MarketResult(clearing_price=4.0, quantity_traded=0.0, transactions=[], new_price=None)}
+        )
+    ).step(economy)
+
+    assert market.current_price == pytest.approx(4.0)
+    assert market.price_history[-1] == pytest.approx(4.0)
+
+
+def test_market_result_clearing_price_distinct_from_new_price() -> None:
+    market = Market(id="m1", name="Food", good_id="food", current_price=5.0)
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={},
+        markets=[market],
+    )
+    result = TurnRunner(
+        resolver=StaticResolver(
+            {"m1": MarketResult(clearing_price=5.0, quantity_traded=0.0, transactions=[], new_price=5.5)}
+        )
+    ).step(economy)[0]
+
+    assert result.clearing_price == pytest.approx(5.0)
+    assert result.new_price == pytest.approx(5.5)
+    assert market.current_price == pytest.approx(5.5)
+
+
+
+def test_turn_runner_allows_transactions_within_current_inventory() -> None:
+    buyer = Agent(id="buyer", cash_balance=100.0, inventory={"food": 0.0})
+    seller = Agent(id="seller", cash_balance=0.0, inventory={"food": 4.0})
+    market = Market(id="m1", name="Food", good_id="food", current_price=5.0)
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[market],
+    )
+    txns = [Transaction("buyer", "seller", "food", 5.0, 4.0)]
+
+    TurnRunner(resolver=StaticResolver({"m1": MarketResult(5.0, 4.0, txns)})).step(economy)
+
+    assert seller.inventory["food"] == pytest.approx(0.0)
+    assert buyer.inventory["food"] == pytest.approx(4.0)
+
+
+def test_turn_runner_rejects_transactions_exceeding_current_inventory() -> None:
+    buyer = Agent(id="buyer", cash_balance=100.0, inventory={"food": 0.0})
+    seller = Agent(id="seller", cash_balance=0.0, inventory={"food": 4.0})
+    market = Market(id="m1", name="Food", good_id="food", current_price=5.0)
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[market],
+    )
+    txns = [Transaction("buyer", "seller", "food", 5.0, 4.1)]
+
+    with pytest.raises(ValueError, match="insufficient inventory"):
+        TurnRunner(resolver=StaticResolver({"m1": MarketResult(5.0, 4.1, txns)})).step(economy)
