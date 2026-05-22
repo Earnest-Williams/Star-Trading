@@ -43,15 +43,13 @@ describe('ambient trade', () => {
 
     it('high risk reduces ambient flow', () => {
         buildWorld();
-        state.ports[3].basePrices.ore = 420;
-        state.ports[3].stock.ore = 0;
         const safeSummary = runAmbientTradeDaily();
-        const safe = safeSummary.attemptedDemand.ore - safeSummary.blockedByReason.highRisk.ore;
+        const safe = safeSummary.moved.ore;
+
         buildWorld({ badlands: true });
-        state.ports[3].basePrices.ore = 420;
-        state.ports[3].stock.ore = 0;
         const riskySummary = runAmbientTradeDaily();
-        const risky = riskySummary.attemptedDemand.ore - riskySummary.blockedByReason.highRisk.ore;
+        const risky = riskySummary.moved.ore;
+
         assert.ok(risky < safe);
         assert.ok(riskySummary.blockedByReason.highRisk.ore > 0);
         assert.ok(riskySummary.blockedFlows > 0);

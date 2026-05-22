@@ -40,12 +40,16 @@ test('bid is always <= ask in same market', () => {
     state.economy.pressureBySector = { 2: { ore: { shortageSeverity: 0.5, confidence: 0.8 } } };
     state.economy.spatialPriceDiagnostics = { 2: { ore: { routeFriction: 1, confidence: 0.8 } } };
     const quote = getBidAskForSector(2, 'ore');
-    assert.equal(quote.midpoint, 120);
-    assert.equal(quote.ask, 135);
-    assert.equal(quote.bid, 105);
-    assert.ok(Math.abs(quote.spread - 0.2396) < 0.0001);
-    assert.equal(quote.confidence, 0.8);
-    assert.equal(quote.risk, 1);
+    const { spread, ...rest } = quote;
+
+    assert.deepEqual(rest, {
+        midpoint: 120,
+        ask: 135,
+        bid: 105,
+        confidence: 0.8,
+        risk: 1
+    });
+    assert.ok(Math.abs(spread - 0.2396) < 0.0001);
 });
 
 test('route estimate can be negative and is not floored', () => {
