@@ -28,8 +28,8 @@ export function recomputeSpatialPrices() {
         if (other === sid) continue;
         const m = deriveRouteMetrics(other, sid);
         if (!m?.path || m.hopCount === null) continue;
-        const distW = 1 / (1 + n(m.hopCount) * 0.8);
-        const riskW = 1 / (1 + n(m.risk) * 0.6);
+        const distW = 1 / (1 + n(m.hopCount) * BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.DISTANCE_WEIGHT_MULTIPLIER);
+        const riskW = 1 / (1 + n(m.risk) * BALANCE.ECONOMY.SPATIAL_PRICE_RELAXATION.RISK_WEIGHT_MULTIPLIER);
         const weight = distW * riskW;
         const os = state.economy?.pressureBySector?.[other]?.[commodity] || {};
         regionalDemandPressure += clamp(n(os.shortageSeverity), 0, 1) * weight;
