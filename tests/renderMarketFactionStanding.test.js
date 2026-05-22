@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { resetState, state } from '../js/state.js';
 import { renderMarketPanel } from '../js/ui/renderMarket.js';
+import { makeAmbientTradeSummary } from './helpers/economyTestState.js';
 
 function setupDocument() {
     const elements = new Map();
@@ -84,7 +85,7 @@ describe('renderMarketPanel faction-standing intelligence quality', () => {
             license: { secureCourier: false, issuedByFactionId: null, issuedDay: null }
         };
         state.missions = [];
-        state.ambientTrade = { flows: 0, moved: { ore: 3, org: 2, eq: 1 } };
+        state.ambientTrade = makeAmbientTradeSummary({ moved: { ore: 3, org: 2, eq: 1 } });
 
         renderMarketPanel();
         const html = globalThis.document.getElementById('actions').innerHTML;

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 
 import { resetState, state } from '../js/state.js';
-import { MARKET_COMMODITIES } from '../js/constants.js';
 import { renderMarketPanel } from '../js/ui/renderMarket.js';
+import { makeAmbientTradeSummary, makeCommodityMap } from './helpers/economyTestState.js';
 
 const SECTOR_COUNT = 120;
 const ITERATIONS = 1000;
@@ -32,13 +32,6 @@ function setupDocument() {
     };
 }
 
-function makeCommodityMap(factory) {
-    return Object.fromEntries(MARKET_COMMODITIES.map((commodity, index) => [
-        commodity,
-        factory(commodity, index)
-    ]));
-}
-
 function setupMarketPerformanceState() {
     const movedValues = { ore: 8, org: 4, eq: 2 };
     resetState();
@@ -54,17 +47,10 @@ function setupMarketPerformanceState() {
     state.planets = {};
     state.missions = [];
     state.captains = {};
-    state.ambientTrade = {
+    state.ambientTrade = makeAmbientTradeSummary({
         flows: 14,
-        moved: makeCommodityMap((commodity) => movedValues[commodity] || 0),
-        residualDemand: makeCommodityMap(() => 0),
-        blockedUnits: makeCommodityMap(() => 0),
-        blockedByReason: {
-            disconnected: makeCommodityMap(() => 0),
-            unprofitable: makeCommodityMap(() => 0),
-            highRisk: makeCommodityMap(() => 0)
-        }
-    };
+        moved: makeCommodityMap((commodity) => movedValues[commodity] || 0)
+    });
     state.dataCargo = {
         sectorKnowledge: {},
         playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] },
