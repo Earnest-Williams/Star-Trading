@@ -72,7 +72,8 @@ export function makeDeliveryMission() {
     const destination = destinations[Math.floor(random() * destinations.length)];
     const amount = MISSION_TUNING.DELIVERY.AMOUNTS[Math.floor(random() * MISSION_TUNING.DELIVERY.AMOUNTS.length)];
     const distance = Math.abs(destination - origin) + MISSION_TUNING.DELIVERY.DISTANCE_BASELINE;
-    const reward = amount * (state.ports[origin].basePrices?.[commodity] || BALANCE.MIN_TRADE_PRICE)
+    const basePrice = getUniverseBasePrice(commodity) || getCommodityDef(commodity)?.basePrice || BALANCE.MIN_TRADE_PRICE;
+    const reward = amount * basePrice
         + distance * MISSION_TUNING.DELIVERY.DISTANCE_REWARD
         + MISSION_TUNING.DELIVERY.BASE_REWARD;
     const m = makeBaseMission(`Deliver ${amount} ${formatCommodity(commodity)} to sector ${destination}`, origin, reward, MISSION_TUNING.DELIVERY.EXPIRES_BASE_DAYS

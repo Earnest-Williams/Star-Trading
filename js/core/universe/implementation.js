@@ -77,8 +77,7 @@ export function makePort(typeKey) {
         publicFactionId: portType.factionId,
         hiddenFactionId: null,
         stock,
-        maxStock,
-        basePrices: { ...PORT_DEFAULTS.BASE_PRICES }
+        maxStock
     };
 }
 

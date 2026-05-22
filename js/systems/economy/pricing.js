@@ -50,8 +50,7 @@ export function getSpotPrice(port, sectorId, commodity, mode) {
 }
 
 export function getSpotPriceForSector(sectorId, commodity, mode) {
-  const node = state.ports?.[sectorId] || state.planets?.[sectorId] || null;
-  return getSpotPrice(node, sectorId, commodity, mode);
+  return getSpotPrice(null, sectorId, commodity, mode);
 }
 
 export function getExpectedRouteValue(originSector, destinationSector, commodity, amount) {
@@ -75,9 +74,6 @@ export function getExpectedRouteValue(originSector, destinationSector, commodity
         confidence: Math.min(origin.confidence, destination.confidence),
         buyPrice: origin.ask,
         sellPrice: destination.bid,
-        expectedProfit: Math.max(
-            BALANCE.TRADE_ROUTE.PROFIT_FLOOR,
-            Math.floor(Math.max(0, estimatedNet) * BALANCE.TRADE_ROUTE.PROFIT_MULTIPLIER)
-        )
+        expectedProfit: Math.floor(estimatedNet * BALANCE.TRADE_ROUTE.PROFIT_MULTIPLIER)
     };
 }
