@@ -189,6 +189,10 @@ ROUTE_PLANNER: {
         SHORTAGE_PRICE_MULTIPLIER: 0.85,
         SURPLUS_PRICE_DISCOUNT: 0.35,
         EXTRACTION_SCALE: 0.09,
+        PRICE_CALIBRATION: {
+            MAX_ROUTE_RISK: 8,
+            MAX_ROUTE_HOPS: 8
+        },
         CONTRACTS: {
             MIN_AMOUNT: 8,
             BASE_AMOUNT: 10,

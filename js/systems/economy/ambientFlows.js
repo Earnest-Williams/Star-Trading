@@ -32,10 +32,8 @@ function getNodeShortage(node, commodity) {
 function isProfitableAmbientFlow(source, sink, commodity, metrics) {
     const sourceQuote = getBidAskForSector(source.sectorId, commodity);
     const sinkQuote = getBidAskForSector(sink.sectorId, commodity);
-    const sourceMid = getMidMarketPriceForSector(source.sectorId, commodity);
-    const sinkMid = getMidMarketPriceForSector(sink.sectorId, commodity);
-    const sourceAcquisition = Math.min(sourceQuote.ask || sourceMid, sourceMid);
-    const deliveredValue = Math.max(sinkQuote.bid || sinkMid, sinkMid);
+    const sourceAcquisition = sourceQuote.ask || getMidMarketPriceForSector(source.sectorId, commodity);
+    const deliveredValue = sinkQuote.bid || getMidMarketPriceForSector(sink.sectorId, commodity);
     const transportFriction = (Number(metrics?.hopCount || 0) * 1) + (Number(metrics?.risk || 0) * 0.8);
     const requiredMargin = Math.max(2, BALANCE.AMBIENT_TRADE.MIN_MARGIN * 0.2);
     return deliveredValue >= sourceAcquisition + transportFriction + requiredMargin;

@@ -53,7 +53,12 @@ export function calibrateInitialUniversePrices() {
       for (const p of producers) {
         if (p === c) { reachable = true; bestCost = 0; break; }
         const m = deriveRouteMetrics(p, c);
-        if (m?.path && m.hopCount !== null && n(m.risk) < 8 && n(m.hopCount) <= 8) {
+        if (
+          m?.path
+          && m.hopCount !== null
+          && n(m.risk) < BALANCE.ECONOMY.PRICE_CALIBRATION.MAX_ROUTE_RISK
+          && n(m.hopCount) <= BALANCE.ECONOMY.PRICE_CALIBRATION.MAX_ROUTE_HOPS
+        ) {
           reachable = true;
           const cost = n(m.hopCount) + n(m.totalEffectiveSpan, n(m.hopCount)) * 0.2 + n(m.risk) * 0.5 + n(m.surcharge) * 2;
           if (cost < bestCost) bestCost = cost;

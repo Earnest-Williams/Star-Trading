@@ -44,7 +44,7 @@ export function getBidAskForSector(sectorId, commodity) {
 }
 
 export function getSpotPrice(port, sectorId, commodity, mode) {
-    if (!Number.isFinite(Number(sectorId))) return resolveBasePrice(commodity);
+    if (sectorId === null || sectorId === undefined || !Number.isFinite(Number(sectorId))) return resolveBasePrice(commodity);
     const quote = getBidAskForSector(sectorId, commodity);
     return mode === 'sell' ? quote.bid : quote.ask;
 }

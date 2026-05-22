@@ -19,6 +19,24 @@ export function recomputeSpatialPrices() {
     const vol = clamp(n(def.volatility, 0.2), 0.08, 0.45);
     const prices = new Map();
     for (const sid of sectorIds) prices.set(sid, n(mids?.[sid]?.[commodity], base));
+    const initialMidpoints = new Map(prices);
+    const regionalPressures = new Map();
+    for (const sid of sectorIds) {
+      let regionalDemandPressure = 0;
+      let regionalSupplyPressure = 0;
+      for (const other of sectorIds) {
+        if (other === sid) continue;
+        const m = deriveRouteMetrics(other, sid);
+        if (!m?.path || m.hopCount === null) continue;
+        const distW = 1 / (1 + n(m.hopCount) * 0.8);
+        const riskW = 1 / (1 + n(m.risk) * 0.6);
+        const weight = distW * riskW;
+        const os = state.economy?.pressureBySector?.[other]?.[commodity] || {};
+        regionalDemandPressure += clamp(n(os.shortageSeverity), 0, 1) * weight;
+        regionalSupplyPressure += clamp(n(os.surplusSeverity), 0, 1) * weight;
+      }
+      regionalPressures.set(sid, { regionalDemandPressure, regionalSupplyPressure });
+    }
     for (let i = 0; i < 10; i++) {
       const next = new Map();
       for (const sid of sectorIds) {
@@ -28,28 +46,41 @@ export function recomputeSpatialPrices() {
         const shortage = clamp(n(signal.shortageSeverity), 0, 1);
         const surplus = clamp(n(signal.surplusSeverity), 0, 1);
         const localFlow = isWaystation ? 0 : clamp((n(signal.dailyConsumption) - n(signal.dailyProduction)) / Math.max(1, n(signal.targetStock, 10)), -1, 1);
-        let regionalDemandPressure = 0;
-        let regionalSupplyPressure = 0;
-        for (const other of sectorIds) {
-          if (other === sid) continue;
-          const m = deriveRouteMetrics(other, sid);
-          if (!m?.path || m.hopCount === null) continue;
-          const distW = 1 / (1 + n(m.hopCount) * 0.8);
-          const riskW = 1 / (1 + n(m.risk) * 0.6);
-          const weight = distW * riskW;
-          const os = state.economy?.pressureBySector?.[other]?.[commodity] || {};
-          regionalDemandPressure += clamp(n(os.shortageSeverity), 0, 1) * weight;
-          regionalSupplyPressure += clamp(n(os.surplusSeverity), 0, 1) * weight;
-        }
+        const { regionalDemandPressure = 0, regionalSupplyPressure = 0 } = regionalPressures.get(sid) || {};
         const localPressure = shortage * 0.9 - surplus * 0.7 + localFlow * 0.5;
         const networkPressure = regionalDemandPressure * 0.35 - regionalSupplyPressure * 0.3;
         const target = Math.max(BALANCE.MIN_TRADE_PRICE, base * (1 + localPressure + networkPressure));
         const prev = prices.get(sid) || base;
         next.set(sid, prev * 0.65 + target * 0.35);
-        diags[sid] = diags[sid] || {};
-        diags[sid][commodity] = { localShortage: shortage, localSurplus: surplus, regionalDemandPressure, regionalSupplyPressure, routeFriction: Math.max(0, regionalDemandPressure + regionalSupplyPressure), confidence: clamp(n(signal.confidence, 0.5), 0, 1), midpointBefore: prev, midpointAfter: next.get(sid), strongestSupplierSector: null, strongestConsumerSector: null };
       }
       for (const [sid, v] of next.entries()) prices.set(sid, v);
+    }
+    for (const sid of sectorIds) {
+      const signal = state.economy?.pressureBySector?.[sid]?.[commodity] || {};
+      const profile = profiles[sid] || {};
+      const isWaystation = Array.isArray(profile.roleTags) && profile.roleTags.includes('way_station');
+      const shortage = clamp(n(signal.shortageSeverity), 0, 1);
+      const surplus = clamp(n(signal.surplusSeverity), 0, 1);
+      const localFlow = isWaystation ? 0 : clamp((n(signal.dailyConsumption) - n(signal.dailyProduction)) / Math.max(1, n(signal.targetStock, 10)), -1, 1);
+      const { regionalDemandPressure = 0, regionalSupplyPressure = 0 } = regionalPressures.get(sid) || {};
+      const localPressure = shortage * 0.9 - surplus * 0.7 + localFlow * 0.5;
+      const networkPressure = regionalDemandPressure * 0.35 - regionalSupplyPressure * 0.3;
+      diags[sid] = diags[sid] || {};
+      diags[sid][commodity] = {
+        localShortage: shortage,
+        localSurplus: surplus,
+        localFlow,
+        localPressure,
+        networkPressure,
+        regionalDemandPressure,
+        regionalSupplyPressure,
+        routeFriction: Math.max(0, regionalDemandPressure + regionalSupplyPressure),
+        confidence: clamp(n(signal.confidence, 0.5), 0, 1),
+        midpointBefore: initialMidpoints.get(sid) || base,
+        midpointAfter: prices.get(sid) || base,
+        strongestSupplierSector: null,
+        strongestConsumerSector: null
+      };
     }
     for (const sid of sectorIds) {
       mids[sid] = mids[sid] || {};

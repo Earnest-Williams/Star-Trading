@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { state, createInitialState } from '../js/state.js';
 import { estimateRouteProfit, getRouteMarketValue } from '../js/systems/tradeRoutes/implementation.js';
-import { getExpectedRouteValue, getSpotPriceForSector, getBidAskForSector } from '../js/systems/economy/pricing.js';
+import { getExpectedRouteValue, getSpotPrice, getSpotPriceForSector, getBidAskForSector } from '../js/systems/economy/pricing.js';
 import { calibrateInitialUniversePrices } from '../js/systems/economy/initialPrices.js';
 import { recomputeSpatialPrices } from '../js/systems/economy/spatialPrices.js';
 
@@ -51,4 +51,24 @@ test('route estimate can be negative and is not floored', () => {
     const expected = getExpectedRouteValue(3, 4, 'ore', 10);
     const profit = estimateRouteProfit(3, 4, 'ore', 10);
     assert.equal(expected.estimatedNet, profit);
+});
+
+test('spot price falls back to base price for null sector id', () => {
+    resetRuntimeState();
+    state.economy.universeBasePrices = { ore: 120 };
+    state.economy.nodeMidPrices = { 0: { ore: 900 } };
+    const spot = getSpotPrice(null, null, 'ore', 'buy');
+    assert.equal(spot, 120);
+});
+
+test('spatial diagnostics preserve pre-relaxation midpoint', () => {
+    resetRuntimeState();
+    seedPort(7, 'ore', 0.5);
+    state.economy.nodeMidPrices = { 7: { ore: 40 } };
+    state.economy.pressureBySector = { 7: { ore: { shortageSeverity: 1, surplusSeverity: 0, dailyConsumption: 30, dailyProduction: 0, targetStock: 10, confidence: 0.8 } } };
+    state.economy.universeBasePrices = { ore: 120 };
+    recomputeSpatialPrices();
+    const diag = state.economy.spatialPriceDiagnostics?.[7]?.ore;
+    assert.equal(diag.midpointBefore, 40);
+    assert.notEqual(diag.midpointAfter, 40);
 });
