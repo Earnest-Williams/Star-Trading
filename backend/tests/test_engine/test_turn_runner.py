@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any
 
 import pytest
 
@@ -55,6 +55,8 @@ class EconomyState:
     markets: list[Market]
     current_turn: int = 0
     transactions: list[Transaction] = field(default_factory=list)
+    global_params: dict[str, float] = field(default_factory=dict)
+    aggregate_metrics: dict[str, float] = field(default_factory=dict)
 
     def get_good(self, good_id: str) -> Good | None:
         return self.goods.get(good_id)
@@ -68,6 +70,9 @@ class EconomyState:
     def increment_turn(self) -> None:
         self.current_turn += 1
 
+    def model_copy(self, *, deep: bool) -> "EconomyState":
+        return deepcopy(self) if deep else self
+
 
 class StaticResolver(MarketResolver):
     def __init__(self, responses: dict[str, MarketResult]) -> None:
@@ -80,6 +85,20 @@ class StaticResolver(MarketResolver):
         return self._responses[market.id]
 
 
+class RaiseOnSecondResolver(MarketResolver):
+    def __init__(self, first: MarketResult) -> None:
+        self._first = first
+        self._calls = 0
+
+    def resolve(self, market: Market, economy: EconomyState) -> MarketResult:
+        _ = market
+        _ = economy
+        self._calls += 1
+        if self._calls == 1:
+            return self._first
+        raise RuntimeError("resolver failure")
+
+
 def test_turn_runner_applies_market_transaction_and_advances_turn() -> None:
     buyer = Agent(id="buyer", cash_balance=100.0, inventory={"food": 1.0})
     seller = Agent(id="seller", cash_balance=20.0, inventory={"food": 10.0})
@@ -89,7 +108,9 @@ def test_turn_runner_applies_market_transaction_and_advances_turn() -> None:
         agents={"buyer": buyer, "seller": seller},
         markets=[market],
     )
-    txn = Transaction(buyer_id="buyer", seller_id="seller", good_id="food", price=5.0, quantity=3.0)
+    txn = Transaction(
+        buyer_id="buyer", seller_id="seller", good_id="food", price=5.0, quantity=3.0
+    )
     resolver = StaticResolver(
         {
             "m1": MarketResult(
@@ -130,7 +151,9 @@ def test_turn_runner_resolves_markets_in_economic_order() -> None:
     resolver = StaticResolver(
         {
             "factor": MarketResult(clearing_price=1.0, quantity_traded=0.0, transactions=[]),
-            "intermediate": MarketResult(clearing_price=1.0, quantity_traded=0.0, transactions=[]),
+            "intermediate": MarketResult(
+                clearing_price=1.0, quantity_traded=0.0, transactions=[]
+            ),
             "final": MarketResult(clearing_price=1.0, quantity_traded=0.0, transactions=[]),
         }
     )
@@ -149,8 +172,16 @@ def test_turn_runner_raises_on_insufficient_cash_without_partial_mutation() -> N
         agents={"buyer": buyer, "seller": seller},
         markets=[market],
     )
-    txn = Transaction(buyer_id="buyer", seller_id="seller", good_id="food", price=3.0, quantity=2.0)
-    resolver = StaticResolver({"m1": MarketResult(clearing_price=3.0, quantity_traded=2.0, transactions=[txn])})
+    txn = Transaction(
+        buyer_id="buyer", seller_id="seller", good_id="food", price=3.0, quantity=2.0
+    )
+    resolver = StaticResolver(
+        {
+            "m1": MarketResult(
+                clearing_price=3.0, quantity_traded=2.0, transactions=[txn]
+            )
+        }
+    )
 
     with pytest.raises(ValueError, match="insufficient cash"):
         TurnRunner(resolver=resolver).step(economy)
@@ -187,8 +218,20 @@ def test_turn_runner_records_actual_quantity_from_transactions() -> None:
         markets=[market],
     )
     txns = [
-        Transaction(buyer_id="buyer", seller_id="seller", good_id="food", price=2.0, quantity=2.0),
-        Transaction(buyer_id="buyer", seller_id="seller", good_id="food", price=2.0, quantity=1.0),
+        Transaction(
+            buyer_id="buyer",
+            seller_id="seller",
+            good_id="food",
+            price=2.0,
+            quantity=2.0,
+        ),
+        Transaction(
+            buyer_id="buyer",
+            seller_id="seller",
+            good_id="food",
+            price=2.0,
+            quantity=1.0,
+        ),
     ]
     resolver = StaticResolver(
         {
@@ -204,3 +247,111 @@ def test_turn_runner_records_actual_quantity_from_transactions() -> None:
 
     assert results[0].quantity_traded == pytest.approx(3.0)
     assert market.quantity_history == [3.0]
+
+
+def test_turn_runner_rolls_back_all_state_on_later_market_failure() -> None:
+    buyer = Agent(id="buyer", cash_balance=100.0, inventory={"food": 0.0})
+    seller = Agent(id="seller", cash_balance=0.0, inventory={"food": 10.0})
+    first_market = Market(id="m1", name="A", good_id="food")
+    second_market = Market(id="m2", name="B", good_id="food")
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[first_market, second_market],
+        global_params={"tax": 0.1},
+        aggregate_metrics={"gdp": 1.0},
+    )
+    snapshot = economy.model_copy(deep=True)
+    txn = Transaction(
+        buyer_id="buyer", seller_id="seller", good_id="food", price=5.0, quantity=3.0
+    )
+    resolver = RaiseOnSecondResolver(
+        first=MarketResult(clearing_price=5.0, quantity_traded=3.0, transactions=[txn])
+    )
+
+    with pytest.raises(RuntimeError, match="resolver failure"):
+        TurnRunner(resolver=resolver).step(economy)
+
+    assert economy == snapshot
+
+
+def test_turn_runner_market_atomicity_for_failed_batch() -> None:
+    buyer = Agent(id="buyer", cash_balance=10.0, inventory={"food": 0.0})
+    seller = Agent(id="seller", cash_balance=0.0, inventory={"food": 3.0})
+    market = Market(id="m1", name="Food", good_id="food")
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[market],
+    )
+    txns = [
+        Transaction(
+            buyer_id="buyer", seller_id="seller", good_id="food", price=1.0, quantity=2.0
+        ),
+        Transaction(
+            buyer_id="buyer", seller_id="seller", good_id="food", price=1.0, quantity=2.0
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="insufficient inventory"):
+        TurnRunner(resolver=StaticResolver({"m1": MarketResult(1.0, 4.0, txns)})).step(economy)
+
+    assert buyer.cash_balance == 10.0
+    assert seller.cash_balance == 0.0
+    assert buyer.inventory["food"] == 0.0
+    assert seller.inventory["food"] == 3.0
+    assert economy.transactions == []
+    assert market.price_history == []
+
+
+def test_turn_runner_cumulative_cash_validation_prevents_partial_market_mutation() -> None:
+    buyer = Agent(id="buyer", cash_balance=5.0, inventory={"food": 0.0})
+    seller = Agent(id="seller", cash_balance=0.0, inventory={"food": 10.0})
+    market = Market(id="m1", name="Food", good_id="food")
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[market],
+    )
+    txns = [
+        Transaction(
+            buyer_id="buyer", seller_id="seller", good_id="food", price=3.0, quantity=1.0
+        ),
+        Transaction(
+            buyer_id="buyer", seller_id="seller", good_id="food", price=3.0, quantity=1.0
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="transaction batch"):
+        TurnRunner(resolver=StaticResolver({"m1": MarketResult(3.0, 2.0, txns)})).step(economy)
+
+    assert buyer.cash_balance == 5.0
+    assert seller.cash_balance == 0.0
+    assert economy.transactions == []
+    assert market.price_history == []
+
+
+def test_turn_runner_epsilon_allows_tiny_float_residue() -> None:
+    transaction_value = 0.1 + 0.2
+    buyer_cash = transaction_value - 5e-10
+    buyer = Agent(id="buyer", cash_balance=buyer_cash, inventory={"food": 0.0})
+    seller = Agent(id="seller", cash_balance=0.0, inventory={"food": 1.0})
+    market = Market(id="m1", name="Food", good_id="food")
+    economy = EconomyState(
+        goods={"food": Good(id="food", category="final")},
+        agents={"buyer": buyer, "seller": seller},
+        markets=[market],
+    )
+    txn = Transaction(
+        buyer_id="buyer", seller_id="seller", good_id="food", price=transaction_value, quantity=1.0
+    )
+
+    TurnRunner(resolver=StaticResolver({"m1": MarketResult(0.3, 1.0, [txn])})).step(economy)
+
+    assert buyer.cash_balance == 0.0
+    assert seller.cash_balance == pytest.approx(transaction_value)
+
+
+def test_turn_runner_requires_resolver_constructor_argument() -> None:
+    with pytest.raises(TypeError):
+        TurnRunner()  # type: ignore[call-arg]
