@@ -10,6 +10,7 @@ import { buildLogisticsSnapshot, getLogisticsNode } from '../js/systems/tradeRou
 import { buildPriorityBriefing } from '../js/core/priorityBriefing.js';
 import { hasGuildJoinAccess } from '../js/core/factions.js';
 import { seedCompaniesAndPeople } from '../js/systems/companies.js';
+import { makeAmbientTradeSummary } from './helpers/economyTestState.js';
 
 function setupMissionState() {
     resetState();
@@ -279,7 +280,7 @@ describe('port type normalisation', () => {
         };
         state.dataCargo = { sectorKnowledge: { 2: { lastObservedDay: 10 } }, playerHold: { publicSnapshots: {}, privatePayloads: [], securePayloads: [] }, secureContracts: [], ambientTransfers: [], nextPayloadId: 1, license: { secureCourier: false, issuedByFactionId: null, issuedDay: null } };
         state.missions = [];
-        state.ambientTrade = { flows: 0, moved: { ore: 3, org: 2, eq: 1 } };
+        state.ambientTrade = makeAmbientTradeSummary({ moved: { ore: 3, org: 2, eq: 1 } });
 
         assert.doesNotThrow(() => renderMarketPanel());
         const html = globalThis.document.getElementById('actions').innerHTML;
@@ -307,7 +308,7 @@ describe('port type normalisation', () => {
             }
         };
         state.missions = [];
-        state.ambientTrade = { flows: 0, moved: { ore: 3, org: 2, eq: 1 } };
+        state.ambientTrade = makeAmbientTradeSummary({ moved: { ore: 3, org: 2, eq: 1 } });
 
         assert.doesNotThrow(() => renderMarketPanel());
         assert.equal(state.ports[1].typeKey, 'consumer');

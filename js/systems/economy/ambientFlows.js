@@ -142,15 +142,22 @@ export function runEconomyAmbientFlowsDaily() {
 }
 
 export function describeAmbientFlowSummary(summary = state.ambientTrade) {
-    if (!summary || summary.flows <= 0) return 'Ambient trade found no profitable connected shortages today.';
-    const moved = MARKET_COMMODITIES.map((commodity) => `${summary.moved[commodity]} ${formatCommodity(commodity)}`).join(' / ');
-    const residual = MARKET_COMMODITIES.map((commodity) => `${summary.residualDemand[commodity]} ${formatCommodity(commodity)}`).join(' / ');
-    const blocked = MARKET_COMMODITIES.map((commodity) => `${summary.blockedUnits[commodity]} ${formatCommodity(commodity)}`).join(' / ');
-    const blockedReasons = summary.blockedByReason;
-    const disconnected = MARKET_COMMODITIES.map((commodity) => `${blockedReasons.disconnected?.[commodity] || 0} ${formatCommodity(commodity)}`).join(' / ');
-    const unprofitable = MARKET_COMMODITIES.map((commodity) => `${blockedReasons.unprofitable?.[commodity] || 0} ${formatCommodity(commodity)}`).join(' / ');
-    const highRisk = MARKET_COMMODITIES.map((commodity) => `${blockedReasons.highRisk?.[commodity] || 0} ${formatCommodity(commodity)}`).join(' / ');
-    return `Ambient trade moved ${moved} across ${summary.flows} flows. Residual demand for routed/player trade: ${residual}. Blocked network pressure: ${blocked}. Blocked by disconnection: ${disconnected}. Blocked by unprofitable margin: ${unprofitable}. Blocked by high risk: ${highRisk}.`;
+    const safeSummary = summary || {};
+    const flows = Number(safeSummary.flows || 0);
+    if (flows <= 0) return 'Ambient trade found no profitable connected shortages today.';
+
+    const movedMap = safeSummary.moved || {};
+    const residualMap = safeSummary.residualDemand || {};
+    const blockedMap = safeSummary.blockedUnits || {};
+    const blockedReasons = safeSummary.blockedByReason || {};
+
+    const moved = MARKET_COMMODITIES.map((commodity) => `${Number(movedMap[commodity] || 0)} ${formatCommodity(commodity)}`).join(' / ');
+    const residual = MARKET_COMMODITIES.map((commodity) => `${Number(residualMap[commodity] || 0)} ${formatCommodity(commodity)}`).join(' / ');
+    const blocked = MARKET_COMMODITIES.map((commodity) => `${Number(blockedMap[commodity] || 0)} ${formatCommodity(commodity)}`).join(' / ');
+    const disconnected = MARKET_COMMODITIES.map((commodity) => `${Number(blockedReasons.disconnected?.[commodity] || 0)} ${formatCommodity(commodity)}`).join(' / ');
+    const unprofitable = MARKET_COMMODITIES.map((commodity) => `${Number(blockedReasons.unprofitable?.[commodity] || 0)} ${formatCommodity(commodity)}`).join(' / ');
+    const highRisk = MARKET_COMMODITIES.map((commodity) => `${Number(blockedReasons.highRisk?.[commodity] || 0)} ${formatCommodity(commodity)}`).join(' / ');
+    return `Ambient trade moved ${moved} across ${flows} flows. Residual demand for routed/player trade: ${residual}. Blocked network pressure: ${blocked}. Blocked by disconnection: ${disconnected}. Blocked by unprofitable margin: ${unprofitable}. Blocked by high risk: ${highRisk}.`;
 }
 
 export function getAmbientFlowCandidates(commodity) {
