@@ -1,4 +1,5 @@
-import { state, APP_MODES, setAppMode } from '../state.js';
+import { state } from '../state.js';
+import { APP_MODES, getAppMode, setAppMode } from '../core/state/index.js';
 import { EventBus } from '../events.js';
 import { Renderer, updateUI } from '../ui/renderer.js';
 import { centerMapOnSector, resetMapViewport, setupMapInteraction } from '../ui/renderMap.js';
@@ -103,7 +104,7 @@ export function createGameSessionController() {
         applyStoredUiPreferences();
         setAppMode(APP_MODES.IN_GAME);
         ensureGameplayInitialized();
-        syncShellVisibility(state.appMode);
+        syncShellVisibility(getAppMode());
         state.isTransitioning = false;
         addWorldEvent({ type: 'start', sectorId: state.player.currentSector, text: UI_LABELS.simulationStarted, importance: 2, alert: false });
         Notifications.show(UI_LABELS.sessionWelcome, 2);
@@ -116,7 +117,7 @@ export function createGameSessionController() {
         applyStoredUiPreferences();
         setAppMode(APP_MODES.IN_GAME);
         state.isTransitioning = false;
-        syncShellVisibility(state.appMode);
+        syncShellVisibility(getAppMode());
         updateUI();
     }
 

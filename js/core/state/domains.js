@@ -1,5 +1,12 @@
 // @ts-check
 
+export const APP_MODES = Object.freeze({
+    MAIN_MENU: 'mainMenu',
+    IN_GAME: 'inGame',
+    SETTINGS: 'settings'
+});
+
+
 const CORE_STATE_SLICE = Object.freeze({
     PLAYER: 'player',
     UNIVERSE: 'universe',

@@ -1,4 +1,4 @@
-import { state, APP_MODES } from '../state.js';
+import { APP_MODES, getAppMode } from '../core/state/index.js';
 import { getSavedGameSummary } from '../core/persistence.js';
 import { StateSlice } from '../core/state/index.js';
 
@@ -12,9 +12,9 @@ export function syncShellVisibility(appMode) {
 }
 
 export function renderShell() {
-    syncShellVisibility(state.appMode);
+    syncShellVisibility(getAppMode());
 
-    if (state.appMode === APP_MODES.IN_GAME) return;
+    if (getAppMode() === APP_MODES.IN_GAME) return;
 
     const btnContinue = document.getElementById('btn-menu-continue');
     const continueInfo = document.getElementById('shellContinueInfo');

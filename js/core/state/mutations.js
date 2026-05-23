@@ -1,7 +1,7 @@
 // @ts-check
 import { state } from '../../state.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
-import { StateSlice, stateChanged } from './domains.js';
+import { APP_MODES, StateSlice, stateChanged } from './domains.js';
 
 const cleanPatch = patch => Object.fromEntries(Object.entries(patch || {}).filter(([, value]) => typeof value !== 'undefined'));
 const mergeInto = (target, patch) => {
@@ -14,6 +14,21 @@ const incrementRevision = key => {
     const value = Number(state[key]);
     state[key] = Number.isFinite(value) ? value + 1 : 1;
 };
+
+const APP_MODE_VALUES = new Set(Object.values(APP_MODES));
+
+export function isValidAppMode(mode) {
+    return APP_MODE_VALUES.has(mode);
+}
+
+export function setAppMode(mode) {
+    if (!isValidAppMode(mode)) {
+        throw new Error(`Invalid app mode: ${mode}`);
+    }
+    state.appMode = mode;
+    return stateChanged(StateSlice.UI_RUNTIME);
+}
+
 export const bumpMarketRevision = () => incrementRevision('marketRevision');
 export const bumpLogisticsNodeRevision = () => incrementRevision('logisticsNodeRevision');
 export const bumpInfluenceRevision = () => incrementRevision('influenceRevision');

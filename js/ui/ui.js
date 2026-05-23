@@ -1,4 +1,5 @@
-import { state, APP_MODES } from '../state.js';
+import { APP_MODES, getAppMode, getPlayer } from '../core/state/index.js';
+import { state } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
 import { StateSlice, stateChanged } from '../core/state/index.js';
 import { BALANCE } from '../config/economy.js';
@@ -130,7 +131,7 @@ function showEconomyLinkedScreen(screen, sectorId, commodity) {
 
 export function showScreen(screen) {
     if (!GAMEPLAY_SCREENS.has(screen)) return false;
-    if (state.appMode !== APP_MODES.IN_GAME || !state.player) return false;
+    if (getAppMode() !== APP_MODES.IN_GAME || !getPlayer()) return false;
 
     if (screen === 'market' && !state.ports[state.player.currentSector]) {
         Notifications.show('No market is available in this sector.', 2);
@@ -171,8 +172,8 @@ function renderTopTabs() {
 
 
 function renderCurrentScreen() {
-    if (state.appMode !== APP_MODES.IN_GAME) return;
-    if (!state.player) return;
+    if (getAppMode() !== APP_MODES.IN_GAME) return;
+    if (!getPlayer()) return;
     const { currentScreen, player, ports, planets } = state;
     const title = document.getElementById('screenTitle');
     const actions = document.getElementById('actions');
