@@ -17,8 +17,10 @@ describe('state module boundary', () => {
         assert.equal(source.includes('export const state = createInitialState();'), true);
         assert.equal(source.includes('export function resetState()'), true);
 
-        assert.equal(source.includes('export function setAppMode'), false);
-        assert.equal(source.includes('export function isValidAppMode'), false);
-        assert.equal(source.includes('export const APP_MODES'), false);
+        assert.equal(source.includes("export const APP_MODES = CORE_APP_MODES;"), true);
+        assert.equal(source.includes("import { APP_MODES as CORE_APP_MODES } from './core/state/domains.js';"), true);
+        assert.equal(source.includes('export function setAppMode'), true);
+        assert.equal(source.includes('export function isValidAppMode'), true);
+        assert.equal(source.includes('setCoreAppMode(mode);'), true);
     });
 });

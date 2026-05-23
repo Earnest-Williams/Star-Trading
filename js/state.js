@@ -1,5 +1,8 @@
 import { createInitialEconomyState } from './systems/economy/migration.js';
-import { APP_MODES } from './core/state/domains.js';
+import { APP_MODES as CORE_APP_MODES } from './core/state/domains.js';
+import { isValidAppMode as isValidCoreAppMode, setAppMode as setCoreAppMode } from './core/state/mutations.js';
+
+export const APP_MODES = CORE_APP_MODES;
 
 /**
  * Bootstrap source of truth for runtime state shape.
@@ -62,7 +65,7 @@ export function createInitialState() {
         currentScreen: "sector",
         selectedDialogueConversationId: null,
         reputationTab: "factions",
-        appMode: APP_MODES.MAIN_MENU,
+        appMode: CORE_APP_MODES.MAIN_MENU,
         shellMessage: null,
         settingsOpenTab: "general",
         isTransitioning: false,
@@ -123,4 +126,15 @@ export function resetState() {
     const freshState = createInitialState();
     Object.keys(state).forEach(key => delete state[key]);
     Object.assign(state, freshState);
+}
+
+
+// Legacy compatibility exports; prefer js/core/state APIs in runtime modules.
+export function isValidAppMode(mode) {
+    return isValidCoreAppMode(mode);
+}
+
+export function setAppMode(mode) {
+    setCoreAppMode(mode);
+    return state.appMode;
 }

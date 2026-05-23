@@ -8,6 +8,8 @@ const REPO_ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const APPROVED_STATE_IMPORTERS = Object.freeze([
     'js/app/gameSessionController.js',
+    'js/utils.js',
+    'js/main.js',
     'js/core/dataCargo/implementation.js',
     'js/core/factions.js',
     'js/core/influence.js',
@@ -93,7 +95,7 @@ const APPROVED_STATE_IMPORTERS = Object.freeze([
 ]);
 
 function listTrackedJsFiles() {
-    const output = execFileSync('git', ['ls-files', 'js/**/*.js'], {
+    const output = execFileSync('git', ['ls-files', 'js/*.js', 'js/**/*.js'], {
         cwd: REPO_ROOT,
         encoding: 'utf8'
     });
