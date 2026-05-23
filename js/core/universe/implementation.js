@@ -702,6 +702,23 @@ export function generateUniverse() {
     recomputeEconomyPressure();
     assignSectorPolities();
     seedCompaniesAndPeople(rng);
+    generateAllLocalLocations();
+    if (state.player) {
+        state.player.currentSystemId = state.player.currentSystemId || state.player.currentSector;
+        state.player.currentLocationId = state.player.currentLocationId || `loc-${state.player.currentSystemId}-arrival`;
+        if (!state.player.wing) {
+            state.player.wing = { captainIds: [], stance: "balanced" };
+        }
+        if (state.player.ship && !state.player.ship.loadout) {
+            state.player.ship.loadout = {
+                weapons: null,
+                shields: null,
+                pulseTender: null,
+                scannerArray: null,
+                cargoExpander: null
+            };
+        }
+    }
     // Callers (main.js) are responsible for calling createCaptains, generateMissionPool, generateFactionAsks
 }
 
@@ -847,9 +864,174 @@ export function createPlayerFromBuild(buildSpec = DEFAULT_BUILD_SPEC) {
         player.employment = getEmploymentTerms(player.character, player.employment);
     }
     applyStartBenefitsToPlayer(player, startBenefits);
+    player.currentSystemId = player.currentSector;
+    player.currentLocationId = `loc-${player.currentSector}-arrival`;
+    player.wing = { captainIds: [], stance: "balanced" };
+    if (player.ship) {
+        player.ship.loadout = {
+            weapons: null,
+            shields: null,
+            pulseTender: null,
+            scannerArray: null,
+            cargoExpander: null
+        };
+    }
     return player;
 }
 
 export function createPlayer() {
     return createPlayerFromBuild(DEFAULT_BUILD_SPEC);
+}
+
+export function generateLocalLocationsForSystem(systemId) {
+    const site = state.universe[systemId];
+    if (!site) return;
+
+    if (!state.localSpace) {
+        state.localSpace = {
+            locationsById: {},
+            locationIdsBySystemId: {},
+            discoveredLocationIds: {},
+            nextLocalLocationId: 1
+        };
+    }
+
+    const localSpace = state.localSpace;
+    localSpace.locationIdsBySystemId[systemId] = localSpace.locationIdsBySystemId[systemId] || [];
+
+    const addLocation = (loc) => {
+        const id = `loc-${systemId}-${loc.suffix}`;
+        const record = {
+            id,
+            systemId,
+            kind: loc.kind,
+            name: loc.name,
+            orbitBand: loc.orbitBand,
+            known: loc.known !== undefined ? loc.known : true,
+            surveyed: loc.surveyed || false,
+            dockable: loc.dockable || false,
+            marketId: loc.marketId || null,
+            planetId: loc.planetId || null,
+            asteroidFieldId: loc.asteroidFieldId || null,
+            stationId: loc.stationId || null,
+            threat: loc.threat || 0,
+            scanDifficulty: loc.scanDifficulty || 10,
+            hazard: loc.hazard || 0,
+            tags: loc.tags || [],
+            data: loc.data || {}
+        };
+        localSpace.locationsById[id] = record;
+        if (!localSpace.locationIdsBySystemId[systemId].includes(id)) {
+            localSpace.locationIdsBySystemId[systemId].push(id);
+        }
+        if (record.known) {
+            localSpace.discoveredLocationIds[id] = true;
+        }
+        return id;
+    };
+
+    // 1. Arrival point
+    addLocation({
+        suffix: "arrival",
+        kind: "arrival_point",
+        name: `${site.name} Jump Gate Approach`,
+        orbitBand: 1,
+        known: true,
+        dockable: false,
+        scanDifficulty: 10,
+        threat: site.pirateThreat || 0
+    });
+
+    // 2. Port / Station
+    const port = state.ports[systemId];
+    if (port) {
+        addLocation({
+            suffix: "port",
+            kind: "station",
+            name: `${site.name} Highport`,
+            orbitBand: 2,
+            known: true,
+            dockable: true,
+            marketId: systemId,
+            stationId: systemId,
+            scanDifficulty: 15,
+            threat: 0
+        });
+    }
+
+    // 3. Planet
+    const planet = state.planets[systemId];
+    if (planet) {
+        addLocation({
+            suffix: "planet",
+            kind: "planet",
+            name: `${site.name} Planet`,
+            orbitBand: 3,
+            known: true,
+            dockable: true,
+            planetId: systemId,
+            scanDifficulty: 20,
+            threat: 0
+        });
+    }
+
+    // 4. Asteroid belt
+    const asteroids = site.asteroids;
+    if (asteroids) {
+        addLocation({
+            suffix: "belt",
+            kind: "asteroid_belt",
+            name: `${site.name} Asteroid Belt`,
+            orbitBand: 4,
+            known: true,
+            dockable: false,
+            asteroidFieldId: systemId,
+            scanDifficulty: 25,
+            hazard: asteroids.hazard || 0,
+            tags: ["ore"],
+            threat: site.pirateThreat || 0
+        });
+    }
+
+    // 5. Way-station / Relay
+    if (site.siteType === "way_station") {
+        addLocation({
+            suffix: "relay",
+            kind: "relay",
+            name: `${site.name} Relay Buoy`,
+            orbitBand: 1,
+            known: true,
+            dockable: false,
+            stationId: systemId,
+            scanDifficulty: 30,
+            threat: site.pirateThreat || 0
+        });
+    }
+
+    // 6. Hidden anomalies
+    const isBadlands = site.region === "Badlands";
+    const shear = site.metricShear || 0;
+    const anomalyCount = 1 + (isBadlands ? 1 : 0) + (shear > 0.5 ? 1 : 0);
+    for (let i = 1; i <= anomalyCount; i++) {
+        addLocation({
+            suffix: `anomaly-${i}`,
+            kind: "anomaly",
+            name: `Unresolved Anomaly Contact ${String.fromCharCode(64 + i)}`,
+            orbitBand: 5,
+            known: false,
+            dockable: false,
+            scanDifficulty: 40 + Math.floor(shear * 30) + i * 5,
+            hazard: isBadlands ? 0.15 : 0.05,
+            threat: site.pirateThreat > 0 ? site.pirateThreat : (Math.random() < 0.3 ? 1 : 0),
+            tags: ["unresolved", "metric_shear"],
+            data: { anomalyId: `${systemId}-an-${i}`, resolved: false }
+        });
+    }
+}
+
+export function generateAllLocalLocations() {
+    if (!state.universe) return;
+    Object.keys(state.universe).forEach(id => {
+        generateLocalLocationsForSystem(Number(id));
+    });
 }

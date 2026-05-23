@@ -15,5 +15,7 @@ export {
     generateUniverse,
     generateStars,
     createPlayerFromBuild,
-    createPlayer
+    createPlayer,
+    generateLocalLocationsForSystem,
+    generateAllLocalLocations
 } from './implementation.js';

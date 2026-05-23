@@ -8,6 +8,7 @@ import { renderCaptainEntanglementChips, renderCaptainEntanglementDetail } from 
 import { addIntel } from '../core/intel.js';
 import { updateUI } from "./renderer.js";
 import { getTraitBonus } from '../core/traitHooks.js';
+import { canAssignWingman } from '../systems/wingmen.js';
 
 export function renderCaptainChipsForSector(sectorId) {
     const { player } = state;
@@ -104,6 +105,21 @@ export function hailCaptain(id) {
     const deepenCheck = canDeepenRomanceWithCaptain(captain.id);
     if (deepenCheck.ok) {
         html += `<button data-action="deepenRomanceWithCaptain" data-arg0="${captain.id}">Deepen Bond (60m)</button>`;
+    }
+    
+    // Wingman assignment buttons
+    const inWing = player.wing?.captainIds?.includes(captain.id);
+    if (inWing) {
+        html += `<button data-action="releaseWingman" data-arg0="${captain.id}">Release from Wing</button>`;
+    } else {
+        const wingCheck = canAssignWingman(captain.id);
+        if (wingCheck.ok) {
+            html += `<button data-action="assignWingman" data-arg0="${captain.id}" data-arg1="balanced">Assign to Wing (Balanced)</button>`;
+            html += `<button data-action="assignWingman" data-arg0="${captain.id}" data-arg1="overwatch">Assign (Overwatch)</button>`;
+            html += `<button data-action="assignWingman" data-arg0="${captain.id}" data-arg1="sensor">Assign (Sensor)</button>`;
+            html += `<button data-action="assignWingman" data-arg0="${captain.id}" data-arg1="quiet">Assign (Quiet)</button>`;
+            html += `<button data-action="assignWingman" data-arg0="${captain.id}" data-arg1="logistics">Assign (Logistics)</button>`;
+        }
     }
     html += `</div>`;
     html += `<div class="commodity-row"><strong>Recent history</strong>`;

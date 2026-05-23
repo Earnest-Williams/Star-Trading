@@ -11,6 +11,7 @@ import { getFreshnessSummaryForSector } from "../core/dataCargo.js";
 import { getContactDialogueActionState, MIN_DEEPEN_FAMILIARITY, normaliseDialogueRelationship } from "../systems/people.js";
 import { savePreferencePatch } from "../core/preferences.js";
 import { StateSlice, stateChanged } from "../core/state/index.js";
+import { getLocalLocationsForSystem } from '../systems/travel.js';
 
 
 function renderLocalAuthorityLine(sector) {
@@ -285,10 +286,63 @@ export function renderMenuPanel() {
             + `<div class="gate-meta"><span class="sector-chip">${escapeHtml(getSiteTypeLabel(s.siteType))}</span><span class="sector-chip">${escapeHtml(s.region)}</span>${factionLabel}</div>`
             + `<div class="gate-badges">${badges.join("") || `<span class="sector-chip muted">Deep Space</span>`}</div>`
             + `<div class="gate-id-row"><span class="sector-chip">Gate ${gateLabel}</span>${span}</div>`
-            + `<div class="gate-actions"><button data-action="selectSector" data-arg0="${target}">Inspect</button>${player.ship ? `<button data-action="moveTo" data-arg0="${target}">Use Jump Gate</button>` : `<button type="button" disabled title="Assign a ship before using jump gates">No ship assigned</button>`}</div>`
+            + `<div class="gate-actions"><button data-action="selectSector" data-arg0="${target}">Inspect</button>${player.ship ? `<button data-action="beginCorridorTransit" data-arg0="${target}">Begin Transit</button>` : `<button type="button" disabled title="Assign a ship before using jump gates">No ship assigned</button>`}</div>`
             + `</article>`;
     }).filter(Boolean).join("");
     const gatesBody = gateCards || `<div class="muted small">No outbound jump gates registered.</div>`;
+
+    // Local Space locations
+    const systemId = player.currentSystemId || player.currentSector;
+    const localLocations = getLocalLocationsForSystem(systemId);
+    localLocations.sort((a, b) => (a.orbitBand || 0) - (b.orbitBand || 0));
+
+    const localSpaceCards = localLocations.map(loc => {
+        const isCurrent = player.currentLocationId === loc.id;
+        const known = state.localSpace?.discoveredLocationIds[loc.id] || loc.known;
+        if (!known) {
+            return `<article class="nav-card local-location-card anonymized">`
+                + `<div class="gate-card-title"><strong>Unresolved Contact</strong></div>`
+                + `<div class="gate-meta">Scanners indicate gravitational or energy flux.</div>`
+                + `<div class="gate-actions">`
+                + `<button data-action="scanLocalSpace" data-arg0="passive">Scan Local Space</button>`
+                + `</div>`
+                + `</article>`;
+        }
+
+        const badges = [];
+        if (loc.dockable) badges.push(`<span class="sector-chip">Dockable</span>`);
+        if (loc.hazard > 0) badges.push(`<span class="sector-chip red">Hazard ${(loc.hazard * 100).toFixed(0)}%</span>`);
+        if (loc.threat > 0) badges.push(`<span class="sector-chip red">Threat ${loc.threat}</span>`);
+        if (loc.surveyed) badges.push(`<span class="sector-chip green">Surveyed</span>`);
+
+        const actionButtons = [];
+        if (isCurrent) {
+            actionButtons.push(`<span class="sector-chip highlight">Current Location</span>`);
+            if (loc.dockable) {
+                if (loc.marketId) actionButtons.push(`<button data-action="showScreen" data-arg0="market">Open Market</button>`);
+                if (loc.stationId && loc.stationId === state.world?.roles?.shipyardSiteId) {
+                    actionButtons.push(`<button data-action="showScreen" data-arg0="shipyard">Open Shipyard</button>`);
+                }
+                if (loc.planetId) actionButtons.push(`<button data-action="showScreen" data-arg0="colony">Open Colony</button>`);
+            }
+            if (loc.asteroidFieldId) {
+                actionButtons.push(`<button data-action="mineAsteroids">Mine</button>`);
+            }
+        } else {
+            actionButtons.push(`<button data-action="moveLocal" data-arg0="${loc.id}">Maneuver Here</button>`);
+        }
+
+        actionButtons.push(`<button data-action="scanLocalLocation" data-arg0="${loc.id}" data-arg1="passive">Passive Scan</button>`);
+        actionButtons.push(`<button data-action="scanLocalLocation" data-arg0="${loc.id}" data-arg1="deep">Deep Scan</button>`);
+
+        return `<article class="nav-card local-location-card${isCurrent ? " active-location" : ""}">`
+            + `<div class="gate-card-title"><strong>${escapeHtml(loc.name)}</strong><span class="muted">${escapeHtml(loc.kind.replace("_", " "))}</span></div>`
+            + `<div class="gate-meta">Orbit Band ${loc.orbitBand}</div>`
+            + `<div class="gate-badges">${badges.join("") || `<span class="sector-chip muted">Stable Space</span>`}</div>`
+            + `<div class="gate-actions">${actionButtons.join("")}</div>`
+            + `</article>`;
+    }).join("");
+    const localSpaceBody = localSpaceCards || `<div class="muted small">No local contacts resolved.</div>`;
 
     const contactsBody = renderLocalPeopleDialogueActions(player.currentSector);
 
@@ -310,7 +364,27 @@ export function renderMenuPanel() {
         }).join("")
         + `</div>`;
 
-    const html = renderCommandAccordionSection("outbound-gates", "Outbound Gates", gatesBody, outboundGates.length)
+    // Active transit details
+    let transitSessionHtml = "";
+    if (state.transitSession) {
+        const session = state.transitSession;
+        transitSessionHtml = `<article class="nav-card transit-session-card highlight">`
+            + `<div class="gate-card-title"><strong>Transit in Progress</strong></div>`
+            + `<div class="gate-meta">Targeting system ${session.targetSystemId} via ${session.corridorId}</div>`
+            + `<div class="gate-meta">Elapsed extra time: ${session.elapsedExtraMinutes}m / Base: ${session.baseMinutes}m</div>`
+            + `<div class="gate-meta">Scan Depth: ${session.scanDepth}</div>`
+            + `<div class="gate-actions">`
+            + `<button data-action="scanTransit" data-arg0="passive">Scan Transit</button>`
+            + `<button data-action="scanTransitDeeper">Scan Deeper</button>`
+            + `<button data-action="commitCorridorTransit">Commit Transit</button>`
+            + `<button data-action="cancelTransitSession">Abort</button>`
+            + `</div>`
+            + `</article>`;
+    }
+
+    const html = transitSessionHtml
+        + renderCommandAccordionSection("local-space", "Local Space", localSpaceBody, localLocations.length)
+        + renderCommandAccordionSection("outbound-gates", "Outbound Gates", gatesBody, outboundGates.length)
         + renderCommandAccordionSection("local-contacts", "Local Contacts", contactsBody, Math.min((state.peopleBySector?.[player.currentSector] || []).length, 3))
         + renderCommandAccordionSection("menus", "Menus", menusBody, shortcuts.length);
     document.getElementById("commandList").innerHTML = html;
@@ -358,9 +432,12 @@ export function renderMapInspector() {
     const captainHtml = renderCaptainChipsForSector(id);
     let actionHtml = "";
     if (id === player.currentSector) {
-        actionHtml = `<button data-action="showScreen" data-arg0="sector">Current Sector</button>`;
+        actionHtml = `<button data-action="showScreen" data-arg0="sector">Open Local Space</button>`;
     } else if (adjacent && player.ship) {
-        actionHtml = `<button data-action="moveTo" data-arg0="${id}">Transit Corridor (${player.ship.travelMinutesPerCorridor}m)</button>`;
+        actionHtml = `<button data-action="beginCorridorTransit" data-arg0="${id}">Begin Corridor Transit (${player.ship.travelMinutesPerCorridor}m)</button>`;
+        if (player.ship.scannerLevel > 0) {
+            actionHtml += ` <button data-action="scanLocalLocation" data-arg0="loc-${id}-arrival" data-arg1="passive">Scan Destination Data</button>`;
+        }
     } else if (adjacent) {
         actionHtml = '<span class="muted">Direct corridor available, but you have no assigned ship.</span>';
     } else {

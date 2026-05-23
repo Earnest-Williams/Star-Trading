@@ -58,6 +58,8 @@ export const SAVE_STATE_FIELDS = Object.freeze([
     'ambientTrade',
     'priorityBriefing',
     'dataCargo',
+    'localSpace',
+    'transitSession',
     'rng'
 ]);
 
@@ -69,7 +71,8 @@ export const MAX_OBJECT_KEYS = Object.freeze({
     companies: 2000,
     captains: 500,
     polities: 500,
-    sectorKnowledge: 5000
+    sectorKnowledge: 5000,
+    localSpace: 10000
 });
 
 const SAVE_TOP_LEVEL_FIELDS = new Set(['version', ...SAVE_STATE_FIELDS]);

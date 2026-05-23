@@ -40,7 +40,9 @@ import {
 } from './renderCaptains.js';
 
 // System actions
-import { moveTo, restUntilMorning } from '../systems/travel.js';
+import { moveTo, restUntilMorning, moveLocal, scanLocalSpace, scanLocalLocation, beginCorridorTransit, scanTransit, scanTransitDeeper, commitCorridorTransit, cancelTransitSession } from '../systems/travel.js';
+import { installShipModule } from '../systems/shipLoadout.js';
+import { assignWingman, releaseWingman } from '../systems/wingmen.js';
 import { surveySector, mineAsteroids } from '../systems/mining.js';
 import { tradeCommodity } from '../systems/market.js';
 import {
@@ -597,6 +599,19 @@ export function registerUIActions() {
     registerAction('promoteGuild', promoteGuild);
     registerAction('saveGame', () => saveGame() ? commandOk() : commandFailed('Save failed.'));
     registerAction('loadGame', () => loadGame() ? commandOk() : commandFailed('Load failed.'));
+    
+    // Local movement, transit, scanning, shipyard loadouts, wingmen
+    registerAction('moveLocal', locationId => moveLocal(locationId) ? commandOk(StateSlice.PLAYER, 'localSpace', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanLocalSpace', depth => scanLocalSpace(depth) ? commandOk(StateSlice.PLAYER, 'localSpace', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanLocalLocation', (locationId, depth) => scanLocalLocation(locationId, depth) ? commandOk(StateSlice.PLAYER, 'localSpace', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('beginCorridorTransit', targetSector => beginCorridorTransit(targetSector) ? commandOk(StateSlice.PLAYER, 'transit', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanTransit', depth => scanTransit(depth) ? commandOk('transit', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanTransitDeeper', () => scanTransitDeeper() ? commandOk('transit', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('commitCorridorTransit', () => commitCorridorTransit() ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, 'transit', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('cancelTransitSession', () => cancelTransitSession() ? commandOk('transit', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('installShipModule', moduleId => installShipModule(moduleId) ? commandOk(StateSlice.PLAYER, 'shipLoadout', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('assignWingman', (captainId, role) => assignWingman(captainId, role) ? commandOk(StateSlice.PLAYER, StateSlice.CAPTAINS, StateSlice.ENTANGLEMENTS, StateSlice.EVENTS, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('releaseWingman', captainId => releaseWingman(captainId) ? commandOk(StateSlice.PLAYER, StateSlice.CAPTAINS, StateSlice.EVENTS, StateSlice.UI_RUNTIME) : commandFailed());
 
     registerActionManifest('moveTo', { argCount: 1, coercers: [parsePositiveId] });
     registerActionManifest('showScreen', { argCount: 1, coercers: [parseScreen] });
@@ -657,6 +672,18 @@ export function registerUIActions() {
     registerActionManifest('promoteGuild', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('saveGame', { argCount: 0 });
     registerActionManifest('loadGame', { argCount: 0 });
+
+    registerActionManifest('moveLocal', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('scanLocalSpace', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('scanLocalLocation', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('beginCorridorTransit', { argCount: 1, coercers: [parsePositiveId] });
+    registerActionManifest('scanTransit', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('scanTransitDeeper', { argCount: 0 });
+    registerActionManifest('commitCorridorTransit', { argCount: 0 });
+    registerActionManifest('cancelTransitSession', { argCount: 0 });
+    registerActionManifest('installShipModule', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('assignWingman', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('releaseWingman', { argCount: 1, coercers: [parseNonEmptyString] });
 }
 
 export function markUIActionsUnregistered() {

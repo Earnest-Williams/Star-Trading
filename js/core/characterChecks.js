@@ -94,3 +94,15 @@ export function getRouteReliabilityAdjustment(character) {
 export function getRouteRiskAdjustment(character) {
     return -getStatDelta(character, "fieldcraft") / 100 + getTraitBonus(character, "routeRiskMod");
 }
+
+export function getScanResolutionScore(character) {
+    return Math.floor(getStatDelta(character, "fieldcraft") / 4);
+}
+
+export function getDeepScanRiskAdjustment(character) {
+    return -getStatDelta(character, "nerve") / 100;
+}
+
+export function getAnomalyInterpretationScore(character) {
+    return Math.floor(getStatDelta(character, "fieldcraft") / 6);
+}

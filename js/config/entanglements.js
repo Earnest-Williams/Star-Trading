@@ -6,7 +6,8 @@ export const ENTANGLEMENTS = Object.freeze({
         RIVALRY: "rivalry",
         SECRET: "secret",
         ROMANCE: "romance",
-        SUCCESSION: "succession"
+        SUCCESSION: "succession",
+        WINGMAN: "wingman"
     }),
 
     ROMANCE_STAGES: Object.freeze({

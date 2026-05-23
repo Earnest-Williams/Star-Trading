@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { BALANCE } from '../config/economy.js';
+import { BALANCE, getCommodityDef } from '../config/economy.js';
+import { getUniverseBasePrice } from './economy/initialPrices.js';
 import { FACTIONS } from '../config/factions.js';
 import { MISSION_TUNING } from '../config/missions.js';
 import { formatCommodity, formatCredits, log, random } from '../utils.js';

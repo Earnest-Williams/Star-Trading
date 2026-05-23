@@ -1,0 +1,8 @@
+# Mamba/Conda environment specification for 'Star-Trading'
+# Edit me to add your project's dependencies!
+name: Star-Trading
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip

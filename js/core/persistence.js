@@ -37,6 +37,8 @@ import { normaliseEconomyState } from '../systems/economy/migration.js';
 import { parseJsonSave, validateTopLevelSave, sanitizeSaveKeys, validateSaveShape, migrateSave as migrateSchemaSave, normaliseLoadedGame as runNormaliseLoadedGame, validateLoadedInvariants, SAVE_STATE_FIELDS, SAVE_SCHEMA_LIMITS } from './saveSchema.js';
 import { runMigrations } from './saveMigrations/index.js';
 import { migrateShipTransitFields } from './saveMigrations/helpers.js';
+import { normaliseShipLoadout } from '../systems/shipLoadout.js';
+import { generateLocalLocationsForSystem } from './universe/generator.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -312,6 +314,30 @@ function normaliseCurrentLoadedGame() {
     const propertyStart = platformType && platformType.startsWith("property_");
     if (!state.player.ship && !propertyStart) state.player.ship = createPlayer().ship;
     migrateShipTransitFields(state.player);
+    if (!state.player.currentSystemId) state.player.currentSystemId = state.player.currentSector || 1;
+    if (!state.player.currentLocationId) state.player.currentLocationId = `loc-${state.player.currentSystemId}-arrival`;
+    if (!state.player.wing) state.player.wing = { captainIds: [], stance: "balanced" };
+    if (state.player.ship) normaliseShipLoadout(state.player.ship);
+    if (!state.localSpace) {
+        state.localSpace = {
+            locationsById: {},
+            locationIdsBySystemId: {},
+            discoveredLocationIds: {},
+            nextLocalLocationId: 1
+        };
+    }
+    if (typeof state.transitSession === "undefined") state.transitSession = null;
+    
+    // Ensure all systems have local locations generated
+    if (state.universe) {
+        Object.keys(state.universe).forEach(id => {
+            const sysId = Number(id);
+            if (!state.localSpace.locationIdsBySystemId[sysId] || state.localSpace.locationIdsBySystemId[sysId].length === 0) {
+                generateLocalLocationsForSystem(sysId);
+            }
+        });
+    }
+
     if (!state.player.cargo) state.player.cargo = { ore: 0, org: 0, eq: 0 };
     if (!state.world) state.world = { saveModel: "sparse-3d-sites", roles: {} };
     if (!state.world.roles) state.world.roles = {};

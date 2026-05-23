@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { state, createInitialState } from '../js/state.js';
-import { estimateRouteProfit, getRouteMarketValue } from '../js/systems/tradeRoutes/implementation.js';
+import { getRouteMarketValue } from '../js/systems/tradeRoutes/implementation.js';
 import { getExpectedRouteValue, getSpotPrice, getSpotPriceForSector, getBidAskForSector } from '../js/systems/economy/pricing.js';
 import { calibrateInitialUniversePrices } from '../js/systems/economy/initialPrices.js';
 import { recomputeSpatialPrices } from '../js/systems/economy/spatialPrices.js';

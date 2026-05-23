@@ -20,7 +20,7 @@ class MinHeap {
     }
     get size() { return this.items.length; }
     bubbleUp(index) { while (index > 0) { const parent = Math.floor((index - 1) / 2); if (this.compare(this.items[index], this.items[parent]) >= 0) break; [this.items[index], this.items[parent]] = [this.items[parent], this.items[index]]; index = parent; } }
-    sinkDown(index) { const len = this.items.length; while (true) {
+    sinkDown(index) { const len = this.items.length; while (true) { // eslint-disable-line no-constant-condition
             let left = index * 2 + 1;
             let right = left + 1;
             let smallest = index;

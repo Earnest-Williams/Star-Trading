@@ -6,6 +6,8 @@ import { getGuildTier, applyPoliticalEffect, addFactionRep, addFactionHeat, getP
 import { spendTime } from "../core/time.js";
 import { renderMissionBoard } from "./renderMissions.js";
 import { updateUI } from "./renderer.js";
+import { SHIP_MODULE_DEFS } from '../config/shipLoadout.js';
+import { getShipLoadoutSummary, getShipSystemBonuses, canInstallShipModule } from '../systems/shipLoadout.js';
 
 export function renderShipyardPanel() {
     const { player } = state;
@@ -15,12 +17,60 @@ export function renderShipyardPanel() {
         return;
     }
     let html = `<h4>StarDock Shipyard</h4>`;
-    html += `<button data-action="repairShip">Repair Hull/Shields</button>`;
+    html += `<div class="card" style="margin-bottom:15px; padding:10px;">`;
+    html += `<h5>Ship Status &amp; Bonuses</h5>`;
+    const bonuses = getShipSystemBonuses(player.ship);
+    html += `<div><strong>Cargo Holds:</strong> ${player.ship.maxHolds} (+${bonuses.maxHolds} from modules)</div>`;
+    html += `<div><strong>Max Shields:</strong> ${player.ship.maxShields} (+${bonuses.maxShields} from modules)</div>`;
+    html += `<div><strong>Scanner Level:</strong> ${player.ship.scannerLevel} (+${bonuses.scannerLevel} from modules)</div>`;
+    html += `<div><strong>Corridor Scan Power:</strong> +${bonuses.transitScanPower}</div>`;
+    html += `<div><strong>Local Scan Power:</strong> +${bonuses.localScanPower}</div>`;
+    html += `<div><strong>Pulse Reserve Support:</strong> +${bonuses.pulseReserveSupport}</div>`;
+    html += `<div><strong>Combat Rating:</strong> ${player.ship.combatRating || 0} (+${bonuses.combatRating || 0} from modules)</div>`;
+    html += `</div>`;
+
+    html += `<div style="margin-bottom:15px;">`;
+    html += `<button data-action="repairShip" style="margin-right:10px;">Repair Hull/Shields</button>`;
     html += `<button data-action="buyFighters">Buy 10 Fighters</button>`;
-    Object.keys(UPGRADE_DEFS).forEach(key => {
-        const up = UPGRADE_DEFS[key];
-        html += `<div class="commodity-row"><strong>${escapeHtml(up.name)}</strong><br>Cost: ${formatCredits(up.credits)} credits, ${up.minutes} minutes <button data-action="buyUpgrade" data-arg0="${key}">Buy</button></div>`;
+    html += `</div>`;
+
+    const slots = ["weapons", "shields", "pulseTender", "scannerArray", "cargoExpander"];
+    const loadout = getShipLoadoutSummary(player.ship);
+
+    html += `<h5>Modular Upgrade Slots</h5>`;
+    slots.forEach(slot => {
+        const current = loadout[slot];
+        html += `<div class="card" style="margin-bottom:12px; padding:10px;">`;
+        html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">`;
+        html += `<strong>Slot: ${slot.replace(/^\w/, c => c.toUpperCase())}</strong>`;
+        html += `<span class="sector-chip highlight">Installed: ${escapeHtml(current)}</span>`;
+        html += `</div>`;
+
+        const available = Object.values(SHIP_MODULE_DEFS).filter(m => m.slot === slot);
+        available.forEach(mod => {
+            const check = canInstallShipModule(mod.id);
+            const isInstalled = player.ship.loadout[slot] === mod.id;
+            
+            let btn = "";
+            if (isInstalled) {
+                btn = `<button type="button" disabled>Installed</button>`;
+            } else if (check.ok) {
+                btn = `<button data-action="installShipModule" data-arg0="${mod.id}">Install (${formatCredits(check.cost)})</button>`;
+            } else {
+                btn = `<button type="button" disabled title="${escapeHtml(check.reason)}">Lock (${formatCredits(check.cost || mod.credits)})</button>`;
+            }
+
+            html += `<div style="margin-top:8px; border-top:1px solid #333; padding-top:6px; display:flex; justify-content:space-between; align-items:center;">`;
+            html += `<div>`;
+            html += `<strong>${escapeHtml(mod.name)}</strong> (Tier ${mod.tier})<br>`;
+            html += `<small class="muted" style="font-size:0.85em;">${escapeHtml(mod.description)}</small>`;
+            html += `</div>`;
+            html += btn;
+            html += `</div>`;
+        });
+        html += `</div>`;
     });
+
     html += renderMissionBoard();
     document.getElementById("actions").innerHTML = html;
 }

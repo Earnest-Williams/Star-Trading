@@ -616,8 +616,16 @@ function resolveCaptainMeetings() {
 
 export function updateCaptainsDaily(_reason = "daily frontier cycle") {
     normaliseCaptains();
+    import('../wingmen.js').then(({ updateWingmenDaily }) => {
+        updateWingmenDaily();
+    }).catch(err => console.error("Failed to update wingmen daily:", err));
+
     Object.values(state.captains).forEach(c => {
         if (c.status !== "active") return;
+        if (state.player?.wing?.captainIds?.includes(c.id)) {
+            c.currentSector = state.player.currentSector;
+            return;
+        }
         runCaptainDailyAction(c);
     });
     resolveCaptainMeetings();

@@ -112,6 +112,13 @@ export function createInitialState() {
                 issuedDay: null
             }
         },
+        localSpace: {
+            locationsById: {},
+            locationIdsBySystemId: {},
+            discoveredLocationIds: {},
+            nextLocalLocationId: 1
+        },
+        transitSession: null,
         rng: null
     };
 }

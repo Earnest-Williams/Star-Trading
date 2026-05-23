@@ -20,7 +20,10 @@ const CORE_STATE_SLICE = Object.freeze({
     DATA_CARGO: 'dataCargo',
     LOGISTICS_OBJECTIVES: 'logisticsObjectives',
     MISSIONS: 'missions',
-    ENTANGLEMENTS: 'entanglements'
+    ENTANGLEMENTS: 'entanglements',
+    LOCAL_SPACE: 'localSpace',
+    TRANSIT: 'transit',
+    SHIP_LOADOUT: 'shipLoadout'
 });
 
 export const StateSlice = Object.freeze({
@@ -41,7 +44,10 @@ export const DOMAIN_SLICE_MAP = Object.freeze({
     events: { keys: ['worldEvents', 'priorityBriefing', 'simulationTrace', 'nextWorldEventId', 'nextSimulationTraceId'], slices: [StateSlice.EVENTS] },
     dataCargo: { keys: ['dataCargo'], slices: [StateSlice.DATA_CARGO] },
     logisticsObjectives: { keys: ['logisticsObjectives', 'nextLogisticsObjectiveId'], slices: [StateSlice.LOGISTICS_OBJECTIVES] },
-    entanglements: { keys: ['entanglements'], slices: [StateSlice.ENTANGLEMENTS] }
+    entanglements: { keys: ['entanglements'], slices: [StateSlice.ENTANGLEMENTS] },
+    localSpace: { keys: ['localSpace'], slices: [StateSlice.LOCAL_SPACE] },
+    transit: { keys: ['transitSession'], slices: [StateSlice.TRANSIT] },
+    shipLoadout: { keys: ['ship.loadout'], slices: [StateSlice.SHIP_LOADOUT] }
 });
 
 
