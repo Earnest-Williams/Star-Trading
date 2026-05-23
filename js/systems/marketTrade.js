@@ -11,7 +11,7 @@
  */
 
 import { state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
 import { addFactionHeat, addFactionRep, applyPoliticalEffect } from '../core/factions.js';
 import { getPortType } from '../core/ports.js';

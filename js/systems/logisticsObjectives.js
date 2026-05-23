@@ -1,4 +1,5 @@
-import { BALANCE, COMMODITIES, FACTIONS, MAJOR_FACTIONS } from '../constants.js';
+import { BALANCE, COMMODITIES } from '../config/economy.js';
+import { FACTIONS, MAJOR_FACTIONS } from '../config/factions.js';
 import { LOGISTICS_OBJECTIVE_TEMPLATES, LOGISTICS_OBJECTIVE_TEMPLATE_ORDER } from '../config/logisticsObjectives.js';
 import { state } from '../state.js';
 import { getDominantInfluence, getInfluenceSpread, getSectorStatusLabel, addSectorInfluence } from '../core/influence.js';

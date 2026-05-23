@@ -1,4 +1,4 @@
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { state } from '../state.js';
 
 const DEFAULT_TRACE_LIMIT = 160;

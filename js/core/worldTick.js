@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { addWorldEvent } from './worldEvents.js';
 import { addSimulationTraceEvent } from './simulationTrace.js';
 import { registerDailyHook, registerHourlyHook } from './time.js';

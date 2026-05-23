@@ -1,5 +1,6 @@
 import { PLATFORM_PACKAGES } from '../config/chargen.js';
-import { COMMODITY_NAMES, PORT_TYPES } from '../constants.js';
+import { COMMODITY_NAMES } from '../config/economy.js';
+import { PORT_TYPES } from '../config/ports.js';
 import { COMPANY_PRODUCTION_PROFILES } from '../config/companies.js';
 import { getPortType, normalisePortTypeKey } from '../core/ports.js';
 import {

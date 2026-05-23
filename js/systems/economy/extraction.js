@@ -1,4 +1,4 @@
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { makeStock } from '../../utils.js';
 
 function toNumber(value, fallback = 0) {

@@ -2,7 +2,7 @@
 // Opinionated underlay for hidden freight: typed cargo, sector sourcing,
 // receiver demand, inspection risk, and delivery settlement.
 
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { state } from '../state.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import {

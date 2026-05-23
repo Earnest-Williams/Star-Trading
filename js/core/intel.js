@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS } from '../constants.js';
+import { FACTIONS } from '../config/factions.js';
 import { formatCredits, log, random } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
 import {

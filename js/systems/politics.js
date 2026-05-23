@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS, MARKET_COMMODITIES } from '../constants.js';
+import { BALANCE, MARKET_COMMODITIES } from '../config/economy.js';
+import { FACTIONS, MAJOR_FACTIONS, GUILD_FACTIONS } from '../config/factions.js';
 import { getPortType } from '../core/ports.js';
 import { clampRange, formatCredits, log, random } from '../utils.js';
 import { getDominantInfluence, normaliseSectorInfluence, addSectorInfluence, getInfluenceSpread, getSectorStatusLabel } from '../core/influence.js';

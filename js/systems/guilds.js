@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS, FACTION_ASK_TYPES, GUILD_REQUIREMENTS, GUILD_TIER_NAMES } from '../constants.js';
+import { FACTIONS, FACTION_ASK_TYPES, GUILD_REQUIREMENTS, GUILD_TIER_NAMES } from '../config/factions.js';
 import { formatCredits, describeCost, removeCargo, log, random } from '../utils.js';
 import { ensureFactionState, addFactionRep, addFactionTrust, addFactionHeat, addFactionLeverage, getGuildTier, applyPoliticalEffect, getFactionRep, hasGuildJoinAccess, canAffordGuildRequirement } from '../core/factions.js';
 import { spendTime } from '../core/time.js';

@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { MARKET_COMMODITIES } from '../../constants.js';
+import { MARKET_COMMODITIES } from '../../config/economy.js';
 import { patchPort, patchPlanet, patchSite } from '../../core/state/mutations.js';
 import { getEconomyNodes } from './nodeAdapter.js';
 

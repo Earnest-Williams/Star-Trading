@@ -1,5 +1,6 @@
 import { APP_MODES, setAppMode, state } from '../state.js';
-import { BALANCE, UI_LABELS } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
+import { UI_LABELS } from '../config/entities.js';
 import { ARCHETYPE_PRESETS } from '../config/chargen.js';
 import { renderChargenControls } from './renderChargen.js';
 import { renderShell } from './renderShell.js';

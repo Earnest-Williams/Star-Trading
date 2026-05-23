@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { UPGRADE_DEFS, BALANCE } from "../constants.js";
+import { BALANCE } from '../config/economy.js';
+import { UPGRADE_DEFS } from '../config/entities.js';
 import { escapeHtml, formatCredits, log } from "../utils.js";
 import { getGuildTier, applyPoliticalEffect, addFactionRep, addFactionHeat, getPrivateFactionRep } from "../core/factions.js";
 import { spendTime } from "../core/time.js";

@@ -1,5 +1,7 @@
 import { MARKET_BALANCE, TRADE_BALANCE, LOGISTICS_OBJECTIVE_BALANCE } from "./constants/marketBalance.js";
 import { MARKET_COMMODITIES } from "./config/economy/commodities.js";
+import { FACTIONS, DEFAULT_FACTION_RELATIONS, FACTION_INTERESTS, INFLUENCE_BASES, FACTION_ASK_TYPES, MAJOR_FACTIONS, GUILD_FACTIONS, GUILD_TIER_NAMES, GUILD_REQUIREMENTS } from "./config/factions.js";
+import { PORT_TYPES } from "./config/ports.js";
 
 export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
@@ -491,10 +493,7 @@ ROUTE_PLANNER: {
     ]
 };
 
-export const SAVE_VERSION = 20;
-export const SAVE_KEY = "starTradingSaveV14";
-export const SAVE_KEY_LEGACY = "starTradingSaveV13";
-export const SAVE_KEY_CLASSIC = "soloSpaceTraderSaveV6";
+export { SAVE_VERSION, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC } from "./config/persistence.js";
 export const COMMODITIES = MARKET_COMMODITIES;
 export {
     COMMODITY_REGISTRY,
@@ -566,98 +565,6 @@ export const UI_LABELS = Object.freeze({
     importReadFailed: "Import read failed",
     parseErrNonEmptyString: "must be a non-empty string",
 });
-
-export const FACTIONS = {
-    sda: { id: "sda", type: "major", name: "StarDock Authority", short: "SDA", color: "#44aaff", icon: "★", description: "Core government enforcing law, traffic control, and StarDock access.", startingRep: 25 },
-    fu: { id: "fu", type: "major", name: "Frontier Union", short: "FU", color: "#00ff88", icon: "☼", description: "Loose coalition of settlers, free ports, and frontier colonies.", startingRep: 15 },
-    hc: { id: "hc", type: "major", name: "Helion Combine", short: "HC", color: "#ffaa00", icon: "⚒", description: "Industrial combines, ore processors, and hard-edged resource firms.", startingRep: 0 },
-    vc: { id: "vc", type: "major", name: "Void Cartel", short: "VC", color: "#ff4444", icon: "☠", description: "Smugglers, protection rackets, and outlaw logistics networks.", startingRep: -20 },
-    miners: { id: "miners", type: "guild", name: "Miners Guild", short: "MNG", color: "#ffaa00", icon: "⛏", description: "Hard-bitten asteroid prospectors with Helion Combine ties.", startingRep: 0, majorAffinity: "hc" },
-    traders: { id: "traders", type: "guild", name: "Traders Guild", short: "TRD", color: "#00ffcc", icon: "¤", description: "Independent haulers, brokers, and market scouts.", startingRep: 0, majorAffinity: "fu" },
-    colonists: { id: "colonists", type: "guild", name: "Colonists League", short: "COL", color: "#00ff88", icon: "⌂", description: "Settlement advocates and frontier mutual-aid networks.", startingRep: 0, majorAffinity: "fu" },
-    smugglers: { id: "smugglers", type: "guild", name: "Smugglers Syndicate", short: "SMG", color: "#cc66ff", icon: "◆", description: "Quiet-route specialists and off-ledger freight brokers.", startingRep: 0, majorAffinity: "vc" }
-};
-
-export const DEFAULT_FACTION_RELATIONS = {
-    sda: { fu: 30, hc: 10, vc: -80 },
-    fu: { sda: 30, hc: -10, vc: -40 },
-    hc: { sda: 10, fu: -10, vc: -60 },
-    vc: { sda: -80, fu: -40, hc: -60 }
-};
-
-export const FACTION_INTERESTS = {
-    sda: { wants: "stable lanes, registered colonies, taxes, low piracy", dislikes: "smuggling, hidden ports, unregistered settlements", law: "Inspections and patrols rise where SDA influence is high." },
-    fu: { wants: "autonomous colonies, frontier supply, local militias", dislikes: "corporate dependency and abandoned settlements", law: "Colonies grow faster where Frontier influence is high." },
-    hc: { wants: "ore, equipment, fuel, industrial throughput", dislikes: "supply disruption and miner unrest", law: "Mining and factory production improve where Helion influence is high." },
-    vc: { wants: "shadow markets, weak patrols, leverage, hidden routes", dislikes: "cargo scans and reliable state control", law: "Black-market opportunity rises where Cartel influence is high." },
-    miners: { wants: "recognized claims, ore price floors, safer extraction", dislikes: "claim jumping and corporate underpayment", law: "Guild charters improve mining but can pull politics toward Helion." },
-    traders: { wants: "route stability, market intel, bulk contracts", dislikes: "blockades, price shocks, unstable ports", law: "Guild members get better market terms and route information." },
-    colonists: { wants: "population growth, food security, settlement autonomy", dislikes: "abandoned colonies and unsafe migration routes", law: "League charters improve growth and colony output." },
-    smugglers: { wants: "quiet lanes, forged manifests, informal port access", dislikes: "scanners, audits, patrol schedules", law: "Syndicate ties reduce some pirate risk but raise official heat." }
-};
-
-export const INFLUENCE_BASES = {
-    Core: { sda: 58, fu: 18, hc: 14, vc: 6 },
-    Frontier: { sda: 18, fu: 46, hc: 18, vc: 12 },
-    Badlands: { sda: 6, fu: 16, hc: 28, vc: 36 }
-};
-
-export const FACTION_ASK_TYPES = ["ore_quota", "survey_patrol", "frontier_charter", "quiet_delivery", "market_intel"];
-export const MAJOR_FACTIONS = Object.keys(FACTIONS).filter(id => FACTIONS[id].type === "major");
-export const GUILD_FACTIONS = Object.keys(FACTIONS).filter(id => FACTIONS[id].type === "guild");
-export const GUILD_TIER_NAMES = ["None", "Member", "Officer", "Leader"];
-
-export const GUILD_REQUIREMENTS = {
-    miners: { credits: 500, cargo: { ore: 30 }, allowedPortTypes: ["mining", "refinery"], note: "Join at a mining or refinery port." },
-    traders: { credits: 750, cargo: {}, allowedPortTypes: ["consumer", "stardock"], note: "Join at StarDock or a consumer hub." },
-    colonists: { credits: 500, cargo: { org: 20 }, allowedPortTypes: ["agricultural"], allowsPlayerColony: true, note: "Join at an agricultural port or your own colony." },
-    smugglers: { credits: 900, cargo: { eq: 10 }, allowedRegions: ["Badlands"], note: "Join from a Badlands sector." }
-};
-
-export const PORT_TYPES = {
-    stardock: {
-        name: "StarDock Services",
-        factionId: "sda",
-        sells: ["pulse_canister", "heavy_pulse_module", "gate_coils"],
-        buys: ["repair_parts", "electronics", "construction_kits", "pulse_canister", "heavy_pulse_module", "gate_coils", "control_cores"],
-        description: "Shipyard, repairs, upgrades, mission brokerage, and certified pulse logistics."
-    },
-    mining: {
-        name: "Mining Outpost",
-        factionId: "hc",
-        sells: ["ore", "heavy_metals", "rare_earths", "water_ice"],
-        buys: ["org", "eq", "machinery", "repair_parts", "medical_supplies", "pulse_canister"],
-        description: "Exports graded raw materials and imports life support, machinery, repairs, and limited jump-pulse stores."
-    },
-    agricultural: {
-        name: "Agricultural Station",
-        factionId: "fu",
-        sells: ["org", "fertilizer", "medical_supplies"],
-        buys: ["ore", "water_ice", "eq", "machinery", "coolants", "pulse_canister"],
-        description: "Exports biomass, fertilizer, and cultures while importing machinery, water, coolant, and reserve pulse canisters."
-    },
-    industrial: {
-        name: "Industrial Port",
-        factionId: "hc",
-        sells: ["eq", "machinery", "repair_parts", "electronics", "construction_kits", "control_cores", "pulse_canister"],
-        buys: ["ore", "heavy_metals", "rare_earths", "refined_metals", "polymers", "coolants", "org", "heavy_pulse_module"],
-        description: "Exports machinery, electronics, construction kits, and conditioned pulse canisters while importing raw and processed inputs."
-    },
-    consumer: {
-        name: "Consumer Hub",
-        factionId: "fu",
-        sells: [],
-        buys: ["ore", "org", "water_ice", "eq", "repair_parts", "electronics", "medical_supplies", "construction_kits", "pulse_canister"],
-        description: "Pays for frontier staples, colony goods, repair cargo, and packaged jump reserves."
-    },
-    refinery: {
-        name: "Refinery",
-        factionId: "hc",
-        sells: ["refined_metals", "polymers", "coolants", "fertilizer", "eq", "pulse_canister", "heavy_pulse_module"],
-        buys: ["ore", "heavy_metals", "water_ice", "org", "rare_earths", "control_cores"],
-        description: "Turns raw feedstock into refined materials, chemicals, equipment, and packaged jump-pulse inventory."
-    }
-};
 
 export const PLANET_TYPES = {
     terran: { name: "Terran", ore: 1.0, org: 1.2, eq: 1.0, growth: 1.3 },

@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { CARGO_COMMODITIES, COMMODITY_NAMES } from './constants.js';
+import { CARGO_COMMODITIES, COMMODITY_NAMES } from './config/economy.js';
 import { htmlEscape } from './ui/safeHtml.js';
 
 /**

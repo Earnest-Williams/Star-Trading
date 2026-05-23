@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { FACTIONS, MARKET_COMMODITIES } from "../constants.js";
+import { MARKET_COMMODITIES } from '../config/economy.js';
+import { FACTIONS } from '../config/factions.js';
 import {
     buildDataCargoDebugSummary,
     getCurrentSectorKnowledge,

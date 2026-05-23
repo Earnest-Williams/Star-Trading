@@ -1,5 +1,6 @@
 import { state } from '../../state.js';
-import { MARKET_COMMODITIES, PLANET_TYPES } from '../../constants.js';
+import { MARKET_COMMODITIES } from '../../config/economy.js';
+import { PLANET_TYPES } from '../../config/entities.js';
 import { hasEconomicActivity } from '../../utils.js';
 import { getPortType, DEFAULT_PORT_TYPE_KEY } from '../../core/ports.js';
 

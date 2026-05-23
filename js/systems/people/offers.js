@@ -1,4 +1,4 @@
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { state } from '../../state.js';
 import { touchDialogueConversation } from './conversations.js';
 import { addDialogueEvent, DIALOGUE_EVENT_TYPES } from './dialogueEvents.js';

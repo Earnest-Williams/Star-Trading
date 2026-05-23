@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { BALANCE, MARKET_COMMODITIES } from '../../constants.js';
+import { BALANCE, MARKET_COMMODITIES } from '../../config/economy.js';
 import { EventBus } from '../../events.js';
 import { getDominantInfluence } from '../influence.js';
 import { getSectorStatusLabel } from '../influence.js';

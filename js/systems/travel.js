@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { getPrivateFactionRep, addFactionLeverage, getPirateIncidentMultiplier } from '../core/factions.js';

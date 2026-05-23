@@ -1,4 +1,4 @@
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { addIntel } from '../../core/intel.js';
 import { state } from '../../state.js';
 import { asInteger, asNumber, asString, formatItemLabel, isObject } from './common.js';

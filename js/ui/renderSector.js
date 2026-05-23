@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { FACTIONS, NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS, UI_LABELS } from "../constants.js";
+import { FACTIONS } from '../config/factions.js';
+import { NPC_FINDABLE_PARTS, PLANET_TYPES, CONTACT_SERVICE_LABELS, UI_LABELS } from '../config/entities.js';
 import { getPortType } from "../core/ports.js";
 import { escapeHtml, makeStock } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";

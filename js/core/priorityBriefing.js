@@ -1,4 +1,4 @@
-import { MARKET_COMMODITIES } from "../constants.js";
+import { MARKET_COMMODITIES } from '../config/economy.js';
 import { getPortType } from "./ports.js";
 import { buildLogisticsSnapshot } from "../systems/tradeRoutes.js";
 import { formatCommodity, formatCredits } from "../utils.js";

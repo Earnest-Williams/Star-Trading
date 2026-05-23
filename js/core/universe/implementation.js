@@ -1,5 +1,8 @@
 import { state } from '../../state.js';
-import { BALANCE, PORT_TYPES, PLANET_TYPES, DEFAULT_FACTION_RELATIONS, MARKET_COMMODITIES } from '../../constants.js';
+import { BALANCE, MARKET_COMMODITIES } from '../../config/economy.js';
+import { PORT_TYPES } from '../../config/ports.js';
+import { PLANET_TYPES } from '../../config/entities.js';
+import { DEFAULT_FACTION_RELATIONS } from '../../config/factions.js';
 import { GATE_DEFAULTS, PLANET_DEFAULTS, PORT_DEFAULTS, STARFIELD, WORLDGEN_ANCHORS, WORLDGEN_GEOMETRY, WORLDGEN_SPAWN } from '../../config/worldgen.js';
 import { STARTER_PLAYER } from '../../config/player.js';
 import { DEFAULT_BUILD_SPEC, DEFAULT_EMPLOYER_LANE_ID, EMPLOYER_LANES, PLATFORM_PACKAGES, START_PACKAGES, createStarterShipFromPlatform, getStarterCredits } from '../../config/chargen.js';

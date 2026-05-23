@@ -1,4 +1,4 @@
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { addFactionRep } from '../core/factions.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { state } from '../state.js';

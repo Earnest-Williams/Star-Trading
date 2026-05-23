@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { FACTIONS } from '../constants.js';
+import { FACTIONS } from '../config/factions.js';
 import { POLITY_DEFS, LOCAL_AUTHORITY_TYPES, POLITY_SETTINGS } from '../config/polities.js';
 import { getSectorNeighbors } from '../core/navigation.js';
 import { getDominantInfluence } from '../core/influence.js';

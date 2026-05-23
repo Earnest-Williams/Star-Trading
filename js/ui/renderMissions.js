@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { FACTIONS } from "../constants.js";
+import { FACTIONS } from '../config/factions.js';
 import { escapeHtml, formatCredits } from "../utils.js";
 import { getFactionRep, getPrivateFactionRep, getFactionTrust, getGuildTier } from "../core/factions.js";
 import { missionDescription } from "../systems/missions.js";
