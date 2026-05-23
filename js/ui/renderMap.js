@@ -1,4 +1,5 @@
-import { state, APP_MODES } from "../state.js";
+import { APP_MODES, getAppMode } from '../core/state/index.js';
+import { state } from '../state.js';
 import { FACTIONS } from '../config/factions.js';
 import { PLANET_TYPES } from '../config/entities.js';
 import { getPortType } from "../core/ports.js";
@@ -482,7 +483,7 @@ function isShortcutIgnoredTarget(target) {
 }
 
 function canHandleMapGlobalShortcut(event, canvas, gameShell) {
-    if (state.appMode !== APP_MODES.IN_GAME) return false;
+    if (getAppMode() !== APP_MODES.IN_GAME) return false;
     if (!gameShell || gameShell.hidden) return false;
     if (!canvas || !canvas.isConnected || canvas.offsetParent === null) return false;
     if (isShortcutIgnoredTarget(event.target)) return false;

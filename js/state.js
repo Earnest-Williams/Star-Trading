@@ -1,24 +1,5 @@
 import { createInitialEconomyState } from './systems/economy/migration.js';
-
-export const APP_MODES = Object.freeze({
-    MAIN_MENU: "mainMenu",
-    IN_GAME: "inGame",
-    SETTINGS: "settings"
-});
-
-const APP_MODE_VALUES = new Set(Object.values(APP_MODES));
-
-export function isValidAppMode(mode) {
-    return APP_MODE_VALUES.has(mode);
-}
-
-export function setAppMode(mode) {
-    if (!isValidAppMode(mode)) {
-        throw new Error(`Invalid app mode: ${mode}`);
-    }
-    state.appMode = mode;
-    return state.appMode;
-}
+import { APP_MODES } from './core/state/domains.js';
 
 /**
  * Bootstrap source of truth for runtime state shape.

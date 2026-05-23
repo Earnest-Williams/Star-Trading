@@ -1,4 +1,5 @@
-import { APP_MODES, setAppMode, state } from '../state.js';
+import { APP_MODES, setAppMode } from '../core/state/index.js';
+import { state } from '../state.js';
 import { BALANCE } from '../config/economy.js';
 import { UI_LABELS } from '../config/entities.js';
 import { ARCHETYPE_PRESETS } from '../config/chargen.js';

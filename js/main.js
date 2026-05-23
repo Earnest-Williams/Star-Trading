@@ -1,4 +1,5 @@
-import { resetState, state, setAppMode, APP_MODES } from './state.js';
+import { resetState, state } from './state.js';
+import { APP_MODES, setAppMode } from './core/state/index.js';
 import { EventBus } from './events.js';
 import { resetTimeHooks } from './core/time.js';
 import { setPersistenceAdapters, hasSavedGame, loadGame } from './core/persistence.js';

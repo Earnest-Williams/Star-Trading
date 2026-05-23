@@ -41,11 +41,51 @@ export default [
             'js/systems/market.js',
             'js/systems/tradeRoutes/implementation.js',
             'js/ui/renderLogistics.js',
+            'js/ui/ui.js',
+            'js/ui/renderMap.js',
             'js/ui/renderSpreadsheet.js',
             'tests/stateSliceShimGuard.test.js'
         ],
         rules: {
             'no-unused-vars': 'off'
+        }
+    },
+
+    {
+        files: ['js/ui/**/*.js', 'js/app/**/*.js'],
+        rules: {
+            'no-restricted-imports': ['error', {
+                patterns: [{
+                    group: ['../state.js', '../../state.js', './state.js'],
+                    message: 'Use js/core/state selectors/mutations instead of direct js/state.js imports.'
+                }]
+            }]
+        }
+    },
+    {
+        files: [
+            'js/ui/renderMarket.js',
+            'js/ui/renderShipyard.js',
+            'js/ui/renderReputation.js',
+            'js/ui/economyFocus.js',
+            'js/ui/renderCharacterSheet.js',
+            'js/ui/renderCaptains.js',
+            'js/ui/renderSector.js',
+            'js/ui/renderProperty.js',
+            'js/ui/onboarding.js',
+            'js/ui/renderLogistics.js',
+            'js/ui/ui.js',
+            'js/ui/renderMap.js',
+            'js/ui/shellController.js',
+            'js/ui/renderColony.js',
+            'js/ui/renderMissions.js',
+            'js/ui/renderComms.js',
+            'js/ui/renderHUD.js',
+            'js/ui/renderer.js',
+            'js/app/gameSessionController.js'
+        ],
+        rules: {
+            'no-restricted-imports': 'off'
         }
     },
     {
