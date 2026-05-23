@@ -10,7 +10,8 @@ import {
     scanTransitDeeper,
     commitCorridorTransit,
     cancelTransitSession,
-    moveTo
+    moveTo,
+    scanDestinationData
 } from '../js/systems/travel.js';
 
 describe('travel corridor transit sessions', () => {
@@ -140,5 +141,13 @@ describe('travel corridor transit sessions', () => {
         assert.equal(state.player.currentSector, 2);
         assert.equal(state.player.currentLocationId, 'loc-2-arrival');
         assert.equal(state.player.time.minuteOfDay, initialTime + 45); // spends full travelMinutesPerCorridor (45)
+    });
+
+    it('scans destination data only for adjacent systems', () => {
+        const initialTime = state.player.time.minuteOfDay;
+        assert.equal(scanDestinationData(3, 'passive'), false);
+        assert.equal(state.player.time.minuteOfDay, initialTime);
+        assert.ok(scanDestinationData(2, 'passive'));
+        assert.equal(state.player.time.minuteOfDay, initialTime + 15);
     });
 });

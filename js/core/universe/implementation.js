@@ -704,8 +704,8 @@ export function generateUniverse() {
     seedCompaniesAndPeople(rng);
     generateAllLocalLocations();
     if (state.player) {
-        state.player.currentSystemId = state.player.currentSystemId || state.player.currentSector;
-        state.player.currentLocationId = state.player.currentLocationId || `loc-${state.player.currentSystemId}-arrival`;
+        state.player.currentSystemId = state.player.currentSector;
+        state.player.currentLocationId = `loc-${state.player.currentSector}-arrival`;
         if (!state.player.wing) {
             state.player.wing = { captainIds: [], stance: "balanced" };
         }
@@ -1022,7 +1022,7 @@ export function generateLocalLocationsForSystem(systemId) {
             dockable: false,
             scanDifficulty: 40 + Math.floor(shear * 30) + i * 5,
             hazard: isBadlands ? 0.15 : 0.05,
-            threat: site.pirateThreat > 0 ? site.pirateThreat : (Math.random() < 0.3 ? 1 : 0),
+            threat: site.pirateThreat > 0 ? site.pirateThreat : (rng() < 0.3 ? 1 : 0),
             tags: ["unresolved", "metric_shear"],
             data: { anomalyId: `${systemId}-an-${i}`, resolved: false }
         });

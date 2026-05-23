@@ -84,7 +84,7 @@ describe('wingmen system', () => {
         assert.equal(transitModifiers.damageReduction, 0.30);
     });
 
-    it('mirrors player sector during updateCaptainsDaily and skips actions', async () => {
+    it('mirrors player sector during updateCaptainsDaily and skips actions', () => {
         assignWingman('c-1', 'overwatch');
         
         // Move player to sector 2
@@ -92,9 +92,6 @@ describe('wingmen system', () => {
 
         updateCaptainsDaily();
         
-        // Wait a tick for async imports inside updateCaptainsDaily to complete
-        await new Promise(resolve => setTimeout(resolve, 50));
-
         assert.equal(state.captains['c-1'].currentSector, 2);
     });
 });

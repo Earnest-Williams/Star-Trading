@@ -436,7 +436,7 @@ export function renderMapInspector() {
     } else if (adjacent && player.ship) {
         actionHtml = `<button data-action="beginCorridorTransit" data-arg0="${id}">Begin Corridor Transit (${player.ship.travelMinutesPerCorridor}m)</button>`;
         if (player.ship.scannerLevel > 0) {
-            actionHtml += ` <button data-action="scanLocalLocation" data-arg0="loc-${id}-arrival" data-arg1="passive">Scan Destination Data</button>`;
+            actionHtml += ` <button data-action="scanDestinationData" data-arg0="${id}" data-arg1="passive">Scan Destination Data</button>`;
         }
     } else if (adjacent) {
         actionHtml = '<span class="muted">Direct corridor available, but you have no assigned ship.</span>';
