@@ -37,6 +37,20 @@ export function getCurrentLocalLocation() {
     return state.localSpace?.locationsById[state.player.currentLocationId] || null;
 }
 
+export function getCurrentLocalServices() {
+    const loc = getCurrentLocalLocation();
+    if (!loc || !loc.dockable) return new Set();
+    const services = new Set();
+    if (loc.marketId) services.add("market");
+    if (loc.planetId) services.add("colony");
+    if (loc.stationId && loc.stationId === state.world?.roles?.shipyardSiteId) services.add("shipyard");
+    return services;
+}
+
+export function canAccessLocalService(serviceId) {
+    return getCurrentLocalServices().has(serviceId);
+}
+
 export function canMoveLocal(locationId) {
     const { player, localSpace } = state;
     if (!player || !player.ship) return false;
@@ -76,7 +90,7 @@ export function moveLocal(locationId, options = {}) {
         wingmanModifiers: getWingmanLocalModifiers()
     });
 
-    return stateChanged(StateSlice.PLAYER, "localSpace", StateSlice.UI_RUNTIME);
+    return stateChanged(StateSlice.PLAYER, StateSlice.LOCAL_SPACE, StateSlice.UI_RUNTIME);
 }
 
 // =====================================================
@@ -138,6 +152,7 @@ export function scanLocalLocation(locationId, depth = "passive") {
     const { player, localSpace } = state;
     if (!player || !player.ship || !localSpace || !localSpace.locationsById[locationId]) return false;
     const loc = localSpace.locationsById[locationId];
+    if (loc.systemId !== player.currentSystemId) return false;
     const minutes = depth === "deep" ? 60 : 10;
 
     if (!spendTime(minutes)) {
@@ -178,7 +193,7 @@ export function scanLocalLocation(locationId, depth = "passive") {
         resolveScanOutcome({ context: "local_location", locationId, scanPower, difficulty, depth });
     }
 
-    return stateChanged(StateSlice.PLAYER, "localSpace", StateSlice.UI_RUNTIME);
+    return stateChanged(StateSlice.PLAYER, StateSlice.LOCAL_SPACE, StateSlice.UI_RUNTIME);
 }
 
 export function scanLocalSpace(depth = "passive") {
@@ -221,7 +236,7 @@ export function scanLocalSpace(depth = "passive") {
         log("No new local contacts resolved.");
     }
 
-    return stateChanged(StateSlice.PLAYER, "localSpace", StateSlice.UI_RUNTIME);
+    return stateChanged(StateSlice.PLAYER, StateSlice.LOCAL_SPACE, StateSlice.UI_RUNTIME);
 }
 
 // =====================================================
@@ -265,7 +280,7 @@ export function beginCorridorTransit(targetSystemId) {
 
     log(`Began corridor alignment transit toward system ${targetSystemId}. Corridor span: ${corridor.effectiveSpanCost.toFixed(2)}.`);
 
-    return stateChanged(StateSlice.PLAYER, StateSlice.UI_RUNTIME, "transit");
+    return stateChanged(StateSlice.PLAYER, StateSlice.UI_RUNTIME, StateSlice.TRANSIT);
 }
 
 export function scanTransit(depth = "passive") {
@@ -308,7 +323,7 @@ export function scanTransit(depth = "passive") {
         log(`Deep scan pulled an encrypted signal packet from corridor resonance.`);
     }
 
-    return stateChanged("transit", StateSlice.UI_RUNTIME);
+    return stateChanged(StateSlice.TRANSIT, StateSlice.UI_RUNTIME);
 }
 
 export function scanTransitDeeper() {
@@ -359,7 +374,7 @@ export function commitCorridorTransit() {
     // Clear session
     state.transitSession = null;
 
-    return stateChanged(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.UI_RUNTIME, "transit");
+    return stateChanged(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.UI_RUNTIME, StateSlice.TRANSIT);
 }
 
 export function cancelTransitSession() {
@@ -367,7 +382,19 @@ export function cancelTransitSession() {
         state.transitSession = null;
         log("Transit corridor alignment aborted.");
     }
-    return stateChanged("transit", StateSlice.UI_RUNTIME);
+    return stateChanged(StateSlice.TRANSIT, StateSlice.UI_RUNTIME);
+}
+
+export function scanDestinationData(targetSystemId, depth = "passive") {
+    const { player } = state;
+    if (!player || !player.ship) return false;
+    const parsedTarget = Number(targetSystemId);
+    if (!canTransitDirectCorridor(player.currentSystemId, parsedTarget)) return false;
+    const minutes = depth === "deep" ? 45 : 15;
+    if (!spendTime(minutes)) return false;
+    mergePublicSnapshotsOnArrival(parsedTarget);
+    log(`Long-range scan resolved destination data for system ${parsedTarget}.`);
+    return stateChanged(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.UI_RUNTIME);
 }
 
 export function moveTo(target) {

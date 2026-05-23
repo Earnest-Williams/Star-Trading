@@ -221,5 +221,5 @@ export function installShipModule(moduleId) {
 
     log(`Installed ship module: ${def.name}.`);
 
-    return stateChanged(StateSlice.PLAYER, StateSlice.UI_RUNTIME, "shipLoadout");
+    return stateChanged(StateSlice.PLAYER, StateSlice.UI_RUNTIME, StateSlice.SHIP_LOADOUT);
 }

@@ -210,5 +210,7 @@ describe('starting site alignment', () => {
         state.player = shipPlayer;
         generateUniverse();
         assert.equal(state.player.currentSector, state.world.roles.homeSiteId);
+        assert.equal(state.player.currentSystemId, state.world.roles.homeSiteId);
+        assert.equal(state.player.currentLocationId, `loc-${state.world.roles.homeSiteId}-arrival`);
     });
 });

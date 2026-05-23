@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { nudgeCaptainRelation } from './captains.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { StateSlice, stateChanged } from '../core/state/index.js';
-import { log } from '../utils.js';
+import { log, random } from '../utils.js';
 import {
     findEntanglement,
     addOrNudgeEntanglement,
@@ -276,7 +276,7 @@ export function updateWingmenDaily() {
         const entanglement = findEntanglement("wingman", PLAYER_PARTY, party);
         if (entanglement) {
             entanglement.pressure = Math.min(100, (entanglement.pressure || 0) + 8);
-            if (entanglement.pressure > 60 && Math.random() < 0.25) {
+            if (entanglement.pressure > 60 && random() < 0.25) {
                 // Obligation favor debt increases
                 captain.relationshipToPlayer.debt = Math.max(-20, (captain.relationshipToPlayer.debt || 0) - 1);
                 log(`Relying on wingman ${captain.name} increases your obligations.`);

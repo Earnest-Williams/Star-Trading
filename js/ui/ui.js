@@ -40,7 +40,7 @@ import {
 } from './renderCaptains.js';
 
 // System actions
-import { moveTo, restUntilMorning, moveLocal, scanLocalSpace, scanLocalLocation, beginCorridorTransit, scanTransit, scanTransitDeeper, commitCorridorTransit, cancelTransitSession } from '../systems/travel.js';
+import { moveTo, restUntilMorning, moveLocal, scanLocalSpace, scanLocalLocation, beginCorridorTransit, scanTransit, scanTransitDeeper, commitCorridorTransit, cancelTransitSession, canAccessLocalService, scanDestinationData } from '../systems/travel.js';
 import { installShipModule } from '../systems/shipLoadout.js';
 import { assignWingman, releaseWingman } from '../systems/wingmen.js';
 import { surveySector, mineAsteroids } from '../systems/mining.js';
@@ -135,15 +135,15 @@ export function showScreen(screen) {
     if (!GAMEPLAY_SCREENS.has(screen)) return false;
     if (getAppMode() !== APP_MODES.IN_GAME || !getPlayer()) return false;
 
-    if (screen === 'market' && !state.ports[state.player.currentSector]) {
+    if (screen === 'market' && (!state.ports[state.player.currentSector] || !canAccessLocalService('market'))) {
         Notifications.show('No market is available in this sector.', 2);
         return false;
     }
-    if (screen === 'colony' && !state.planets[state.player.currentSector]) {
+    if (screen === 'colony' && (!state.planets[state.player.currentSector] || !canAccessLocalService('colony'))) {
         Notifications.show('No colony is available in this sector.', 2);
         return false;
     }
-    if (screen === 'shipyard' && state.player.currentSector !== state.world?.roles?.shipyardSiteId) {
+    if (screen === 'shipyard' && (state.player.currentSector !== state.world?.roles?.shipyardSiteId || !canAccessLocalService('shipyard'))) {
         Notifications.show('Shipyard access is only available at Stardock.', 2);
         return false;
     }
@@ -331,7 +331,9 @@ const rendererRegistrations = [
         StateSlice.PLAYER,
         StateSlice.UNIVERSE,
         StateSlice.ECONOMY,
-        StateSlice.DIALOGUE
+        StateSlice.DIALOGUE,
+        StateSlice.LOCAL_SPACE,
+        StateSlice.TRANSIT
     ]],
 
     ['acceptedMissions', renderAcceptedMissions, [
@@ -601,15 +603,16 @@ export function registerUIActions() {
     registerAction('loadGame', () => loadGame() ? commandOk() : commandFailed('Load failed.'));
     
     // Local movement, transit, scanning, shipyard loadouts, wingmen
-    registerAction('moveLocal', locationId => moveLocal(locationId) ? commandOk(StateSlice.PLAYER, 'localSpace', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('scanLocalSpace', depth => scanLocalSpace(depth) ? commandOk(StateSlice.PLAYER, 'localSpace', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('scanLocalLocation', (locationId, depth) => scanLocalLocation(locationId, depth) ? commandOk(StateSlice.PLAYER, 'localSpace', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('beginCorridorTransit', targetSector => beginCorridorTransit(targetSector) ? commandOk(StateSlice.PLAYER, 'transit', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('scanTransit', depth => scanTransit(depth) ? commandOk('transit', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('scanTransitDeeper', () => scanTransitDeeper() ? commandOk('transit', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('commitCorridorTransit', () => commitCorridorTransit() ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, 'transit', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('cancelTransitSession', () => cancelTransitSession() ? commandOk('transit', StateSlice.UI_RUNTIME) : commandFailed());
-    registerAction('installShipModule', moduleId => installShipModule(moduleId) ? commandOk(StateSlice.PLAYER, 'shipLoadout', StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('moveLocal', locationId => moveLocal(locationId) ? commandOk(StateSlice.PLAYER, StateSlice.LOCAL_SPACE, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanLocalSpace', depth => scanLocalSpace(depth) ? commandOk(StateSlice.PLAYER, StateSlice.LOCAL_SPACE, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanLocalLocation', (locationId, depth) => scanLocalLocation(locationId, depth) ? commandOk(StateSlice.PLAYER, StateSlice.LOCAL_SPACE, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('beginCorridorTransit', targetSector => beginCorridorTransit(targetSector) ? commandOk(StateSlice.PLAYER, StateSlice.TRANSIT, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanTransit', depth => scanTransit(depth) ? commandOk(StateSlice.TRANSIT, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanTransitDeeper', () => scanTransitDeeper() ? commandOk(StateSlice.TRANSIT, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('scanDestinationData', (targetSystemId, depth) => scanDestinationData(targetSystemId, depth) ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('commitCorridorTransit', () => commitCorridorTransit() ? commandOk(StateSlice.PLAYER, StateSlice.UNIVERSE, StateSlice.TRANSIT, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('cancelTransitSession', () => cancelTransitSession() ? commandOk(StateSlice.TRANSIT, StateSlice.UI_RUNTIME) : commandFailed());
+    registerAction('installShipModule', moduleId => installShipModule(moduleId) ? commandOk(StateSlice.PLAYER, StateSlice.SHIP_LOADOUT, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('assignWingman', (captainId, role) => assignWingman(captainId, role) ? commandOk(StateSlice.PLAYER, StateSlice.CAPTAINS, StateSlice.ENTANGLEMENTS, StateSlice.EVENTS, StateSlice.UI_RUNTIME) : commandFailed());
     registerAction('releaseWingman', captainId => releaseWingman(captainId) ? commandOk(StateSlice.PLAYER, StateSlice.CAPTAINS, StateSlice.EVENTS, StateSlice.UI_RUNTIME) : commandFailed());
 
@@ -676,6 +679,7 @@ export function registerUIActions() {
     registerActionManifest('moveLocal', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('scanLocalSpace', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('scanLocalLocation', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
+    registerActionManifest('scanDestinationData', { argCount: 2, coercers: [parsePositiveId, parseNonEmptyString] });
     registerActionManifest('beginCorridorTransit', { argCount: 1, coercers: [parsePositiveId] });
     registerActionManifest('scanTransit', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('scanTransitDeeper', { argCount: 0 });

@@ -144,4 +144,24 @@ describe('local space system', () => {
         assert.ok(res);
         assert.equal(anomaly.known, true);
     });
+
+    it('rejects scanning locations outside the current system', () => {
+        generateLocalLocationsForSystem(1);
+        state.localSpace.locationsById['loc-2-arrival'] = {
+            id: 'loc-2-arrival',
+            systemId: 2,
+            kind: 'arrival_point',
+            name: 'Remote Arrival',
+            known: true,
+            dockable: false,
+            orbitBand: 0,
+            scanDifficulty: 10,
+            threat: 0,
+            hazard: 0
+        };
+        const minuteBefore = state.player.time.minuteOfDay;
+        const res = scanLocalLocation('loc-2-arrival', 'passive');
+        assert.equal(res, false);
+        assert.equal(state.player.time.minuteOfDay, minuteBefore);
+    });
 });

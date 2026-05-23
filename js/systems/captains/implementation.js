@@ -17,6 +17,7 @@ import { createCaptainTradeRoute, getAllLogisticsNodes, deriveRouteMetrics } fro
 import { createCharacter, normaliseCharacter } from '../../core/characters.js';
 import { getCaptainMissionScore, getCaptainRelationshipActionAdjustment, getPoliticalActionAdjustment } from '../../core/characterChecks.js';
 import { getCaptainMissionEntanglementModifier } from '../entanglements.js';
+import { updateWingmenDaily } from '../wingmen.js';
 
 
 const CAPTAIN_CHARACTER_TEMPLATES = Object.freeze({
@@ -616,9 +617,7 @@ function resolveCaptainMeetings() {
 
 export function updateCaptainsDaily(_reason = "daily frontier cycle") {
     normaliseCaptains();
-    import('../wingmen.js').then(({ updateWingmenDaily }) => {
-        updateWingmenDaily();
-    }).catch(err => console.error("Failed to update wingmen daily:", err));
+    updateWingmenDaily();
 
     Object.values(state.captains).forEach(c => {
         if (c.status !== "active") return;
