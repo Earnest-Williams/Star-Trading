@@ -1,8 +1,9 @@
 // Action-level tests for high-impact player simulation mutations.
-import { beforeEach, describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { BALANCE } from '../js/constants.js';
+import { resetActions } from '../js/core/commands.js';
 import { state } from '../js/state.js';
 import { fightPirates } from '../js/systems/combat.js';
 import { getPortPrice, tradeCommodity } from '../js/systems/market.js';
@@ -20,6 +21,10 @@ function seedGame() {
         selectCurrentSector: true
     });
 }
+
+afterEach(() => {
+    resetActions();
+});
 
 describe('player actions — trading', () => {
     beforeEach(seedGame);

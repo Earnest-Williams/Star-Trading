@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resetState, state, APP_MODES } from '../js/state.js';
@@ -133,6 +133,10 @@ function createFakeDocument() {
 }
 
 describe('ui lifecycle invariants', () => {
+    afterEach(() => {
+        disposeUI();
+    });
+
     it('keeps one rail toggle across dispose/init and binds one mode handler', () => {
         const originalDocument = globalThis.document;
         const fixture = createFakeDocument();
