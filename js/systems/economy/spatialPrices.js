@@ -37,6 +37,7 @@ export function recomputeSpatialPrices() {
   if (!state.economy) return {};
   const profiles = state.economy.profilesBySector || {};
   const sectorIds = Object.keys(profiles).map(Number).sort((a, b) => a - b);
+  buildNeighborCache(sectorIds);
   const mids = state.economy.nodeMidPrices || {};
   const diags = {};
   for (const commodity of MARKET_COMMODITIES) {

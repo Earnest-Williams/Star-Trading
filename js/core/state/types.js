@@ -12,7 +12,7 @@
 /** @typedef {{id:number|string, known?:boolean, status?:string, currentSector?:number, character?:object|null}} CaptainRecord */
 /** @typedef {{id:number|string, type?:string, text:string, day?:number, minute?:number}} WorldEventRecord */
 /** @typedef {{id:number|string, eventType?:string, sourceSystem?:string, timestamp?:{day:number, minuteOfDay:number}}} SimulationTraceRecord */
-/** @typedef {{version?:number, profilesBySector?:Record<string,object>, pressureBySector?:Record<string,object>, recentVolumeBySector?:Record<string,object>, contracts?:Array<object>, nextContractId?:number, dailySummary?:object|null, lastProfileBuildDay?:number|null, lastPressureDay?:number|null, generatedByVersion?:number}} EconomyState */
+/** @typedef {{version?:number, profilesBySector?:Record<string,object>, pressureBySector?:Record<string,object>, recentVolumeBySector?:Record<string,object>, contracts?:Array<object>, nextContractId?:number, dailySummary?:object|null, lastProfileBuildDay?:number|null, lastPressureDay?:number|null, generatedByVersion?:number, universeBasePrices?:Record<string,number>, priceDiagnostics?:Record<string,object>, nodeMidPrices?:Record<string,Record<string,number>>, spatialPriceDiagnostics?:Record<string,Record<string,object>>, lastPriceCalibrationDay?:number|null, lastSpatialPriceDay?:number|null}} EconomyState */
 /** @typedef {{version?:number, player?:PlayerState|null, universe?:Record<string,SiteState>, ports?:Record<string,PortState>, planets?:Record<string,PlanetState>, economy?:EconomyState}} SavePayload */
 /** @typedef {{type:string, args?:unknown[]}} CommandPayload */
 /** @typedef {{ok:boolean, slices:StateSliceName[], invalidateAll:boolean, message:string|null, noop?:boolean}} CommandResult */
