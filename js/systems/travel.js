@@ -386,8 +386,10 @@ export function cancelTransitSession() {
 }
 
 export function scanDestinationData(targetSystemId, depth = "passive") {
+    const { player } = state;
+    if (!player || !player.ship) return false;
     const parsedTarget = Number(targetSystemId);
-    if (!canTransitDirectCorridor(state.player?.currentSystemId, parsedTarget)) return false;
+    if (!canTransitDirectCorridor(player.currentSystemId, parsedTarget)) return false;
     const minutes = depth === "deep" ? 45 : 15;
     if (!spendTime(minutes)) return false;
     mergePublicSnapshotsOnArrival(parsedTarget);
