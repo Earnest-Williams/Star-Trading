@@ -36,8 +36,7 @@ function getRecipeCapacity(profile, recipe) {
     if (scaledCapacity <= 0) return 0;
     const rounded = Math.floor(scaledCapacity);
     if (rounded > 0) return rounded;
-    if (recipe.baseCapacity >= 2 && multiplier >= 0.25) return 1;
-    return 0;
+    return 1;
 }
 
 function getCommodityCapacity(port, profile, commodity) {

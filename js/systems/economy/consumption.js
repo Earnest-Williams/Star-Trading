@@ -1,6 +1,6 @@
 import { state } from '../../state.js';
 import { MARKET_COMMODITIES } from '../../constants.js';
-import { patchPort, patchPlanet } from '../../core/state/mutations.js';
+import { patchPort, patchPlanet, patchSite } from '../../core/state/mutations.js';
 import { getEconomyNodes } from './nodeAdapter.js';
 
 function asNumber(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
@@ -37,13 +37,7 @@ export function applyDailyConsumption() {
         Object.entries(needs).forEach(([commodity, dailyNeed]) => {
             pendingNeeds[commodity] = Math.max(0, asNumber(dailyNeed));
         });
-        const sortedNodeRefs = nodeRefs.slice().sort((a, b) => {
-            const kindDelta = getNodePriority(a) - getNodePriority(b);
-            if (kindDelta !== 0) return kindDelta;
-            const aSector = Number(a?.sectorId ?? sectorId);
-            const bSector = Number(b?.sectorId ?? sectorId);
-            return aSector - bSector;
-        });
+        const sortedNodeRefs = nodeRefs.sort((a, b) => getNodePriority(a) - getNodePriority(b));
         sortedNodeRefs.forEach((nodeRef) => {
             const node = nodeRef.node;
             if (!node.stock) node.stock = {};
@@ -64,6 +58,7 @@ export function applyDailyConsumption() {
             if (stockChanged) {
                 if (nodeRef.kind === 'port') patchPort(sectorId, { stock: updatedStock });
                 else if (nodeRef.kind === 'planet') patchPlanet(sectorId, { stock: updatedStock });
+                else if (nodeRef.kind === 'station') patchSite(sectorId, { station: { ...node, stock: updatedStock } });
                 else node.stock = updatedStock;
             }
         });
