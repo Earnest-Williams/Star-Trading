@@ -29,6 +29,16 @@ function roleMultiplier(profile, recipe) {
     return 0.25;
 }
 
+
+function getRecipeCapacity(profile, recipe) {
+    const multiplier = roleMultiplier(profile, recipe);
+    const scaledCapacity = recipe.baseCapacity * multiplier;
+    if (scaledCapacity <= 0) return 0;
+    const rounded = Math.floor(scaledCapacity);
+    if (rounded > 0) return rounded;
+    return 1;
+}
+
 function getCommodityCapacity(port, profile, commodity) {
     const explicit = Number(port?.maxStock?.[commodity]);
     if (Number.isFinite(explicit) && explicit > 0) return explicit;
@@ -72,7 +82,7 @@ export function applyDailyProduction() {
             });
         }
         Object.entries(PRODUCTION_RECIPES).forEach(([commodity, recipe]) => {
-            const capacity = Math.floor(recipe.baseCapacity * roleMultiplier(profile, recipe));
+            const capacity = getRecipeCapacity(profile, recipe);
             if (capacity <= 0) return;
             let maxByInput = capacity;
             Object.entries(recipe.inputs).forEach(([input, amountPerUnit]) => {

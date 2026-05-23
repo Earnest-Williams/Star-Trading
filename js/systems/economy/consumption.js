@@ -1,6 +1,6 @@
 import { state } from '../../state.js';
 import { MARKET_COMMODITIES } from '../../constants.js';
-import { patchPort, patchPlanet } from '../../core/state/mutations.js';
+import { patchPort, patchPlanet, patchSite } from '../../core/state/mutations.js';
 import { getEconomyNodes } from './nodeAdapter.js';
 
 function asNumber(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
@@ -16,6 +16,13 @@ function mergeNeeds(...sources) {
     return merged;
 }
 
+function getNodePriority(nodeRef) {
+    const nodeKind = nodeRef?.kind;
+    if (nodeKind === 'planet') return 0;
+    if (nodeKind === 'port') return 1;
+    return 2;
+}
+
 export function applyDailyConsumption() {
     const summary = { consumed: {}, unmetDemand: {}, consumedBySector: {}, unmetDemandBySector: {}, sectorsWithShortage: 0 };
     MARKET_COMMODITIES.forEach((commodity) => { summary.consumed[commodity] = 0; summary.unmetDemand[commodity] = 0; });
@@ -26,31 +33,40 @@ export function applyDailyConsumption() {
         const sectorConsumed = {};
         const sectorUnmet = {};
         let hadShortage = false;
-        nodeRefs.forEach((nodeRef) => {
-        const node = nodeRef.node;
-        if (!node.stock) node.stock = {};
-        const updatedStock = { ...node.stock };
-        let stockChanged = false;
+        const pendingNeeds = {};
         Object.entries(needs).forEach(([commodity, dailyNeed]) => {
-            const need = Math.max(0, asNumber(dailyNeed));
-            const available = Math.max(0, asNumber(updatedStock[commodity]));
-            const consumed = Math.min(available, need);
-            const unmet = Math.max(0, need - consumed);
-            if (consumed > 0) {
+            pendingNeeds[commodity] = Math.max(0, asNumber(dailyNeed));
+        });
+        const sortedNodeRefs = nodeRefs.sort((a, b) => getNodePriority(a) - getNodePriority(b));
+        sortedNodeRefs.forEach((nodeRef) => {
+            const node = nodeRef.node;
+            if (!node.stock) node.stock = {};
+            const updatedStock = { ...node.stock };
+            let stockChanged = false;
+            Object.keys(pendingNeeds).forEach((commodity) => {
+                const remainingNeed = Math.max(0, asNumber(pendingNeeds[commodity]));
+                if (remainingNeed <= 0) return;
+                const available = Math.max(0, asNumber(updatedStock[commodity]));
+                const consumed = Math.min(available, remainingNeed);
+                if (consumed <= 0) return;
                 updatedStock[commodity] = Math.max(0, available - consumed);
+                pendingNeeds[commodity] = Math.max(0, remainingNeed - consumed);
+                summary.consumed[commodity] = (summary.consumed[commodity] || 0) + consumed;
+                sectorConsumed[commodity] = (sectorConsumed[commodity] || 0) + consumed;
                 stockChanged = true;
+            });
+            if (stockChanged) {
+                if (nodeRef.kind === 'port') patchPort(sectorId, { stock: updatedStock });
+                else if (nodeRef.kind === 'planet') patchPlanet(sectorId, { stock: updatedStock });
+                else if (nodeRef.kind === 'station') patchSite(sectorId, { station: { ...node, stock: updatedStock } });
+                else node.stock = updatedStock;
             }
-            summary.consumed[commodity] = (summary.consumed[commodity] || 0) + consumed;
+        });
+        Object.entries(pendingNeeds).forEach(([commodity, remainingNeed]) => {
+            const unmet = Math.max(0, asNumber(remainingNeed));
             summary.unmetDemand[commodity] = (summary.unmetDemand[commodity] || 0) + unmet;
-            sectorConsumed[commodity] = (sectorConsumed[commodity] || 0) + consumed;
             sectorUnmet[commodity] = (sectorUnmet[commodity] || 0) + unmet;
             if (unmet > 0) hadShortage = true;
-        });
-        if (stockChanged) {
-            if (nodeRef.kind === 'port') patchPort(sectorId, { stock: updatedStock });
-            else if (nodeRef.kind === 'planet') patchPlanet(sectorId, { stock: updatedStock });
-            else node.stock = updatedStock;
-        }
         });
         summary.consumedBySector[sectorId] = sectorConsumed;
         summary.unmetDemandBySector[sectorId] = sectorUnmet;
