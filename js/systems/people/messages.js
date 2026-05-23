@@ -1,4 +1,4 @@
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
 import { state } from '../../state.js';
 import { normaliseDialogueTables } from './conversationParts.js';

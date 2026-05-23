@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { MAJOR_FACTIONS } from '../../constants.js';
+import { MAJOR_FACTIONS } from '../../config/factions.js';
 import { clampRange } from '../../utils.js';
 import { addWorldEvent } from '../../core/worldEvents.js';
 import { getFactionRep, getFactionHeat } from '../../core/factions.js';

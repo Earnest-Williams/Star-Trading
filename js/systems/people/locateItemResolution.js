@@ -1,4 +1,5 @@
-import { BALANCE, NPC_FINDABLE_PART_DEFS } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
+import { NPC_FINDABLE_PART_DEFS } from '../../config/entities.js';
 import { state } from '../../state.js';
 import { random } from '../../utils.js';
 import { chooseStable } from './dialogueVoice.js';

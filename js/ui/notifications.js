@@ -1,4 +1,4 @@
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 
 export const Notifications = (function() {
     const active = [];

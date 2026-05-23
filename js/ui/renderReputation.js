@@ -1,6 +1,8 @@
 import { state } from "../state.js";
 import { getSectorNeighbors } from "../core/navigation.js";
-import { FACTIONS, MAJOR_FACTIONS, PLANET_TYPES, FACTION_INTERESTS, GUILD_REQUIREMENTS, DEBUG_MODE, GUILD_TIER_NAMES } from "../constants.js";
+import { FACTIONS, MAJOR_FACTIONS, FACTION_INTERESTS, GUILD_REQUIREMENTS, GUILD_TIER_NAMES } from '../config/factions.js';
+import { PLANET_TYPES } from '../config/entities.js';
+import { DEBUG_MODE } from '../config/entities.js';
 import { getPortType } from "../core/ports.js";
 import { escapeHtml, formatTime, formatCommodity } from "../utils.js";
 import { getSectorFactionId, getSectorStatusLabel, getInfluenceSpread } from "../core/influence.js";

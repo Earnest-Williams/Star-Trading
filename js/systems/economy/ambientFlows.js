@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { BALANCE, MARKET_COMMODITIES } from '../../constants.js';
+import { BALANCE, MARKET_COMMODITIES } from '../../config/economy.js';
 import { formatCommodity, makeStock, random } from '../../utils.js';
 import { getAllLogisticsNodes, deriveRouteMetrics } from '../tradeRoutes.js';
 import { getBidAskForSector, getMidMarketPriceForSector } from './pricing.js';

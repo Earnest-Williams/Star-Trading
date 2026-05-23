@@ -1,6 +1,8 @@
 // @ts-check
 import { state } from '../../state.js';
-import { FACTIONS, BALANCE, CAPTAIN_DEFS, MAJOR_FACTIONS } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
+import { FACTIONS, MAJOR_FACTIONS } from '../../config/factions.js';
+import { CAPTAIN_DEFS } from '../../config/entities.js';
 import { getPortType } from '../../core/ports.js';
 import { getUniverseBasePrice } from '../economy/initialPrices.js';
 import { getCommodityDef } from '../../config/economy/commodities.js';

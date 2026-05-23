@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
+import { FACTIONS } from '../config/factions.js';
 import { EventBus } from '../events.js';
 import { recordLogisticsDelivery } from './logisticsObjectives.js';
 import { normaliseDataCargoState } from '../core/dataCargo.js';

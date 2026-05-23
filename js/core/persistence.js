@@ -1,7 +1,10 @@
 // @ts-check
 import { createInitialState, state } from '../state.js';
 import { createPlayer } from './universe.js';
-import { BALANCE, SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION, CARGO_COMMODITIES, DEFAULT_FACTION_RELATIONS, MARKET_COMMODITIES, PORT_DEFAULTS } from '../constants.js';
+import { BALANCE, CARGO_COMMODITIES, MARKET_COMMODITIES } from '../config/economy.js';
+import { DEFAULT_FACTION_RELATIONS } from '../config/factions.js';
+import { SAVE_KEY, SAVE_KEY_LEGACY, SAVE_KEY_CLASSIC, SAVE_VERSION } from '../config/persistence.js';
+import { PORT_DEFAULTS } from '../config/worldgen.js';
 import { ensureFactionState, clampPlayerState } from './factions.js';
 import { normaliseSectorInfluence, getDominantInfluence } from './influence.js';
 import { getSectorStatusLabel } from './influence.js';

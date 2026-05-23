@@ -1,5 +1,6 @@
 import { state, APP_MODES } from "../state.js";
-import { FACTIONS, PLANET_TYPES } from "../constants.js";
+import { FACTIONS } from '../config/factions.js';
+import { PLANET_TYPES } from '../config/entities.js';
 import { getPortType } from "../core/ports.js";
 import { getSectorFactionId, getSectorStatusLabel } from "../core/influence.js";
 import { getCaptainsInSector } from "../systems/captains.js";

@@ -18,7 +18,7 @@ import {
 } from '../../core/state/mutations.js';
 import { getCaptainById, getRouteById, getTradeRoutes } from '../../core/state/selectors.js';
 import { StateSlice, stateChanged } from '../../core/state/index.js';
-import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../constants.js';
+import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../config/economy.js';
 import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { getSpotPriceForSector, getExpectedRouteValue } from '../economy/pricing.js';

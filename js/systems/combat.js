@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { log, random } from '../utils.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { addFactionRep, addFactionLeverage, getPrivateFactionRep, getFactionTrust, applyPoliticalEffect } from '../core/factions.js';

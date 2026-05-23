@@ -1,5 +1,6 @@
 import { state } from "../state.js";
-import { FACTIONS, ARCHETYPE_LABELS, GUILD_TIER_NAMES } from "../constants.js";
+import { FACTIONS, GUILD_TIER_NAMES } from '../config/factions.js';
+import { ARCHETYPE_LABELS } from '../config/entities.js';
 import { escapeHtml, formatCredits, random } from "../utils.js";
 import { getCaptainsInSector, getCaptain, getCaptainDominantFaction, getCaptainRelationshipLabel, captainDisplayName, nudgeCaptainRelation, getKnownCaptains } from "../systems/captains.js";
 import { startRomanceWithCaptain, deepenRomanceWithCaptain, canStartRomanceWithCaptain, canDeepenRomanceWithCaptain } from "../systems/entanglements.js";

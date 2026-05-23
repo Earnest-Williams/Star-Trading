@@ -1,0 +1,24 @@
+export const FACTIONS = Object.freeze({
+    sda: { id: "sda", type: "major", name: "StarDock Authority", short: "SDA", color: "#44aaff", icon: "★", description: "Core government enforcing law, traffic control, and StarDock access.", startingRep: 25 },
+    fu: { id: "fu", type: "major", name: "Frontier Union", short: "FU", color: "#00ff88", icon: "☼", description: "Loose coalition of settlers, free ports, and frontier colonies.", startingRep: 15 },
+    hc: { id: "hc", type: "major", name: "Helion Combine", short: "HC", color: "#ffaa00", icon: "⚒", description: "Industrial combines, ore processors, and hard-edged resource firms.", startingRep: 0 },
+    vc: { id: "vc", type: "major", name: "Void Cartel", short: "VC", color: "#ff4444", icon: "☠", description: "Smugglers, protection rackets, and outlaw logistics networks.", startingRep: -20 },
+    miners: { id: "miners", type: "guild", name: "Miners Guild", short: "MNG", color: "#ffaa00", icon: "⛏", description: "Hard-bitten asteroid prospectors with Helion Combine ties.", startingRep: 0, majorAffinity: "hc" },
+    traders: { id: "traders", type: "guild", name: "Traders Guild", short: "TRD", color: "#00ffcc", icon: "¤", description: "Independent haulers, brokers, and market scouts.", startingRep: 0, majorAffinity: "fu" },
+    colonists: { id: "colonists", type: "guild", name: "Colonists League", short: "COL", color: "#00ff88", icon: "⌂", description: "Settlement advocates and frontier mutual-aid networks.", startingRep: 0, majorAffinity: "fu" },
+    smugglers: { id: "smugglers", type: "guild", name: "Smugglers Syndicate", short: "SMG", color: "#cc66ff", icon: "◆", description: "Quiet-route specialists and off-ledger freight brokers.", startingRep: 0, majorAffinity: "vc" }
+});
+
+export const DEFAULT_FACTION_RELATIONS = Object.freeze({
+    sda: Object.freeze({ fu: 30, hc: 10, vc: -80 }),
+    fu: Object.freeze({ sda: 30, hc: -10, vc: -40 }),
+    hc: Object.freeze({ sda: 10, fu: -10, vc: -60 }),
+    vc: Object.freeze({ sda: -80, fu: -40, hc: -60 })
+});
+export const FACTION_INTERESTS = { sda: { wants: "stable lanes, registered colonies, taxes, low piracy", dislikes: "smuggling, hidden ports, unregistered settlements", law: "Inspections and patrols rise where SDA influence is high." }, fu: { wants: "autonomous colonies, frontier supply, local militias", dislikes: "corporate dependency and abandoned settlements", law: "Colonies grow faster where Frontier influence is high." }, hc: { wants: "ore, equipment, fuel, industrial throughput", dislikes: "supply disruption and miner unrest", law: "Mining and factory production improve where Helion influence is high." }, vc: { wants: "shadow markets, weak patrols, leverage, hidden routes", dislikes: "cargo scans and reliable state control", law: "Black-market opportunity rises where Cartel influence is high." }, miners: { wants: "recognized claims, ore price floors, safer extraction", dislikes: "claim jumping and corporate underpayment", law: "Guild charters improve mining but can pull politics toward Helion." }, traders: { wants: "route stability, market intel, bulk contracts", dislikes: "blockades, price shocks, unstable ports", law: "Guild members get better market terms and route information." }, colonists: { wants: "population growth, food security, settlement autonomy", dislikes: "abandoned colonies and unsafe migration routes", law: "League charters improve growth and colony output." }, smugglers: { wants: "quiet lanes, forged manifests, informal port access", dislikes: "scanners, audits, patrol schedules", law: "Syndicate ties reduce some pirate risk but raise official heat." } };
+export const INFLUENCE_BASES = { Core: { sda: 58, fu: 18, hc: 14, vc: 6 }, Frontier: { sda: 18, fu: 46, hc: 18, vc: 12 }, Badlands: { sda: 6, fu: 16, hc: 28, vc: 36 } };
+export const FACTION_ASK_TYPES = Object.freeze(["ore_quota", "survey_patrol", "frontier_charter", "quiet_delivery", "market_intel"]);
+export const MAJOR_FACTIONS = Object.freeze(Object.keys(FACTIONS).filter((id) => FACTIONS[id].type === "major"));
+export const GUILD_FACTIONS = Object.freeze(Object.keys(FACTIONS).filter((id) => FACTIONS[id].type === "guild"));
+export const GUILD_TIER_NAMES = Object.freeze(["None", "Member", "Officer", "Leader"]);
+export const GUILD_REQUIREMENTS = { miners: { credits: 500, cargo: { ore: 30 }, allowedPortTypes: ["mining", "refinery"], note: "Join at a mining or refinery port." }, traders: { credits: 750, cargo: {}, allowedPortTypes: ["consumer", "stardock"], note: "Join at StarDock or a consumer hub." }, colonists: { credits: 500, cargo: { org: 20 }, allowedPortTypes: ["agricultural"], allowsPlayerColony: true, note: "Join at an agricultural port or your own colony." }, smugglers: { credits: 900, cargo: { eq: 10 }, allowedRegions: ["Badlands"], note: "Join from a Badlands sector." } };

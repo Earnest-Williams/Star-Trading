@@ -1,5 +1,7 @@
 import { state } from '../state.js';
-import { BALANCE, COMMODITIES, PLANET_TYPES, FACTIONS, BUILDING_DEFS } from '../constants.js';
+import { BALANCE, COMMODITIES } from '../config/economy.js';
+import { PLANET_TYPES, BUILDING_DEFS } from '../config/entities.js';
+import { FACTIONS } from '../config/factions.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, getFreeHolds, hasCargo, removeCargo, describeCost, log, random } from '../utils.js';
 import { getDominantInfluence, addSectorInfluence } from '../core/influence.js';
 import { addWorldEvent } from '../core/worldEvents.js';

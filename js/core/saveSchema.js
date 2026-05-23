@@ -1,4 +1,4 @@
-import { SAVE_VERSION } from '../constants.js';
+import { SAVE_VERSION } from '../config/persistence.js';
 
 // Persisted state manifest: this is the only list buildSaveData() may serialize.
 // Persisted fields below are durable game data needed to resume a run.

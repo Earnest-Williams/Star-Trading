@@ -1,4 +1,5 @@
-import { DEFAULT_FACTION_RELATIONS, BALANCE } from '../../constants.js';
+import { DEFAULT_FACTION_RELATIONS } from '../../config/factions.js';
+import { BALANCE } from '../../config/economy.js';
 
 export function isObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);

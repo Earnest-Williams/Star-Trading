@@ -1,4 +1,4 @@
-import { PORT_TYPES } from '../constants.js';
+import { PORT_TYPES } from '../config/ports.js';
 
 export const DEFAULT_PORT_TYPE_KEY = 'consumer';
 

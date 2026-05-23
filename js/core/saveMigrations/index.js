@@ -1,4 +1,4 @@
-import { SAVE_VERSION } from '../../constants.js';
+import { SAVE_VERSION } from '../../config/persistence.js';
 import { apply as applyV06 } from './v06.js';
 import { apply as applyV07 } from './v07.js';
 import { apply as applyV08 } from './v08.js';

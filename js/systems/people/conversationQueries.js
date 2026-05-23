@@ -1,4 +1,4 @@
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { state } from '../../state.js';
 import { DIALOGUE_MEMORY_STATUSES, DIALOGUE_MEMORY_TYPES } from './memory.js';
 import { DIALOGUE_MESSAGE_STATUSES } from './messages.js';

@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { getCommodityDef } from '../../config/economy/commodities.js';
 import { getMidPriceForSector, getSpatialPriceDiagnostics } from './spatialPrices.js';
 

@@ -1,5 +1,5 @@
 import { state } from '../../state.js';
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { formatCommodity, log } from '../../utils.js';
 import { getPulseServiceSignalForSector } from './pulseService.js';
 import { getUniverseBasePrice } from './initialPrices.js';

@@ -1,4 +1,4 @@
-import { MARKET_COMMODITIES } from '../constants.js';
+import { MARKET_COMMODITIES } from '../config/economy.js';
 
 export const COMPANY_SPAWN_RULES = Object.freeze({
     SHIP_REFITTER_CHANCE_BY_ANCHOR: Object.freeze({

@@ -14,7 +14,7 @@ import { registerSimulationTickHooks } from '../core/worldTick.js';
 import { addWorldEvent } from '../core/worldEvents.js';
 import { Notifications } from '../ui/notifications.js';
 import { syncShellVisibility } from '../ui/renderShell.js';
-import { UI_LABELS } from '../constants.js';
+import { UI_LABELS } from '../config/entities.js';
 
 export function createGameSessionController() {
     let gameplayInitialized = false;

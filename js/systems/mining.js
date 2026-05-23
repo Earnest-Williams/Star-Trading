@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
+import { FACTIONS } from '../config/factions.js';
 import { getFreeHolds, log, random } from '../utils.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { addSectorInfluence } from '../core/influence.js';

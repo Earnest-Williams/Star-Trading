@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { getSectorNeighbors } from "../core/navigation.js";
-import { FACTIONS, BALANCE, CARGO_COMMODITIES, GUILD_FACTIONS, GUILD_TIER_NAMES } from "../constants.js";
+import { BALANCE, CARGO_COMMODITIES } from '../config/economy.js';
+import { FACTIONS, GUILD_FACTIONS, GUILD_TIER_NAMES } from '../config/factions.js';
 import { escapeHtml, formatCredits, formatTime, formatCommodity, getCargoUsed } from "../utils.js";
 import { ensureFactionState, clampPlayerState, getKnownFactionIds, getFactionRep, getFactionHeat, getFactionBarPercent, getFactionLabel, getGuildTier } from "../core/factions.js";
 import { Renderer } from "./renderer.js";

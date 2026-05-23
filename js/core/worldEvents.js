@@ -1,5 +1,5 @@
 // @ts-check
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { log } from '../utils.js';
 import { Notifications } from '../ui/notifications.js';
 import { addSimulationTraceEvent, normaliseSimulationTraceCauses } from './simulationTrace.js';

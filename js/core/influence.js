@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-import { BALANCE, FACTIONS, MAJOR_FACTIONS, INFLUENCE_BASES } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
+import { FACTIONS, MAJOR_FACTIONS, INFLUENCE_BASES } from '../config/factions.js';
 import { clampRange, log } from '../utils.js';
 import { addWorldEvent } from './worldEvents.js';
 

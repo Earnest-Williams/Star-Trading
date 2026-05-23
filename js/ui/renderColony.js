@@ -1,5 +1,7 @@
 import { state } from "../state.js";
-import { FACTIONS, BALANCE, COMMODITIES, GUILD_FACTIONS, PLANET_TYPES, BUILDING_DEFS } from "../constants.js";
+import { BALANCE, COMMODITIES } from '../config/economy.js';
+import { FACTIONS, GUILD_FACTIONS } from '../config/factions.js';
+import { PLANET_TYPES, BUILDING_DEFS } from '../config/entities.js';
 import { escapeHtml, formatCommodity } from "../utils.js";
 import { getGuildTier } from "../core/factions.js";
 import { renderPlanetSummary } from "./renderSector.js";

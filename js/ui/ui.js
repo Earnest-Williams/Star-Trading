@@ -1,7 +1,8 @@
 import { state, APP_MODES } from '../state.js';
 import { Renderer, updateUI } from './renderer.js';
 import { StateSlice, stateChanged } from '../core/state/index.js';
-import { BALANCE, UI_LABELS } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
+import { UI_LABELS } from '../config/entities.js';
 import { advanceTime } from '../core/time.js';
 import { commandFailed, commandOk, executeAction, registerAction, registerActionManifest, resetActions, parseIntegerArg } from '../core/commands.js';
 import { savePreferencePatch } from '../core/preferences.js';

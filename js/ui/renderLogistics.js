@@ -1,4 +1,5 @@
-import { FACTIONS, COMMODITIES } from "../constants.js";
+import { COMMODITIES } from '../config/economy.js';
+import { FACTIONS } from '../config/factions.js';
 import { escapeHtml, formatCredits, formatCommodity, makeStock } from "../utils.js";
 import { getColonyDailyNeeds } from "../systems/colonies.js";
 import { buildLogisticsSnapshot, getRouteEscortCandidates } from "../systems/tradeRoutes.js";

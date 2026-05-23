@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE, MINUTES_PER_HOUR } from '../constants.js';
+import { BALANCE, MINUTES_PER_HOUR } from '../config/economy.js';
 import { EventBus } from '../events.js';
 import { log } from '../utils.js';
 

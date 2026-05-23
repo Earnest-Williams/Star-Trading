@@ -9,7 +9,7 @@ import { getPortType, normalisePortTypeKey } from '../core/ports.js';
 import { getDominantInfluence } from '../core/influence.js';
 import { createGeneratedPerson, resetPeopleState } from './people.js';
 import { hasEconomicActivity } from '../utils.js';
-import { MARKET_COMMODITIES } from '../constants.js';
+import { MARKET_COMMODITIES } from '../config/economy.js';
 import { deriveRouteMetrics } from './tradeRoutes.js';
 import { chooseCapacityBasedCompanyTypes } from './economy/companyScoring.js';
 

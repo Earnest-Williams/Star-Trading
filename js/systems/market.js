@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { BALANCE } from '../constants.js';
+import { BALANCE } from '../config/economy.js';
 import { formatCommodity, formatCredits, getFreeHolds, log, random } from '../utils.js';
 import { getFactionPriceMultiplier } from '../core/factions.js';
 import { spendTime } from '../core/time.js';

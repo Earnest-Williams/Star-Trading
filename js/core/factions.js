@@ -1,5 +1,7 @@
 import { state } from '../state.js';
-import { FACTIONS, DEFAULT_FACTION_RELATIONS, BALANCE, CARGO_COMMODITIES, CONTACT_DEFS, GUILD_FACTIONS, GUILD_REQUIREMENTS } from '../constants.js';
+import { BALANCE, CARGO_COMMODITIES } from '../config/economy.js';
+import { FACTIONS, DEFAULT_FACTION_RELATIONS, GUILD_FACTIONS, GUILD_REQUIREMENTS } from '../config/factions.js';
+import { CONTACT_DEFS } from '../config/entities.js';
 import { getPortType, normalisePortTypeKey } from './ports.js';
 import { clampRange, hasCargo, log } from '../utils.js';
 import { addSectorInfluence, getInfluenceSpread } from './influence.js';

@@ -1,4 +1,4 @@
-import { BALANCE } from '../../constants.js';
+import { BALANCE } from '../../config/economy.js';
 import { state } from '../../state.js';
 import { asInteger, asString, formatItemLabel, isObject } from './common.js';
 import { ensureDialogueRuntimeStorage } from './conversationParts.js';
