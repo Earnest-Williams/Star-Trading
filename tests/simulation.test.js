@@ -61,6 +61,11 @@ function registerSimulationHooks() {
     });
 }
 
+afterEach(() => {
+    clearDailyHooks();
+    clearHourlyHooks();
+});
+
 describe('seededRng', () => {
     it('is deterministic for the same seed', () => {
         const rngA = seededRng(FIXED_SEED);
@@ -207,9 +212,4 @@ describe('simulation — 10-day advance', () => {
             });
         });
     });
-});
-
-afterEach(() => {
-    clearDailyHooks();
-    clearHourlyHooks();
 });
