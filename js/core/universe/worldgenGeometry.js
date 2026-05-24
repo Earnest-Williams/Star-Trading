@@ -20,8 +20,19 @@ const RICHNESS_LABELS = {
     strategic: "Strategic"
 };
 
-function clamp(value, min, max) {
+export function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+}
+
+export function pickWeighted(weights, rng) {
+    const entries = Object.entries(weights);
+    const total = entries.reduce((sum, entry) => sum + entry[1], 0);
+    let roll = rng() * total;
+    for (const [key, weight] of entries) {
+        roll -= weight;
+        if (roll <= 0) return key;
+    }
+    return entries[entries.length - 1][0];
 }
 
 export function coordKey(coord) {
