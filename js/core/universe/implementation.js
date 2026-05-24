@@ -699,13 +699,13 @@ export function validateClusterWorldgenAfterEconomy(clusterHintsBySiteId) {
     if (!clusterHintsBySiteId) return errors;
     const hintedSiteIds = Object.keys(clusterHintsBySiteId).map(Number);
     const economicSiteIds = hintedSiteIds.filter((id) => hasEconomicActivity(id));
-    const missingProfiles = economicSiteIds.filter((id) => !state.economy?.profilesBySector?.[id]);
-    if (missingProfiles.length > 0) {
-        errors.push(`missing economy profiles for hinted sites ${missingProfiles.join(', ')}`);
-    }
     if (!state.economy) {
         errors.push("missing economy state");
         return errors;
+    }
+    const missingProfiles = economicSiteIds.filter((id) => !state.economy.profilesBySector?.[id]);
+    if (missingProfiles.length > 0) {
+        errors.push("missing economy profiles for hinted sites " + missingProfiles.join(", "));
     }
     const hasPressure = state.economy.pressureBySector
         && Object.keys(state.economy.pressureBySector).length > 0;
