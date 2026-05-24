@@ -60,10 +60,13 @@ export function validateClusterAssemblyResult(result, config) {
         errors.push(`expected ${config.occupiedSites} occupied sites, got ${siteEntries.length}`);
     }
     const seenCoordKeys = new Set();
-    const blockedFields = ["roleHint", "clusterId", "family", "localId", "connectorKinds", "stockBias"];
+    const blockedFields = ["roleHint", "clusterId", "family", "localId", "connectorKinds", "stockBias", "portHint", "planetHint", "asteroidHint", "stationHint", "riskHint"];
     let hasHomeCandidate = false;
     let hasNonStarterConnector = false;
     for (const [siteIdStr, site] of siteEntries) {
+        if (!/^\d+$/.test(siteIdStr)) {
+            errors.push(`site map key '${siteIdStr}' is not a numeric site id`);
+        }
         const siteId = Number(siteIdStr);
         if (!Number.isFinite(site?.coord?.x) || !Number.isFinite(site?.coord?.y) || !Number.isFinite(site?.coord?.z)) {
             errors.push(`site ${siteId} has invalid coordinate`);

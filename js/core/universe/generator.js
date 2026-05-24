@@ -15,7 +15,9 @@ export {
     createPlayer,
     generateLocalLocationsForSystem,
     generateAllLocalLocations,
-    applyClusterWorldgenHints
+    applyClusterWorldgenHints,
+    validateClusterWorldgenAfterHints,
+    validateClusterWorldgenAfterEconomy
 } from './implementation.js';
 
 export {

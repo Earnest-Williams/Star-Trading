@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { state } from '../js/state.js';
 import { calculateGatePulseCost } from '../js/core/universe.js';
-import { areSectorsConnected, getSectorNeighbors } from '../js/core/navigation.js';
+import { getSectorNeighbors } from '../js/core/navigation.js';
 import { BALANCE, MANUFACTURED_COMMODITIES, MARKET_COMMODITIES, PROCESSED_COMMODITIES, PULSE_COMMODITIES, RAW_COMMODITIES } from '../js/constants.js';
 import { tradeCommodity } from '../js/systems/market.js';
 import { COMPANY_ARCHETYPES, COMPANY_PRODUCTION_PROFILES, RAW_GOOD_ORIGINS, VALUE_ADDED_GOOD_CHAINS } from '../js/config/companies.js';
@@ -14,6 +14,21 @@ import {
     seedGeneratedUniverse,
     TEST_SEEDS
 } from './helpers/gameState.js';
+
+function collectConnectedComponent(anchor, allowedIds) {
+    const allowed = new Set(allowedIds);
+    const visited = new Set([anchor]);
+    const queue = [anchor];
+    while (queue.length > 0) {
+        const current = queue.shift();
+        for (const neighbor of getSectorNeighbors(current)) {
+            if (!allowed.has(neighbor) || visited.has(neighbor)) continue;
+            visited.add(neighbor);
+            queue.push(neighbor);
+        }
+    }
+    return visited;
+}
 
 function seedGame() {
     seedGeneratedUniverse({
@@ -131,10 +146,8 @@ describe('economic connectivity, companies, people, and polities', () => {
                 economicIds.length > 0,
                 `economic sectors should exist for ${occupiedSites} sites seed ${seed}`
             );
-            assert.ok(
-                economicIds.every(id => areSectorsConnected(anchor, id)),
-                `economic sectors should connect for ${occupiedSites} sites seed ${seed}`
-            );
+            const connectedEconomicIds = collectConnectedComponent(anchor, economicIds);
+            assert.ok(connectedEconomicIds.size === economicIds.length, `economic sectors should connect for ${occupiedSites} sites seed ${seed}`);
         });
     });
 
