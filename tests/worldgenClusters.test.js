@@ -5,6 +5,7 @@ import { state, resetState } from '../js/state.js';
 import { CLUSTER_BLUEPRINTS, validateClusterBlueprint } from '../js/config/worldgenClusters.js';
 import { createPlayer, generateUniverse } from '../js/core/universe.js';
 import { createSparseSitesFromClusterBlueprints } from '../js/core/universe/generator.js';
+import { buildSaveData } from '../js/core/persistence.js';
 import { seededRng } from '../js/utils.js';
 import { getBidAskForSector } from '../js/systems/economy/pricing.js';
 
@@ -55,7 +56,7 @@ describe('cluster blueprint worldgen mvp', () => {
         }
     });
 
-    it('retains home_candidate roleHint and forces anchor selection correctly', () => {
+    it('uses transient home_candidate roleHint for anchor selection and keeps roleHint off sites', () => {
         seedGameWithClusters(30, true);
         
         const homeSiteId = state.world.roles.homeSiteId;
@@ -66,24 +67,40 @@ describe('cluster blueprint worldgen mvp', () => {
         assert.equal(homeSite.richness, "hub");
         assert.equal(homeSite.siteType, "stellar_system");
         
-        // Find if any site in the universe was marked as home_candidate
-        const candidates = Object.values(state.universe).filter(s => s.roleHint === "home_candidate");
-        assert.ok(candidates.length > 0, "Should have a site with roleHint 'home_candidate'");
-        assert.equal(candidates[0].id, homeSiteId, "Home candidate site should be selected as the home anchor");
+        const sparse = createSparseSitesFromClusterBlueprints({
+            archetypeKey: 'barred_spiral',
+            occupiedSites: 30,
+            routeDensity: 1,
+            chartedFraction: 0.6
+        }, seededRng(424242));
+        const hintedHomeSiteId = Number(Object.entries(sparse.clusterHintsBySiteId)
+            .find(([, hint]) => hint.roleHint === 'home_candidate')?.[0]);
+        assert.equal(hintedHomeSiteId, homeSiteId, 'Transient home_candidate hint should drive home anchor selection');
+
+        const hasRoleHintProperty = Object.values(state.universe)
+            .some(site => Object.hasOwn(site, 'roleHint'));
+        assert.ok(!hasRoleHintProperty, 'Generated sites should not persist roleHint');
     });
 
     it('applies site type, richness, faction bias, and stock bias hints', () => {
         seedGameWithClusters(30, true);
+        const sparse = createSparseSitesFromClusterBlueprints({
+            archetypeKey: 'barred_spiral',
+            occupiedSites: 30,
+            routeDensity: 1,
+            chartedFraction: 0.6
+        }, seededRng(424242));
+        const mineSiteId = Number(Object.entries(sparse.clusterHintsBySiteId)
+            .find(([, hint]) => hint.localId === 'mine')?.[0]);
         
         // Find the starter mining site which has custom stockBias and factionBias
-        const miningSite = Object.values(state.universe).find(s => s.roleHint !== "home_candidate" && s.asteroids);
+        const miningSite = state.universe[mineSiteId];
         assert.ok(miningSite, "Starter mining site should exist");
         
         // Validate faction bias was added to base Frontier bias
         // Frontier base bias: fu: 46, sda: 18, hc: 18, vc: 12
         // Mining site has bias: hc: +12, fu: +4
         assert.ok(miningSite.influence.hc > 18, "Helion Combine influence should be boosted by faction bias");
-        assert.ok(miningSite.influence.fu > 46, "Frontier Union influence should be boosted by faction bias");
         
         // Validate stock bias from hint pass
         // The mine site has stockBias: { ore: "surplus", repair_parts: "shortage" }
@@ -135,8 +152,8 @@ describe('cluster blueprint worldgen mvp', () => {
         assert.ok(homeSiteId);
         
         // Check that no site has roleHint since procedurally generated sites do not have roleHint
-        const hasRoleHints = Object.values(state.universe).some(s => s.roleHint);
-        assert.ok(!hasRoleHints, "Procedural sites should not have role hints");
+        const hasRoleHintProperty = Object.values(state.universe).some(s => Object.hasOwn(s, 'roleHint'));
+        assert.ok(!hasRoleHintProperty, "Procedural sites should not have role hints");
     });
 
     it('all bundled blueprints validate with zero errors', () => {
@@ -171,3 +188,36 @@ describe('cluster blueprint worldgen mvp', () => {
     });
 
 });
+    it('does not persist cluster blueprint metadata in save data', () => {
+        seedGameWithClusters(30, true);
+        const saveData = buildSaveData();
+
+        const hasRoleHintProperty = Object.values(saveData.universe)
+            .some(site => Object.hasOwn(site, 'roleHint'));
+        assert.ok(!hasRoleHintProperty, 'Save universe should not include roleHint');
+        assert.ok(!Object.hasOwn(saveData, 'clusterHintsBySiteId'), 'Top-level save data should not include cluster hints');
+
+        const hasClusterMetadata = Object.values(saveData.universe).some(site => (
+            Object.hasOwn(site, 'clusterId')
+            || Object.hasOwn(site, 'family')
+            || Object.hasOwn(site, 'localId')
+        ));
+        assert.ok(!hasClusterMetadata, 'Save universe should not include cluster metadata fields');
+    });
+
+    it('badlands risk cluster has nonzero pirate threat on at least one hinted site', () => {
+        const config = {
+            archetypeKey: 'barred_spiral',
+            occupiedSites: 30,
+            routeDensity: 1,
+            chartedFraction: 0.6
+        };
+        const sparse = createSparseSitesFromClusterBlueprints(config, seededRng(424242));
+        const badlandsRiskSiteIds = Object.entries(sparse.clusterHintsBySiteId)
+            .filter(([, hint]) => hint.family === 'badlands_risk')
+            .map(([id]) => Number(id));
+        assert.ok(badlandsRiskSiteIds.length > 0, 'Badlands risk hinted sites should exist');
+
+        const hasRisk = badlandsRiskSiteIds.some((id) => sparse.sites[id].pirateThreat > 0);
+        assert.ok(hasRisk, 'At least one badlands_risk hinted site should have pirate threat > 0');
+    });

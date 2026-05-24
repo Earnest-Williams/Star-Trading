@@ -531,7 +531,7 @@ export function ensureEconomicActivityConnectivity() {
 }
 
 
-function scoreAnchorCandidate(id) {
+function scoreAnchorCandidate(id, clusterHintsBySiteId = null) {
     const site = state.universe[id];
     const richnessScore = WORLDGEN_ANCHORS.RICHNESS_SCORE[site.richness] ?? WORLDGEN_ANCHORS.DEFAULT_RICHNESS_SCORE;
     const typeScore = WORLDGEN_ANCHORS.TYPE_SCORE[site.siteType] ?? WORLDGEN_ANCHORS.DEFAULT_TYPE_SCORE;
@@ -542,7 +542,7 @@ function scoreAnchorCandidate(id) {
         + (site.metricShear || 0) * WORLDGEN_ANCHORS.SHEAR_SCORE_MULTIPLIER
         + Math.abs(planeDistance - WORLDGEN_ANCHORS.IDEAL_PLANE_DISTANCE) * WORLDGEN_ANCHORS.PLANE_DISTANCE_MULTIPLIER
         + id * WORLDGEN_ANCHORS.ID_TIEBREAKER_MULTIPLIER;
-    if (site.roleHint === "home_candidate") {
+    if (clusterHintsBySiteId?.[id]?.roleHint === "home_candidate") {
         score -= 1000;
     }
     return score;
@@ -559,10 +559,11 @@ function getNearestSiteIds(originId, candidates) {
     });
 }
 
-function assignAnchorsAndVisibility(config) {
+function assignAnchorsAndVisibility(config, clusterHintsBySiteId = null) {
     const ids = Object.keys(state.universe).map(Number);
     const sortedByAnchorScore = ids.slice().sort((a, b) => {
-        const scoreDelta = scoreAnchorCandidate(a) - scoreAnchorCandidate(b);
+        const scoreDelta = scoreAnchorCandidate(a, clusterHintsBySiteId)
+            - scoreAnchorCandidate(b, clusterHintsBySiteId);
         if (scoreDelta !== 0) return scoreDelta;
         return a - b;
     });
@@ -784,7 +785,7 @@ export function generateUniverse() {
         vacuumSpan: BALANCE.GATE_PHYSICS.VACUUM_SPAN,
         roles: {}
     };
-    assignAnchorsAndVisibility(config);
+    assignAnchorsAndVisibility(config, sparse.clusterHintsBySiteId || null);
     rebaseStartingAssetsToHomeSite(state.player, state.world.roles.homeSiteId);
     buildCorridors(config);
     seedPortsPlanetsAndResources();

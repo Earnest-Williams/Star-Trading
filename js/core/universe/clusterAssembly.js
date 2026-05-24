@@ -121,6 +121,13 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
 
     // Place cluster sites
     for (const { blueprint, center } of clusterAssignments) {
+        const connectorKindsByLocalId = {};
+        for (const connector of blueprint.connectors || []) {
+            if (!connectorKindsByLocalId[connector.localId]) {
+                connectorKindsByLocalId[connector.localId] = [];
+            }
+            connectorKindsByLocalId[connector.localId].push(connector.kind);
+        }
         const rotationIndex = Math.floor(rng() * 4);
         const mirrorX = rng() < 0.5;
         const mirrorY = rng() < 0.5;
@@ -159,6 +166,15 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
                 }
             }
 
+            const riskHint = siteBlueprint.riskHint
+                || (blueprint.family === "badlands_risk" ? "elevated" : null);
+            const pirateThreatCap = WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region] || 0;
+            const pirateThreat = id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
+                ? 0 : Math.floor(rng() * pirateThreatCap);
+            const elevatedThreat = riskHint === "elevated" && pirateThreatCap > 0
+                ? Math.max(pirateThreat, 1 + Math.floor(rng() * pirateThreatCap))
+                : pirateThreat;
+
             sites[id] = {
                 id,
                 siteId: `site-${id}`,
@@ -172,17 +188,27 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
                 reachable: false,
                 surveyed: false,
                 jumpGates: [],
-                pirateThreat: id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
-                    ? 0 : Math.floor(rng() * WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region]),
+                pirateThreat: elevatedThreat,
                 asteroids: null,
                 influence,
                 front: null,
-                metricShear: metricShearAtCoord(coord),
-                roleHint: siteBlueprint.roleHint || null
+                metricShear: metricShearAtCoord(coord)
             };
 
             siteIdByCoord[coordKey(coord)] = id;
-            clusterHintsBySiteId[id] = siteBlueprint;
+            clusterHintsBySiteId[id] = {
+                clusterId: blueprint.id || null,
+                family: blueprint.family || null,
+                localId: siteBlueprint.localId || null,
+                connectorKinds: connectorKindsByLocalId[siteBlueprint.localId] || [],
+                roleHint: siteBlueprint.roleHint || null,
+                portHint: siteBlueprint.portHint || null,
+                planetHint: siteBlueprint.planetHint || null,
+                asteroidHint: siteBlueprint.asteroidHint || false,
+                stationHint: siteBlueprint.stationHint || false,
+                stockBias: siteBlueprint.stockBias || null,
+                riskHint
+            };
         }
     }
 
