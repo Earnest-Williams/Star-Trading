@@ -109,6 +109,31 @@ describe('cluster blueprint worldgen mvp', () => {
         assert.equal(Object.hasOwn(saveData, 'clusterHintsBySiteId'), false);
     });
 
+
+    it('rejects invalid schema enum-like values', () => {
+        const base = globalThis.structuredClone(CLUSTER_BLUEPRINTS[0]);
+
+        const invalidFamily = globalThis.structuredClone(base);
+        invalidFamily.family = 'unknown_family';
+        assert.ok(validateClusterBlueprint(invalidFamily).some((error) => error.includes('unknown family')));
+
+        const invalidConnectorKind = globalThis.structuredClone(base);
+        invalidConnectorKind.connectors[0].kind = 'unknown_connector';
+        assert.ok(validateClusterBlueprint(invalidConnectorKind).some((error) => error.includes('invalid connector kind')));
+
+        const invalidRoleHint = globalThis.structuredClone(base);
+        invalidRoleHint.sites[0].roleHint = 'unknown_role';
+        assert.ok(validateClusterBlueprint(invalidRoleHint).some((error) => error.includes('invalid roleHint')));
+
+        const invalidRiskHint = globalThis.structuredClone(base);
+        invalidRiskHint.sites[0].riskHint = 'unknown_risk';
+        assert.ok(validateClusterBlueprint(invalidRiskHint).some((error) => error.includes('invalid riskHint')));
+
+        const invalidStockBias = globalThis.structuredClone(base);
+        invalidStockBias.sites[0].stockBias = { ore: 'invalid_bias' };
+        assert.ok(validateClusterBlueprint(invalidStockBias).some((error) => error.includes('invalid stockBias value')));
+    });
+
     it('all bundled blueprints validate with zero errors', () => {
         for (const blueprint of CLUSTER_BLUEPRINTS) {
             assert.deepEqual(validateClusterBlueprint(blueprint), [], `Expected no validation errors for ${blueprint.id}`);
