@@ -1,44 +1,50 @@
 # Documentation Index
-_Last updated: 2026-05-21_
+_Last updated: 2026-05-24_
 
-This directory collects the design, contributor, and maintenance notes for
-Star-Trading. Start here when changing systems, balance, saves, or UI behavior.
+This directory contains contributor and implementation documentation for
+Star-Trading.
 
-## Reading order
+## Core references
 
-1. [README](../README.md) — player-facing overview, quick start, controls, and
-   current prototype status.
-2. [Architecture](./ARCHITECTURE.md) — module ownership, data flow, extension
-   points, and invariants that should not be broken by refactors.
+1. [Project README](../README.md) — player-facing overview, controls, and current
+   prototype status.
+2. [Architecture](./ARCHITECTURE.md) — runtime ownership, module boundaries, and
+   invariants.
 3. [Contributor Guide](./CONTRIBUTING.md) — setup, validation commands, coding
-   conventions, save compatibility, and PR checklist.
-4. [Systems Guide](./SYSTEMS.md) — gameplay systems map and the state/config
-   files each system owns.
-5. [Save Format](./SAVE_FORMAT.md) — save-version policy, normalization rules,
-   persistence adapters, and migration expectations.
-6. [Feature Boundary](./feature-boundary.md) — locked design boundaries for
-   sparse worldgen, routing, gate logistics, intel, contraband, and bounties.
-7. [Magic Number Audit](./magic-numbers.md) — where balance literals belong and
-   which numeric literals are intentionally structural.
+   conventions, and PR workflow.
+4. [Systems Guide](./SYSTEMS.md) — gameplay system ownership across code, state,
+   and config.
+5. [Save Format](./SAVE_FORMAT.md) — save schema policy, migration constraints,
+   and compatibility rules.
+6. [Feature Boundary](./feature-boundary.md) — locked gameplay/technical
+   boundaries.
+7. [Magic Numbers](./magic-numbers.md) — audit for balance-sensitive literals.
 
-## Design proposals
+## Active design docs
 
-The `docs/design/` directory contains feature proposals and implementation
-notes. Treat these documents as planning references until the corresponding code
-is merged and covered by tests.
+Design documents are planning artifacts until the corresponding implementation
+is merged and tested.
 
+- [Cluster Blueprint Worldgen MVP](../cluster_blueprint_worldgen_mvp_design.md)
 - [Character-mediated Challenges](./design/character-mediated-challenges.md)
 - [RPG Careers and Property](./design/rpg-careers-and-property.md)
 - [Blackline Command](./design/blackline-command.md)
 - [Blackline Command Implementation](./design/blackline-command-implementation.md)
 - [Dynamic Dialogue, Memory, Task, and World Simulation](./design/dynamic-dialogue-memory-simulation.md)
+- [Bounty System](./design/bounty-system.md)
 
-## Documentation maintenance rules
+## Historical snapshots
 
-- Update documentation in the same change that alters player-facing behavior,
-  save shape, balance homes, public exports, or contributor workflow.
-- Prefer links to canonical files over duplicated explanations when the code is
-  the source of truth.
-- Keep design proposals clearly separated from shipped behavior.
-- When adding new docs, link them from this index and from the README if they are
-  useful to first-time contributors.
+Time-boxed audits and completion snapshots are archived in `docs/archive/` to
+keep the top-level docs set focused:
+
+- [Economy Feature Gap Audit (2026-05-21)](./archive/economy_feature_gap_audit_2026-05-21.md)
+- [Unimplemented or Underimplemented Features (2026-05-21)](./archive/unimplemented_or_underimplemented_features_2026-05-21.md)
+- [Economy Phase 9 Completion Matrix (2026-05-21)](./archive/economy_phase9_completion_matrix_2026-05-21.md)
+
+## Maintenance rules
+
+- Update docs in the same change as behavior, save, or workflow changes.
+- Link to canonical sources instead of duplicating implementation details.
+- Keep proposals separate from shipped behavior.
+- Add new docs to this index when they should be discoverable by contributors.

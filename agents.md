@@ -4,7 +4,7 @@ This file points to repository documentation and what each document is for.
 
 ## Core project docs
 
-- [README.md](./README.md) — Player-facing project overview, gameplay quick start, controls, and current prototype status.
+- [README.md](./README.md) — Player-facing project overview, gameplay quick start, controls, and prototype status.
 - [docs/README.md](./docs/README.md) — Documentation index and recommended reading order for contributors.
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — Runtime architecture, module ownership, and system invariants.
 - [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) — Setup, validation commands, coding conventions, and PR expectations.
@@ -18,18 +18,19 @@ This file points to repository documentation and what each document is for.
 - [docs/systems/dialogue.md](./docs/systems/dialogue.md) — Dialogue system update flow, authority boundaries, and realization model.
 - [docs/security/dependency-and-compat-debt.md](./docs/security/dependency-and-compat-debt.md) — Dependency debt and compatibility-cleanup tracking.
 
-## Design docs (planning/proposals)
+## Active design docs
 
+- [cluster_blueprint_worldgen_mvp_design.md](./cluster_blueprint_worldgen_mvp_design.md) — MVP plan for sparse-site cluster assembly integration.
 - [docs/design/character-mediated-challenges.md](./docs/design/character-mediated-challenges.md) — Design principle for character-executed challenge resolution.
-- [docs/design/rpg-careers-and-property.md](./docs/design/rpg-careers-and-property.md) — Stationary/property-first career design and current implementation direction.
+- [docs/design/rpg-careers-and-property.md](./docs/design/rpg-careers-and-property.md) — Stationary/property-first career design and implementation direction.
 - [docs/design/blackline-command.md](./docs/design/blackline-command.md) — UI/visual design language bible for Blackline Command.
-- [docs/design/blackline-command-implementation.md](./docs/design/blackline-command-implementation.md) — Phased implementation guide for applying Blackline Command safely.
+- [docs/design/blackline-command-implementation.md](./docs/design/blackline-command-implementation.md) — Phased implementation guide for Blackline Command rollout.
 - [docs/design/dynamic-dialogue-memory-simulation.md](./docs/design/dynamic-dialogue-memory-simulation.md) — Dialogue-memory architecture and staged integration plan.
 - [docs/design/bounty-system.md](./docs/design/bounty-system.md) — Bounty contract system boundary, data model, and API scope.
 
-## Economy planning and audit artifacts
+## Historical snapshots
 
-- [Star-Trading_Economy_Design_Document_Codebase_Integrated.md](./Star-Trading_Economy_Design_Document_Codebase_Integrated.md) — Integrated economy design specification aligned to current codebase and rollout phases.
-- [docs/economy_feature_gap_audit_2026-05-21.md](./docs/economy_feature_gap_audit_2026-05-21.md) — Phase 9 issue tracker with ordered resolution tasks and reassessed remaining gaps.
-- [docs/unimplemented_or_underimplemented_features_2026-05-21.md](./docs/unimplemented_or_underimplemented_features_2026-05-21.md) — Snapshot list of remaining economy gaps and backlog ordering.
-- [docs/economy_phase9_completion_matrix_2026-05-21.md](./docs/economy_phase9_completion_matrix_2026-05-21.md) — Item-by-item implementation verification matrix for economy Phase 9.
+- [Star-Trading_Economy_Design_Document_Codebase_Integrated.md](./Star-Trading_Economy_Design_Document_Codebase_Integrated.md) — Integrated economy design specification.
+- [docs/archive/economy_feature_gap_audit_2026-05-21.md](./docs/archive/economy_feature_gap_audit_2026-05-21.md) — Phase 9 issue tracker snapshot.
+- [docs/archive/unimplemented_or_underimplemented_features_2026-05-21.md](./docs/archive/unimplemented_or_underimplemented_features_2026-05-21.md) — Snapshot of remaining economy gaps.
+- [docs/archive/economy_phase9_completion_matrix_2026-05-21.md](./docs/archive/economy_phase9_completion_matrix_2026-05-21.md) — Itemized economy Phase 9 verification matrix.
