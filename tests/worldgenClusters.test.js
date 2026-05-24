@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { state, resetState } from '../js/state.js';
+import { CLUSTER_BLUEPRINTS, validateClusterBlueprint } from '../js/config/worldgenClusters.js';
 import { createPlayer, generateUniverse } from '../js/core/universe.js';
 import { createSparseSitesFromClusterBlueprints } from '../js/core/universe/generator.js';
 import { seededRng } from '../js/utils.js';
@@ -137,4 +138,36 @@ describe('cluster blueprint worldgen mvp', () => {
         const hasRoleHints = Object.values(state.universe).some(s => s.roleHint);
         assert.ok(!hasRoleHints, "Procedural sites should not have role hints");
     });
+
+    it('all bundled blueprints validate with zero errors', () => {
+        for (const blueprint of CLUSTER_BLUEPRINTS) {
+            const errors = validateClusterBlueprint(blueprint);
+            assert.deepEqual(errors, [], `Expected no validation errors for ${blueprint.id}`);
+        }
+    });
+
+    it('invalid connector localId fails validation', () => {
+        const badBlueprint = structuredClone(CLUSTER_BLUEPRINTS[0]);
+        badBlueprint.id = 'bad-connector';
+        badBlueprint.connectors = [{ localId: 'missing-node', kind: 'trade_seam' }];
+        const errors = validateClusterBlueprint(badBlueprint);
+        assert.ok(errors.some(error => error.includes("connector references unknown localId 'missing-node'")));
+    });
+
+    it('invalid planetHint fails validation', () => {
+        const badBlueprint = structuredClone(CLUSTER_BLUEPRINTS[0]);
+        badBlueprint.id = 'bad-planet';
+        badBlueprint.sites[0].planetHint = 'agricultural';
+        const errors = validateClusterBlueprint(badBlueprint);
+        assert.ok(errors.some(error => error.includes("unknown planetHint 'agricultural'")));
+    });
+
+    it('invalid stock commodity fails validation', () => {
+        const badBlueprint = structuredClone(CLUSTER_BLUEPRINTS[0]);
+        badBlueprint.id = 'bad-commodity';
+        badBlueprint.sites[0].stockBias = { unknown_commodity: 'surplus' };
+        const errors = validateClusterBlueprint(badBlueprint);
+        assert.ok(errors.some(error => error.includes("unknown stockBias commodity 'unknown_commodity'")));
+    });
+
 });

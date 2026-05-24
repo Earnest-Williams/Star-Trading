@@ -110,12 +110,13 @@ describe('sparse 3D world generation and gate economy', () => {
 });
 
 describe('economic connectivity, companies, people, and polities', () => {
-    const connectivityCases = BALANCE.WORLDGEN.SITE_COUNT_PRESETS.map(
-        (occupiedSites, index) => ({
+    const RUN_WORLDGEN_STRESS = process.env.ST_WORLDGEN_STRESS === '1';
+    const connectivityCases = RUN_WORLDGEN_STRESS
+        ? BALANCE.WORLDGEN.SITE_COUNT_PRESETS.map((occupiedSites, index) => ({
             occupiedSites,
             seed: [101, 202, 303][index % 3]
-        })
-    );
+        }))
+        : [{ occupiedSites: 60, seed: 101 }];
 
     connectivityCases.forEach(({ occupiedSites, seed }) => {
         it(`connects all economic sectors for ${occupiedSites} sites seed ${seed}`, () => {

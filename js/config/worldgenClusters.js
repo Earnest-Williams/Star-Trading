@@ -42,6 +42,13 @@
 //     starterCompatible: boolean
 // }
 
+import { MARKET_COMMODITIES } from './economy.js';
+import { PORT_TYPES } from './ports.js';
+import { PLANET_TYPES } from './entities.js';
+
+const VALID_STOCK_BIAS_VALUES = new Set(['surplus', 'normal', 'shortage', 'empty']);
+const MARKET_COMMODITY_SET = new Set(MARKET_COMMODITIES);
+
 export const CLUSTER_BLUEPRINTS = Object.freeze([
     {
         id: "starter-hub-a",
@@ -85,7 +92,7 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
                 richness: "settled",
                 region: "Frontier",
                 factionBias: { fu: 12 },
-                planetHint: "agricultural",
+                planetHint: "terran",
                 portHint: "agricultural",
                 stockBias: {
                     org: "surplus",
@@ -223,31 +230,77 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
 export function validateClusterBlueprint(blueprint) {
     const errors = [];
 
-    if (!blueprint || typeof blueprint !== "object") {
-        errors.push("blueprint must be an object");
+    if (!blueprint || typeof blueprint !== 'object') {
+        errors.push('blueprint must be an object');
         return errors;
     }
 
-    if (typeof blueprint.id !== "string" || blueprint.id.length === 0) {
-        errors.push("blueprint.id must be a non-empty string");
+    if (typeof blueprint.id !== 'string' || blueprint.id.length === 0) {
+        errors.push('blueprint.id must be a non-empty string');
     }
 
-    if (typeof blueprint.family !== "string" || blueprint.family.length === 0) {
-        errors.push("blueprint.family must be a non-empty string");
+    if (typeof blueprint.family !== 'string' || blueprint.family.length === 0) {
+        errors.push('blueprint.family must be a non-empty string');
+    }
+
+    if (!Number.isFinite(blueprint.weight) || blueprint.weight <= 0) {
+        errors.push(`${blueprint.id || 'blueprint'}: weight must be a positive finite number`);
+    }
+
+    if (!blueprint.placement || typeof blueprint.placement !== 'object') {
+        errors.push(`${blueprint.id || 'blueprint'}: placement must be an object`);
+    } else {
+        if (typeof blueprint.placement.preferredRegion !== 'string' || blueprint.placement.preferredRegion.length === 0) {
+            errors.push(`${blueprint.id || 'blueprint'}: placement.preferredRegion must be a non-empty string`);
+        }
+        if (!Number.isFinite(blueprint.placement.preferredRadius)) {
+            errors.push(`${blueprint.id || 'blueprint'}: placement.preferredRadius must be a finite number`);
+        }
     }
 
     if (!Array.isArray(blueprint.sites) || blueprint.sites.length === 0) {
-        errors.push((blueprint.id || "blueprint") + ": sites must be a non-empty array");
+        errors.push(`${blueprint.id || 'blueprint'}: sites must be a non-empty array`);
         return errors;
     }
 
+    const siteLocalIds = new Set();
     for (const site of blueprint.sites) {
-        if (typeof site.localId !== "string" || site.localId.length === 0) {
+        if (typeof site.localId !== 'string' || site.localId.length === 0) {
             errors.push(`${blueprint.id}: site.localId must be a non-empty string`);
+        } else {
+            if (siteLocalIds.has(site.localId)) {
+                errors.push(`${blueprint.id}: duplicate site.localId '${site.localId}'`);
+            }
+            siteLocalIds.add(site.localId);
         }
 
         if (!site.offset || !Number.isFinite(site.offset.x) || !Number.isFinite(site.offset.y) || !Number.isFinite(site.offset.z)) {
             errors.push(`${blueprint.id}/${site.localId}: offset must have finite x, y, z numbers`);
+        }
+
+        if (site.portHint && !PORT_TYPES[site.portHint]) {
+            errors.push(`${blueprint.id}/${site.localId}: unknown portHint '${site.portHint}'`);
+        }
+
+        if (site.planetHint && !PLANET_TYPES[site.planetHint]) {
+            errors.push(`${blueprint.id}/${site.localId}: unknown planetHint '${site.planetHint}'`);
+        }
+
+        if (site.stockBias && typeof site.stockBias === 'object') {
+            for (const [commodityId, bias] of Object.entries(site.stockBias)) {
+                if (!MARKET_COMMODITY_SET.has(commodityId)) {
+                    errors.push(`${blueprint.id}/${site.localId}: unknown stockBias commodity '${commodityId}'`);
+                }
+                if (!VALID_STOCK_BIAS_VALUES.has(bias)) {
+                    errors.push(`${blueprint.id}/${site.localId}: invalid stockBias value '${bias}' for '${commodityId}'`);
+                }
+            }
+        }
+    }
+
+    for (const connector of blueprint.connectors || []) {
+        if (!siteLocalIds.has(connector.localId)) {
+            errors.push(`${blueprint.id}: connector references unknown localId '${connector.localId}'`);
         }
     }
 
