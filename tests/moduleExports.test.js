@@ -47,6 +47,9 @@ const MODULE_EXPORTS = Object.freeze({
         'makeStock',
         'metricShearAtCoord',
         'setSiteCoord',
+        'validateClusterAssemblyResult',
+        'validateClusterWorldgenAfterEconomy',
+        'validateClusterWorldgenAfterHints',
         'generateLocalLocationsForSystem',
         'generateAllLocalLocations'
     ],

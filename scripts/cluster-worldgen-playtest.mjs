@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { stdout } from 'node:process';
 
 import { state, resetState } from '../js/state.js';
 import { createPlayer, generateUniverse } from '../js/core/universe.js';
@@ -21,11 +22,18 @@ const FORBIDDEN_BLUEPRINT_FIELDS = [
 ];
 
 function countReachableFrom(startId) {
+    if (!startId || !state.universe[startId]) {
+        return 0;
+    }
     const visited = new Set([startId]);
     const queue = [startId];
-    while (queue.length > 0) {
-        const current = queue.shift();
+    let head = 0;
+    while (head < queue.length) {
+        const current = queue[head++];
         const site = state.universe[current];
+        if (!site) {
+            continue;
+        }
         for (const gate of site.jumpGates || []) {
             if (!state.universe[gate.targetSectorId] || visited.has(gate.targetSectorId)) {
                 continue;
@@ -65,6 +73,9 @@ function runSeed(seed) {
     const allSites = Object.values(state.universe);
     const homeSiteId = state.world.roles.homeSiteId;
     const homeSite = state.universe[homeSiteId];
+    if (!homeSite) {
+        throw new Error(`Home site ${homeSiteId} not found for seed ${seed}`);
+    }
     const hints = Object.entries(state.clusterHintsBySiteId || {});
     const starterHints = hints.filter(([, hint]) => hint.family === 'starter_hub');
     const starterEconomicHints = starterHints.filter(([siteId]) => isEconomicSite(Number(siteId)));
@@ -112,7 +123,7 @@ function runSeed(seed) {
 }
 
 const results = PLAYTEST_SEEDS.map(runSeed);
-console.log(JSON.stringify(results, null, 2));
+stdout.write(`${JSON.stringify(results, null, 2)}\n`);
 
 const date = new Date().toISOString().slice(0, 10);
 const outputPath = `docs/archive/cluster_worldgen_playtest_${date}.md`;
@@ -126,4 +137,4 @@ const tableRows = results.map((result) => {
 const report = `# Cluster Worldgen Playtest (${date})\n\n- Command: \`node scripts/cluster-worldgen-playtest.mjs\`\n- Seeds: ${PLAYTEST_SEEDS.join(', ')}\n- Occupied sites per run: ${OCCUPIED_SITES}\n\n## Seed summary\n\n| seed | occupied_sites | home_site (id/name/region) | reachable_sites | nearby_economic_sites | starter_hinted_economic_sites | extraction_hinted_sites | non_extraction_trade_complement | badlands_risk_hint_threats | route_count | economy_profiles | economy_pressure_exists | duplicate_coordinates | forbidden_runtime_blueprint_metadata |\n|---|---:|---|---:|---:|---:|---:|---:|---|---:|---:|---|---:|---|\n${tableRows.join('\n')}\n\n## Notes\n\n- Starter quality: this script observed nearby economic sites around home, but starter-hint and extraction-hint counts were zero in these runtime snapshots, so no positive starter-hint quality claim is made from this data alone.\n- Route shape: route counts were stable and non-zero across seeds, with no synthetic fallback injected by this script.\n- Faction clarity: faction outcomes were not scored subjectively here; this report is limited to objective generated fields and counts.\n- Economy pressure: these snapshots reported no economy profiles and no per-site economy pressure fields at sampling time; this helper is validating generated structure, not downstream simulation ticks.\n- Map readability: coordinate uniqueness held in all sampled runs (duplicate count remained zero).\n\n## Limitations\n\n- This is data-driven validation only. No UI play session was run in this pass.\n`;
 
 writeFileSync(outputPath, report, 'utf8');
-console.log(`Wrote ${outputPath}`);
+stdout.write(`Wrote ${outputPath}\n`);
