@@ -410,10 +410,10 @@ export function validateClusterBlueprint(blueprint) {
     }
 
     if (!Array.isArray(blueprint.sites) || blueprint.sites.length === 0) {
-        errors.push(`${blueprint.id}: sites must be a non-empty array`);
+        errors.push((blueprint.id || "blueprint") + ": sites must be a non-empty array");
+        return errors;
     }
-
-    for (const site of blueprint.sites || []) {
+    for (const site of blueprint.sites) {
         if (typeof site.localId !== "string" || site.localId.length === 0) {
             errors.push(`${blueprint.id}: site.localId must be a non-empty string`);
         }
