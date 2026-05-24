@@ -22,8 +22,7 @@ import {
     generateClusterCenters,
     generateSiteCoordinate,
     getSiteTypeLabel,
-    metricShearAtCoord,
-    pickWeighted
+    metricShearAtCoord
 } from './worldgenGeometry.js';
 
 import { invalidateMapProjectionCache } from '../../ui/renderMap.js';
