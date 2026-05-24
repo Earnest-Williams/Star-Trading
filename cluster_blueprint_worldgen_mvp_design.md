@@ -79,13 +79,15 @@ generateUniverse()
 
 The MVP only changes the sparse-site creation step. Everything after that should continue to operate on normal `state.universe` data.
 
+Implementation integration must stay narrow: one sparse-site branch (`createSparseSites` vs `createSparseSitesFromClusterBlueprints`) plus exactly one post-seeding hook (`applyClusterWorldgenHints`) before economic connectivity/profile rebuild.
+
 ## Hard Constraints
 
 The feature must preserve these Star-Trading design constraints:
 
 1. Sites remain sparse occupied coordinates, not dense grid cells.
 2. Route systems use real jump-gate corridor connectivity.
-3. No route should exist because a fallback silently fabricated a path.
+3. No route may exist unless produced by existing corridor/repair logic with effective span cost computed from coordinates and metric shear.
 4. Corridors remain evaluated from coordinates through distance and metric shear.
 5. High-shear regions should still suppress ordinary settlement and easy routing.
 6. Role anchors should remain the preferred way to identify home, starting port, shipyard, and capital sites.
@@ -115,7 +117,7 @@ A blueprint should not directly author final prices, final route profitability, 
 
 ## MVP Cluster Types
 
-The first version should include exactly three authored cluster families.
+The first version must always include at least the three required authored cluster families, then continue filling the site budget to `config.occupiedSites` using seam/procedural support placement.
 
 ### 1. Starter Hub Cluster
 
@@ -270,17 +272,18 @@ const sparse = useClusterAssembly
     : createSparseSites(config);
 ```
 
-The returned object must match the existing sparse-site creation return shape:
+The returned object must preserve the existing sparse-site creation contract while adding transient cluster metadata:
 
 ```js
 {
     sites,
     siteIdByCoord,
-    archetypeName
+    archetypeName,
+    clusterHintsBySiteId
 }
 ```
 
-This keeps downstream code unchanged.
+The first three fields remain contract-compatible with `createSparseSites(config)`. `clusterHintsBySiteId` is transient generation metadata only and must not be persisted as authoritative save state unless a future save migration explicitly adopts it.
 
 ## Cluster Assembly Algorithm
 
@@ -289,16 +292,16 @@ The MVP assembler should be intentionally simple.
 1. Select one starter cluster.
 2. Select one frontier extraction cluster.
 3. Select one badlands risk cluster.
-4. Place clusters at broad archetype-compatible offsets.
-5. Apply optional rotation, mirroring, and low-amplitude coordinate jitter.
-6. Rebase local cluster site ids into numeric global site ids.
-7. Reject or adjust duplicate coordinates.
-8. Create normal site records with `id`, `siteId`, `coord`, `coordKey`, `name`, `region`, `siteType`, `richness`, `charted`, `reachable`, `surveyed`, `jumpGates`, `pirateThreat`, `asteroids`, `influence`, `front`, and `metricShear`.
-9. Apply faction influence bias after base influence is created.
-10. Store cluster hints in an internal transient map for later MVP post-processing.
-11. Return normal sparse site data.
-
-For the first version, it is acceptable if the MVP produces only the sites from the three clusters. A later version can fill the remaining site count with procedural seam sites or additional clusters.
+4. Continue selecting additional authored clusters when available and budget allows.
+5. Fill any remaining budget with seam/procedural support sites until `Object.keys(sites).length === config.occupiedSites`.
+6. Place clusters at broad archetype-compatible offsets.
+7. Apply optional rotation, mirroring, and low-amplitude coordinate jitter.
+8. Rebase local cluster site ids into numeric global site ids.
+9. Reject or deterministically adjust duplicate coordinates.
+10. Create normal site records with `id`, `siteId`, `coord`, `coordKey`, `name`, `region`, `siteType`, `richness`, `charted`, `reachable`, `surveyed`, `jumpGates`, `pirateThreat`, `asteroids`, `influence`, `front`, and `metricShear`.
+11. Apply faction influence bias after base influence is created.
+12. Store cluster hints in a transient map for later post-seeding hint application.
+13. Return normal sparse site data plus transient hints.
 
 ## Faction Handling
 
@@ -341,7 +344,7 @@ offerHints
 
 The MVP should use `portHint`, `asteroidHint`, and `stockBias` first. `needHints` and `offerHints` can remain data-only until a later quality scorer uses them.
 
-A simple stock-bias pass can run after `seedPortsPlanetsAndResources()` and before `rebuildEconomicProfiles()`.
+A single cluster-specific hint pass should run after `seedPortsPlanetsAndResources()` and before `ensureEconomicActivityConnectivity()` / `rebuildEconomicProfiles()`: `applyClusterWorldgenHints(sparse.clusterHintsBySiteId)`.
 
 Suggested stock-bias semantics:
 
@@ -597,7 +600,7 @@ The Rust side should enforce types, invariants, validation, determinism, and per
 
 ## Open Questions
 
-1. Should cluster assembly initially create only the three MVP clusters, or should it fill remaining site count procedurally?
+1. How aggressively should future versions replace seam/procedural support fill with weighted authored-cluster selection from a larger pool?
 2. Should local edge hints affect corridor candidate ordering in the MVP, or wait for a later version?
 3. Should `roleHint: "home_candidate"` influence anchor scoring immediately, or should the starter cluster be shaped to win naturally?
 4. Should `portHint` force a port during MVP post-processing, or should it only bias existing random seeding?
@@ -607,7 +610,7 @@ The Rust side should enforce types, invariants, validation, determinism, and per
 
 ## Recommended MVP Decisions
 
-1. Fill only the authored MVP clusters first. Add procedural seam sites later.
+1. Always place required starter/frontier/badlands authored clusters first, then fill to `config.occupiedSites` immediately with seam/procedural support sites.
 2. Do not use local edge hints in corridor generation yet.
 3. Add `roleHint` data, but first try to make starter anchor selection work naturally.
 4. Let `portHint` force ports only in MVP cluster-generated worlds.
@@ -620,7 +623,7 @@ The Rust side should enforce types, invariants, validation, determinism, and per
 The MVP is done when:
 
 1. Cluster assembly can be enabled through worldgen settings.
-2. Three authored cluster blueprints generate normal sparse sites.
+2. Required authored starter/frontier/badlands blueprints plus seam/procedural support fill generate exactly `config.occupiedSites` sparse sites.
 3. The existing generation pipeline completes after cluster assembly.
 4. Corridors are built by existing physics logic.
 5. Ports, planets, asteroids, economy profiles, prices, pressure, polities, companies, people, and local locations still use existing systems.
@@ -628,7 +631,7 @@ The MVP is done when:
 7. The generated galaxy has no duplicate coordinates.
 8. The generated galaxy has no fabricated route fallback.
 9. Targeted tests pass.
-10. The old procedural generator remains available.
+10. The old procedural generator remains available when cluster assembly is disabled or absent.
 
 ## Implementation Checklist
 
