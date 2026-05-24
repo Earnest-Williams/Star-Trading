@@ -32,7 +32,13 @@ describe('app shell state', () => {
             dailySummary: null,
             lastProfileBuildDay: null,
             lastPressureDay: null,
-            generatedByVersion: 1
+            generatedByVersion: 1,
+            universeBasePrices: {},
+            priceDiagnostics: {},
+            nodeMidPrices: {},
+            spatialPriceDiagnostics: {},
+            lastPriceCalibrationDay: null,
+            lastSpatialPriceDay: null
         });
     });
 

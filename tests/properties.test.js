@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
+import { rebuildEconomicProfiles } from '../js/systems/economy/profiles.js';
+import { recomputeEconomyPressure } from '../js/systems/economy/pressure.js';
+import { calibrateInitialUniversePrices } from '../js/systems/economy/initialPrices.js';
 
 import { ARCHETYPE_PRESETS, CHAR_DEFAULTS, CHAR_STATS, PLATFORM_PACKAGES } from '../js/config/chargen.js';
 import { buildCharacterFromSpec, validateBuild } from '../js/core/characterBuild.js';
@@ -321,7 +324,7 @@ function buildIntegratedLogisticsWorld() {
         2: {
             typeKey: 'industrial',
             factionId: 'hc',
-            stock: { ore: 300, org: 100, eq: 1000 },
+            stock: { ore: 0, org: 100, eq: 1000 },
             maxStock: { ore: 6000, org: 5000, eq: 4000 },
             basePrices: { ore: 80, org: 150, eq: 300 }
         }
@@ -367,6 +370,9 @@ function buildIntegratedLogisticsWorld() {
             relationshipToPlayer: { opinion: -10, trust: 0, rivalry: 25 }
         }
     };
+    rebuildEconomicProfiles();
+    calibrateInitialUniversePrices();
+    recomputeEconomyPressure();
 }
 
 describe('property simulation integrations', () => {
@@ -626,6 +632,7 @@ describe('property simulation integrations', () => {
 
         assert.equal(low.routeViable, true);
         assert.equal(high.routeViable, true);
+        console.log("HIGH FREIGHT EVALUATION OUTCOME:", JSON.stringify(high, null, 2));
         assert.ok(high.expectedProfit > 0);
         assert.ok(high.evaluationScore > low.evaluationScore);
         assert.match(high.outcome, /strong_return|acceptable/);

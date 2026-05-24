@@ -15,8 +15,10 @@ describe('world tick phase order', () => {
         assert.deepEqual(
             DAILY_WORLD_TICK_PHASES.map(phase => phase.id),
             [
-                'colony_production',
+                'profile_rebuild',
+                'colony_consumption',
                 'economy_daily_consumption',
+                'colony_production',
                 'economy_daily_production',
                 'economy_pressure_recompute',
                 'explicit_trade_route_runs',
@@ -24,9 +26,9 @@ describe('world tick phase order', () => {
                 'ambient_trade_response',
                 'economy_pressure_post_ambient',
                 'economy_contracts',
+                'colony_satisfaction_update',
                 'ambient_data_propagation',
                 'data_cargo_culling',
-                'colony_needs',
                 'port_markets',
                 'sector_threats',
                 'faction_politics',

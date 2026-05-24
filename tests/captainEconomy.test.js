@@ -14,8 +14,8 @@ function setup() {
     };
     addJumpGateCorridor(1, 2);
     state.ports = {
-        1: { typeKey: 'mining', factionId: 'hc', stock: { ore: 5500, org: 0, eq: 0 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 80, org: 150, eq: 300 } },
-        2: { typeKey: 'industrial', factionId: 'hc', stock: { ore: 100, org: 3000, eq: 2500 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 80, org: 150, eq: 300 } }
+        1: { typeKey: 'mining', factionId: 'hc', stock: { ore: 5500, org: 0, eq: 0 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 20, org: 150, eq: 300 } },
+        2: { typeKey: 'refinery', factionId: 'hc', stock: { ore: 100, org: 3000, eq: 2500 }, maxStock: { ore: 6000, org: 5000, eq: 4000 }, basePrices: { ore: 80, org: 150, eq: 300 } }
     };
     state.planets = {};
     state.tradeRoutes = [];

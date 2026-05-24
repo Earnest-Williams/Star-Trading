@@ -29,7 +29,16 @@ export function applyDailyConsumption() {
     Object.entries(state.economy?.profilesBySector || {}).forEach(([sectorId, profile]) => {
         const nodeRefs = getEconomyNodes(sectorId);
         if (!nodeRefs.length) return;
-        const needs = mergeNeeds(profile.baselineConsumption, profile.industrialConsumption, profile.serviceConsumption);
+        let baseline = profile.baselineConsumption;
+        if (!baseline && typeof profile.populationTier === 'number') {
+            baseline = {
+                water_ice: profile.populationTier,
+                org: profile.populationTier,
+                medical_supplies: profile.populationTier,
+                repair_parts: profile.populationTier
+            };
+        }
+        const needs = mergeNeeds(baseline, profile.industrialConsumption, profile.serviceConsumption);
         const sectorConsumed = {};
         const sectorUnmet = {};
         let hadShortage = false;

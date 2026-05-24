@@ -39,6 +39,7 @@ import { runMigrations } from './saveMigrations/index.js';
 import { migrateShipTransitFields } from './saveMigrations/helpers.js';
 import { normaliseShipLoadout } from '../systems/shipLoadout.js';
 import { generateLocalLocationsForSystem } from './universe/generator.js';
+import { getColonyMaxStock } from '../systems/colonies.js';
 
 const defaultPersistenceAdapters = {
     storage: null,
@@ -416,10 +417,27 @@ function normaliseCurrentLoadedGame() {
     if (!state.polities) state.polities = {};
     if (!state.polityIdsBySector) state.polityIdsBySector = {};
     Object.values(state.planets).forEach(planet => {
-        if (!planet.stock) planet.stock = makeStock();
-        if (!planet.shortages) planet.shortages = { ore: 0, org: 0, eq: 0 };
+        if (planet.owner === "Player") {
+            planet.stock = makeStock(planet.stock);
+            const baseBuildings = {
+                habitat: 0, mine: 0, farm: 0, refinery: 0, factory: 0,
+                electronics_fab: 0, medical_lab: 0, pulse_works: 0,
+                warehouse: 0, cold_storage: 0, housing: 0, civic_services: 0, defense: 0
+            };
+            planet.buildings = { ...baseBuildings, ...planet.buildings };
+            planet.maxStock = getColonyMaxStock(planet);
+            if (typeof planet.housingTier !== "number") planet.housingTier = 1;
+            if (typeof planet.serviceTier !== "number") planet.serviceTier = 1;
+            if (!planet.satisfactionBreakdown) planet.satisfactionBreakdown = { housing: 100, services: 100, supply: 100 };
+            if (!planet.demandProfile) planet.demandProfile = {};
+            if (!planet.leases) planet.leases = [];
+            if (typeof planet.facilityCondition !== "number") planet.facilityCondition = 100;
+        } else {
+            if (!planet.stock) planet.stock = makeStock();
+            if (!planet.buildings) planet.buildings = { habitat: 0, mine: 0, farm: 0, factory: 0, defense: 0 };
+        }
+        planet.shortages = makeStock(planet.shortages);
         if (typeof planet.satisfaction !== "number") planet.satisfaction = planet.owner ? 60 : 0;
-        if (!planet.buildings) planet.buildings = { habitat: 0, mine: 0, farm: 0, factory: 0, defense: 0 };
         if (typeof planet.factionId === "undefined") planet.factionId = null;
         if (planet.owner === "Player" && !planet.policy) {
             planet.policy = { registration: "registered", economy: "free_trade", security: "local_militia", hiddenInfluence: { vc: 0 } };

@@ -47,7 +47,8 @@ import { surveySector, mineAsteroids } from '../systems/mining.js';
 import { tradeCommodity } from '../systems/market.js';
 import {
     foundColony, alignColony, setColonyPolicy,
-    depositToColony, loadFromColony, buildColonyStructure
+    depositToColony, loadFromColony, buildColonyStructure,
+    maintainColonyLease, terminateColonyLease
 } from '../systems/colonies.js';
 import { fightPirates } from '../systems/combat.js';
 import {
@@ -547,6 +548,8 @@ export function registerUIActions() {
     registerAction('depositToColony', depositToColony);
     registerAction('loadFromColony', loadFromColony);
     registerAction('buildColonyStructure', buildColonyStructure);
+    registerAction('maintainColonyLease', maintainColonyLease);
+    registerAction('terminateColonyLease', terminateColonyLease);
     registerAction('fightPirates', fightPirates);
     registerAction('propertyAction', (propertyId, actionId) => {
         const result = applyPlayerPropertyAction(propertyId, actionId);
@@ -633,6 +636,8 @@ export function registerUIActions() {
     registerActionManifest('depositToColony', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('loadFromColony', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('buildColonyStructure', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('maintainColonyLease', { argCount: 1, coercers: [parseNonEmptyString] });
+    registerActionManifest('terminateColonyLease', { argCount: 1, coercers: [parseNonEmptyString] });
     registerActionManifest('fightPirates', { argCount: 0 });
     registerActionManifest('propertyAction', { argCount: 2, coercers: [parseNonEmptyString, parseNonEmptyString] });
     registerActionManifest('createTradeRoute', { argCount: 2, coercers: [parsePositiveId, parseNonEmptyString] });

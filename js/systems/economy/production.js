@@ -4,7 +4,7 @@ import { makeStock } from '../../utils.js';
 import { patchPort, patchSite } from '../../core/state/mutations.js';
 import { getAsteroidExtractionPotential } from './extraction.js';
 
-const PRODUCTION_RECIPES = Object.freeze({
+export const PRODUCTION_RECIPES = Object.freeze({
     refined_metals: Object.freeze({ role: 'industrial', baseCapacity: 4, output: 1, inputs: Object.freeze({ ore: 1, heavy_metals: 1 }) }),
     polymers: Object.freeze({ role: 'industrial', baseCapacity: 3, output: 1, inputs: Object.freeze({ org: 1, water_ice: 1 }) }),
     coolants: Object.freeze({ role: 'refinery', baseCapacity: 3, output: 1, inputs: Object.freeze({ water_ice: 1, rare_earths: 1 }) }),

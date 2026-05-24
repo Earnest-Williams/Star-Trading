@@ -18,11 +18,15 @@ import {
 } from '../../core/state/mutations.js';
 import { getCaptainById, getRouteById, getTradeRoutes } from '../../core/state/selectors.js';
 import { StateSlice, stateChanged } from '../../core/state/index.js';
-import { BALANCE, COMMODITIES, MARKET_COMMODITIES } from '../../config/economy.js';
+import { BALANCE, COMMODITIES, MARKET_COMMODITIES, getCommodityDef } from '../../config/economy.js';
 import { getPortType } from '../../core/ports.js';
 import { PORT_DEFAULTS } from '../../config/worldgen.js';
 import { getSpotPriceForSector, getExpectedRouteValue } from '../economy/pricing.js';
 import { recomputeEconomyPressure } from '../economy/pressure.js';
+import { getColonyMaxStock } from '../colonies.js';
+import { buildEconomicProfileForSector } from '../economy/profiles.js';
+import { getPulseRouteModifiers } from '../economy/pulseService.js';
+import { PRODUCTION_RECIPES } from '../economy/production.js';
 import { applyContractDeliveryHooks } from '../economy/contracts.js';
 import { clampRange, makeStock, formatCommodity, formatCredits, log, random } from '../../utils.js';
 import { addSectorInfluence } from '../../core/influence.js';
@@ -94,7 +98,12 @@ export function hydrateTradeRoute(partial, context = {}) {
         starvedDays: Math.max(0, finiteInteger(partial.starvedDays, 0)),
         profit: finiteNumber(partial.profit, 0),
         heat: Math.max(0, finiteNumber(partial.heat, 0)),
-        reliability: clampRange(finiteNumber(partial.reliability, BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY), 0, 100)
+        reliability: clampRange(finiteNumber(partial.reliability, BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY), 0, 100),
+        purpose: partial.purpose || context.purpose || "trade",
+        targetStock: typeof partial.targetStock === "number" ? partial.targetStock : (typeof context.targetStock === "number" ? context.targetStock : 0),
+        priority: typeof partial.priority === "number" ? partial.priority : (typeof context.priority === "number" ? context.priority : 1),
+        internalTransfer: typeof partial.internalTransfer === "boolean" ? partial.internalTransfer : (typeof context.internalTransfer === "boolean" ? context.internalTransfer : false),
+        colonySectorId: typeof partial.colonySectorId === "number" ? partial.colonySectorId : (typeof context.colonySectorId === "number" ? context.colonySectorId : null)
     };
     if (route.status !== "closed" && (!state.universe[route.originSector] || !state.universe[route.destinationSector] || !findShortestSectorPath(route.originSector, route.destinationSector))) {
         patchRoute(route.id, { status: "paused" });
@@ -116,7 +125,12 @@ export function createRouteRecord({
     factionId = "traders",
     operatorType = ownerType,
     createdBy = ownerType,
-    reliability = BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY
+    reliability = BALANCE.TRADE_ROUTE.DEFAULT_RELIABILITY,
+    purpose = "trade",
+    targetStock = 0,
+    priority = 1,
+    internalTransfer = false,
+    colonySectorId = null
 }) {
     return hydrateTradeRoute({
         name: name || `${formatCommodity(commodity)} ${originSector}->${destinationSector}`,
@@ -132,7 +146,12 @@ export function createRouteRecord({
         operatorType,
         createdBy,
         reliability,
-        status: "active"
+        status: "active",
+        purpose,
+        targetStock,
+        priority,
+        internalTransfer,
+        colonySectorId
     });
 }
 
@@ -161,13 +180,15 @@ export function getLogisticsNode(sectorId) {
         };
     }
     if (planet && planet.owner === "Player") {
+        const profile = state.economy?.profilesBySector?.[sectorId] || buildEconomicProfileForSector(sectorId);
         return {
             sectorId, kind: "colony",
             name: `Player Colony S${sectorId}`,
             factionId: planet.factionId || "colonists",
             stock: planet.stock,
-            maxStock: makeStock({ ore: PORT_DEFAULTS.MAX_STOCK.ore, org: PORT_DEFAULTS.MAX_STOCK.org, eq: PORT_DEFAULTS.MAX_STOCK.eq }),
-            sells: COMMODITIES.slice(), buys: COMMODITIES.slice()
+            maxStock: planet.maxStock || getColonyMaxStock(planet),
+            sells: profile ? profile.likelyExports.slice() : COMMODITIES.slice(),
+            buys: profile ? profile.likelyImports.slice() : COMMODITIES.slice()
         };
     }
     return null;
@@ -620,13 +641,24 @@ export function runTradeRoute(route) {
         changedSlices.add(StateSlice.EVENTS);
         return [...changedSlices];
     }
-    const available = Math.max(0, origin.stock[route.commodity] || 0);
+    
+    // Get pulse route modifiers
+    const pulseMods = getPulseRouteModifiers(route.originSector, route.destinationSector);
+    let finalAmount = Math.min(route.amount, Math.max(0, origin.stock[route.commodity] || 0));
+    
+    // Reduce delivered amount if worst pulse reserve ratio is < 0.5
+    if (pulseMods && pulseMods.signal && pulseMods.signal.reserveRatio < 0.5) {
+        const reductionFactor = 0.5 + 0.5 * (pulseMods.signal.reserveRatio / 0.5);
+        finalAmount = Math.max(1, Math.round(finalAmount * reductionFactor));
+    }
+    
     const capacity = Math.max(
         0,
         (destination.maxStock[route.commodity] || BALANCE.AMBIENT_TRADE.DEFAULT_MAX_STOCK_CAP)
             - (destination.stock[route.commodity] || 0)
     );
-    const amount = Math.min(route.amount, available, capacity);
+    const amount = Math.min(finalAmount, capacity);
+    
     if (amount <= 0) {
         const nextFailures = route.failures + 1;
         const nextStarvedDays = (route.starvedDays || 0) + 1;
@@ -643,9 +675,9 @@ export function runTradeRoute(route) {
             causedBy: [{
                 sourceSystem: "economy",
                 eventType: "route_capacity_or_supply_shortfall",
-                label: `${formatCommodity(route.commodity)} available ${available}, capacity ${capacity}`
+                label: `${formatCommodity(route.commodity)} available ${origin.stock[route.commodity] || 0}, capacity ${capacity}`
             }],
-            payload: { available, capacity, commodity: route.commodity }
+            payload: { available: origin.stock[route.commodity] || 0, capacity, commodity: route.commodity }
         });
         changedSlices.add(StateSlice.EVENTS);
         return [...changedSlices];
@@ -666,6 +698,8 @@ export function runTradeRoute(route) {
     }
     const escortPower = getRouteEscortPower(route);
     const reliabilityAdjustment = getRouteReliabilityAdjustment(route.ownerType === "player" ? state.player.character : state.captains?.[route.ownerId]?.character);
+    
+    // Low pulse reserves raise failure chance
     const failureChance = Math.max(
         BALANCE.TRADE_ROUTE.FAILURE_MIN_CHANCE,
         Math.min(
@@ -675,16 +709,20 @@ export function runTradeRoute(route) {
                 - escortPower * BALANCE.TRADE_ROUTE.FAILURE_ESCORT_MULTIPLIER
                 - reliabilityAdjustment * BALANCE.TRADE_ROUTE.FAILURE_RELIABILITY_MULTIPLIER
         )
-    );
+    ) + (pulseMods?.failureChanceAdd || 0);
+    
     const escortCaptain = route.escortCaptainId ? state.captains[route.escortCaptainId] : null;
     if (random() < failureChance) {
         const nextFailures = route.failures + 1;
         const nextHeat = Math.min(100, route.heat + BALANCE.TRADE_ROUTE.FAILURE_HEAT_BASE + Math.floor(risk));
+        
+        // Low pulse reserves harm reliability on failure
+        const pulseReliabilityPenalty = pulseMods?.reliabilityPenalty || 0;
         const nextReliability = clampRange(
             route.reliability - Math.max(
                 BALANCE.TRADE_ROUTE.STARVED_RELIABILITY_LOSS,
                 BALANCE.TRADE_ROUTE.FAILURE_RELIABILITY_LOSS - reliabilityAdjustment
-            ),
+            ) - pulseReliabilityPenalty,
             0,
             100
         );
@@ -707,10 +745,36 @@ export function runTradeRoute(route) {
             }],
             payload: { risk, escortPower, failureChance, hotSector }
         });
+        
+        // Trigger emergency pulse restock missions if critical
+        if (pulseMods && pulseMods.signal && pulseMods.signal.reserveRatio < 0.4 && random() < 0.3) {
+            const worstSector = hotSector;
+            const exists = state.missions.some(m => m.type === "delivery" && m.destinationSector === worstSector && m.commodity === "pulse_canister" && m.status === "available");
+            if (!exists) {
+                state.missions.push({
+                    id: state.nextMissionId++,
+                    title: `Emergency Pulse Restock to Sector S${worstSector}`,
+                    type: "delivery",
+                    status: "available",
+                    originSector: state.player.currentSector,
+                    destinationSector: worstSector,
+                    commodity: "pulse_canister",
+                    amount: 8,
+                    factionId: "traders",
+                    rewardCredits: 3500,
+                    rewardRep: 3,
+                    expiresDay: state.player.time.day + 4,
+                    operationMinutes: 60
+                });
+            }
+        }
+        
         if (escortCaptain) changedSlices.add(StateSlice.CAPTAINS);
         changedSlices.add(StateSlice.EVENTS);
         return [...changedSlices];
     }
+    
+    // Route execution
     patchRouteEconomyAtEndpoints(route, amount).forEach(slice => changedSlices.add(slice));
     if (route.ownerType === "player") {
         const contractProgress = applyContractDeliveryHooks(route.destinationSector, route.commodity, amount);
@@ -719,26 +783,43 @@ export function runTradeRoute(route) {
             if ((contractProgress.completed || 0) > 0) changedSlices.add(StateSlice.PLAYER);
         }
     }
-    const profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
-    if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {
-        addCaptainCredits(route.ownerId, profit).forEach(slice => changedSlices.add(slice));
-    } else {
-        addPlayerCredits(profit).forEach(slice => changedSlices.add(slice));
+    
+    // Evaluate profit/value
+    let profit = 0;
+    let strategicValue = 0;
+    if (route.purpose === "colony_supply") {
+        strategicValue = getColonyRouteStrategicValue(route, amount);
     }
-    const nextProfit = route.profit + profit;
+    
+    if (!route.internalTransfer) {
+        profit = estimateRouteProfit(route.originSector, route.destinationSector, route.commodity, amount);
+        if (route.ownerType === "captain" && route.ownerId && state.captains[route.ownerId]) {
+            addCaptainCredits(route.ownerId, profit).forEach(slice => changedSlices.add(slice));
+        } else {
+            addPlayerCredits(profit).forEach(slice => changedSlices.add(slice));
+        }
+    }
+    
+    // Colony supply strategic valuation added to the route profit statistic
+    const nextProfit = route.profit + (route.purpose === "colony_supply" ? strategicValue : profit);
     const nextRuns = route.runs + 1;
     const nextStarvedDays = 0;
     const nextHeat = Math.max(0, route.heat - BALANCE.TRADE_ROUTE.SUCCESS_HEAT_LOSS);
+    
+    // Low pulse reserves affect reliability on success
+    const pulseReliabilityPenalty = (pulseMods?.reliabilityPenalty || 0) * 0.5;
     const nextReliability = clampRange(
         route.reliability
             + BALANCE.TRADE_ROUTE.SUCCESS_RELIABILITY_GAIN
             + Math.max(
                 0,
                 Math.floor(reliabilityAdjustment / BALANCE.TRADE_ROUTE.SUCCESS_RELIABILITY_ADJUSTMENT_DIVISOR)
-            ),
+            )
+            - pulseReliabilityPenalty,
         0,
         100
     );
+
     patchRoute(route.id, { profit: nextProfit, runs: nextRuns, starvedDays: nextStarvedDays, heat: nextHeat, reliability: nextReliability }).forEach(slice => changedSlices.add(slice));
     addFactionRep("traders", 1, "route income");
     addSectorInfluence(route.originSector, getFactionPoliticalPole(origin.factionId || "traders"), 1, "regular logistics traffic");
@@ -813,4 +894,48 @@ export function getRouteMarketValue(sectorId, commodity, mode) {
 export function estimateRouteProfit(originSector, destinationSector, commodity, amount = BALANCE.TRADE_ROUTE_BASE_AMOUNT) {
     const quote = getExpectedRouteValue(originSector, destinationSector, commodity, amount);
     return quote.expectedProfit;
+}
+
+export function getColonyRouteStrategicValue(route, amount) {
+    const planet = state.planets[route.destinationSector];
+    if (!planet || planet.owner !== "Player") return 0;
+    const def = getCommodityDef(route.commodity);
+    const basePrice = def ? def.basePrice : 100;
+    let val = amount * basePrice * 0.5;
+
+    if (planet.shortages && planet.shortages[route.commodity] > 0) {
+        val += amount * basePrice * 2.0;
+    }
+    const targetStock = (planet.demandProfile?.targetStock?.[route.commodity]) || 0;
+    const currentStock = planet.stock?.[route.commodity] || 0;
+    if (currentStock < targetStock * 0.25) {
+        val += amount * basePrice * 1.2;
+    }
+    if (planet.satisfaction < 50) {
+        val += amount * basePrice * 1.5;
+    }
+    
+    // Check if it's a factory input
+    const FACILITY_RECIPES = {
+        refinery: ['refined_metals', 'polymers', 'coolants', 'fertilizer'],
+        factory: ['machinery', 'eq', 'repair_parts', 'construction_kits'],
+        electronics_fab: ['electronics', 'control_cores'],
+        medical_lab: ['medical_supplies'],
+        pulse_works: ['pulse_canister', 'heavy_pulse_module', 'gate_coils']
+    };
+    let isInput = false;
+    Object.entries(FACILITY_RECIPES).forEach(([facilityKey, commoditiesList]) => {
+        if ((planet.buildings?.[facilityKey] || 0) > 0) {
+            commoditiesList.forEach(c => {
+                const recipe = PRODUCTION_RECIPES[c];
+                if (recipe && recipe.inputs && recipe.inputs[route.commodity]) {
+                    isInput = true;
+                }
+            });
+        }
+    });
+    if (isInput) {
+        val += amount * basePrice * 1.5;
+    }
+    return Math.round(val);
 }

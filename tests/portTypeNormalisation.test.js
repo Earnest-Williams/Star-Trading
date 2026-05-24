@@ -11,6 +11,7 @@ import { buildPriorityBriefing } from '../js/core/priorityBriefing.js';
 import { hasGuildJoinAccess } from '../js/core/factions.js';
 import { seedCompaniesAndPeople } from '../js/systems/companies.js';
 import { makeAmbientTradeSummary } from './helpers/economyTestState.js';
+import { buildEconomicProfileForSector } from '../js/systems/economy/profiles.js';
 
 function setupMissionState() {
     resetState();
@@ -83,6 +84,7 @@ function setupLegacyPortState() {
             charted: true,
             reachable: true,
             pirateThreat: 0,
+            asteroids: { ore: 5000, richness: 1, hazard: 0 },
             jumpGates: [{ destinationSectorId: 2, status: 'open' }]
         },
         2: {
@@ -200,6 +202,8 @@ describe('port type normalisation', () => {
 
     it('normalises company seeding for inferable legacy port keys', () => {
         setupLegacyPortState();
+        state.economy.profilesBySector[1] = buildEconomicProfileForSector(1);
+        state.economy.profilesBySector[2] = buildEconomicProfileForSector(2);
 
         assert.doesNotThrow(() => seedCompaniesAndPeople(() => 0));
         const companies = state.companyIdsBySector[1].map(id => state.companies[id]);

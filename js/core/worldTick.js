@@ -4,7 +4,7 @@ import { addWorldEvent } from './worldEvents.js';
 import { addSimulationTraceEvent } from './simulationTrace.js';
 import { registerDailyHook, registerHourlyHook } from './time.js';
 import { StateSlice, mapStateSlicesForInvalidation } from './state/domains.js';
-import { produceColonies, updateColonyNeedsDaily } from '../systems/colonies.js';
+import { produceColonies } from '../systems/colonies.js';
 import { runTradeRoutesDaily } from '../systems/tradeRoutes.js';
 import { runAmbientTradeDaily } from '../systems/ambientTrade.js';
 import { updatePortsDaily, updateThreatsDaily, updateFactionsDaily } from '../systems/politics.js';
@@ -21,6 +21,8 @@ import { applyDailyConsumption } from '../systems/economy/consumption.js';
 import { applyDailyProduction } from '../systems/economy/production.js';
 import { recomputeEconomyPressure } from '../systems/economy/pressure.js';
 import { generateEconomyContractsDaily } from '../systems/economy/contracts.js';
+import { rebuildEconomicProfiles } from '../systems/economy/profiles.js';
+import { applyColonyNeedsConsumption, updateColonySatisfactionDaily } from '../systems/colonies.js';
 
 const phaseFeatureFlags = BALANCE?.WORLD_TICK?.FEATURE_FLAGS || {};
 let schedulerInProgress = false;
@@ -69,8 +71,10 @@ function isFeatureEnabled(flag) {
 }
 
 export const DAILY_WORLD_TICK_PHASES = Object.freeze([
-    { id: 'colony_production', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => produceColonies() },
+    { id: 'profile_rebuild', cadence: 'daily', reads: ['economy'], writes: ['economy'], emits: [], expensive: false, run: () => rebuildEconomicProfiles() },
+    { id: 'colony_consumption', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => applyColonyNeedsConsumption() },
     { id: 'economy_daily_consumption', cadence: 'daily', reads: ['economy'], writes: ['ports'], emits: [], expensive: false, run: () => applyDailyConsumption() },
+    { id: 'colony_production', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => produceColonies() },
     { id: 'economy_daily_production', cadence: 'daily', reads: ['economy'], writes: ['ports'], emits: [], expensive: false, run: () => applyDailyProduction() },
     { id: 'economy_pressure_recompute', cadence: 'daily', reads: ['ports'], writes: ['economy'], emits: [], expensive: false, run: () => recomputeEconomyPressure() },
     { id: 'explicit_trade_route_runs', cadence: 'daily', reads: ['tradeRoutes'], writes: ['tradeRoutes'], emits: ['route'], expensive: true, run: () => runTradeRoutesDaily() },
@@ -78,9 +82,9 @@ export const DAILY_WORLD_TICK_PHASES = Object.freeze([
     { id: 'ambient_trade_response', cadence: 'daily', reads: ['ports'], writes: ['ports'], emits: ['world'], expensive: true, featureFlag: 'ambientTrade', run: () => runAmbientTradeDaily() },
     { id: 'economy_pressure_post_ambient', cadence: 'daily', reads: ['ports'], writes: ['economy'], emits: [], expensive: false, featureFlag: 'ambientTrade', run: () => recomputeEconomyPressure() },
     { id: 'economy_contracts', cadence: 'daily', reads: ['economy'], writes: ['economy'], emits: ['world'], expensive: false, run: () => generateEconomyContractsDaily() },
+    { id: 'colony_satisfaction_update', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => updateColonySatisfactionDaily() },
     { id: 'ambient_data_propagation', cadence: 'daily', reads: ['dataCargo'], writes: ['dataCargo'], emits: ['world'], expensive: true, featureFlag: 'dataPropagation', run: () => runAmbientDataPropagationDaily() },
     { id: 'data_cargo_culling', cadence: 'daily', reads: ['dataCargo'], writes: ['dataCargo'], emits: [], expensive: false, run: () => cullOldPublicSnapshots() },
-    { id: 'colony_needs', cadence: 'daily', reads: ['colonies'], writes: ['ports'], emits: [], expensive: false, run: () => updateColonyNeedsDaily() },
     { id: 'port_markets', cadence: 'daily', reads: ['ports'], writes: ['ports'], emits: [], expensive: false, run: () => updatePortsDaily() },
     { id: 'sector_threats', cadence: 'daily', reads: ['universe'], writes: ['universe'], emits: [], expensive: false, run: () => updateThreatsDaily() },
     { id: 'faction_politics', cadence: 'daily', reads: ['factions'], writes: ['factions'], emits: [], expensive: false, run: () => updateFactionsDaily() },

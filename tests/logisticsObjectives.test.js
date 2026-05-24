@@ -27,14 +27,14 @@ function buildObjectiveUniverse() {
     state.ports = {
         1: {
             typeKey: 'agricultural', factionId: 'fu', publicFactionId: 'fu', hiddenFactionId: null,
-            stock: { ore: 100, org: 500, eq: 100 },
-            maxStock: { ore: 1000, org: 1000, eq: 1000 },
+            stock: { ore: 100, org: 500, eq: 100, pulse_canister: 20, heavy_pulse_module: 20, gate_coils: 20, control_cores: 20 },
+            maxStock: { ore: 1000, org: 1000, eq: 1000, pulse_canister: 20, heavy_pulse_module: 20, gate_coils: 20, control_cores: 20 },
             basePrices: { ore: 80, org: 150, eq: 300 }
         },
         3: {
             typeKey: 'industrial', factionId: 'sda', publicFactionId: 'sda', hiddenFactionId: null,
-            stock: { ore: 100, org: 50, eq: 100 },
-            maxStock: { ore: 1000, org: 1000, eq: 1000 },
+            stock: { ore: 100, org: 50, eq: 100, pulse_canister: 20, heavy_pulse_module: 20, gate_coils: 20, control_cores: 20 },
+            maxStock: { ore: 1000, org: 1000, eq: 1000, pulse_canister: 20, heavy_pulse_module: 20, gate_coils: 20, control_cores: 20 },
             basePrices: { ore: 80, org: 150, eq: 300 }
         }
     };

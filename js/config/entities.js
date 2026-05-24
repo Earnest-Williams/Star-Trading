@@ -67,9 +67,17 @@ export const PLANET_TYPES = {
 
 export const BUILDING_DEFS = {
     habitat: { name: "Habitat", minutes: 240, credits: 1500, cargo: { ore: 10, org: 10, eq: 10 }, description: "Raises colony capacity and growth." },
-    mine: { name: "Mine", minutes: 240, credits: 2000, cargo: { ore: 0, org: 5, eq: 15 }, description: "Produces ore each morning." },
-    farm: { name: "Farm", minutes: 240, credits: 1800, cargo: { ore: 10, org: 0, eq: 10 }, description: "Produces organics each morning." },
-    factory: { name: "Factory", minutes: 360, credits: 2600, cargo: { ore: 20, org: 10, eq: 10 }, description: "Produces equipment each morning." },
+    mine: { name: "Mine", minutes: 240, credits: 2000, cargo: { ore: 0, org: 5, eq: 15 }, description: "Produces ore, heavy metals, and rare earths each morning." },
+    farm: { name: "Farm", minutes: 240, credits: 1800, cargo: { ore: 10, org: 0, eq: 10 }, description: "Produces organics and water ice each morning." },
+    refinery: { name: "Refinery", minutes: 360, credits: 2400, cargo: { ore: 15, org: 10, eq: 10 }, description: "Refines raw feedstocks into processed commodities." },
+    factory: { name: "Factory", minutes: 360, credits: 2600, cargo: { ore: 20, org: 10, eq: 10 }, description: "Produces equipment, machinery, and parts each morning." },
+    electronics_fab: { name: "Electronics Fab", minutes: 360, credits: 3000, cargo: { ore: 10, org: 10, eq: 20 }, description: "Fabricates electronics and control cores." },
+    medical_lab: { name: "Medical Lab", minutes: 300, credits: 2200, cargo: { ore: 5, org: 20, eq: 15 }, description: "Formulates advanced medical supplies daily." },
+    pulse_works: { name: "Pulse Works", minutes: 300, credits: 2800, cargo: { ore: 15, org: 5, eq: 20 }, description: "Manufactures jump-pulse canisters and modules." },
+    warehouse: { name: "Warehouse", minutes: 180, credits: 1200, cargo: { ore: 20, org: 5, eq: 5 }, description: "Increases bulk storage capacity by 200." },
+    cold_storage: { name: "Cold Storage", minutes: 180, credits: 1400, cargo: { ore: 10, org: 15, eq: 5 }, description: "Increases cold storage capacity by 200 and mitigates spoilage." },
+    housing: { name: "Housing", minutes: 240, credits: 1500, cargo: { ore: 10, org: 10, eq: 10 }, description: "Expands residential capacity for higher housing tiers." },
+    civic_services: { name: "Civic Services", minutes: 240, credits: 1800, cargo: { ore: 5, org: 15, eq: 15 }, description: "Provides essential services to support quality-of-life tiers." },
     defense: { name: "Defense Grid", minutes: 300, credits: 2200, cargo: { ore: 10, org: 0, eq: 20 }, description: "Reduces pirate pressure around the colony." }
 };
 

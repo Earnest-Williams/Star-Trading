@@ -17,6 +17,8 @@ function resolveBasePrice(commodity) {
 export function getMidMarketPriceForSector(sectorId, commodity) {
   const mid = getMidPriceForSector(sectorId, commodity);
   if (Number.isFinite(mid) && mid > 0) return mid;
+  const portBase = state.ports?.[sectorId]?.basePrices?.[commodity];
+  if (Number.isFinite(portBase) && portBase > 0) return portBase;
   return resolveBasePrice(commodity);
 }
 
@@ -74,6 +76,9 @@ export function getExpectedRouteValue(originSector, destinationSector, commodity
         confidence: Math.min(origin.confidence, destination.confidence),
         buyPrice: origin.ask,
         sellPrice: destination.bid,
-        expectedProfit: Math.floor(estimatedNet * BALANCE.TRADE_ROUTE.PROFIT_MULTIPLIER)
+        expectedProfit: Math.max(
+            BALANCE.TRADE_ROUTE.PROFIT_FLOOR,
+            Math.floor(estimatedNet * BALANCE.TRADE_ROUTE.PROFIT_MULTIPLIER)
+        )
     };
 }

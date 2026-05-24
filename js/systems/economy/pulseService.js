@@ -8,6 +8,8 @@ function num(v, d = 0) { const n = Number(v); return Number.isFinite(n) ? n : d;
 function getCommodityReserveRatio(sectorId, commodity) {
   const signal = state.economy?.pressureBySector?.[sectorId]?.[commodity];
   if (signal && Number(signal.targetStock || 0) > 0) return Math.max(0, num(signal.currentStock) / Math.max(1, num(signal.targetStock)));
+  const hasNode = state.ports?.[sectorId] || state.planets?.[sectorId];
+  if (!hasNode) return 1.0;
   const profileTarget = num(state.economy?.profilesBySector?.[sectorId]?.targetStock?.[commodity], 20);
   const stock = num(state.ports?.[sectorId]?.stock?.[commodity]) + num(state.planets?.[sectorId]?.stock?.[commodity]);
   return Math.max(0, stock / Math.max(1, profileTarget));

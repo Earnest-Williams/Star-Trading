@@ -2,6 +2,7 @@ import { state } from '../../state.js';
 import { BALANCE, MARKET_COMMODITIES } from '../../config/economy.js';
 import { recomputeSpatialPrices } from './spatialPrices.js';
 import { getEconomyNodes } from './nodeAdapter.js';
+import { PRODUCTION_RECIPES } from './production.js';
 
 function toNumber(value, fallback = 0) {
     const parsed = Number(value);
@@ -29,6 +30,39 @@ function getEffectiveMaxStock(node, profile, commodity) {
 }
 
 function explainPressure(profile, commodity, record) {
+    const planet = state.planets[profile.sectorId];
+    if (planet && planet.owner === "Player") {
+        if (planet.shortages && planet.shortages[commodity] > 0) {
+            return `Colony shortages of ${commodity} are causing critical local demand.`;
+        }
+        const needs = (planet.demandProfile?.baselineConsumption?.[commodity]) || 0;
+        if (needs > 0 && record.shortageSeverity > SHORTAGE_SEVERITY_THRESHOLD) {
+            return `Colony housing/civic demand for ${commodity} is drawing down local stock.`;
+        }
+        // Check if it is a facility input
+        const FACILITY_RECIPES = {
+            refinery: ['refined_metals', 'polymers', 'coolants', 'fertilizer'],
+            factory: ['machinery', 'eq', 'repair_parts', 'construction_kits'],
+            electronics_fab: ['electronics', 'control_cores'],
+            medical_lab: ['medical_supplies'],
+            pulse_works: ['pulse_canister', 'heavy_pulse_module', 'gate_coils']
+        };
+        let isInput = false;
+        Object.entries(FACILITY_RECIPES).forEach(([facilityKey, commoditiesList]) => {
+            if ((planet.buildings?.[facilityKey] || 0) > 0) {
+                commoditiesList.forEach(c => {
+                    const recipe = PRODUCTION_RECIPES?.[c];
+                    if (recipe && recipe.inputs && recipe.inputs[commodity]) {
+                        isInput = true;
+                    }
+                });
+            }
+        });
+        if (isInput && record.shortageSeverity > SHORTAGE_SEVERITY_THRESHOLD) {
+            return `Colony industrial facility requires ${commodity} as recipe input.`;
+        }
+    }
+
     if (record.unmetDemand > 0) return `${commodity} demand is not fully met.`;
     if (record.shortageSeverity > SHORTAGE_SEVERITY_THRESHOLD && profileDailyConsumption(profile, commodity) > 0)
         return `${commodity} stock is below target and local demand is persistent.`;

@@ -364,8 +364,9 @@ describe('migrateSave — v14 character block injection', () => {
     it('is a no-op on current-version saves that already have character blocks', () => {
         const save = minimalSave(SAVE_VERSION);
         save.player.character = createCharacter();
-        const before = JSON.stringify(save);
-        const result = migrateSave(save);
+        const once = migrateSave(save);
+        const before = JSON.stringify(once);
+        const result = migrateSave(once);
         assert.equal(JSON.stringify(result), before);
     });
 

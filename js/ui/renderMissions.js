@@ -33,7 +33,11 @@ export function renderMissionBoard() {
         const specialTag = m.kind === "entanglement_event"
             ? `<span class="small amber">Entanglement</span><br>`
             : "";
-        html += `<div class="mission"><strong>${prefix}${escapeHtml(m.title)}</strong><br>${specialTag}${escapeHtml(missionDescription(m))}<br>`;
+        const isEmergency = m.title.includes("Emergency") || m.title.includes("Shortage") || m.title.includes("Pulse Restock") || m.title.includes("Maintenance Crisis");
+        const emergencyTag = isEmergency 
+            ? `<span class="service-chip" style="color: var(--accent-red); border-color: var(--accent-red); margin: 2px 0;">Colony Emergency</span><br>`
+            : "";
+        html += `<div class="mission"><strong>${prefix}${escapeHtml(m.title)}</strong><br>${specialTag}${emergencyTag}${escapeHtml(missionDescription(m))}<br>`;
         html += `Expires: Day ${m.expiresDay} | Reward: ${formatCredits(m.rewardCredits)} credits`;
         if (faction) html += ` | ${faction.short} +${m.rewardRep}`;
         if (m.candidates && m.candidates.length > 0) {
@@ -84,7 +88,11 @@ export function renderAllMissionScreen() {
     if (accepted.length === 0) html += `<div class="muted">No accepted missions.</div>`;
     accepted.forEach(m => {
         const faction = FACTIONS[m.factionId] || null;
-        html += `<div class="mission"><strong>${faction ? `<span style="color:${faction.color}">${faction.icon}</span> ` : ""}${escapeHtml(m.title)}</strong><br>${escapeHtml(missionDescription(m))}<br>`;
+        const isEmergency = m.title.includes("Emergency") || m.title.includes("Shortage") || m.title.includes("Pulse Restock") || m.title.includes("Maintenance Crisis");
+        const emergencyTag = isEmergency 
+            ? `<span class="service-chip" style="color: var(--accent-red); border-color: var(--accent-red); margin: 2px 0;">Colony Emergency</span><br>`
+            : "";
+        html += `<div class="mission"><strong>${faction ? `<span style="color:${faction.color}">${faction.icon}</span> ` : ""}${escapeHtml(m.title)}</strong><br>${emergencyTag}${escapeHtml(missionDescription(m))}<br>`;
         html += `Expires Day ${m.expiresDay} | Reward ${formatCredits(m.rewardCredits)}<br>`;
         if (m.type === "mining") html += `Progress: ${m.progress}/${m.amount} ore<br>`;
         html += `<button data-action="completeMission" data-arg0="${m.id}">Try Complete</button></div>`;

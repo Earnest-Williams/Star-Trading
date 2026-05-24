@@ -7,6 +7,7 @@ import { buildLogisticsObjectivesSnapshot, describeObjectiveCommodityProgress } 
 import { captainDisplayName } from "../systems/captains.js";
 import { state } from "../state.js";
 import { getFreshnessSummaryForSector } from "../core/dataCargo/implementation.js";
+import { getPulseRouteModifiers } from "../systems/economy/pulseService.js";
 
 export function renderLogisticsScreen() {
     const snapshot = buildLogisticsSnapshot();
@@ -113,9 +114,30 @@ function renderActiveRoutesPanel(snapshot) {
         const faction = route.factionId && FACTIONS[route.factionId] ? FACTIONS[route.factionId] : null;
         const escort = route.escortCaptainId ? captains[route.escortCaptainId] : null;
         const owner = route.ownerType === "captain" && captains[route.ownerId] ? captainDisplayName(captains[route.ownerId]) : "Player";
-        html += `<div class="card"><strong>${escapeHtml(route.name)}</strong> ${faction ? `<span style="color:${faction.color}">${faction.icon} ${faction.short}</span>` : ""}<br>`;
+        
+        // Dynamic pulse risk assessment
+        const pulseMods = getPulseRouteModifiers(route.originSector, route.destinationSector);
+        const reserveRatio = pulseMods?.signal?.reserveRatio ?? 1.0;
+        let pulseRiskHtml = "";
+        if (reserveRatio < 0.4) {
+            pulseRiskHtml = ` | <span style="color: var(--accent-red); font-weight: bold;">CRITICAL PULSE RISK: ${(reserveRatio * 100).toFixed(0)}% reserve</span>`;
+        } else if (reserveRatio < 0.7) {
+            pulseRiskHtml = ` | <span style="color: var(--accent-amber);">Elevated Pulse Risk: ${(reserveRatio * 100).toFixed(0)}% reserve</span>`;
+        } else {
+            pulseRiskHtml = ` | <span style="color: var(--accent-green); font-size: 0.88em;">Pulse: stable (${(reserveRatio * 100).toFixed(0)}%)</span>`;
+        }
+
+        const purposeLabel = route.purpose === "colony_supply" 
+            ? `<span class="service-chip" style="color: var(--accent-cyan); border-color: var(--accent-cyan);">Auto-Supply</span>`
+            : (route.purpose === "factory_input" 
+                ? `<span class="service-chip" style="color: var(--accent-amber);">Factory Input</span>`
+                : (route.purpose === "company_contract"
+                    ? `<span class="service-chip" style="color: var(--accent-purple);">Company Lease</span>`
+                    : ""));
+
+        html += `<div class="card"><strong>${escapeHtml(route.name)}</strong> ${faction ? `<span style="color:${faction.color}">${faction.icon} ${faction.short}</span>` : ""} ${purposeLabel}<br>`;
         html += `${origin ? escapeHtml(origin.name) : "Missing origin"} -> ${destination ? escapeHtml(destination.name) : "Missing destination"}<br>`;
-        html += `Owner: ${escapeHtml(owner)} | Status: ${route.status} | Next run: Day ${route.nextRunDay} | Reliability ${route.reliability} | Heat ${route.heat}<br>`;
+        html += `Owner: ${escapeHtml(owner)} | Status: ${route.status} | Next run: Day ${route.nextRunDay} | Reliability ${route.reliability} | Heat ${route.heat}${pulseRiskHtml}<br>`;
         html += `Runs ${route.runs} / Failures ${route.failures} / Lifetime profit ${formatCredits(route.profit)}<br>`;
         const routeSpan = metrics && metrics.totalEffectiveSpan !== null ? metrics.totalEffectiveSpan.toFixed(1) : "n/a";
         html += `Risk ${risk === null ? "disconnected" : risk.toFixed(1)} | Span ${routeSpan} | Escort: ${escort ? escapeHtml(captainDisplayName(escort)) : "none"}<br>`;
@@ -144,10 +166,35 @@ function renderColonyNeedsPanel(snapshot) {
     playerColonies.forEach(([sectorIdText, planet]) => {
         const needs = getColonyDailyNeeds(planet);
         const shortages = planet.shortages || makeStock();
-        html += `<div class="mission"><strong>Colony S${sectorIdText}</strong> Satisfaction ${planet.satisfaction || 0}<br>`;
-        html += `Daily needs: ${COMMODITIES.map(c => `${formatCommodity(c)} ${needs[c]}`).join(" / ")}<br>`;
-        html += `Stock: ${COMMODITIES.map(c => `${formatCommodity(c)} ${planet.stock[c] || 0}`).join(" / ")}<br>`;
-        html += `Shortages: ${COMMODITIES.map(c => `${formatCommodity(c)} ${shortages[c] || 0}`).join(" / ")}</div>`;
+        
+        const shortagesList = [];
+        const stocksList = [];
+        const needsList = [];
+
+        COMMODITIES.forEach(c => {
+            if (needs[c] > 0) {
+                needsList.push(`${formatCommodity(c)} ${needs[c]}`);
+            }
+            if ((planet.stock[c] || 0) > 0 || needs[c] > 0) {
+                stocksList.push(`${formatCommodity(c)} ${planet.stock[c] || 0}`);
+            }
+            if (shortages[c] > 0) {
+                shortagesList.push(`<span style="color: var(--accent-red); font-weight: bold;">${formatCommodity(c)}: ${shortages[c]} shortage</span>`);
+            }
+        });
+
+        const criticalShortagesHtml = shortagesList.length > 0 
+            ? `<div style="margin-top: 4px;"><strong>Critical Shortages:</strong> ${shortagesList.join(" / ")}</div>` 
+            : `<div style="margin-top: 4px; color: var(--accent-green);">No active shortages.</div>`;
+
+        html += `
+        <div class="mission">
+            <strong>Colony S${sectorIdText}</strong> (Satisfaction: ${planet.satisfaction || 0}% | Housing: Tier ${planet.housingTier || 1})<br>
+            <div class="small muted" style="margin-top: 4px;">Daily consumption: ${needsList.join(" / ") || "none"}</div>
+            <div class="small muted">Stock levels: ${stocksList.join(" / ") || "none"}</div>
+            ${criticalShortagesHtml}
+        </div>
+        `;
     });
     html += `</div>`;
     return html;

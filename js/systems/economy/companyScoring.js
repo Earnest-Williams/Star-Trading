@@ -161,21 +161,33 @@ export function scoreCompanyTypeForSector(sectorId, type, context) {
     };
 }
 
-export function scoreCompanyTypesForSector(sectorId) {
-    const context = getSectorScoringContext(sectorId);
-    return TYPES.map(type => scoreCompanyTypeForSector(sectorId, type, context))
+export function scoreCompanyTypesForSector(sectorId, context) {
+    const sectorContext = context || getSectorScoringContext(sectorId);
+    return TYPES.map(type => scoreCompanyTypeForSector(sectorId, type, sectorContext))
         .sort((a, b) => b.score - a.score || a.type.localeCompare(b.type));
 }
 
 export function chooseCapacityBasedCompanyTypes(sectorId) {
     const profile = state.economy?.profilesBySector?.[sectorId] || {};
+    const context = getSectorScoringContext(sectorId);
     const capacity = Math.max(1, Math.min(8, Math.round(num(profile.companyCapacity, 3))));
-    const ranked = scoreCompanyTypesForSector(sectorId).filter(candidate => candidate.score > 0);
     const picks = [];
+
+    if (context.stardock) {
+        picks.push('ship_refitter');
+        picks.push('dockyard');
+    }
+    if (context.front || context.hiddenVc) {
+        picks.push('black_market_front');
+    }
+
+    const ranked = scoreCompanyTypesForSector(sectorId, context).filter(candidate => candidate.score > 0);
     ranked.forEach(candidate => {
         const remaining = capacity - picks.length;
         if (remaining <= 0) return;
-        const count = Math.min(remaining, candidate.count);
+        const currentCount = picks.filter(p => p === candidate.type).length;
+        const allowedToAdd = Math.max(0, candidate.count - currentCount);
+        const count = Math.min(remaining, allowedToAdd);
         for (let index = 0; index < count; index += 1) picks.push(candidate.type);
     });
     if (picks.length === 0) picks.push('haulage');

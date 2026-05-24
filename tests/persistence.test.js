@@ -73,8 +73,9 @@ describe('migrateSave — version stamping', () => {
 
     it('is a no-op on a current-version save (aside from version stamp)', () => {
         const save = minimalSave(SAVE_VERSION);
-        const before = JSON.stringify(save);
-        const result = migrateSave(save);
+        const once = migrateSave(save);
+        const before = JSON.stringify(once);
+        const result = migrateSave(once);
         // version stays the same; everything else should be unchanged
         assert.equal(result.version, SAVE_VERSION);
         const after = JSON.stringify(result);
@@ -116,7 +117,17 @@ describe('migrateSave — economy profile normalisation', () => {
                 extractionCapacity: 40,
                 populationDemand: 0,
                 likelyExports: ['ore'],
-                likelyImports: ['eq']
+                likelyImports: ['eq'],
+                populationTier: 0,
+                settlementRole: null,
+                baselineConsumption: {},
+                industrialConsumption: {},
+                serviceConsumption: {},
+                targetStock: {},
+                strategicReserve: {},
+                companyCapacity: 0,
+                routeAccess: 0,
+                routeDependence: 0
             },
             2: {
                 sectorId: 2,
@@ -127,7 +138,17 @@ describe('migrateSave — economy profile normalisation', () => {
                 extractionCapacity: 0,
                 populationDemand: 0,
                 likelyExports: [],
-                likelyImports: []
+                likelyImports: [],
+                populationTier: 0,
+                settlementRole: null,
+                baselineConsumption: {},
+                industrialConsumption: {},
+                serviceConsumption: {},
+                targetStock: {},
+                strategicReserve: {},
+                companyCapacity: 0,
+                routeAccess: 0,
+                routeDependence: 0
             }
         });
     });
@@ -148,7 +169,13 @@ describe('migrateSave — economy scaffolding', () => {
             dailySummary: null,
             lastProfileBuildDay: null,
             lastPressureDay: null,
-            generatedByVersion: 1
+            generatedByVersion: 1,
+            universeBasePrices: {},
+            priceDiagnostics: {},
+            nodeMidPrices: {},
+            spatialPriceDiagnostics: {},
+            lastPriceCalibrationDay: null,
+            lastSpatialPriceDay: null
         });
     });
 
@@ -171,13 +198,59 @@ describe('migrateSave — economy scaffolding', () => {
         const result = migrateSave(save);
 
         assert.deepEqual(result.economy.pressureBySector, {
-            1: { ore: { shortageSeverity: 0.5, surplus: 0, pricePressure: 1.3, routeAccess: 0 } }
+            1: {
+                ore: {
+                    targetStock: 0,
+                    currentStock: 0,
+                    dailyConsumption: 0,
+                    dailyDemand: 0,
+                    dailyProduction: 0,
+                    unmetDemand: 0,
+                    surplus: 0,
+                    shortageSeverity: 0.5,
+                    surplusSeverity: 0,
+                    confidence: 0,
+                    pricePressure: 1.3,
+                    stockRatio: 0,
+                    routeAccess: 0,
+                    lastUpdatedDay: null,
+                    primaryCause: ''
+                }
+            }
         });
         assert.deepEqual(result.economy.recentVolumeBySector, {
             1: { ore: 5, eq: 0 }
         });
         assert.deepEqual(result.economy.contracts, [
-            { id: 4, destinationSectorId: 3, commodity: 'ore', amount: 8, delivered: 2, status: 'accepted' }
+            {
+                id: '4',
+                destinationSector: 3,
+                destinationSectorId: 3,
+                commodity: 'ore',
+                amount: 8,
+                remaining: 8,
+                reward: 0,
+                unitReward: 0,
+                postedDay: 0,
+                expiresDay: 0,
+                sourceCandidates: [],
+                delivered: 2,
+                status: 'accepted'
+            },
+            {
+                id: 'bad',
+                destinationSector: 3,
+                destinationSectorId: 3,
+                commodity: 'ore',
+                amount: 0,
+                remaining: 0,
+                reward: 0,
+                unitReward: 0,
+                postedDay: 0,
+                expiresDay: 0,
+                sourceCandidates: [],
+                delivered: 0
+            }
         ]);
     });
 });
@@ -451,7 +524,7 @@ describe('save serialization', () => {
             profilesBySector: { 1: { profile: 'industrial' } },
             pressureBySector: { 1: { ore: { shortageSeverity: 0.25, surplus: 0, pricePressure: 0.1, routeAccess: 1 } } },
             recentVolumeBySector: { 1: { ore: 12 } },
-            contracts: [{ id: 1, commodity: 'ore', status: 'open' }],
+            contracts: [{ id: 1, destinationSectorId: 1, commodity: 'ore', status: 'open' }],
             nextContractId: 2,
             dailySummary: { day: 3, shortages: 1 },
             lastProfileBuildDay: 2,

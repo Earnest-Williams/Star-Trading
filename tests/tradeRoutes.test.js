@@ -21,6 +21,9 @@ import {
 import { BALANCE } from '../js/constants.js';
 import { addJumpGateCorridor } from '../js/core/universe.js';
 import { initSessionRng } from '../js/utils.js';
+import { rebuildEconomicProfiles } from '../js/systems/economy/profiles.js';
+import { calibrateInitialUniversePrices } from '../js/systems/economy/initialPrices.js';
+import { recomputeEconomyPressure } from '../js/systems/economy/pressure.js';
 
 // Minimal universe: 1 — 2 — 4 (direct path length 3, distance 2)
 //                       \— 3
@@ -41,12 +44,12 @@ function buildUniverse() {
     // Two compatible ports: mining now exposes raw industrial feedstocks and sector 4 buys them.
     state.ports = {
         1: { typeKey: 'mining',    factionId: 'hc', publicFactionId: 'hc', hiddenFactionId: null,
-             stock: { ore: 3000, org: 500,  eq: 200  },
-             maxStock: { ore: 6000, org: 5000, eq: 4000 },
+             stock: { ore: 3000, org: 500,  eq: 200, pulse_canister: 20, heavy_pulse_module: 20, gate_coils: 20, control_cores: 20  },
+             maxStock: { ore: 6000, org: 5000, eq: 4000, pulse_canister: 100, heavy_pulse_module: 100, gate_coils: 100, control_cores: 100 },
              basePrices: { ore: 80, org: 150, eq: 300 } },
         4: { typeKey: 'industrial', factionId: 'hc', publicFactionId: 'hc', hiddenFactionId: null,
-             stock: { ore: 500,  org: 200,  eq: 1000 },
-             maxStock: { ore: 6000, org: 5000, eq: 4000 },
+             stock: { ore: 0,  org: 200,  eq: 1000, pulse_canister: 20, heavy_pulse_module: 20, gate_coils: 20, control_cores: 20 },
+             maxStock: { ore: 6000, org: 5000, eq: 4000, pulse_canister: 100, heavy_pulse_module: 100, gate_coils: 100, control_cores: 100 },
              basePrices: { ore: 80, org: 150, eq: 300 } },
     };
     state.planets = {};
@@ -54,6 +57,11 @@ function buildUniverse() {
     initSessionRng(1);
     state.tradeRoutes = [];
     state.nextTradeRouteId = 1;
+
+    rebuildEconomicProfiles();
+    calibrateInitialUniversePrices();
+    recomputeEconomyPressure();
+    state.marketRevision = (state.marketRevision || 0) + 1;
 }
 
 describe('findShortestCorridorPath', () => {
@@ -127,12 +135,13 @@ describe('deriveRouteMetrics', () => {
         assert.equal(metrics.setupCost, getRouteSetupCost(1, 4));
         assert.deepEqual(metrics.viableCommodities, ['ore', 'heavy_metals', 'rare_earths']);
         assert.equal(metrics.profitBands[0].commodity, 'ore');
-        assert.equal(metrics.profitBands[0].estimatedProfit, estimateRouteProfit(1, 4, 'ore'));
+        assert.equal(metrics.profitBands[0].expected, estimateRouteProfit(1, 4, 'ore'));
     });
 
     it('refreshes market-derived profit bands when the market revision changes without changing the cached path data', () => {
         const before = deriveRouteMetrics(1, 4);
         state.ports[1].stock.ore = 0;
+        recomputeEconomyPressure();
         state.marketRevision = (Number(state.marketRevision) || 0) + 1;
         const after = deriveRouteMetrics(1, 4);
         assert.deepEqual(after.path, before.path);
@@ -150,6 +159,8 @@ describe('estimateRouteProfit', () => {
     });
 
     it('profit scales proportionally with amount', () => {
+        state.economy.nodeMidPrices[1].ore = 30;
+        state.economy.nodeMidPrices[4].ore = 150;
         const p1 = estimateRouteProfit(1, 4, 'ore', 10);
         const p2 = estimateRouteProfit(1, 4, 'ore', 20);
         assert.ok(p2 > p1, `doubled amount should yield more profit (${p2} > ${p1})`);
@@ -343,6 +354,7 @@ describe('explicit trade route execution', () => {
     it('removing connectivity pauses affected routes', () => {
         state.tradeRoutes = [{ id: 9, originSector: 1, destinationSector: 4, commodity: 'ore', status: 'active' }];
         state.universe[2].jumpGates = [];
+        state.universe = { ...state.universe };
         normaliseTradeRoutes();
         assert.equal(state.tradeRoutes[0].status, 'paused');
     });

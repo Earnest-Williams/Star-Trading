@@ -3,6 +3,7 @@ import { MARKET_COMMODITIES } from '../../config/economy.js';
 import { PLANET_TYPES } from '../../config/entities.js';
 import { hasEconomicActivity } from '../../utils.js';
 import { getPortType, DEFAULT_PORT_TYPE_KEY } from '../../core/ports.js';
+import { getColonyDailyNeeds } from '../colonies.js';
 
 const STARDOCK_PORT_TYPE_KEY = 'stardock';
 
@@ -138,6 +139,41 @@ export function buildEconomicProfileForSector(sectorId) {
     profile.likelyExports = toKnownCommodityList([...exportSet]);
     profile.likelyImports.forEach((commodity) => { profile.baselineConsumption[commodity] = populationTier; profile.targetStock[commodity] = 16 + populationTier * 10; profile.strategicReserve[commodity] = Math.round(profile.targetStock[commodity] * 0.25); });
     profile.likelyExports.forEach((commodity) => { profile.industrialConsumption[commodity] = 0; profile.targetStock[commodity] = Math.max(profile.targetStock[commodity] || 0, 10); });
+
+    if (planet && planet.owner === "Player") {
+        const needs = getColonyDailyNeeds(planet);
+        Object.entries(needs).forEach(([c, need]) => {
+            if (need > 0) {
+                profile.baselineConsumption[c] = (profile.baselineConsumption[c] || 0) + need;
+                profile.targetStock[c] = Math.max(profile.targetStock[c] || 0, Math.max(20, need * 8));
+                profile.strategicReserve[c] = Math.max(profile.strategicReserve[c] || 0, Math.round(profile.targetStock[c] * 0.25));
+                if (!profile.likelyImports.includes(c)) {
+                    profile.likelyImports.push(c);
+                }
+            }
+        });
+        const FACILITY_RECIPES = {
+            refinery: ['refined_metals', 'polymers', 'coolants', 'fertilizer'],
+            factory: ['machinery', 'eq', 'repair_parts', 'construction_kits'],
+            electronics_fab: ['electronics', 'control_cores'],
+            medical_lab: ['medical_supplies'],
+            pulse_works: ['pulse_canister', 'heavy_pulse_module', 'gate_coils'],
+            mine: ['ore', 'heavy_metals', 'rare_earths'],
+            farm: ['org', 'water_ice']
+        };
+        Object.entries(FACILITY_RECIPES).forEach(([facilityKey, commoditiesList]) => {
+            if ((planet.buildings?.[facilityKey] || 0) > 0) {
+                commoditiesList.forEach(c => {
+                    if (!profile.likelyExports.includes(c)) {
+                        profile.likelyExports.push(c);
+                    }
+                    profile.industrialConsumption[c] = 0;
+                    profile.targetStock[c] = Math.max(profile.targetStock[c] || 0, 10);
+                });
+            }
+        });
+    }
+
     return profile;
 }
 
