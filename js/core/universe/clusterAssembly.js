@@ -53,6 +53,48 @@ function pickWeighted(weights, rng) {
     return entries[entries.length - 1][0];
 }
 
+export function validateClusterAssemblyResult(result, config) {
+    const errors = [];
+    const siteEntries = Object.entries(result?.sites || {});
+    if (siteEntries.length !== config.occupiedSites) {
+        errors.push(`expected ${config.occupiedSites} occupied sites, got ${siteEntries.length}`);
+    }
+    const seenCoordKeys = new Set();
+    const blockedFields = ["roleHint", "clusterId", "family", "localId", "connectorKinds", "stockBias"];
+    let hasHomeCandidate = false;
+    let hasNonStarterConnector = false;
+    for (const [siteIdStr, site] of siteEntries) {
+        const siteId = Number(siteIdStr);
+        if (!Number.isFinite(site?.coord?.x) || !Number.isFinite(site?.coord?.y) || !Number.isFinite(site?.coord?.z)) {
+            errors.push(`site ${siteId} has invalid coordinate`);
+            continue;
+        }
+        const expectedCoordKey = coordKey(site.coord);
+        if (site.coordKey !== expectedCoordKey) {
+            errors.push(`site ${siteId} coordKey mismatch`);
+        }
+        if (seenCoordKeys.has(site.coordKey)) {
+            errors.push(`duplicate coordKey '${site.coordKey}'`);
+        }
+        seenCoordKeys.add(site.coordKey);
+        if (result.siteIdByCoord?.[site.coordKey] !== siteId) {
+            errors.push(`siteIdByCoord mismatch for ${site.coordKey}`);
+        }
+        for (const field of blockedFields) {
+            if (Object.hasOwn(site, field)) errors.push(`site ${siteId} unexpectedly contains '${field}'`);
+        }
+    }
+    for (const hint of Object.values(result?.clusterHintsBySiteId || {})) {
+        if (hint?.roleHint === "home_candidate") hasHomeCandidate = true;
+        if (hint?.family !== "starter_hub" && Array.isArray(hint?.connectorKinds) && hint.connectorKinds.length > 0) {
+            hasNonStarterConnector = true;
+        }
+    }
+    if (!hasHomeCandidate) errors.push("missing home_candidate transient hint");
+    if (!hasNonStarterConnector) errors.push("missing non-starter connector transient hint");
+    return errors;
+}
+
 export function createSparseSitesFromClusterBlueprints(config, rng) {
     const validationErrors = [];
     for (const blueprint of CLUSTER_BLUEPRINTS) {
@@ -257,10 +299,15 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
         siteIdByCoord[coordKey(coord)] = id;
     }
 
-    return {
+    const result = {
         sites,
         siteIdByCoord,
         archetypeName: archetype.name,
         clusterHintsBySiteId
     };
+    const qualityErrors = validateClusterAssemblyResult(result, config);
+    if (qualityErrors.length > 0) {
+        throw new Error(`Cluster assembly quality gate failed: ${qualityErrors.join('; ')}`);
+    }
+    return result;
 }

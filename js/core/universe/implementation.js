@@ -660,6 +660,39 @@ export function applyClusterWorldgenHints(clusterHintsBySiteId) {
     }
 }
 
+export function validateClusterWorldgenAfterHints(clusterHintsBySiteId, stage = "post_hints") {
+    if (!clusterHintsBySiteId) return;
+    const hintedSiteIds = Object.keys(clusterHintsBySiteId).map(Number);
+    const economicSiteIds = hintedSiteIds.filter((id) => hasEconomicActivity(id));
+    const extractionSiteIds = hintedSiteIds.filter((id) => {
+        const site = state.universe[id];
+        const portType = state.ports[id]?.typeKey;
+        return Boolean(site?.asteroids) || portType === "extraction_outpost" || portType === "mining";
+    });
+    const extractionSet = new Set(extractionSiteIds);
+    const nonExtractionEconomicSiteIds = economicSiteIds.filter((id) => !extractionSet.has(id));
+    if (economicSiteIds.length < 3) {
+        throw new Error(`Cluster worldgen quality gate failed: expected >=3 economic hinted sites, got ${economicSiteIds.length}`);
+    }
+    if (extractionSiteIds.length < 1) {
+        throw new Error("Cluster worldgen quality gate failed: expected >=1 hinted extraction site");
+    }
+    if (nonExtractionEconomicSiteIds.length < 1) {
+        throw new Error("Cluster worldgen quality gate failed: expected >=1 hinted non-extraction economic site");
+    }
+    if (stage === "post_economy") {
+        const missingProfiles = economicSiteIds.filter((id) => !state.economy?.profilesBySector?.[id]);
+        if (missingProfiles.length > 0) {
+            throw new Error(`Cluster worldgen quality gate failed: missing economy profiles for hinted sites ${missingProfiles.join(', ')}`);
+        }
+        const hasPressure = state.economy?.pressureBySector
+            && Object.keys(state.economy.pressureBySector).length > 0;
+        if (!hasPressure) {
+            throw new Error("Cluster worldgen quality gate failed: missing economy pressure state");
+        }
+    }
+}
+
 export function generateUniverse() {
     initRng(state.player.seed);
     state.universe = {}; state.ports = {}; state.planets = {}; state.missions = []; state.nextMissionId = 1;
@@ -688,11 +721,15 @@ export function generateUniverse() {
     seedPortsPlanetsAndResources();
     if (useClusterAssembly) {
         applyClusterWorldgenHints(sparse.clusterHintsBySiteId);
+        validateClusterWorldgenAfterHints(sparse.clusterHintsBySiteId, "post_hints");
     }
     ensureEconomicActivityConnectivity();
     rebuildEconomicProfiles();
     calibrateInitialUniversePrices();
     recomputeEconomyPressure();
+    if (useClusterAssembly) {
+        validateClusterWorldgenAfterHints(sparse.clusterHintsBySiteId, "post_economy");
+    }
     assignSectorPolities();
     seedCompaniesAndPeople(rng);
     generateAllLocalLocations();

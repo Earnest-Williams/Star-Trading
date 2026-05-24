@@ -30,3 +30,7 @@ export {
 export {
     createSparseSitesFromClusterBlueprints
 } from './clusterAssembly.js';
+
+export {
+    validateClusterAssemblyResult
+} from './clusterAssembly.js';
