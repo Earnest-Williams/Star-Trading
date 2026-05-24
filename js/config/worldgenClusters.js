@@ -46,7 +46,17 @@ import { MARKET_COMMODITIES } from './economy.js';
 import { PORT_TYPES } from './ports.js';
 import { PLANET_TYPES } from './entities.js';
 
-const VALID_STOCK_BIAS_VALUES = new Set(['surplus', 'normal', 'shortage', 'empty']);
+export const CLUSTER_BLUEPRINT_FAMILIES = Object.freeze(['starter_hub', 'frontier_extraction', 'badlands_risk']);
+export const CLUSTER_STOCK_BIAS_VALUES = Object.freeze(['surplus', 'normal', 'shortage', 'empty']);
+export const CLUSTER_CONNECTOR_KINDS = Object.freeze(['trade_seam', 'starter_expansion']);
+export const CLUSTER_ROLE_HINTS = Object.freeze(['home_candidate', 'extraction_site']);
+export const CLUSTER_RISK_HINTS = Object.freeze(['badlands_risk']);
+
+const VALID_FAMILY_SET = new Set(CLUSTER_BLUEPRINT_FAMILIES);
+const VALID_STOCK_BIAS_VALUES = new Set(CLUSTER_STOCK_BIAS_VALUES);
+const VALID_CONNECTOR_KIND_SET = new Set(CLUSTER_CONNECTOR_KINDS);
+const VALID_ROLE_HINT_SET = new Set(CLUSTER_ROLE_HINTS);
+const VALID_RISK_HINT_SET = new Set(CLUSTER_RISK_HINTS);
 const MARKET_COMMODITY_SET = new Set(MARKET_COMMODITIES);
 
 export const CLUSTER_BLUEPRINTS = Object.freeze([
@@ -78,6 +88,7 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
                 richness: "developing",
                 region: "Frontier",
                 factionBias: { hc: 12, fu: 4 },
+                roleHint: "extraction_site",
                 asteroidHint: true,
                 portHint: "mining",
                 stockBias: {
@@ -140,6 +151,7 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
                 richness: "sparse",
                 region: "Frontier",
                 factionBias: { hc: 10, fu: 5 },
+                roleHint: "extraction_site",
                 asteroidHint: true,
                 portHint: "mining",
                 stockBias: {
@@ -187,6 +199,7 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
                 richness: "sparse",
                 region: "Badlands",
                 factionBias: { vc: 18 },
+                riskHint: "badlands_risk",
                 portHint: "consumer",
                 stockBias: {
                     electronics: "shortage",
@@ -241,6 +254,8 @@ export function validateClusterBlueprint(blueprint) {
 
     if (typeof blueprint.family !== 'string' || blueprint.family.length === 0) {
         errors.push('blueprint.family must be a non-empty string');
+    } else if (!VALID_FAMILY_SET.has(blueprint.family)) {
+        errors.push(`${blueprint.id || 'blueprint'}: unknown family '${blueprint.family}'`);
     }
 
     if (!Number.isFinite(blueprint.weight) || blueprint.weight <= 0) {
@@ -278,6 +293,14 @@ export function validateClusterBlueprint(blueprint) {
             errors.push(`${blueprint.id}/${site.localId}: offset must have finite x, y, z numbers`);
         }
 
+        if (site.roleHint && !VALID_ROLE_HINT_SET.has(site.roleHint)) {
+            errors.push(`${blueprint.id}/${site.localId}: invalid roleHint '${site.roleHint}'`);
+        }
+
+        if (site.riskHint && !VALID_RISK_HINT_SET.has(site.riskHint)) {
+            errors.push(`${blueprint.id}/${site.localId}: invalid riskHint '${site.riskHint}'`);
+        }
+
         if (site.portHint && !PORT_TYPES[site.portHint]) {
             errors.push(`${blueprint.id}/${site.localId}: unknown portHint '${site.portHint}'`);
         }
@@ -301,6 +324,9 @@ export function validateClusterBlueprint(blueprint) {
     for (const connector of blueprint.connectors || []) {
         if (!siteLocalIds.has(connector.localId)) {
             errors.push(`${blueprint.id}: connector references unknown localId '${connector.localId}'`);
+        }
+        if (!VALID_CONNECTOR_KIND_SET.has(connector.kind)) {
+            errors.push(`${blueprint.id}: invalid connector kind '${connector.kind}'`);
         }
     }
 

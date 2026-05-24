@@ -55,3 +55,9 @@ Project validation before merge:
 
 - `npm run lint`
 - `npm run build`
+
+## Future Rhai/Rust boundary
+
+Cluster blueprint records are intentionally plain declarative JavaScript objects so they can be authored by Rhai map/array data later without hidden execution semantics. Rust is the intended long-term authority for typed struct enforcement, schema validation, deterministic generation, and performance-sensitive worldgen paths.
+
+Even if Rhai authors cluster definitions in the future, it must not own final pathfinding, save migration, price calibration, global route metrics, final economy pressure authority, or direct full-galaxy mutation. Those remain engine-authoritative responsibilities. The current explicit JS schema and validator boundary is kept narrow on purpose to reduce migration risk when Rhai-authored data and Rust validation are introduced.
