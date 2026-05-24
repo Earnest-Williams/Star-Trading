@@ -227,7 +227,7 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
             const pirateThreatCap = WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region] || 0;
             const pirateThreat = id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
                 ? 0 : Math.floor(rng() * pirateThreatCap);
-            const elevatedThreat = (riskHint === "badlands_risk" || blueprint.family === "badlands_risk") && pirateThreatCap > 0
+            const elevatedThreat = riskHint === "badlands_risk" && pirateThreatCap > 0
                 ? Math.max(pirateThreat, 1 + Math.floor(rng() * pirateThreatCap))
                 : pirateThreat;
 
