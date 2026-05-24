@@ -17,5 +17,13 @@ export {
     createPlayerFromBuild,
     createPlayer,
     generateLocalLocationsForSystem,
-    generateAllLocalLocations
+    generateAllLocalLocations,
+    applyClusterWorldgenHints,
+    metricShearAtCoord,
+    generateClusterCenters,
+    generateSiteCoordinate
 } from './implementation.js';
+
+export {
+    createSparseSitesFromClusterBlueprints
+} from './clusterAssembly.js';

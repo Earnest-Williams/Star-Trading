@@ -14,6 +14,7 @@ import { buildCharacterFromSpec, isPlatformEmployed, validateBuild } from '../ch
 import { getEmploymentTerms } from '../characterChecks.js';
 import { createStartingProperties } from '../../systems/properties.js';
 import { markGraphDirty } from '../routePlanner.js';
+import { createSparseSitesFromClusterBlueprints } from './clusterAssembly.js';
 
 import { invalidateMapProjectionCache } from '../../ui/renderMap.js';
 import { stateChanged, StateSlice } from '../../core/state/index.js';
@@ -150,7 +151,7 @@ function distanceBetweenCoords(a, b) {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function generateClusterCenters(archetype, count) {
+export function generateClusterCenters(archetype, count) {
     if (archetype.armCount === 0) {
         let previous = { x: 0, y: 0, z: 0 };
         return Array.from({ length: count }, (_, index) => {
@@ -199,7 +200,7 @@ function generateClusterCenters(archetype, count) {
     });
 }
 
-function metricShearAtCoord(coord) {
+export function metricShearAtCoord(coord) {
     const shear = WORLDGEN_GEOMETRY.SHEAR;
     const planarDistance = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
     const centralNoise = Math.max(0, (shear.CENTRAL_RADIUS - planarDistance) / shear.CENTRAL_RADIUS)
@@ -269,7 +270,7 @@ function createWorldConfig() {
     };
 }
 
-function generateSiteCoordinate(archetype, centers, index) {
+export function generateSiteCoordinate(archetype, centers, index) {
     const center = centers[index % centers.length];
     for (let attempt = 0; attempt < WORLDGEN_GEOMETRY.SITE_PLACEMENT.MAX_ATTEMPTS; attempt++) {
         const scale = index < WORLDGEN_GEOMETRY.SITE_PLACEMENT.EARLY_SITE_LIMIT
@@ -536,11 +537,15 @@ function scoreAnchorCandidate(id) {
     const typeScore = WORLDGEN_ANCHORS.TYPE_SCORE[site.siteType] ?? WORLDGEN_ANCHORS.DEFAULT_TYPE_SCORE;
     const coord = site.coord || { x: id, y: 0, z: 0 };
     const planeDistance = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
-    return richnessScore * WORLDGEN_ANCHORS.RICHNESS_SCORE_MULTIPLIER
+    let score = richnessScore * WORLDGEN_ANCHORS.RICHNESS_SCORE_MULTIPLIER
         + typeScore * WORLDGEN_ANCHORS.TYPE_SCORE_MULTIPLIER
         + (site.metricShear || 0) * WORLDGEN_ANCHORS.SHEAR_SCORE_MULTIPLIER
         + Math.abs(planeDistance - WORLDGEN_ANCHORS.IDEAL_PLANE_DISTANCE) * WORLDGEN_ANCHORS.PLANE_DISTANCE_MULTIPLIER
         + id * WORLDGEN_ANCHORS.ID_TIEBREAKER_MULTIPLIER;
+    if (site.roleHint === "home_candidate") {
+        score -= 1000;
+    }
+    return score;
 }
 
 function getNearestSiteIds(originId, candidates) {
@@ -673,6 +678,90 @@ function seedPortsPlanetsAndResources() {
     });
 }
 
+export function applyClusterWorldgenHints(clusterHintsBySiteId) {
+    if (!clusterHintsBySiteId) return;
+    for (const [idStr, hint] of Object.entries(clusterHintsBySiteId)) {
+        const id = Number(idStr);
+        const site = state.universe[id];
+        if (!site) continue;
+
+        // 1. Force port if portHint is present and not already seeded
+        if (hint.portHint) {
+            let port = state.ports[id];
+            if (!port || port.typeKey !== hint.portHint) {
+                port = makePort(hint.portHint);
+                state.ports[id] = port;
+                
+                // Add influence and handle hidden faction for the forced port
+                const dominant = state.universe[id].region === "Badlands"
+                    && rng() < WORLDGEN_SPAWN.HIDDEN_BADLANDS_PORT_CHANCE ? "vc" : port.factionId;
+                port.publicFactionId = port.factionId;
+                port.hiddenFactionId = dominant === port.factionId ? null : dominant;
+                addSectorInfluence(id, port.factionId, WORLDGEN_SPAWN.PORT_INFLUENCE, "");
+                if (port.hiddenFactionId) {
+                    state.universe[id].front = {
+                        publicFactionId: port.factionId,
+                        hiddenFactionId: port.hiddenFactionId,
+                        suspicion: WORLDGEN_SPAWN.FRONT_SUSPICION_BASE + Math.floor(rng() * WORLDGEN_SPAWN.FRONT_SUSPICION_SPAN)
+                    };
+                    addSectorInfluence(id, port.hiddenFactionId, WORLDGEN_SPAWN.HIDDEN_PORT_INFLUENCE, "");
+                }
+            }
+        }
+
+        // 2. Force asteroid if asteroidHint is true
+        if (hint.asteroidHint && !site.asteroids) {
+            const asteroidOre = WORLDGEN_SPAWN.ASTEROID_ORE_BASE
+                + Math.floor(rng() * WORLDGEN_SPAWN.ASTEROID_ORE_SPAN);
+            site.asteroids = {
+                ore: asteroidOre, maxOre: asteroidOre,
+                richness: WORLDGEN_SPAWN.ASTEROID_RICHNESS_BASE + rng() * WORLDGEN_SPAWN.ASTEROID_RICHNESS_SPAN,
+                hazard: site.region === "Badlands"
+                    ? WORLDGEN_SPAWN.ASTEROID_BADLANDS_HAZARD_BASE + rng() * WORLDGEN_SPAWN.ASTEROID_BADLANDS_HAZARD_SPAN
+                    : rng() * WORLDGEN_SPAWN.ASTEROID_HAZARD_SPAN,
+                surveyed: false
+            };
+            addSectorInfluence(id, "hc", WORLDGEN_SPAWN.ASTEROID_HC_INFLUENCE, "");
+            if (site.region === "Badlands" && rng() < WORLDGEN_SPAWN.ASTEROID_BADLANDS_VC_CHANCE) {
+                addSectorInfluence(id, "vc", WORLDGEN_SPAWN.ASTEROID_BADLANDS_VC_INFLUENCE, "");
+            }
+        }
+
+        // 3. Force planet hint if planetHint is present
+        if (hint.planetHint && !state.planets[id]) {
+            state.planets[id] = makePlanet(hint.planetHint);
+        }
+
+        // 4. Force station hint if stationHint is present
+        if (hint.stationHint && !site.station) {
+            const station = BALANCE.GATE_PHYSICS.WAY_STATION;
+            const strategic = site.richness === "strategic";
+            const min = strategic ? station.FRONTIER_RESERVE_MIN : station.ORDINARY_RESERVE_MIN;
+            const max = strategic ? station.FRONTIER_RESERVE_MAX : station.ORDINARY_RESERVE_MAX;
+            site.station = {
+                baselinePowerCreditsPerHour: station.BASELINE_POWER_CREDITS_PER_HOUR,
+                pulseReserveCredits: min + Math.floor(rng() * (max - min + 1)),
+                pulseReserveMaxCredits: max
+            };
+        }
+
+        // 5. Apply stock bias to the port's stock if a port exists
+        const port = state.ports[id];
+        if (port && hint.stockBias) {
+            for (const [commodity, bias] of Object.entries(hint.stockBias)) {
+                const max = port.maxStock[commodity] || 1;
+                if (bias === "surplus") {
+                    port.stock[commodity] = Math.floor(max * 0.75);
+                } else if (bias === "shortage") {
+                    port.stock[commodity] = Math.floor(max * 0.15);
+                } else if (bias === "empty") {
+                    port.stock[commodity] = Math.floor(max * 0.03);
+                }
+            }
+        }
+    }
+}
+
 export function generateUniverse() {
     initRng(state.player.seed);
     state.universe = {}; state.ports = {}; state.planets = {}; state.missions = []; state.nextMissionId = 1;
@@ -680,7 +769,10 @@ export function generateUniverse() {
     state.people = {}; state.peopleBySector = {}; state.peopleByCompany = {}; state.nextPersonId = 1;
     state.polities = {}; state.polityIdsBySector = {};
     const config = createWorldConfig();
-    const sparse = createSparseSites(config);
+    const useClusterAssembly = state.worldgenSettings?.clusterAssembly === true;
+    const sparse = useClusterAssembly
+        ? createSparseSitesFromClusterBlueprints(config, rng)
+        : createSparseSites(config);
     state.universe = sparse.sites;
     state.sitesById = state.universe;
     state.siteIdByCoord = sparse.siteIdByCoord;
@@ -696,6 +788,9 @@ export function generateUniverse() {
     rebaseStartingAssetsToHomeSite(state.player, state.world.roles.homeSiteId);
     buildCorridors(config);
     seedPortsPlanetsAndResources();
+    if (useClusterAssembly) {
+        applyClusterWorldgenHints(sparse.clusterHintsBySiteId);
+    }
     ensureEconomicActivityConnectivity();
     rebuildEconomicProfiles();
     calibrateInitialUniversePrices();

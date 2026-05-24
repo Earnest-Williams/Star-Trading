@@ -1,0 +1,232 @@
+import { CLUSTER_BLUEPRINTS, selectClusterByFamily } from '../../config/worldgenClusters.js';
+import { BALANCE } from '../../config/economy.js';
+import { WORLDGEN_GEOMETRY, WORLDGEN_ANCHORS } from '../../config/worldgen.js';
+import { createBaseInfluence } from '../influence.js';
+import {
+    metricShearAtCoord,
+    generateClusterCenters,
+    generateSiteCoordinate,
+    coordKey,
+    getSiteTypeLabel
+} from './implementation.js';
+
+function getCenterRegion(index, totalCenters) {
+    if (index < Math.ceil(totalCenters * WORLDGEN_GEOMETRY.REGIONS.CORE_FRACTION)) return "Core";
+    if (index < Math.ceil(totalCenters * WORLDGEN_GEOMETRY.REGIONS.FRONTIER_FRACTION)) return "Frontier";
+    return "Badlands";
+}
+
+function transformOffset(offset, rotationIndex, mirrorX, mirrorY) {
+    let tx = offset.x;
+    let ty = offset.y;
+    let tz = offset.z;
+
+    // Apply rotation
+    if (rotationIndex === 1) { // 90 deg
+        const tmp = tx;
+        tx = -ty;
+        ty = tmp;
+    } else if (rotationIndex === 2) { // 180 deg
+        tx = -tx;
+        ty = -ty;
+    } else if (rotationIndex === 3) { // 270 deg
+        const tmp = tx;
+        tx = ty;
+        ty = -tmp;
+    }
+
+    // Apply mirroring
+    if (mirrorX) tx = -tx;
+    if (mirrorY) ty = -ty;
+
+    return { x: tx, y: ty, z: tz };
+}
+
+function pickWeighted(weights, rng) {
+    const entries = Object.entries(weights);
+    const total = entries.reduce((sum, entry) => sum + entry[1], 0);
+    let roll = rng() * total;
+    for (const [key, weight] of entries) {
+        roll -= weight;
+        if (roll <= 0) return key;
+    }
+    return entries[entries.length - 1][0];
+}
+
+export function createSparseSitesFromClusterBlueprints(config, rng) {
+    const archetype = BALANCE.WORLDGEN.ARCHETYPES[config.archetypeKey]
+        || BALANCE.WORLDGEN.ARCHETYPES[BALANCE.WORLDGEN.DEFAULT_ARCHETYPE];
+
+    // Select blueprints
+    const selectedBlueprints = [
+        selectClusterByFamily(CLUSTER_BLUEPRINTS, "starter_hub", rng),
+        selectClusterByFamily(CLUSTER_BLUEPRINTS, "frontier_extraction", rng),
+        selectClusterByFamily(CLUSTER_BLUEPRINTS, "badlands_risk", rng)
+    ].filter(Boolean);
+
+    // Generate centers
+    const centers = generateClusterCenters(
+        archetype,
+        Math.max(WORLDGEN_ANCHORS.CENTER_COUNT_MIN, Math.ceil(config.occupiedSites / WORLDGEN_ANCHORS.SITES_PER_CLUSTER_CENTER))
+    );
+
+    // Sort centers by distance
+    const sortedCenters = centers.map((c, index) => {
+        const r = Math.sqrt(c.x * c.x + c.y * c.y);
+        return { x: c.x, y: c.y, z: c.z, r, index };
+    }).sort((a, b) => a.r - b.r);
+
+    // Assign centers
+    const assignedCenterIndices = new Set();
+    const clusterAssignments = [];
+
+    for (const blueprint of selectedBlueprints) {
+        let assignedIdx = -1;
+        const prefRegion = blueprint.placement.preferredRegion;
+        for (let i = 0; i < sortedCenters.length; i++) {
+            if (assignedCenterIndices.has(i)) continue;
+            const region = getCenterRegion(i, sortedCenters.length);
+            if (region === prefRegion) {
+                assignedIdx = i;
+                break;
+            }
+        }
+        if (assignedIdx === -1) {
+            for (let i = 0; i < sortedCenters.length; i++) {
+                if (!assignedCenterIndices.has(i)) {
+                    assignedIdx = i;
+                    break;
+                }
+            }
+        }
+        if (assignedIdx === -1) {
+            assignedIdx = 0;
+        }
+        assignedCenterIndices.add(assignedIdx);
+        clusterAssignments.push({ blueprint, center: sortedCenters[assignedIdx] });
+    }
+
+    const sites = {};
+    const siteIdByCoord = {};
+    const clusterHintsBySiteId = {};
+    const occupiedCoords = new Set();
+    let nextSiteId = 1;
+
+    // Place cluster sites
+    for (const { blueprint, center } of clusterAssignments) {
+        const rotationIndex = Math.floor(rng() * 4);
+        const mirrorX = rng() < 0.5;
+        const mirrorY = rng() < 0.5;
+
+        for (const siteBlueprint of blueprint.sites) {
+            if (nextSiteId > config.occupiedSites) break; // Keep budget in check
+
+            const transformed = transformOffset(siteBlueprint.offset, rotationIndex, mirrorX, mirrorY);
+            const jitterX = Math.floor(rng() * 3) - 1;
+            const jitterY = Math.floor(rng() * 3) - 1;
+            const jitterZ = Math.floor(rng() * 3) - 1;
+
+            let coord = {
+                x: center.x + transformed.x + jitterX,
+                y: center.y + transformed.y + jitterY,
+                z: center.z + transformed.z + jitterZ
+            };
+
+            // Resolve duplicate coordinates
+            while (occupiedCoords.has(coordKey(coord))) {
+                coord.x += 1;
+            }
+            occupiedCoords.add(coordKey(coord));
+
+            const id = nextSiteId;
+            nextSiteId++;
+
+            const region = siteBlueprint.region || "Frontier";
+            const siteType = siteBlueprint.siteType || "stellar_system";
+            const richness = siteBlueprint.richness || "developing";
+
+            const influence = createBaseInfluence(region);
+            if (siteBlueprint.factionBias) {
+                for (const [factionId, amount] of Object.entries(siteBlueprint.factionBias)) {
+                    influence[factionId] = Math.max(0, Math.min(100, (influence[factionId] || 0) + amount));
+                }
+            }
+
+            sites[id] = {
+                id,
+                siteId: `site-${id}`,
+                coord,
+                coordKey: coordKey(coord),
+                name: siteBlueprint.nameHint ? `${siteBlueprint.nameHint} ${id}` : `${getSiteTypeLabel(siteType)} ${id}`,
+                region,
+                siteType,
+                richness,
+                charted: false,
+                reachable: false,
+                surveyed: false,
+                jumpGates: [],
+                pirateThreat: id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
+                    ? 0 : Math.floor(rng() * WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region]),
+                asteroids: null,
+                influence,
+                front: null,
+                metricShear: metricShearAtCoord(coord),
+                roleHint: siteBlueprint.roleHint || null
+            };
+
+            siteIdByCoord[coordKey(coord)] = id;
+            clusterHintsBySiteId[id] = siteBlueprint;
+        }
+    }
+
+    // Place remaining procedural sites
+    while (nextSiteId <= config.occupiedSites) {
+        const id = nextSiteId;
+        nextSiteId++;
+
+        let coord = generateSiteCoordinate(archetype, centers, id - 1);
+        while (occupiedCoords.has(coordKey(coord))) {
+            coord = { ...coord, x: coord.x + 1 };
+        }
+        occupiedCoords.add(coordKey(coord));
+
+        let siteType = pickWeighted(BALANCE.WORLDGEN.SITE_TYPE_MIX, rng);
+        let richness = pickWeighted(BALANCE.WORLDGEN.RICHNESS_MIX, rng);
+        if (siteType === "way_station") {
+            richness = rng() < WORLDGEN_ANCHORS.WAY_STATION_SPARSE_CHANCE ? "sparse" : "strategic";
+        }
+
+        const region = id <= Math.ceil(config.occupiedSites * WORLDGEN_GEOMETRY.REGIONS.CORE_FRACTION) ? "Core"
+            : id <= Math.ceil(config.occupiedSites * WORLDGEN_GEOMETRY.REGIONS.FRONTIER_FRACTION) ? "Frontier" : "Badlands";
+
+        sites[id] = {
+            id,
+            siteId: `site-${id}`,
+            coord,
+            coordKey: coordKey(coord),
+            name: `${getSiteTypeLabel(siteType)} ${id}`,
+            region,
+            siteType,
+            richness,
+            charted: false,
+            reachable: false,
+            surveyed: false,
+            jumpGates: [],
+            pirateThreat: id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
+                ? 0 : Math.floor(rng() * WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region]),
+            asteroids: null,
+            influence: createBaseInfluence(region),
+            front: null,
+            metricShear: metricShearAtCoord(coord)
+        };
+
+        siteIdByCoord[coordKey(coord)] = id;
+    }
+
+    return {
+        sites,
+        siteIdByCoord,
+        archetypeName: archetype.name,
+        clusterHintsBySiteId
+    };
+}
