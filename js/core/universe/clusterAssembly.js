@@ -8,7 +8,7 @@ import {
     generateSiteCoordinate,
     coordKey,
     getSiteTypeLabel
-} from './implementation.js';
+} from './worldgenGeometry.js';
 
 function getCenterRegion(index, totalCenters) {
     if (index < Math.ceil(totalCenters * WORLDGEN_GEOMETRY.REGIONS.CORE_FRACTION)) return "Core";
@@ -74,7 +74,8 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
     // Generate centers
     const centers = generateClusterCenters(
         archetype,
-        Math.max(WORLDGEN_ANCHORS.CENTER_COUNT_MIN, Math.ceil(config.occupiedSites / WORLDGEN_ANCHORS.SITES_PER_CLUSTER_CENTER))
+        Math.max(WORLDGEN_ANCHORS.CENTER_COUNT_MIN, Math.ceil(config.occupiedSites / WORLDGEN_ANCHORS.SITES_PER_CLUSTER_CENTER)),
+        rng
     );
 
     // Sort centers by distance
@@ -217,7 +218,7 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
         const id = nextSiteId;
         nextSiteId++;
 
-        let coord = generateSiteCoordinate(archetype, centers, id - 1);
+        let coord = generateSiteCoordinate(archetype, centers, id - 1, rng);
         while (occupiedCoords.has(coordKey(coord))) {
             coord = { ...coord, x: coord.x + 1 };
         }
