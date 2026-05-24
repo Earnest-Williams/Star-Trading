@@ -16,12 +16,14 @@ import { createStartingProperties } from '../../systems/properties.js';
 import { markGraphDirty } from '../routePlanner.js';
 import { createSparseSitesFromClusterBlueprints } from './clusterAssembly.js';
 import {
+    clamp,
     coordKey,
     distanceBetweenCoords,
     generateClusterCenters,
     generateSiteCoordinate,
     getSiteTypeLabel,
-    metricShearAtCoord
+    metricShearAtCoord,
+    pickWeighted
 } from './worldgenGeometry.js';
 
 import { invalidateMapProjectionCache } from '../../ui/renderMap.js';
