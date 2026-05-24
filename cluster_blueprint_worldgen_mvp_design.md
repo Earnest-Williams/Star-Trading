@@ -301,7 +301,7 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
                 planetHint: "agricultural",
                 portHint: "agricultural",
                 stockBias: {
-                    organics: "surplus",
+                    org: "surplus",
                     machinery: "shortage"
                 }
             }
