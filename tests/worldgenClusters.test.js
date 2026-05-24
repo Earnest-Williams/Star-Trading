@@ -79,6 +79,16 @@ describe('cluster blueprint worldgen mvp', () => {
         assert.ok(hints.some((hint) => hint.family !== 'starter_hub' && (hint.connectorKinds || []).length > 0));
     });
 
+    it('elevates pirate threat for at least one badlands_risk hinted site', () => {
+        const config = { archetypeKey: 'barred_spiral', occupiedSites: 60, routeDensity: 1, chartedFraction: 0.6 };
+        const result = createSparseSitesFromClusterBlueprints(config, seededRng(424242));
+        const badlandsHintedSites = Object.entries(result.clusterHintsBySiteId)
+            .filter(([, hint]) => hint.riskHint === 'badlands_risk' || hint.family === 'badlands_risk')
+            .map(([siteId]) => result.sites[Number(siteId)]);
+        assert.ok(badlandsHintedSites.length > 0);
+        assert.ok(badlandsHintedSites.some((site) => site.pirateThreat > 0));
+    });
+
     it('generateUniverse with clusterAssembly completes quality checks and still builds corridors', () => {
         seedGameWithClusters(30, true);
         const sectors = Object.values(state.universe);

@@ -10,6 +10,22 @@ import {
     getSiteTypeLabel
 } from './worldgenGeometry.js';
 
+let hasValidatedClusterBlueprints = false;
+
+export function ensureClusterBlueprintsValid() {
+    if (hasValidatedClusterBlueprints) {
+        return;
+    }
+    const validationErrors = [];
+    for (const blueprint of CLUSTER_BLUEPRINTS) {
+        validationErrors.push(...validateClusterBlueprint(blueprint));
+    }
+    if (validationErrors.length > 0) {
+        throw new Error(`Cluster blueprint validation failed: ${validationErrors.join('; ')}`);
+    }
+    hasValidatedClusterBlueprints = true;
+}
+
 function getCenterRegion(index, totalCenters) {
     if (index < Math.ceil(totalCenters * WORLDGEN_GEOMETRY.REGIONS.CORE_FRACTION)) return "Core";
     if (index < Math.ceil(totalCenters * WORLDGEN_GEOMETRY.REGIONS.FRONTIER_FRACTION)) return "Frontier";
@@ -99,13 +115,7 @@ export function validateClusterAssemblyResult(result, config) {
 }
 
 export function createSparseSitesFromClusterBlueprints(config, rng) {
-    const validationErrors = [];
-    for (const blueprint of CLUSTER_BLUEPRINTS) {
-        validationErrors.push(...validateClusterBlueprint(blueprint));
-    }
-    if (validationErrors.length > 0) {
-        throw new Error(`Cluster blueprint validation failed: ${validationErrors.join('; ')}`);
-    }
+    ensureClusterBlueprintsValid();
     const archetype = BALANCE.WORLDGEN.ARCHETYPES[config.archetypeKey]
         || BALANCE.WORLDGEN.ARCHETYPES[BALANCE.WORLDGEN.DEFAULT_ARCHETYPE];
 
@@ -213,11 +223,11 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
             }
 
             const riskHint = siteBlueprint.riskHint
-                || (blueprint.family === "badlands_risk" ? "elevated" : null);
+                || (blueprint.family === "badlands_risk" ? "badlands_risk" : null);
             const pirateThreatCap = WORLDGEN_GEOMETRY.REGIONS.PIRATE_THREAT_CAPS[region] || 0;
             const pirateThreat = id <= WORLDGEN_GEOMETRY.REGIONS.PIRATE_SAFE_SITE_LIMIT
                 ? 0 : Math.floor(rng() * pirateThreatCap);
-            const elevatedThreat = riskHint === "elevated" && pirateThreatCap > 0
+            const elevatedThreat = riskHint === "badlands_risk" && pirateThreatCap > 0
                 ? Math.max(pirateThreat, 1 + Math.floor(rng() * pirateThreatCap))
                 : pirateThreat;
 
