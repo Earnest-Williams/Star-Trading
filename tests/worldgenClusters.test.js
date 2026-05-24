@@ -147,7 +147,7 @@ describe('cluster blueprint worldgen mvp', () => {
     });
 
     it('invalid connector localId fails validation', () => {
-        const badBlueprint = structuredClone(CLUSTER_BLUEPRINTS[0]);
+        const badBlueprint = globalThis.structuredClone(CLUSTER_BLUEPRINTS[0]);
         badBlueprint.id = 'bad-connector';
         badBlueprint.connectors = [{ localId: 'missing-node', kind: 'trade_seam' }];
         const errors = validateClusterBlueprint(badBlueprint);
@@ -155,7 +155,7 @@ describe('cluster blueprint worldgen mvp', () => {
     });
 
     it('invalid planetHint fails validation', () => {
-        const badBlueprint = structuredClone(CLUSTER_BLUEPRINTS[0]);
+        const badBlueprint = globalThis.structuredClone(CLUSTER_BLUEPRINTS[0]);
         badBlueprint.id = 'bad-planet';
         badBlueprint.sites[0].planetHint = 'agricultural';
         const errors = validateClusterBlueprint(badBlueprint);
@@ -163,7 +163,7 @@ describe('cluster blueprint worldgen mvp', () => {
     });
 
     it('invalid stock commodity fails validation', () => {
-        const badBlueprint = structuredClone(CLUSTER_BLUEPRINTS[0]);
+        const badBlueprint = globalThis.structuredClone(CLUSTER_BLUEPRINTS[0]);
         badBlueprint.id = 'bad-commodity';
         badBlueprint.sites[0].stockBias = { unknown_commodity: 'surplus' };
         const errors = validateClusterBlueprint(badBlueprint);
