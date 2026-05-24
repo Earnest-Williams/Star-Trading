@@ -177,7 +177,7 @@ function createWorldConfig() {
     const requestedSiteCount = Number(config.occupiedSites) || worldgen.DEFAULT_OCCUPIED_SITES;
     return {
         archetypeKey: config.galaxyArchetype || worldgen.DEFAULT_ARCHETYPE,
-        occupiedSites: Math.max(1, Math.min(worldgen.MAX_OCCUPIED_SITES, requestedSiteCount)),
+        occupiedSites: clamp(requestedSiteCount, 1, worldgen.MAX_OCCUPIED_SITES),
         routeDensity: Number(config.routeDensity) || worldgen.DEFAULT_ROUTE_DENSITY,
         chartedFraction: Number(config.chartedFraction) || worldgen.DEFAULT_CHARTED_FRACTION
     };
