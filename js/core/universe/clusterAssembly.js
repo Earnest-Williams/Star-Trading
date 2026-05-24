@@ -205,7 +205,7 @@ export function createSparseSitesFromClusterBlueprints(config, rng) {
                 portHint: siteBlueprint.portHint || null,
                 planetHint: siteBlueprint.planetHint || null,
                 asteroidHint: siteBlueprint.asteroidHint || false,
-                stationHint: siteBlueprint.stationHint || false,
+                stationHint: siteBlueprint.stationHint || null,
                 stockBias: siteBlueprint.stockBias || null,
                 riskHint
             };
