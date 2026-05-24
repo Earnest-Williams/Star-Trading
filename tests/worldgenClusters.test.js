@@ -39,22 +39,31 @@ describe('cluster blueprint worldgen mvp', () => {
         assert.deepEqual(validateClusterAssemblyResult(result, config), []);
     });
 
-    it('duplicate coordKey or broken siteIdByCoord fixture returns errors', () => {
+    it('duplicate coordKey fixture returns an error', () => {
         const config = { archetypeKey: 'barred_spiral', occupiedSites: 30, routeDensity: 1, chartedFraction: 0.6 };
         const result = createSparseSitesFromClusterBlueprints(config, seededRng(424242));
         const broken = globalThis.structuredClone(result);
         const firstId = Number(Object.keys(broken.sites)[0]);
         const secondId = Number(Object.keys(broken.sites)[1]);
         broken.sites[secondId].coordKey = broken.sites[firstId].coordKey;
-        broken.siteIdByCoord[broken.sites[firstId].coordKey] = secondId;
         const errors = validateClusterAssemblyResult(broken, config);
         assert.ok(errors.some((error) => error.includes('duplicate coordKey')));
+    });
+
+    it('broken siteIdByCoord fixture returns an error', () => {
+        const config = { archetypeKey: 'barred_spiral', occupiedSites: 30, routeDensity: 1, chartedFraction: 0.6 };
+        const result = createSparseSitesFromClusterBlueprints(config, seededRng(424242));
+        const broken = globalThis.structuredClone(result);
+        const firstId = Number(Object.keys(broken.sites)[0]);
+        broken.siteIdByCoord[broken.sites[firstId].coordKey] = firstId + 99;
+        const errors = validateClusterAssemblyResult(broken, config);
+        assert.ok(errors.some((error) => error.includes('siteIdByCoord mismatch')));
     });
 
     it('generated site records do not contain transient cluster metadata fields', () => {
         const config = { archetypeKey: 'barred_spiral', occupiedSites: 30, routeDensity: 1, chartedFraction: 0.6 };
         const result = createSparseSitesFromClusterBlueprints(config, seededRng(424242));
-        const bannedFields = ['roleHint', 'clusterId', 'family', 'localId', 'connectorKinds', 'stockBias'];
+        const bannedFields = ['roleHint', 'clusterId', 'family', 'localId', 'connectorKinds', 'stockBias', 'portHint', 'planetHint', 'asteroidHint', 'stationHint', 'riskHint'];
         for (const site of Object.values(result.sites)) {
             for (const field of bannedFields) {
                 assert.equal(Object.hasOwn(site, field), false);

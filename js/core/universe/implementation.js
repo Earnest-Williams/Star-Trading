@@ -660,8 +660,9 @@ export function applyClusterWorldgenHints(clusterHintsBySiteId) {
     }
 }
 
-export function validateClusterWorldgenAfterHints(clusterHintsBySiteId, stage = "post_hints") {
-    if (!clusterHintsBySiteId) return;
+export function validateClusterWorldgenAfterHints(clusterHintsBySiteId) {
+    const errors = [];
+    if (!clusterHintsBySiteId) return errors;
     const hintedSiteIds = Object.keys(clusterHintsBySiteId).map(Number);
     const economicSiteIds = hintedSiteIds.filter((id) => hasEconomicActivity(id));
     const extractionSiteIds = hintedSiteIds.filter((id) => {
@@ -672,25 +673,46 @@ export function validateClusterWorldgenAfterHints(clusterHintsBySiteId, stage = 
     const extractionSet = new Set(extractionSiteIds);
     const nonExtractionEconomicSiteIds = economicSiteIds.filter((id) => !extractionSet.has(id));
     if (economicSiteIds.length < 3) {
-        throw new Error(`Cluster worldgen quality gate failed: expected >=3 economic hinted sites, got ${economicSiteIds.length}`);
+        errors.push(`expected >=3 economic hinted sites, got ${economicSiteIds.length}`);
     }
     if (extractionSiteIds.length < 1) {
-        throw new Error("Cluster worldgen quality gate failed: expected >=1 hinted extraction site");
+        errors.push("expected >=1 hinted extraction site");
     }
     if (nonExtractionEconomicSiteIds.length < 1) {
-        throw new Error("Cluster worldgen quality gate failed: expected >=1 hinted non-extraction economic site");
+        errors.push("expected >=1 hinted non-extraction economic site");
     }
-    if (stage === "post_economy") {
-        const missingProfiles = economicSiteIds.filter((id) => !state.economy?.profilesBySector?.[id]);
-        if (missingProfiles.length > 0) {
-            throw new Error(`Cluster worldgen quality gate failed: missing economy profiles for hinted sites ${missingProfiles.join(', ')}`);
-        }
-        const hasPressure = state.economy?.pressureBySector
-            && Object.keys(state.economy.pressureBySector).length > 0;
-        if (!hasPressure) {
-            throw new Error("Cluster worldgen quality gate failed: missing economy pressure state");
+    const hintedBadlandsRiskSiteIds = hintedSiteIds.filter((id) => {
+        const hint = clusterHintsBySiteId[id];
+        return hint?.family === "badlands_risk";
+    });
+    if (hintedBadlandsRiskSiteIds.length > 0) {
+        const hasRiskThreat = hintedBadlandsRiskSiteIds.some((id) => (state.universe[id]?.pirateThreat || 0) > 0);
+        if (!hasRiskThreat) {
+            errors.push("expected >=1 badlands_risk hinted site with pirateThreat > 0");
         }
     }
+    return errors;
+}
+
+export function validateClusterWorldgenAfterEconomy(clusterHintsBySiteId) {
+    const errors = [];
+    if (!clusterHintsBySiteId) return errors;
+    const hintedSiteIds = Object.keys(clusterHintsBySiteId).map(Number);
+    const economicSiteIds = hintedSiteIds.filter((id) => hasEconomicActivity(id));
+    if (!state.economy) {
+        errors.push("missing economy state");
+        return errors;
+    }
+    const missingProfiles = economicSiteIds.filter((id) => !state.economy.profilesBySector?.[id]);
+    if (missingProfiles.length > 0) {
+        errors.push("missing economy profiles for hinted sites " + missingProfiles.join(", "));
+    }
+    const hasPressure = state.economy.pressureBySector
+        && Object.keys(state.economy.pressureBySector).length > 0;
+    if (!hasPressure) {
+        errors.push("missing economy pressure state");
+    }
+    return errors;
 }
 
 export function generateUniverse() {
@@ -721,14 +743,20 @@ export function generateUniverse() {
     seedPortsPlanetsAndResources();
     if (useClusterAssembly) {
         applyClusterWorldgenHints(sparse.clusterHintsBySiteId);
-        validateClusterWorldgenAfterHints(sparse.clusterHintsBySiteId, "post_hints");
+        const hintErrors = validateClusterWorldgenAfterHints(sparse.clusterHintsBySiteId);
+        if (hintErrors.length > 0) {
+            throw new Error(`Cluster worldgen quality gate failed: ${hintErrors.join('; ')}`);
+        }
     }
     ensureEconomicActivityConnectivity();
     rebuildEconomicProfiles();
     calibrateInitialUniversePrices();
     recomputeEconomyPressure();
     if (useClusterAssembly) {
-        validateClusterWorldgenAfterHints(sparse.clusterHintsBySiteId, "post_economy");
+        const economyErrors = validateClusterWorldgenAfterEconomy(sparse.clusterHintsBySiteId);
+        if (economyErrors.length > 0) {
+            throw new Error(`Cluster worldgen quality gate failed: ${economyErrors.join('; ')}`);
+        }
     }
     assignSectorPolities();
     seedCompaniesAndPeople(rng);

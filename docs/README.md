@@ -26,6 +26,7 @@ Design documents are planning artifacts until the corresponding implementation
 is merged and tested.
 
 - [Cluster Blueprint Worldgen MVP](../cluster_blueprint_worldgen_mvp_design.md)
+- [Cluster Blueprint Worldgen (Contributor Guide)](./design/cluster-blueprint-worldgen.md)
 - [Character-mediated Challenges](./design/character-mediated-challenges.md)
 - [RPG Careers and Property](./design/rpg-careers-and-property.md)
 - [Blackline Command](./design/blackline-command.md)
