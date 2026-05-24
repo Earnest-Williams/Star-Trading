@@ -266,7 +266,7 @@ export function validateClusterBlueprint(blueprint) {
     const siteLocalIds = new Set();
     for (const site of blueprint.sites) {
         if (typeof site.localId !== 'string' || site.localId.length === 0) {
-            errors.push(`${blueprint.id}: site.localId must be a non-empty string`);
+            errors.push(`${blueprint.id || 'blueprint'}: site.localId must be a non-empty string`);
         } else {
             if (siteLocalIds.has(site.localId)) {
                 errors.push(`${blueprint.id}: duplicate site.localId '${site.localId}'`);
