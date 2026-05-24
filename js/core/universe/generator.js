@@ -7,10 +7,7 @@ export {
     initRng,
     makePort,
     makePlanet,
-    coordKey,
     setSiteCoord,
-    getSiteTypeLabel,
-    getRichnessLabel,
     ensureEconomicActivityConnectivity,
     generateUniverse,
     generateStars,
@@ -18,11 +15,17 @@ export {
     createPlayer,
     generateLocalLocationsForSystem,
     generateAllLocalLocations,
-    applyClusterWorldgenHints,
+    applyClusterWorldgenHints
+} from './implementation.js';
+
+export {
+    coordKey,
+    getSiteTypeLabel,
+    getRichnessLabel,
     metricShearAtCoord,
     generateClusterCenters,
     generateSiteCoordinate
-} from './implementation.js';
+} from './worldgenGeometry.js';
 
 export {
     createSparseSitesFromClusterBlueprints
