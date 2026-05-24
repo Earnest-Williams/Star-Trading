@@ -233,6 +233,254 @@ export const CLUSTER_BLUEPRINTS = Object.freeze([
 ]);
 ```
 
+## Rhai-Portable JavaScript Style
+
+The MVP JavaScript implementation is a temporary compatibility layer for a future Rust/Rhai worldgen path. `js/config/worldgenClusters.js` and nearby assembly code should be authored as Rhai-shaped data and deterministic transforms so the boundary can move to Rhai + Rust with minimal semantic drift.
+
+For this feature, idiomatic JavaScript is subordinate to Rhai/Rust portability: prefer explicit, boring, deterministic data transformation over compact JavaScript abstraction.
+
+The examples are not meant to freeze final commodity names, faction ids, or site types. They define the coding style and data boundary: authored cluster data should be boring, explicit, deterministic, and directly translatable to Rhai-authored maps plus Rust validation structs.
+
+### Required Style Rules
+
+- `worldgenClusters.js` should look like a Rhai-shaped authoring layer.
+- Blueprint data must be declarative, deterministic, and easy to map to Rhai maps/arrays.
+- Each blueprint field should have an obvious future Rust type.
+- Keep blueprint records as plain data, with no executable behavior.
+- Keep assembly and validation logic outside blueprint records.
+- Keep helper functions small, explicit, and deterministic so they can later become Rust validation code or Rhai helper functions.
+- Existing Star-Trading systems remain authoritative; cluster code only translates authored hints into normal sparse-site inputs.
+- Do not use JS-specific object magic: classes, prototypes, getters, dynamic property names, closures, fluent builders, symbol keys, async behavior, DOM dependencies, or hidden module-level mutation.
+
+### Good Rhai-Portable Blueprint Style
+
+```js
+export const CLUSTER_BLUEPRINTS = Object.freeze([
+    {
+        id: "starter-hub-a",
+        family: "starter_hub",
+        tags: ["starter", "core", "safe"],
+        weight: 1,
+        placement: {
+            preferredRegion: "Core",
+            preferredRadius: 14
+        },
+        sites: [
+            {
+                localId: "hub",
+                offset: { x: 0, y: 0, z: 0 },
+                siteType: "stellar_system",
+                richness: "hub",
+                region: "Core",
+                roleHint: "home_candidate",
+                factionBias: { sda: 14, fu: 6 },
+                portHint: "stardock",
+                stockBias: {}
+            },
+            {
+                localId: "mine",
+                offset: { x: 4, y: -1, z: 0 },
+                siteType: "brown_dwarf_system",
+                richness: "developing",
+                region: "Frontier",
+                factionBias: { hc: 12, fu: 4 },
+                asteroidHint: true,
+                portHint: "mining",
+                stockBias: {
+                    ore: "surplus",
+                    repair_parts: "shortage"
+                }
+            },
+            {
+                localId: "farm",
+                offset: { x: -3, y: 3, z: 1 },
+                siteType: "stellar_system",
+                richness: "settled",
+                region: "Frontier",
+                factionBias: { fu: 12 },
+                planetHint: "agricultural",
+                portHint: "agricultural",
+                stockBias: {
+                    org: "surplus",
+                    machinery: "shortage"
+                }
+            }
+        ],
+        connectors: [
+            { localId: "mine", kind: "trade_seam" },
+            { localId: "farm", kind: "starter_expansion" }
+        ],
+        validation: {
+            minEconomicSites: 3,
+            requiresExtractionSite: true,
+            starterCompatible: true
+        }
+    }
+]);
+```
+
+Why this is preferred:
+
+- It is plain declarative data.
+- It maps naturally to Rhai maps and arrays.
+- The blueprint has no executable behavior.
+- Field names are explicit.
+- Validation expectations are data, not hidden code.
+- Assembly code can consume the same shape later from Rhai or Rust.
+
+### Bad JS-Specific Blueprint Style to Avoid
+
+```js
+class StarterHubBlueprint {
+    constructor(seed) {
+        this.seed = seed;
+    }
+
+    get id() {
+        return `starter-${this.seed}`;
+    }
+
+    sites() {
+        return makeSitesWithClosures(this.seed).map((site) => ({
+            ...site,
+            [`bias_${site.primaryFaction}`]: site.bias
+        }));
+    }
+}
+
+export const CLUSTER_BLUEPRINTS = [
+    new StarterHubBlueprint(Date.now())
+];
+```
+
+Why this is not acceptable:
+
+- It uses classes and prototype behavior.
+- It hides data behind methods and getters.
+- It depends on runtime behavior instead of explicit authored data.
+- It uses dynamic property names.
+- It is not naturally portable to Rhai-authored cluster scripts.
+- It weakens determinism.
+
+### Good Schema-Comment Style for `worldgenClusters.js`
+
+```js
+// Rhai-portable shape:
+//
+// ClusterBlueprint = {
+//     id: string,
+//     family: string,
+//     tags: string[],
+//     weight: number,
+//     placement: ClusterPlacement,
+//     sites: ClusterSiteBlueprint[],
+//     connectors: ClusterConnector[],
+//     validation: ClusterValidation
+// }
+//
+// ClusterSiteBlueprint = {
+//     localId: string,
+//     offset: { x: number, y: number, z: number },
+//     siteType: string,
+//     richness: string,
+//     region: string,
+//     roleHint?: string,
+//     factionBias?: { [factionId: string]: number },
+//     portHint?: string,
+//     planetHint?: string,
+//     asteroidHint?: boolean,
+//     stationHint?: string,
+//     stockBias?: { [commodityId: string]: "surplus" | "normal" | "shortage" | "empty" }
+// }
+```
+
+### Good Validation Helper Style
+
+```js
+export function validateClusterBlueprint(blueprint) {
+    const errors = [];
+
+    if (!blueprint || typeof blueprint !== "object") {
+        errors.push("blueprint must be an object");
+        return errors;
+    }
+
+    if (typeof blueprint.id !== "string" || blueprint.id.length === 0) {
+        errors.push("blueprint.id must be a non-empty string");
+    }
+
+    if (!Array.isArray(blueprint.sites) || blueprint.sites.length === 0) {
+        errors.push((blueprint.id || "blueprint") + ": sites must be a non-empty array");
+        return errors;
+    }
+    for (const site of blueprint.sites) {
+        if (typeof site.localId !== "string" || site.localId.length === 0) {
+            errors.push(`${blueprint.id}: site.localId must be a non-empty string`);
+        }
+
+        if (!site.offset || !Number.isFinite(site.offset.x) || !Number.isFinite(site.offset.y) || !Number.isFinite(site.offset.z)) {
+            errors.push(`${blueprint.id}/${site.localId}: offset must have finite x, y, z numbers`);
+        }
+    }
+
+    return errors;
+}
+```
+
+Validation helpers should be boring, explicit, and easy to port to Rust. Avoid generic reflection-heavy validators unless there is an existing project convention for them.
+
+### Good Deterministic Selection Style
+
+```js
+export function selectClusterByFamily(blueprints, family, rng) {
+    const candidates = blueprints.filter((blueprint) => blueprint.family === family);
+    const totalWeight = candidates.reduce((sum, blueprint) => sum + blueprint.weight, 0);
+    let roll = rng() * totalWeight;
+
+    for (const blueprint of candidates) {
+        roll -= blueprint.weight;
+
+        if (roll <= 0) {
+            return blueprint;
+        }
+    }
+
+    return candidates[candidates.length - 1] || null;
+}
+```
+
+Why this is preferred:
+
+- It is deterministic for a fixed `rng`.
+- It does not use global randomness.
+- It can be translated to Rust directly.
+- It keeps selection logic outside blueprint data.
+
+### Bad Selection Style to Avoid
+
+```js
+const selected = CLUSTER_BLUEPRINTS
+    .filter((blueprint) => blueprint.family === getDynamicFamilyName())
+    .sort(() => Math.random() - 0.5)
+    .at(0);
+```
+
+Why this is not acceptable:
+
+- It uses global randomness.
+- It is not deterministic.
+- Sort-random selection is unstable.
+- The dynamic family lookup hides generation behavior.
+- It is a poor match for future Rust/Rhai generation.
+
+### What Not To Do: JavaScript That Is Bad Rhai
+
+Do not write `worldgenClusters.js` as clever JavaScript. Write it as explicit data and simple deterministic transforms that could plausibly have been written in Rhai first.
+
+Explicitly avoid builder chains, computed object shapes, executable blueprint records, callback-heavy assembly pipelines, implicit fallback topology repair, global mutable module state, schema-by-spread behavior, and environment-dependent randomness (`Math.random`, `Date.now`, DOM APIs).
+
+Final rule: if a JavaScript pattern makes the blueprint shorter but the data shape less obvious, do not use it. For this MVP, boring explicit data is better than clever JavaScript.
+
 ## Proposed File Layout
 
 Add:
@@ -653,6 +901,16 @@ The MVP is done when:
 - [ ] Run worldgen-specific validation.
 - [ ] Run manual playtest starts.
 - [ ] Document results and next-step recommendations.
+- [ ] Verify `worldgenClusters.js` uses Rhai-portable declarative data only.
+- [ ] Verify blueprint records contain no executable behavior.
+- [ ] Verify cluster selection and validation are deterministic for a fixed RNG seed.
+- [ ] Verify each blueprint field has an obvious future Rust type.
+- [ ] Verify no JS-specific object magic is required to interpret cluster data.
+- [ ] Verify `worldgenClusters.js` does not use builder chains, classes, getters, prototypes, dynamic field names, or executable blueprint records.
+- [ ] Verify cluster assembly does not depend on global mutable module state.
+- [ ] Verify worldgen behavior depends only on explicit config, blueprint data, and the provided seeded RNG.
+- [ ] Verify generated sparse-site records are constructed explicitly rather than by spreading blueprint records into runtime state.
+- [ ] Verify invalid blueprint topology fails validation instead of being silently repaired by synthetic fallback routes or connectors.
 
 ## Likely Follow-Up Work
 
