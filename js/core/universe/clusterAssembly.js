@@ -1,4 +1,4 @@
-import { CLUSTER_BLUEPRINTS, selectClusterByFamily } from '../../config/worldgenClusters.js';
+import { CLUSTER_BLUEPRINTS, selectClusterByFamily, validateClusterBlueprint } from '../../config/worldgenClusters.js';
 import { BALANCE } from '../../config/economy.js';
 import { WORLDGEN_GEOMETRY, WORLDGEN_ANCHORS } from '../../config/worldgen.js';
 import { createBaseInfluence } from '../influence.js';
@@ -54,6 +54,13 @@ function pickWeighted(weights, rng) {
 }
 
 export function createSparseSitesFromClusterBlueprints(config, rng) {
+    const validationErrors = [];
+    for (const blueprint of CLUSTER_BLUEPRINTS) {
+        validationErrors.push(...validateClusterBlueprint(blueprint));
+    }
+    if (validationErrors.length > 0) {
+        throw new Error(`Cluster blueprint validation failed: ${validationErrors.join('; ')}`);
+    }
     const archetype = BALANCE.WORLDGEN.ARCHETYPES[config.archetypeKey]
         || BALANCE.WORLDGEN.ARCHETYPES[BALANCE.WORLDGEN.DEFAULT_ARCHETYPE];
 

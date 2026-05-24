@@ -11,11 +11,12 @@
     "audit": "npm audit --audit-level=high",
     "format:check": "npm run lint",
     "test:persistence": "node --test tests/persistence.test.js",
-    "test:worldgen": "node --test tests/worldgenGateEconomy.test.js",
+    "test:worldgen": "node --test tests/worldgenGateEconomy.test.js tests/worldgenClusters.test.js",
     "test:ui-core": "node --test tests/uiLifecycle.test.js tests/renderEscaping.test.js",
     "benchmark:all": "npm run benchmark:map",
     "docs:drift": "node scripts/docs-drift-check.mjs",
-    "audit:html-sinks": "node scripts/audit-html-sinks.mjs"
+    "audit:html-sinks": "node scripts/audit-html-sinks.mjs",
+    "test:worldgen:stress": "ST_WORLDGEN_STRESS=1 node --test tests/worldgenGateEconomy.test.js tests/worldgenClusters.test.js"
   },
   "devDependencies": {
     "eslint": "9.39.4",
