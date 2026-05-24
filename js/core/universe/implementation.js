@@ -666,9 +666,11 @@ export function validateClusterWorldgenAfterHints(clusterHintsBySiteId, stage = 
     const economicSiteIds = hintedSiteIds.filter((id) => hasEconomicActivity(id));
     const extractionSiteIds = hintedSiteIds.filter((id) => {
         const site = state.universe[id];
-        return Boolean(site?.asteroids) || state.ports[id]?.typeKey === "extraction_outpost";
+        const portType = state.ports[id]?.typeKey;
+        return Boolean(site?.asteroids) || portType === "extraction_outpost" || portType === "mining";
     });
-    const nonExtractionEconomicSiteIds = economicSiteIds.filter((id) => !extractionSiteIds.includes(id));
+    const extractionSet = new Set(extractionSiteIds);
+    const nonExtractionEconomicSiteIds = economicSiteIds.filter((id) => !extractionSet.has(id));
     if (economicSiteIds.length < 3) {
         throw new Error(`Cluster worldgen quality gate failed: expected >=3 economic hinted sites, got ${economicSiteIds.length}`);
     }
