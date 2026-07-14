@@ -19,7 +19,7 @@
     "test:worldgen:stress": "ST_WORLDGEN_STRESS=1 node --test tests/worldgenGateEconomy.test.js tests/worldgenClusters.test.js"
   },
   "devDependencies": {
-    "eslint": "9.39.4",
+    "eslint": "9.39.5",
     "vite": "6.4.2"
   },
   "engines": {
